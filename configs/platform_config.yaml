@@ -1,0 +1,171 @@
+# ~/Dev/crypto-investor/configs/platform_config.yaml
+# Master configuration for the crypto-investor platform
+# All sensitive values (API keys) should be set via environment variables
+
+platform:
+  name: "crypto-investor"
+  version: "0.1.0"
+  base_dir: "~/Dev/crypto-investor"
+  log_level: "INFO"
+
+# ──────────────────────────────────────────────
+# Exchange connections (via CCXT)
+# ──────────────────────────────────────────────
+exchanges:
+  binance:
+    exchange_id: "binance"
+    api_key_env: "BINANCE_API_KEY"
+    secret_env: "BINANCE_SECRET"
+    sandbox: true  # Start in testnet mode
+    rate_limit: true
+    options:
+      defaultType: "spot"  # spot, future, margin
+      adjustForTimeDifference: true
+
+  bybit:
+    exchange_id: "bybit"
+    api_key_env: "BYBIT_API_KEY"
+    secret_env: "BYBIT_SECRET"
+    sandbox: true
+    rate_limit: true
+    options:
+      defaultType: "spot"
+
+  kraken:
+    exchange_id: "kraken"
+    api_key_env: "KRAKEN_API_KEY"
+    secret_env: "KRAKEN_SECRET"
+    sandbox: true
+    rate_limit: true
+
+# ──────────────────────────────────────────────
+# Data pipeline configuration
+# ──────────────────────────────────────────────
+data:
+  storage_format: "parquet"  # parquet or hdf5
+  base_path: "data"
+  raw_path: "data/raw"
+  processed_path: "data/processed"
+  orderbook_path: "data/orderbook"
+
+  # Default pairs to track
+  watchlist:
+    - "BTC/USDT"
+    - "ETH/USDT"
+    - "SOL/USDT"
+    - "BNB/USDT"
+    - "XRP/USDT"
+    - "ADA/USDT"
+    - "AVAX/USDT"
+    - "DOGE/USDT"
+    - "DOT/USDT"
+    - "LINK/USDT"
+
+  timeframes:
+    - "1m"
+    - "5m"
+    - "15m"
+    - "1h"
+    - "4h"
+    - "1d"
+
+  # How many days of historical data to fetch
+  history_days: 365
+
+# ──────────────────────────────────────────────
+# Freqtrade configuration
+# ──────────────────────────────────────────────
+freqtrade:
+  dry_run: true
+  trading_mode: "spot"
+  stake_currency: "USDT"
+  stake_amount: "unlimited"
+  tradable_balance_ratio: 0.99
+  max_open_trades: 5
+
+  # FreqAI configuration
+  freqai:
+    enabled: false  # Enable after initial strategy validation
+    model_type: "LightGBMClassifier"
+    train_period_days: 90
+    backtest_period_days: 7
+    identifier: "crypto_investor_v1"
+    feature_parameters:
+      include_timeframes:
+        - "5m"
+        - "15m"
+        - "1h"
+      include_corr_pairlist:
+        - "BTC/USDT"
+        - "ETH/USDT"
+      indicator_periods_candles:
+        - 10
+        - 20
+        - 50
+
+  # Risk management
+  risk:
+    stoploss: -0.05            # -5% stop loss
+    trailing_stop: true
+    trailing_stop_positive: 0.01
+    trailing_stop_positive_offset: 0.03
+    trailing_only_offset_is_reached: true
+    roi:
+      "0": 0.10      # 10% ROI target
+      "30": 0.05     # 5% after 30 min
+      "120": 0.02    # 2% after 2 hours
+      "360": 0.01    # 1% after 6 hours
+
+# ──────────────────────────────────────────────
+# NautilusTrader configuration
+# ──────────────────────────────────────────────
+nautilus:
+  environment: "backtest"  # backtest or live
+  log_level: "INFO"
+  cache_database: true
+  cache_type: "redis"  # in-memory or redis
+  data_engine:
+    time_bars_build_delay: true
+  risk_engine:
+    max_order_submit_rate: "10/00:00:01"  # 10 orders per second
+    max_notional_per_order: 10000.0  # USDT
+
+# ──────────────────────────────────────────────
+# VectorBT research configuration
+# ──────────────────────────────────────────────
+vectorbt:
+  default_freq: "1h"
+  default_fees: 0.001  # 0.1% trading fee
+  default_slippage: 0.0005  # 0.05% slippage
+  num_tests: 1000  # parameter combinations per sweep
+  metrics:
+    - "total_return"
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "profit_factor"
+    - "calmar_ratio"
+
+# ──────────────────────────────────────────────
+# Risk management (global)
+# ──────────────────────────────────────────────
+risk_management:
+  max_portfolio_drawdown: 0.15  # 15% max drawdown → halt all trading
+  max_single_trade_risk: 0.02   # 2% of portfolio per trade
+  max_daily_loss: 0.05          # 5% daily loss limit
+  max_correlation: 0.7          # Max correlation between concurrent positions
+  min_paper_trade_days: 14      # Minimum paper trading before live
+
+# ──────────────────────────────────────────────
+# Monitoring & alerts
+# ──────────────────────────────────────────────
+monitoring:
+  telegram:
+    enabled: false
+    token_env: "TELEGRAM_BOT_TOKEN"
+    chat_id_env: "TELEGRAM_CHAT_ID"
+
+  dashboard:
+    enabled: true
+    port: 8501
+    refresh_seconds: 30

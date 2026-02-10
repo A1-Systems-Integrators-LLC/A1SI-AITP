@@ -50,5 +50,24 @@ coverage/
 # ruff
 .ruff_cache/
 
+# Cloned framework repos (external)
+frameworks/
+
+# Platform data (Parquet files, raw downloads)
+data/
+Documents/
+Downloads/
+
+# Research results (generated)
+research/results/
+
+# Nautilus generated data
+nautilus/catalog/
+nautilus/results/
+
 # Logs
+logs/
 *.log
+
+# Misc
+*.zip
