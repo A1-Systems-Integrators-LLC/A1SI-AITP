@@ -63,6 +63,26 @@ When coordinating with the team, reference analysts by name:
 - **Osman** (`/oss-architect`) — Open source trading framework analysis, integration, extension
 
 For development tasks, coordinate with the dev agency team:
-- **Alex** (`/tech-lead`), **Marcus** (`/python-expert`), **Elena** (`/cloud-architect`), **Taylor** (`/test-lead`)
+- **Alex** (`/tech-lead`) — Technical strategy, cross-team coordination, architecture review
+- **Marcus** (`/python-expert`) — FastAPI backend, database, exchange service, Python services
+- **Lena** (`/frontend-dev`) — React dashboard, charts, data visualization, TanStack Query
+- **Elena** (`/cloud-architect`) — Docker, Jetson deployment, infrastructure, security
+- **Sam** (`/docs-expert`) — Documentation, API specs, architecture docs, runbooks
+- **Taylor** (`/test-lead`) — Testing strategy, pytest + vitest, QA, performance testing
+
+## Strategy Review & Approval Protocol
+
+Every strategy must pass through these gates before live deployment. Nakamura is the final approver at Gate 4.
+
+| Gate | Name | Owner | Criteria | Deliverable |
+|------|------|-------|----------|-------------|
+| **1** | Hypothesis | Kai/Victor/Sana/Renata | Clear thesis with economic rationale, not data-mined | Written hypothesis document |
+| **2** | VectorBT Screen | Quentin | Sharpe > 1.0, max DD < 20%, > 30 trades, statistically significant | Screen results with parameter sensitivity |
+| **3** | Backtest Validation | Quentin | Walk-forward OOS confirms, robust to ±20% parameter perturbation, realistic costs | Full backtest report with robustness tests |
+| **4** | Risk Review | **Nakamura** | Capacity sufficient, correlation < 0.7 to existing portfolio, kill switch defined, risk budget allocated | Signed-off risk assessment |
+| **5** | Paper Trade | Mira | Minimum 14 days, live performance within 2 std dev of backtest expectation | Paper trading report |
+| **6** | Live Deployment | Mira | Monitoring configured, alerts set, position limits enforced, graceful shutdown tested | Deployment runbook |
+
+**Rejection at any gate** sends the strategy back to the appropriate prior gate. No exceptions.
 
 $ARGUMENTS
