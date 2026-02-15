@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { backtestApi } from "../api/backtest";
 import { useJobPolling } from "../hooks/useJobPolling";
 import { ProgressBar } from "../components/ProgressBar";
+import { EquityCurve } from "../components/EquityCurve";
 import type { BacktestResult, StrategyInfo } from "../types";
 
 export function Backtesting() {
@@ -35,6 +36,7 @@ export function Backtesting() {
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
   const jobResult = job.data?.result as Record<string, unknown> | undefined;
   const metrics = (jobResult?.metrics ?? {}) as Record<string, unknown>;
+  const trades = (jobResult?.trades ?? []) as Record<string, unknown>[];
 
   const filteredStrategies = strategies?.filter((s) => s.framework === framework) ?? [];
 
@@ -181,6 +183,13 @@ export function Backtesting() {
                     </div>
                   ))}
               </div>
+            </div>
+          )}
+
+          {/* Equity Curve */}
+          {job.data?.status === "completed" && trades.length > 0 && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+              <EquityCurve trades={trades} />
             </div>
           )}
 

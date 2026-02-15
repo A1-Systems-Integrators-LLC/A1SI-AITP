@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.deps import SessionDep
 from app.schemas.risk import (
     EquityUpdateRequest,
+    HeatCheckResponse,
     PositionSizeRequest,
     PositionSizeResponse,
     RiskLimitsRead,
@@ -10,6 +11,7 @@ from app.schemas.risk import (
     RiskStatusRead,
     TradeCheckRequest,
     TradeCheckResponse,
+    VaRResponse,
 )
 from app.services.risk import RiskManagementService
 
@@ -68,3 +70,15 @@ async def position_size(
 @router.post("/{portfolio_id}/reset-daily", response_model=RiskStatusRead)
 async def reset_daily(portfolio_id: int, session: SessionDep) -> dict:
     return await _get_service(session).reset_daily(portfolio_id)
+
+
+@router.get("/{portfolio_id}/var", response_model=VaRResponse)
+async def get_var(
+    portfolio_id: int, session: SessionDep, method: str = "parametric"
+) -> dict:
+    return await _get_service(session).get_var(portfolio_id, method)
+
+
+@router.get("/{portfolio_id}/heat-check", response_model=HeatCheckResponse)
+async def get_heat_check(portfolio_id: int, session: SessionDep) -> dict:
+    return await _get_service(session).get_heat_check(portfolio_id)

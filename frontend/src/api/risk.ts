@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { RiskStatus, RiskLimits } from "../types";
+import type { RiskStatus, RiskLimits, VaRData, HeatCheckData } from "../types";
 
 export const riskApi = {
   getStatus: (portfolioId: number) =>
@@ -40,4 +40,10 @@ export const riskApi = {
 
   resetDaily: (portfolioId: number) =>
     api.post<RiskStatus>(`/risk/${portfolioId}/reset-daily`),
+
+  getVaR: (portfolioId: number, method: string = "parametric") =>
+    api.get<VaRData>(`/risk/${portfolioId}/var?method=${method}`),
+
+  getHeatCheck: (portfolioId: number) =>
+    api.get<HeatCheckData>(`/risk/${portfolioId}/heat-check`),
 };

@@ -64,3 +64,29 @@ class PositionSizeResponse(BaseModel):
     size: float
     risk_amount: float
     position_value: float
+
+
+class VaRResponse(BaseModel):
+    var_95: float = 0.0
+    var_99: float = 0.0
+    cvar_95: float = 0.0
+    cvar_99: float = 0.0
+    method: str = "parametric"
+    window_days: int = 0
+
+
+class HeatCheckResponse(BaseModel):
+    healthy: bool
+    issues: list[str]
+    drawdown: float
+    daily_pnl: float
+    open_positions: int
+    max_correlation: float
+    high_corr_pairs: list  # list of [symbol, symbol, correlation]
+    max_concentration: float
+    position_weights: dict[str, float]
+    var_95: float
+    var_99: float
+    cvar_95: float
+    cvar_99: float
+    is_halted: bool

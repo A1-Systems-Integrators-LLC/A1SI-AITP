@@ -123,6 +123,32 @@ export interface RiskLimits {
   max_leverage: number;
 }
 
+export interface VaRData {
+  var_95: number;
+  var_99: number;
+  cvar_95: number;
+  cvar_99: number;
+  method: string;
+  window_days: number;
+}
+
+export interface HeatCheckData {
+  healthy: boolean;
+  issues: string[];
+  drawdown: number;
+  daily_pnl: number;
+  open_positions: number;
+  max_correlation: number;
+  high_corr_pairs: [string, string, number][];
+  max_concentration: number;
+  position_weights: Record<string, number>;
+  var_95: number;
+  var_99: number;
+  cvar_95: number;
+  cvar_99: number;
+  is_halted: boolean;
+}
+
 // Backtest types
 export interface BacktestResult {
   id: number;

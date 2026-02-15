@@ -331,3 +331,68 @@ class TestPortfolioHeatCheck:
         var = rm.get_var()
         assert var.var_95 == 0.0
         assert var.var_99 == 0.0
+
+
+# ── API Endpoint Schema Tests ──────────────────────────────────
+
+
+class TestVaREndpointSchemas:
+    def test_var_parametric_returns_valid_structure(self):
+        """Verify VaR endpoint returns valid structure for parametric method."""
+        rm = RiskManager()
+        np.random.seed(42)
+        for p in np.cumsum(np.random.randn(100) * 0.01) + 50000:
+            rm.return_tracker.record_price("BTC/USDT", float(p))
+        rm.register_trade("BTC/USDT", "buy", 0.1, 50000)
+
+        result = rm.get_var("parametric")
+        assert isinstance(result.var_95, float)
+        assert isinstance(result.var_99, float)
+        assert isinstance(result.cvar_95, float)
+        assert isinstance(result.cvar_99, float)
+        assert result.method == "parametric"
+        assert result.window_days > 0
+
+    def test_var_historical_returns_valid_structure(self):
+        """Verify VaR endpoint returns valid structure for historical method."""
+        rm = RiskManager()
+        np.random.seed(42)
+        btc_prices = np.cumsum(np.random.randn(100) * 500) + 50000
+        eth_prices = np.cumsum(np.random.randn(100) * 30) + 3000
+        for b, e in zip(btc_prices, eth_prices):
+            rm.return_tracker.record_price("BTC/USDT", float(b))
+            rm.return_tracker.record_price("ETH/USDT", float(e))
+        rm.register_trade("BTC/USDT", "buy", 0.1, 50000)
+        rm.register_trade("ETH/USDT", "buy", 1.0, 3000)
+
+        result = rm.get_var("historical")
+        assert isinstance(result.var_95, float)
+        assert isinstance(result.var_99, float)
+        assert result.method == "historical"
+        assert result.var_95 > 0
+
+    def test_heat_check_returns_complete_structure(self):
+        """Verify heat check returns all expected fields."""
+        rm = RiskManager()
+        np.random.seed(42)
+        for p in np.cumsum(np.random.randn(30)) + 50000:
+            rm.return_tracker.record_price("BTC/USDT", float(p))
+        rm.register_trade("BTC/USDT", "buy", 0.1, 50000)
+
+        heat = rm.portfolio_heat_check()
+        required_keys = [
+            "healthy", "issues", "drawdown", "daily_pnl",
+            "open_positions", "max_correlation", "high_corr_pairs",
+            "max_concentration", "position_weights",
+            "var_95", "var_99", "cvar_95", "cvar_99", "is_halted",
+        ]
+        for key in required_keys:
+            assert key in heat, f"Missing key: {key}"
+
+    def test_heat_check_healthy_when_no_issues(self):
+        """Verify healthy=True when no risk issues present."""
+        rm = RiskManager()
+        heat = rm.portfolio_heat_check()
+        assert heat["healthy"] is True
+        assert len(heat["issues"]) == 0
+        assert heat["is_halted"] is False

@@ -154,3 +154,23 @@ class RiskManagementService:
         self._persist_state(rm, state)
         await self._session.commit()
         return await self.get_status(portfolio_id)
+
+    async def get_var(self, portfolio_id: int, method: str = "parametric") -> dict:
+        state = await self._get_or_create_state(portfolio_id)
+        limits_config = await self._get_or_create_limits(portfolio_id)
+        rm = self._build_risk_manager(limits_config, state)
+        result = rm.get_var(method)
+        return {
+            "var_95": result.var_95,
+            "var_99": result.var_99,
+            "cvar_95": result.cvar_95,
+            "cvar_99": result.cvar_99,
+            "method": result.method,
+            "window_days": result.window_days,
+        }
+
+    async def get_heat_check(self, portfolio_id: int) -> dict:
+        state = await self._get_or_create_state(portfolio_id)
+        limits_config = await self._get_or_create_limits(portfolio_id)
+        rm = self._build_risk_manager(limits_config, state)
+        return rm.portfolio_heat_check()
