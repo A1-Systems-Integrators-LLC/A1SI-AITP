@@ -11,6 +11,7 @@ import {
   Play,
   PlayCircle,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -27,14 +28,19 @@ const navItems = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
-export function Layout() {
+interface LayoutProps {
+  onLogout: () => Promise<void>;
+  username: string | null;
+}
+
+export function Layout({ onLogout, username }: LayoutProps) {
   return (
     <div className="flex h-screen">
       <nav className="flex w-56 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4">
         <h1 className="mb-8 text-xl font-bold text-[var(--color-primary)]">
           CryptoInvestor
         </h1>
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-1 flex-col gap-1">
           {navItems.map(({ to, icon: Icon, label }) => (
             <li key={to}>
               <NavLink
@@ -54,6 +60,20 @@ export function Layout() {
             </li>
           ))}
         </ul>
+        <div className="mt-auto border-t border-[var(--color-border)] pt-4">
+          {username && (
+            <p className="mb-2 truncate px-3 text-xs text-[var(--color-text-muted)]">
+              {username}
+            </p>
+          )}
+          <button
+            onClick={onLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg)] hover:text-red-400"
+          >
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </div>
       </nav>
       <main className="flex-1 overflow-auto p-6">
         <Outlet />

@@ -8,16 +8,15 @@ version = "0.1.0"
 description = "Crypto investment platform backend"
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi>=0.115,<1",
-    "uvicorn[standard]>=0.32,<1",
-    "sqlalchemy[asyncio]>=2.0,<3",
-    "aiosqlite>=0.20,<1",
-    "alembic>=1.14,<2",
-    "ccxt>=4,<5",
-    "pydantic>=2,<3",
-    "pydantic-settings>=2,<3",
+    "django>=5.1,<6",
+    "djangorestframework>=3.15,<4",
+    "channels>=4,<5",
+    "daphne>=4,<5",
+    "django-cors-headers>=4,<5",
     "python-dotenv>=1,<2",
+    "ccxt>=4,<5",
     "httpx>=0.27,<1",
+    "pydantic>=2,<3",
 ]
 
 [project.optional-dependencies]
@@ -28,31 +27,28 @@ analysis = [
 ]
 dev = [
     "pytest>=8,<9",
+    "pytest-django>=4,<5",
     "pytest-asyncio>=0.24,<1",
     "httpx>=0.27,<1",
     "ruff>=0.8,<1",
     "mypy>=1.13,<2",
+    "pip-audit>=2,<3",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/app"]
+packages = ["config"]
 
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "A", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/app/services/regime.py" = ["E402"]
-"tests/test_data_quality.py" = ["E402"]
-"tests/test_paper_trading.py" = ["E402"]
-"tests/test_regime_api.py" = ["E402"]
-"tests/test_regime_detector.py" = ["E402"]
-"tests/test_risk_manager.py" = ["E402"]
-"tests/test_strategy_router.py" = ["E402"]
-"tests/test_validation.py" = ["E402"]
+"market/services/regime.py" = ["E402"]
+"tests/*.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -61,4 +57,5 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["."]

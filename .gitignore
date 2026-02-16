@@ -69,5 +69,14 @@ nautilus/results/
 logs/
 *.log
 
+# TLS certificates
+backend/certs/
+
+# Database backups
+backend/data/backups/
+
+# Django
+backend/db.sqlite3
+
 # Misc
 *.zip

@@ -15,8 +15,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "Starting backend on :8000..."
-cd "$BACKEND_DIR" && "$VENV/bin/python" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+echo "Starting backend (Daphne) on :8000..."
+cd "$BACKEND_DIR" && DJANGO_DEBUG=true "$VENV/bin/python" -m daphne -b 0.0.0.0 -p 8000 config.asgi:application &
 BACKEND_PID=$!
 
 echo "Starting frontend on :5173..."
@@ -26,7 +26,7 @@ FRONTEND_PID=$!
 echo ""
 echo "Backend:  http://localhost:8000"
 echo "Frontend: http://localhost:5173"
-echo "API docs: http://localhost:8000/docs"
+echo "Admin:    http://localhost:8000/admin/"
 echo ""
 echo "Press Ctrl+C to stop."
 

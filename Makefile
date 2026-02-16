@@ -1,10 +1,11 @@
-.PHONY: setup dev test lint build clean
+.PHONY: setup dev test lint build clean harden audit certs backup test-security
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 VENV := $(BACKEND_DIR)/.venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
+MANAGE := cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) manage.py
 
 # ── Setup ──────────────────────────────────────────────────
 
@@ -19,6 +20,9 @@ setup-backend:
 	fi
 	$(PIP) install -e "$(BACKEND_DIR)[dev]" --quiet
 	@mkdir -p $(BACKEND_DIR)/data
+	$(MANAGE) migrate --run-syncdb
+	@echo "→ Creating superuser (if needed)..."
+	@$(MANAGE) shell -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', '', 'admin')" 2>/dev/null || true
 
 setup-frontend:
 	@echo "→ Setting up frontend..."
@@ -30,10 +34,19 @@ dev:
 	@bash scripts/dev.sh
 
 dev-backend:
-	cd $(BACKEND_DIR) && ../.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) -m daphne -b 0.0.0.0 -p 8000 config.asgi:application
 
 dev-frontend:
 	cd $(FRONTEND_DIR) && npm run dev
+
+# ── Database ──────────────────────────────────────────────
+
+migrate:
+	$(MANAGE) makemigrations
+	$(MANAGE) migrate
+
+createsuperuser:
+	$(MANAGE) createsuperuser
 
 # ── Testing ────────────────────────────────────────────────
 
@@ -46,13 +59,16 @@ test-backend:
 test-frontend:
 	cd $(FRONTEND_DIR) && npx vitest run
 
+test-security:
+	cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) -m pytest tests/test_auth.py tests/test_security.py -v
+
 # ── Linting ────────────────────────────────────────────────
 
 lint: lint-backend lint-frontend
 	@echo "✓ All linting passed"
 
 lint-backend:
-	cd $(BACKEND_DIR) && $(CURDIR)/$(VENV)/bin/ruff check src/ tests/
+	cd $(BACKEND_DIR) && $(CURDIR)/$(VENV)/bin/ruff check core/ portfolio/ trading/ market/ risk/ analysis/ tests/
 
 lint-frontend:
 	cd $(FRONTEND_DIR) && npx eslint .
@@ -62,6 +78,28 @@ lint-frontend:
 build:
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "✓ Frontend built to $(FRONTEND_DIR)/dist/"
+
+# ── Security ──────────────────────────────────────────────
+
+harden:
+	@echo "→ Hardening file permissions..."
+	@test -f .env && chmod 600 .env || true
+	@chmod 700 $(BACKEND_DIR)/data
+	@test -d $(BACKEND_DIR)/certs && chmod 700 $(BACKEND_DIR)/certs || true
+	@echo "✓ Permissions hardened"
+
+audit:
+	@echo "→ Running pip-audit..."
+	$(VENV)/bin/pip-audit
+	@echo "→ Running npm audit..."
+	cd $(FRONTEND_DIR) && npm audit --omit=dev
+	@echo "✓ Audit complete"
+
+certs:
+	@bash scripts/generate_certs.sh
+
+backup:
+	@bash scripts/backup_db.sh
 
 # ── Clean ──────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { PortfolioPage } from "./pages/Portfolio";
 import { MarketAnalysis } from "./pages/MarketAnalysis";
@@ -11,11 +12,58 @@ import { Backtesting } from "./pages/Backtesting";
 import { RegimeDashboard } from "./pages/RegimeDashboard";
 import { PaperTrading } from "./pages/PaperTrading";
 import { Settings } from "./pages/Settings";
+import { useAuth } from "./hooks/useAuth";
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--color-bg)]">
+        <div className="text-[var(--color-text-muted)]">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 export default function App() {
+  const { isAuthenticated, isLoading, login, logout, username } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--color-bg)]">
+        <div className="text-[var(--color-text-muted)]">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Login onLogin={login} />
+          )
+        }
+      />
+      <Route
+        element={
+          isAuthenticated ? (
+            <Layout onLogout={logout} username={username} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      >
         <Route path="/" element={<Dashboard />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/market" element={<MarketAnalysis />} />

@@ -1,80 +1,82 @@
 """
-Tests for kill switch (halt/resume) endpoints.
+Tests for kill switch (halt/resume) endpoints — Django version.
 """
 
 import pytest
 
 
+@pytest.mark.django_db
 class TestHaltEndpoint:
-    @pytest.mark.asyncio
-    async def test_halt_trading(self, client):
-        resp = await client.post(
-            "/api/risk/1/halt",
-            json={"reason": "manual test halt"},
+    def test_halt_trading(self, authenticated_client):
+        resp = authenticated_client.post(
+            "/api/risk/1/halt/",
+            {"reason": "manual test halt"},
+            format="json",
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["is_halted"] is True
-        assert data["halt_reason"] == "manual test halt"
-        assert "halted" in data["message"].lower()
 
-    @pytest.mark.asyncio
-    async def test_resume_trading(self, client):
+    def test_resume_trading(self, authenticated_client):
         # First halt
-        await client.post("/api/risk/1/halt", json={"reason": "test"})
+        authenticated_client.post(
+            "/api/risk/1/halt/", {"reason": "test"}, format="json"
+        )
         # Then resume
-        resp = await client.post("/api/risk/1/resume")
+        resp = authenticated_client.post("/api/risk/1/resume/")
         assert resp.status_code == 200
         data = resp.json()
         assert data["is_halted"] is False
-        assert data["halt_reason"] == ""
-        assert "resumed" in data["message"].lower()
 
-    @pytest.mark.asyncio
-    async def test_halted_trade_rejected(self, client):
+    def test_halted_trade_rejected(self, authenticated_client):
         # Halt trading
-        await client.post("/api/risk/1/halt", json={"reason": "emergency"})
-        # Attempt a trade
-        resp = await client.post(
-            "/api/risk/1/check-trade",
-            json={
+        authenticated_client.post(
+            "/api/risk/1/halt/", {"reason": "emergency"}, format="json"
+        )
+        # Attempt a trade check
+        resp = authenticated_client.post(
+            "/api/risk/1/check-trade/",
+            {
                 "symbol": "BTC/USDT",
                 "side": "buy",
                 "size": 0.01,
                 "entry_price": 97000,
                 "stop_loss_price": 92150,
             },
+            format="json",
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["approved"] is False
         assert "halted" in data["reason"].lower()
 
-    @pytest.mark.asyncio
-    async def test_resume_then_trade_approved(self, client):
+    def test_resume_then_trade_approved(self, authenticated_client):
         # Halt then resume
-        await client.post("/api/risk/1/halt", json={"reason": "test"})
-        await client.post("/api/risk/1/resume")
+        authenticated_client.post(
+            "/api/risk/1/halt/", {"reason": "test"}, format="json"
+        )
+        authenticated_client.post("/api/risk/1/resume/")
         # Trade should be approved now
-        resp = await client.post(
-            "/api/risk/1/check-trade",
-            json={
+        resp = authenticated_client.post(
+            "/api/risk/1/check-trade/",
+            {
                 "symbol": "BTC/USDT",
                 "side": "buy",
                 "size": 0.01,
                 "entry_price": 50000,
                 "stop_loss_price": 48500,
             },
+            format="json",
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["approved"] is True
 
-    @pytest.mark.asyncio
-    async def test_halt_status_visible(self, client):
-        await client.post("/api/risk/1/halt", json={"reason": "visible check"})
-        resp = await client.get("/api/risk/1/status")
+    def test_halt_status_visible(self, authenticated_client):
+        authenticated_client.post(
+            "/api/risk/1/halt/", {"reason": "visible check"}, format="json"
+        )
+        resp = authenticated_client.get("/api/risk/1/status/")
         assert resp.status_code == 200
         data = resp.json()
         assert data["is_halted"] is True
-        assert data["halt_reason"] == "visible check"

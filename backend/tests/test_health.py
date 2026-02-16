@@ -1,9 +1,11 @@
+"""Health endpoint test."""
+
 import pytest
-from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
-async def test_health(client: AsyncClient):
-    response = await client.get("/api/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+@pytest.mark.django_db
+class TestHealth:
+    def test_health(self, api_client):
+        resp = api_client.get("/api/health/")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}

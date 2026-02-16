@@ -1,11 +1,15 @@
+"""Exchange API tests."""
+
 import pytest
-from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
-async def test_list_exchanges(client: AsyncClient):
-    response = await client.get("/api/exchanges/")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) > 0
-    assert any(ex["id"] == "binance" for ex in data)
+@pytest.mark.django_db
+class TestExchanges:
+    def test_list_exchanges(self, authenticated_client):
+        resp = authenticated_client.get("/api/exchanges/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+        ids = [e["id"] for e in data]
+        assert "binance" in ids
