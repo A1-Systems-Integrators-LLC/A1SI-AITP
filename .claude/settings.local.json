@@ -31,7 +31,28 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git config:*)",
-      "Bash(gh repo create:*)"
+      "Bash(gh repo create:*)",
+      "Bash(git push:*)",
+      "Bash(ls:*)",
+      "Bash(conda env list:*)",
+      "Bash(PYTHONPATH=backend/src:. python -m pytest:*)",
+      "Bash(find:*)",
+      "Bash(../.venv/bin/python -m pytest:*)",
+      "Bash(PYTHONPATH=src python3 -m pytest:*)",
+      "Bash(git status:*)",
+      "Bash(wc:*)",
+      "Bash(python:*)",
+      "Bash(pip show:*)",
+      "Bash(pip:*)",
+      "Bash(apt list:*)",
+      "Bash(sudo apt-get update:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(conda install:*)",
+      "Bash(ss:*)",
+      "Bash(sqlite3:*)",
+      "Bash(pytest:*)",
+      "Bash(grep:*)",
+      "Bash(xargs:*)"
     ]
   }
 }
