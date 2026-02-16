@@ -1,13 +1,17 @@
+import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
 from app.config import settings
-from app.database import engine
+from app.database import async_session, engine
 from app.models import Base
 from app.routers import (
     backtest,
@@ -24,6 +28,35 @@ from app.routers import (
     screening,
     trading,
 )
+
+logger = logging.getLogger(__name__)
+
+
+async def _daily_reset_loop() -> None:
+    """Background task: reset daily risk tracking at 00:00 UTC."""
+    while True:
+        now = datetime.now(timezone.utc)
+        tomorrow = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        wait_seconds = (tomorrow - now).total_seconds()
+        logger.info(
+            f"Daily reset scheduled in {wait_seconds:.0f}s (next: {tomorrow.isoformat()})"
+        )
+        await asyncio.sleep(wait_seconds)
+        try:
+            from app.models.risk import RiskState
+            from app.services.risk import RiskManagementService
+
+            async with async_session() as session:
+                result = await session.execute(select(RiskState))
+                states = result.scalars().all()
+                service = RiskManagementService(session)
+                for state in states:
+                    await service.reset_daily(state.portfolio_id)
+                logger.info(f"Daily reset completed for {len(states)} portfolio(s)")
+        except Exception as e:
+            logger.error(f"Daily reset failed: {e}")
 
 
 @asynccontextmanager
@@ -42,7 +75,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             __import__("sqlalchemy").text("PRAGMA journal_mode=WAL")
         )
 
+    # Start daily risk reset scheduler
+    reset_task = asyncio.create_task(_daily_reset_loop())
+
     yield
+
+    # Cancel daily reset scheduler
+    reset_task.cancel()
 
     # Cleanup: stop paper trading if running
     from app.deps import _paper_trading_service

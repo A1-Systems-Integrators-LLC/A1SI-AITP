@@ -223,6 +223,41 @@ class TestRiskManager:
         assert pnl == pytest.approx(200.0)  # 0.1 * (50000-48000)
 
 
+class TestRiskRewardEnforcement:
+    def test_risk_reward_rejects_wide_stop(self):
+        """Stop at 12% → needs 18% profit for 1.5 R:R → rejected (>15%)."""
+        # Use high max_single_trade_risk so stop-loss-wide check passes,
+        # but R:R check still rejects (12% * 1.5 = 18% > 15%)
+        rm = RiskManager(RiskLimits(max_single_trade_risk=0.10))
+        approved, reason = rm.check_new_trade(
+            "BTC/USDT", "buy", 0.01, 50000, stop_loss_price=44000
+        )
+        assert approved is False
+        assert "risk/reward" in reason.lower()
+
+    def test_risk_reward_allows_normal_stop(self):
+        """Stop at 5% → needs 7.5% profit for 1.5 R:R → allowed (<15%)."""
+        rm = RiskManager()
+        # Entry 50000, stop at 47500 = 5% risk (passes max_single_trade_risk*2=4% check too)
+        # But 5% > 4%, so this would be caught by stop-loss-wide check first.
+        # Use 3% stop instead: entry 50000, stop at 48500
+        # 3% * 1.5 = 4.5% required < 15% → approved
+        approved, reason = rm.check_new_trade(
+            "BTC/USDT", "buy", 0.01, 50000, stop_loss_price=48500
+        )
+        assert approved is True
+        assert reason == "approved"
+
+    def test_risk_reward_skipped_without_stop(self):
+        """No stop_loss_price → R:R check skipped entirely."""
+        rm = RiskManager()
+        approved, reason = rm.check_new_trade(
+            "BTC/USDT", "buy", 0.01, 50000, stop_loss_price=None
+        )
+        assert approved is True
+        assert reason == "approved"
+
+
 class TestRegimeModifier:
     def test_regime_modifier_reduces_size(self):
         rm = RiskManager()

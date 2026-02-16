@@ -56,6 +56,10 @@ class CryptoInvestorV1(IStrategy):
     timeframe = "1h"
     can_short = False
 
+    # ── Risk API integration ──
+    risk_api_url = "http://127.0.0.1:8000"
+    risk_portfolio_id = 1
+
     # ── ROI table ──
     minimal_roi = {
         "0": 0.10,     # 10% ROI target
@@ -275,3 +279,44 @@ class CryptoInvestorV1(IStrategy):
                 return "stale_trade"
 
         return None
+
+    def confirm_trade_entry(
+        self,
+        pair: str,
+        order_type: str,
+        amount: float,
+        rate: float,
+        time_in_force: str,
+        current_time: datetime,
+        entry_tag: Optional[str],
+        side: str,
+        **kwargs,
+    ) -> bool:
+        """Gate trades through the backend risk API (fail-safe: reject)."""
+        try:
+            import requests
+
+            stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
+            resp = requests.post(
+                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade",
+                json={
+                    "symbol": pair,
+                    "side": side,
+                    "size": amount,
+                    "entry_price": rate,
+                    "stop_loss_price": stop_loss_price,
+                },
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if not data.get("approved", False):
+                    logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
+                    return False
+                logger.info(f"Risk gate approved {pair}")
+                return True
+            logger.warning(f"Risk API returned {resp.status_code}, rejecting trade")
+            return False
+        except Exception as e:
+            logger.error(f"Risk API unreachable ({e}), rejecting trade")
+            return False

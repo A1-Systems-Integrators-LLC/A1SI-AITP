@@ -338,6 +338,17 @@ class RiskManager:
             if trade_risk > self.limits.max_single_trade_risk * 2:
                 return False, f"Stop loss too wide: {trade_risk:.2%} risk per unit"
 
+            # Check min risk/reward ratio: reject if stop is so wide that
+            # achieving min_risk_reward requires an unrealistic price move (>15%)
+            if price_risk > 0:
+                required_profit_pct = trade_risk * self.limits.min_risk_reward
+                if required_profit_pct > 0.15:
+                    return False, (
+                        f"Risk/reward unfavorable: stop at {trade_risk:.2%} "
+                        f"requires {required_profit_pct:.1%} profit for "
+                        f"{self.limits.min_risk_reward}:1 R:R"
+                    )
+
         # Check correlation with existing positions
         corr_ok, corr_reason = self._check_correlation(symbol)
         if not corr_ok:
