@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -d /app appuser
 
 # Copy backend package and install
 COPY backend/pyproject.toml backend/
@@ -27,11 +27,11 @@ COPY configs/ configs/
 COPY freqtrade/ freqtrade/
 COPY run.py ./
 
-# Ensure common modules are importable
-ENV PYTHONPATH=/app
+# Local backend source takes priority over site-packages
+ENV PYTHONPATH=/app/backend:/app
 
 # Create data directory and set ownership
-RUN mkdir -p backend/data && chown -R appuser:appuser /app
+RUN mkdir -p backend/data/logs && chown -R appuser:appuser /app
 
 USER appuser
 
@@ -40,4 +40,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')" || exit 1
 
-CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "--application-close-timeout", "60", "--root-path", "/app/backend", "config.asgi:application"]
+WORKDIR /app/backend
+CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "--application-close-timeout", "60", "config.asgi:application"]

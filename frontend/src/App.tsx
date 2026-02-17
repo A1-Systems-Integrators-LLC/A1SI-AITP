@@ -14,24 +14,6 @@ import { PaperTrading } from "./pages/PaperTrading";
 import { Settings } from "./pages/Settings";
 import { useAuth } from "./hooks/useAuth";
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[var(--color-bg)]">
-        <div className="text-[var(--color-text-muted)]">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-}
-
 export default function App() {
   const { isAuthenticated, isLoading, login, logout, username } = useAuth();
 

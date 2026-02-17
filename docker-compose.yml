@@ -12,7 +12,6 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app
-      - DJANGO_DEBUG=false
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
