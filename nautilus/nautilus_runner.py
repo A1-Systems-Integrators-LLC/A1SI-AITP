@@ -31,6 +31,24 @@ CATALOG_DIR = PROJECT_ROOT / "nautilus" / "catalog"
 CATALOG_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR = PROJECT_ROOT / "nautilus" / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_PATH = PROJECT_ROOT / "configs" / "platform_config.yaml"
+
+
+def _load_platform_config() -> dict:
+    """Load platform_config.yaml. Returns empty dict on failure."""
+    if not CONFIG_PATH.exists():
+        logger.debug("platform_config.yaml not found, using defaults")
+        return {}
+    try:
+        import yaml
+        with open(CONFIG_PATH) as f:
+            return yaml.safe_load(f) or {}
+    except ImportError:
+        logger.debug("PyYAML not installed, using defaults")
+        return {}
+    except Exception as e:
+        logger.warning(f"Failed to load platform config: {e}")
+        return {}
 
 
 def convert_ohlcv_to_nautilus_csv(
@@ -115,13 +133,22 @@ def run_nautilus_backtest(
 
     logger.info(f"Running backtest: {strategy_name} on {symbol} {timeframe} ({len(df)} bars)")
 
-    # Instantiate strategy
-    strategy_cls = STRATEGY_REGISTRY[strategy_name]
+    # Build config: platform_config.yaml defaults → function args
+    platform_cfg = _load_platform_config()
+    nautilus_cfg = platform_cfg.get("nautilus", {})
+    backtest_defaults = nautilus_cfg.get("backtest", {})
+    strategy_defaults = nautilus_cfg.get("strategies", {}).get(strategy_name, {})
+
     config = {
+        **backtest_defaults,
+        **strategy_defaults,
         "mode": "backtest",
         "symbol": symbol,
         "initial_balance": initial_balance,
     }
+
+    # Instantiate strategy
+    strategy_cls = STRATEGY_REGISTRY[strategy_name]
     strategy = strategy_cls(config=config)
 
     # Feed bars

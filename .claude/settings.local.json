@@ -103,7 +103,15 @@
       "Bash(sudo kill:*)",
       "Bash(docker stop:*)",
       "Bash(DJANGO_SETTINGS_MODULE=config.settings .venv/bin/python:*)",
-      "Bash(expression\". Convert all async DRF views to sync views that use async_to_sync\nwrappers for exchange/service calls.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(expression\". Convert all async DRF views to sync views that use async_to_sync\nwrappers for exchange/service calls.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(backend/.venv/bin/python backend/manage.py migrate:*)",
+      "Bash(DJANGO_SUPERUSER_USERNAME=admin DJANGO_SUPERUSER_PASSWORD=admin DJANGO_SUPERUSER_EMAIL=admin@localhost backend/.venv/bin/python:*)",
+      "Bash(ruff check:*)",
+      "Bash(/home/rredmer/Dev/Portfolio/crypto-investor/backend/.venv/bin/python -m pytest:*)",
+      "Bash(/home/rredmer/Dev/Portfolio/crypto-investor/backend/.venv/bin/pip install scipy)",
+      "Bash(backend/.venv/bin/ruff check nautilus/ hftbacktest/ common/metrics/ common/data_pipeline/pipeline.py backend/analysis/services/backtest.py)",
+      "Bash(backend/.venv/bin/python -m pytest:*)",
+      "Bash(backend/.venv/bin/ruff check:*)"
     ]
   }
 }

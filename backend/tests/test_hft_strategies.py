@@ -78,7 +78,7 @@ class TestHFTBase:
 
         s = HFTBaseStrategy()
         assert s.position == 0.0
-        assert s.realized_pnl == 0.0
+        assert s.gross_pnl == 0.0
         assert s.balance == 10000.0
         assert not s.halted
 
@@ -121,7 +121,7 @@ class TestHFTBase:
         s.submit_order("buy", 100.0, 1.0, tick1)
         s.submit_order("sell", 110.0, 1.0, tick2)
         assert s.position == 0.0
-        assert s.realized_pnl == pytest.approx(10.0)
+        assert s.gross_pnl == pytest.approx(10.0)
 
     def test_round_trip_pnl_with_fees(self):
         from hftbacktest.strategies.base import HFTBaseStrategy
@@ -135,7 +135,7 @@ class TestHFTBase:
         assert s.position == 0.0
         # Gross PnL = 10.0, fees = 100*1*0.0002 + 110*1*0.0002 = 0.042
         expected_fees = 100.0 * 1.0 * fee_rate + 110.0 * 1.0 * fee_rate
-        assert s.realized_pnl == pytest.approx(10.0)  # realized_pnl tracks gross
+        assert s.gross_pnl == pytest.approx(10.0)  # gross_pnl tracks gross PnL before fees
         # Balance = initial - fees + gross pnl
         assert s.balance == pytest.approx(10000.0 + 10.0 - expected_fees)
         # Fills have fee field
@@ -195,6 +195,57 @@ class TestHFTBase:
         expected_fee = 100.0 * 1.0 * fee_rate + 110.0 * 1.0 * fee_rate
         assert df.iloc[0]["fee"] == pytest.approx(expected_fee)
         assert df.iloc[0]["pnl"] == pytest.approx(10.0 - expected_fee)
+
+    def test_fifo_short_round_trip(self):
+        """Short entry (sell) then buy exit should produce correct FIFO trade."""
+        from hftbacktest.strategies.base import HFTBaseStrategy
+
+        s = HFTBaseStrategy(config={"fee_rate": 0.0, "max_position": 5.0})
+        t1 = {"timestamp": 1000, "price": 110.0, "volume": 1.0, "side": "buy"}
+        t2 = {"timestamp": 2000, "price": 100.0, "volume": 1.0, "side": "sell"}
+        s.submit_order("sell", 110.0, 1.0, t1)  # Short entry
+        s.submit_order("buy", 100.0, 1.0, t2)   # Buy to close
+        assert s.position == 0.0
+        df = s.get_trades_df()
+        assert len(df) == 1
+        assert df.iloc[0]["side"] == "sell"
+        assert df.iloc[0]["entry_price"] == pytest.approx(110.0)
+        assert df.iloc[0]["exit_price"] == pytest.approx(100.0)
+        # Short PnL: (entry - exit) * size = (110 - 100) * 1 = 10
+        assert df.iloc[0]["pnl"] == pytest.approx(10.0)
+
+    def test_fifo_partial_close(self):
+        """Sell that partially closes a larger long should leave residual open."""
+        from hftbacktest.strategies.base import HFTBaseStrategy
+
+        s = HFTBaseStrategy(config={"fee_rate": 0.0, "max_position": 5.0})
+        t1 = {"timestamp": 1000, "price": 100.0, "volume": 1.0, "side": "sell"}
+        t2 = {"timestamp": 2000, "price": 110.0, "volume": 1.0, "side": "buy"}
+        s.submit_order("buy", 100.0, 3.0, t1)   # Long 3.0
+        s.submit_order("sell", 110.0, 1.0, t2)   # Sell 1.0: partial close
+        assert s.position == pytest.approx(2.0)   # 2.0 still open
+        df = s.get_trades_df()
+        assert len(df) == 1  # One closed round-trip
+        assert df.iloc[0]["size"] == pytest.approx(1.0)
+        assert df.iloc[0]["pnl"] == pytest.approx(10.0)
+
+    def test_fifo_position_flip(self):
+        """Single fill that flips from long to short should produce trade + new open."""
+        from hftbacktest.strategies.base import HFTBaseStrategy
+
+        s = HFTBaseStrategy(config={"fee_rate": 0.0, "max_position": 5.0})
+        t1 = {"timestamp": 1000, "price": 100.0, "volume": 1.0, "side": "sell"}
+        t2 = {"timestamp": 2000, "price": 110.0, "volume": 1.0, "side": "buy"}
+        s.submit_order("buy", 100.0, 1.0, t1)   # Long 1.0
+        s.submit_order("sell", 110.0, 3.0, t2)   # Sell 3.0: close 1.0 long + open 2.0 short
+        assert s.position == pytest.approx(-2.0)
+        df = s.get_trades_df()
+        # Only 1 closed trade (the long close), short 2.0 is still open
+        assert len(df) == 1
+        assert df.iloc[0]["entry_price"] == pytest.approx(100.0)
+        assert df.iloc[0]["exit_price"] == pytest.approx(110.0)
+        assert df.iloc[0]["size"] == pytest.approx(1.0)
+        assert df.iloc[0]["pnl"] == pytest.approx(10.0)
 
 
 # ── Market Maker Tests ───────────────────────────────

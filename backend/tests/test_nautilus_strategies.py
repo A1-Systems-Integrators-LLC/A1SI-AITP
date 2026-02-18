@@ -301,6 +301,72 @@ class TestMeanReversion:
         for bar in _bars_from_df(df):
             s.on_bar(bar)
 
+    def test_bb_lower_rsi_oversold_triggers_entry(self):
+        """Close below BB lower + RSI oversold + volume spike + low ADX -> entry."""
+        from nautilus.strategies.mean_reversion import NautilusMeanReversion
+
+        s = NautilusMeanReversion()
+        ind = pd.Series({
+            "close": 95.0,
+            "bb_lower": 96.0,       # close below BB lower
+            "rsi_14": 25.0,          # oversold (< 35)
+            "volume_ratio": 2.0,     # above volume_factor (1.5)
+            "adx_14": 20.0,          # ranging market (< 30)
+        })
+        assert s.should_enter(ind) is True
+
+    def test_rsi_above_threshold_rejects_entry(self):
+        """RSI above buy threshold should reject entry even if below BB lower."""
+        from nautilus.strategies.mean_reversion import NautilusMeanReversion
+
+        s = NautilusMeanReversion()
+        ind = pd.Series({
+            "close": 95.0,
+            "bb_lower": 96.0,
+            "rsi_14": 40.0,          # above buy_rsi_threshold (35)
+            "volume_ratio": 2.0,
+            "adx_14": 20.0,
+        })
+        assert s.should_enter(ind) is False
+
+    def test_high_adx_rejects_entry(self):
+        """High ADX (trending market) should reject mean reversion entry."""
+        from nautilus.strategies.mean_reversion import NautilusMeanReversion
+
+        s = NautilusMeanReversion()
+        ind = pd.Series({
+            "close": 95.0,
+            "bb_lower": 96.0,
+            "rsi_14": 25.0,
+            "volume_ratio": 2.0,
+            "adx_14": 35.0,          # above adx_ceiling (30) -> trending
+        })
+        assert s.should_enter(ind) is False
+
+    def test_exit_above_bb_mid(self):
+        """Close above BB mid should trigger exit (mean reversion target)."""
+        from nautilus.strategies.mean_reversion import NautilusMeanReversion
+
+        s = NautilusMeanReversion()
+        ind = pd.Series({
+            "close": 102.0,
+            "bb_mid": 100.0,         # close above bb_mid -> exit
+            "rsi_14": 50.0,
+        })
+        assert s.should_exit(ind) is True
+
+    def test_exit_rsi_strong(self):
+        """RSI above sell threshold should trigger exit."""
+        from nautilus.strategies.mean_reversion import NautilusMeanReversion
+
+        s = NautilusMeanReversion()
+        ind = pd.Series({
+            "close": 98.0,
+            "bb_mid": 100.0,         # still below mid
+            "rsi_14": 70.0,          # above sell_rsi_threshold (65)
+        })
+        assert s.should_exit(ind) is True
+
 
 class TestVolatilityBreakout:
     def test_instantiation(self):

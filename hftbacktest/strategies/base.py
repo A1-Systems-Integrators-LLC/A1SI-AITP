@@ -43,7 +43,8 @@ class HFTBaseStrategy:
         # State
         self.position: float = 0.0  # Signed position (+ long, - short)
         self.avg_cost: float = 0.0
-        self.realized_pnl: float = 0.0
+        self.gross_pnl: float = 0.0
+        self.total_fees: float = 0.0
         self.balance: float = self.initial_balance
         self.peak_balance: float = self.initial_balance
         self.fills: list[dict] = []
@@ -91,8 +92,9 @@ class HFTBaseStrategy:
             "position_after": new_position,
         }
 
-        # Deduct fee from balance
+        # Deduct fee from balance and accumulate
         self.balance -= fee
+        self.total_fees += fee
 
         # Update position and PnL
         if side == "buy":
@@ -100,7 +102,7 @@ class HFTBaseStrategy:
                 # Closing short
                 close_size = min(size, abs(self.position))
                 pnl = close_size * (self.avg_cost - price)
-                self.realized_pnl += pnl
+                self.gross_pnl += pnl
                 self.balance += pnl
                 fill["pnl"] = pnl
             else:
@@ -118,7 +120,7 @@ class HFTBaseStrategy:
                 # Closing long
                 close_size = min(size, self.position)
                 pnl = close_size * (price - self.avg_cost)
-                self.realized_pnl += pnl
+                self.gross_pnl += pnl
                 self.balance += pnl
                 fill["pnl"] = pnl
             else:

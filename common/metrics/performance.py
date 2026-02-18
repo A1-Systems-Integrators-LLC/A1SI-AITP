@@ -33,11 +33,25 @@ def compute_performance_metrics(trades_df: pd.DataFrame) -> dict:
     avg_win = winners["pnl"].mean() if len(winners) > 0 else 0
     avg_loss = losers["pnl"].mean() if len(losers) > 0 else 0
 
-    # Sharpe-like ratio from trade returns
+    # Sharpe-like ratio from trade returns (time-based annualization)
+    sharpe = 0
     if "pnl_pct" in trades_df.columns and trades_df["pnl_pct"].std() > 0:
-        sharpe = (trades_df["pnl_pct"].mean() / trades_df["pnl_pct"].std()) * np.sqrt(252)
-    else:
-        sharpe = 0
+        # Compute annualization factor from actual trade span
+        trades_per_year = 252  # fallback
+        if (
+            "entry_time" in trades_df.columns
+            and "exit_time" in trades_df.columns
+            and total_trades >= 2
+        ):
+            first_entry = trades_df["entry_time"].min()
+            last_exit = trades_df["exit_time"].max()
+            span = (last_exit - first_entry).total_seconds()
+            if span > 0:
+                seconds_per_year = 365.25 * 24 * 3600
+                trades_per_year = total_trades * (seconds_per_year / span)
+        sharpe = (
+            trades_df["pnl_pct"].mean() / trades_df["pnl_pct"].std()
+        ) * np.sqrt(trades_per_year)
 
     # Max drawdown from cumulative PnL
     cum_pnl = trades_df["pnl"].cumsum()

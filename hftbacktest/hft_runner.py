@@ -28,6 +28,24 @@ RESULTS_DIR = PROJECT_ROOT / "hftbacktest" / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 TICKS_DIR = PROJECT_ROOT / "data" / "ticks"
 TICKS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_PATH = PROJECT_ROOT / "configs" / "platform_config.yaml"
+
+
+def _load_platform_config() -> dict:
+    """Load platform_config.yaml. Returns empty dict on failure."""
+    if not CONFIG_PATH.exists():
+        logger.debug("platform_config.yaml not found, using defaults")
+        return {}
+    try:
+        import yaml
+        with open(CONFIG_PATH) as f:
+            return yaml.safe_load(f) or {}
+    except ImportError:
+        logger.debug("PyYAML not installed, using defaults")
+        return {}
+    except Exception as e:
+        logger.warning(f"Failed to load platform config: {e}")
+        return {}
 
 
 def convert_ohlcv_to_hft_ticks(
@@ -100,12 +118,20 @@ def run_hft_backtest(
     tick_array = np.load(tick_path)
     logger.info(f"Running HFT backtest: {strategy_name} on {len(tick_array)} ticks")
 
-    # Instantiate strategy
-    strategy_cls = STRATEGY_REGISTRY[strategy_name]
+    # Build config: platform_config.yaml defaults → function args
+    platform_cfg = _load_platform_config()
+    hft_cfg = platform_cfg.get("hftbacktest", {})
+    strategy_defaults = hft_cfg.get("strategies", {}).get(strategy_name, {})
+
     config = {
+        "fee_rate": hft_cfg.get("fee_rate", 0.0002),
+        **strategy_defaults,
         "initial_balance": initial_balance,
         "latency_ns": latency_ns,
     }
+
+    # Instantiate strategy
+    strategy_cls = STRATEGY_REGISTRY[strategy_name]
     strategy = strategy_cls(config=config)
 
     # Run
@@ -126,7 +152,8 @@ def run_hft_backtest(
         "ticks_processed": len(tick_array),
         "total_fills": len(strategy.fills),
         "final_position": strategy.position,
-        "realized_pnl": round(strategy.realized_pnl, 2),
+        "gross_pnl": round(strategy.gross_pnl, 2),
+        "total_fees": round(strategy.total_fees, 4),
         "metrics": metrics,
     }
 
