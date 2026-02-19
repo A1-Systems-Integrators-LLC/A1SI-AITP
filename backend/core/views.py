@@ -3,6 +3,7 @@
 import logging
 
 from django.http import HttpResponse, JsonResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -22,11 +23,13 @@ def csrf_failure(request, reason="") -> JsonResponse:
 class HealthView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(tags=["Core"])
     def get(self, request: Request) -> Response:
         return Response({"status": "ok"})
 
 
 class PlatformStatusView(APIView):
+    @extend_schema(tags=["Core"])
     def get(self, request: Request) -> Response:
         from analysis.models import BackgroundJob
         from core.platform_bridge import get_processed_dir
@@ -49,6 +52,7 @@ class PlatformStatusView(APIView):
 
 
 class PlatformConfigView(APIView):
+    @extend_schema(tags=["Core"])
     def get(self, request: Request) -> Response:
         from core.platform_bridge import get_platform_config_path
 
@@ -65,6 +69,7 @@ class PlatformConfigView(APIView):
 
 
 class NotificationPreferencesView(APIView):
+    @extend_schema(tags=["Notifications"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from core.models import NotificationPreferences
         from core.serializers import NotificationPreferencesSerializer
@@ -72,6 +77,7 @@ class NotificationPreferencesView(APIView):
         prefs, _ = NotificationPreferences.objects.get_or_create(portfolio_id=portfolio_id)
         return Response(NotificationPreferencesSerializer(prefs).data)
 
+    @extend_schema(tags=["Notifications"])
     def put(self, request: Request, portfolio_id: int) -> Response:
         from core.models import NotificationPreferences
         from core.serializers import NotificationPreferencesSerializer
@@ -85,6 +91,7 @@ class NotificationPreferencesView(APIView):
 
 class MetricsView(APIView):
 
+    @extend_schema(tags=["Core"], exclude=True)
     def get(self, request: Request) -> HttpResponse:
         from core.services.metrics import metrics
         from risk.models import RiskState

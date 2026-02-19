@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tradingApi } from "../api/trading";
+import { useToast } from "../hooks/useToast";
 import type { TradingMode } from "../types";
 
 interface OrderFormProps {
@@ -9,6 +10,7 @@ interface OrderFormProps {
 
 export function OrderForm({ mode = "paper" }: OrderFormProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [symbol, setSymbol] = useState("BTC/USDT");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
@@ -19,9 +21,13 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
     mutationFn: tradingApi.createOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast(`${side.toUpperCase()} order placed for ${symbol}`, "success");
       setAmount("");
       setPrice("");
       setShowConfirm(false);
+    },
+    onError: (err) => {
+      toast((err as Error).message || "Order failed", "error");
     },
   });
 

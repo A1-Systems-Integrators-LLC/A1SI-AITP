@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["backtest_compare_retrieve"];
+        get: operations["backtest_compare_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -75,7 +75,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["backtest_results_retrieve"];
+        get: operations["backtest_results_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -91,7 +91,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["backtest_results_retrieve_2"];
+        get: operations["backtest_results_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -123,7 +123,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["backtest_strategies_retrieve"];
+        get: operations["backtest_strategies_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -139,7 +139,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["data_retrieve"];
+        get: operations["data_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -155,7 +155,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["data_sources_retrieve"];
+        get: operations["data_sources_list"];
         put?: never;
         post: operations["data_sources_create"];
         delete?: never;
@@ -171,7 +171,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["data_sources_retrieve_2"];
+        get: operations["data_sources_retrieve"];
         put: operations["data_sources_update"];
         post?: never;
         delete: operations["data_sources_destroy"];
@@ -187,7 +187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["data_retrieve_2"];
+        get: operations["data_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -235,7 +235,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["exchange_configs_retrieve"];
+        get: operations["exchange_configs_list"];
         put?: never;
         post: operations["exchange_configs_create"];
         delete?: never;
@@ -251,7 +251,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["exchange_configs_retrieve_2"];
+        get: operations["exchange_configs_retrieve"];
         put: operations["exchange_configs_update"];
         post?: never;
         delete: operations["exchange_configs_destroy"];
@@ -283,7 +283,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["exchanges_retrieve"];
+        get: operations["exchanges_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -347,7 +347,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["jobs_retrieve"];
+        get: operations["jobs_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -363,7 +363,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["jobs_retrieve_2"];
+        get: operations["jobs_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -411,7 +411,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["market_ohlcv_retrieve"];
+        get: operations["market_ohlcv_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -443,7 +443,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["market_tickers_retrieve"];
+        get: operations["market_tickers_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -763,7 +763,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["regime_current_retrieve"];
+        get: operations["regime_current_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -779,7 +779,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["regime_current_retrieve_2"];
+        get: operations["regime_current_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -795,7 +795,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["regime_history_retrieve"];
+        get: operations["regime_history_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -843,7 +843,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["regime_recommendations_retrieve"];
+        get: operations["regime_recommendations_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -859,7 +859,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["risk_alerts_retrieve"];
+        get: operations["risk_alerts_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -955,7 +955,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["risk_metric_history_retrieve"];
+        get: operations["risk_metric_history_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1051,7 +1051,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["risk_trade_log_retrieve"];
+        get: operations["risk_trade_log_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1083,7 +1083,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["screening_results_retrieve"];
+        get: operations["screening_results_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1099,7 +1099,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["screening_results_retrieve_2"];
+        get: operations["screening_results_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1188,26 +1188,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/metrics/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["metrics_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertLog: {
+            readonly id: number;
+            /** Format: int64 */
+            portfolio_id: number;
+            event_type: string;
+            severity: string;
+            message: string;
+            channel?: string;
+            delivered?: boolean;
+            error?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        BacktestRequest: {
+            /** @default freqtrade */
+            framework: string;
+            /** @default SampleStrategy */
+            strategy: string;
+            /** @default BTC/USDT */
+            symbol: string;
+            /** @default 1h */
+            timeframe: string;
+            /** @default  */
+            timerange: string;
+            /** @default binance */
+            exchange: string;
+        };
+        BacktestResult: {
+            readonly id: number;
+            readonly job_id: string;
+            framework: string;
+            strategy_name: string;
+            symbol: string;
+            timeframe: string;
+            timerange?: string;
+            metrics?: unknown;
+            trades?: unknown;
+            config?: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        DataDownloadRequest: {
+            /**
+             * @default [
+             *       "BTC/USDT",
+             *       "ETH/USDT"
+             *     ]
+             */
+            symbols: string[];
+            /**
+             * @default [
+             *       "1h"
+             *     ]
+             */
+            timeframes: string[];
+            /** @default binance */
+            exchange: string;
+            /** @default 365 */
+            since_days: number;
+        };
+        DataFileInfo: {
+            exchange: string;
+            symbol: string;
+            timeframe: string;
+            rows: number;
+            start: string | null;
+            end: string | null;
+            file: string;
+        };
+        DataSourceConfig: {
+            readonly id: number;
+            readonly exchange_name: string;
+            symbols?: unknown;
+            timeframes?: unknown;
+            is_active?: boolean;
+            /** Format: int64 */
+            fetch_interval_minutes?: number;
+            /** Format: date-time */
+            last_fetched_at?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            exchange_config: number;
+        };
+        DataSourceConfigCreate: {
+            exchange_config: number;
+            symbols?: unknown;
+            timeframes?: unknown;
+            is_active?: boolean;
+            /** Format: int64 */
+            fetch_interval_minutes?: number;
+        };
+        EquityUpdate: {
+            /** Format: double */
+            equity: number;
+        };
+        /** @description Read serializer — never exposes raw credentials. */
+        ExchangeConfig: {
+            readonly id: number;
+            readonly api_key_masked: string;
+            readonly has_api_key: boolean;
+            readonly has_api_secret: boolean;
+            readonly has_passphrase: boolean;
+            name: string;
+            exchange_id: components["schemas"]["ExchangeIdEnum"];
+            is_sandbox?: boolean;
+            is_default?: boolean;
+            is_active?: boolean;
+            /** Format: date-time */
+            last_tested_at?: string | null;
+            last_test_success?: boolean | null;
+            last_test_error?: string;
+            options?: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Write serializer for creating exchange configs. */
+        ExchangeConfigCreate: {
+            name: string;
+            exchange_id: components["schemas"]["ExchangeIdEnum"];
+            api_key?: string;
+            api_secret?: string;
+            passphrase?: string;
+            is_sandbox?: boolean;
+            is_default?: boolean;
+            is_active?: boolean;
+            options?: unknown;
+        };
+        /** @description Write serializer for updating exchange configs — all fields optional. */
+        ExchangeConfigUpdate: {
+            name?: string;
+            exchange_id?: components["schemas"]["ExchangeIdEnum"];
+            api_key?: string;
+            api_secret?: string;
+            passphrase?: string;
+            is_sandbox?: boolean;
+            is_default?: boolean;
+            is_active?: boolean;
+            options?: unknown;
+        };
+        /**
+         * @description * `binance` - Binance
+         *     * `coinbase` - Coinbase
+         *     * `kraken` - Kraken
+         *     * `kucoin` - KuCoin
+         *     * `bybit` - Bybit
+         * @enum {string}
+         */
+        ExchangeIdEnum: "binance" | "coinbase" | "kraken" | "kucoin" | "bybit";
+        ExchangeInfo: {
+            id: string;
+            name: string;
+            /** @default [] */
+            countries: string[];
+            /** @default false */
+            has_fetch_tickers: boolean;
+            /** @default false */
+            has_fetch_ohlcv: boolean;
+        };
+        ExchangeTestResult: {
+            success: boolean;
+            markets_count?: number;
+            message: string;
+        };
+        HaltRequest: {
+            reason: string;
+        };
+        HaltResponse: {
+            is_halted: boolean;
+            halt_reason: string;
+            message: string;
+        };
+        HeatCheckResponse: {
+            healthy: boolean;
+            issues: string[];
+            /** Format: double */
+            drawdown: number;
+            /** Format: double */
+            daily_pnl: number;
+            open_positions: number;
+            /** Format: double */
+            max_correlation: number;
+            high_corr_pairs: unknown[];
+            /** Format: double */
+            max_concentration: number;
+            position_weights: {
+                [key: string]: unknown;
+            };
+            /** Format: double */
+            var_95: number;
+            /** Format: double */
+            var_99: number;
+            /** Format: double */
+            cvar_95: number;
+            /** Format: double */
+            cvar_99: number;
+            is_halted: boolean;
+        };
         Holding: {
             readonly id: number;
             readonly portfolio_id: number;
@@ -1233,6 +1418,53 @@ export interface components {
              * @default 0
              */
             avg_buy_price: number;
+        };
+        Job: {
+            readonly id: string;
+            job_type: string;
+            status?: string;
+            /** Format: double */
+            progress?: number;
+            progress_message?: string;
+            params?: unknown;
+            result?: unknown;
+            error?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            completed_at?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        JobAccepted: {
+            job_id: string;
+            status: string;
+        };
+        MLTrainRequest: {
+            /** @default BTC/USDT */
+            symbol: string;
+            /** @default 1h */
+            timeframe: string;
+            /** @default binance */
+            exchange: string;
+            /**
+             * Format: double
+             * @default 0.2
+             */
+            test_ratio: number;
+        };
+        OHLCVData: {
+            timestamp: number;
+            /** Format: double */
+            open: number;
+            /** Format: double */
+            high: number;
+            /** Format: double */
+            low: number;
+            /** Format: double */
+            close: number;
+            /** Format: double */
+            volume: number;
         };
         Order: {
             readonly id: number;
@@ -1345,6 +1577,181 @@ export interface components {
             /** @default  */
             description: string;
         };
+        PositionSizeRequest: {
+            /** Format: double */
+            entry_price: number;
+            /** Format: double */
+            stop_loss_price: number;
+            /** Format: double */
+            risk_per_trade?: number | null;
+        };
+        PositionSizeResponse: {
+            /** Format: double */
+            size: number;
+            /** Format: double */
+            risk_amount: number;
+            /** Format: double */
+            position_value: number;
+        };
+        RegimeHistoryEntry: {
+            timestamp: string;
+            regime: string;
+            /** Format: double */
+            confidence: number;
+            /** Format: double */
+            adx_value: number;
+            /** Format: double */
+            bb_width_percentile: number;
+        };
+        RegimePositionSizeRequest: {
+            symbol: string;
+            /** Format: double */
+            entry_price: number;
+            /** Format: double */
+            stop_loss_price: number;
+        };
+        RegimePositionSizeResponse: {
+            symbol: string;
+            regime: string;
+            /** Format: double */
+            regime_modifier: number;
+            /** Format: double */
+            position_size: number;
+            /** Format: double */
+            entry_price: number;
+            /** Format: double */
+            stop_loss_price: number;
+            primary_strategy: string;
+        };
+        RegimeState: {
+            symbol: string;
+            regime: string;
+            /** Format: double */
+            confidence: number;
+            /** Format: double */
+            adx_value: number;
+            /** Format: double */
+            bb_width_percentile: number;
+            /** Format: double */
+            ema_slope: number;
+            /** Format: double */
+            trend_alignment: number;
+            /** Format: double */
+            price_structure_score: number;
+            /** @default {} */
+            transition_probabilities: {
+                [key: string]: unknown;
+            };
+        };
+        RiskLimits: {
+            /** Format: double */
+            max_portfolio_drawdown?: number;
+            /** Format: double */
+            max_single_trade_risk?: number;
+            /** Format: double */
+            max_daily_loss?: number;
+            /** Format: int64 */
+            max_open_positions?: number;
+            /** Format: double */
+            max_position_size_pct?: number;
+            /** Format: double */
+            max_correlation?: number;
+            /** Format: double */
+            min_risk_reward?: number;
+            /** Format: double */
+            max_leverage?: number;
+        };
+        RiskLimitsUpdate: {
+            /** Format: double */
+            max_portfolio_drawdown?: number;
+            /** Format: double */
+            max_single_trade_risk?: number;
+            /** Format: double */
+            max_daily_loss?: number;
+            max_open_positions?: number;
+            /** Format: double */
+            max_position_size_pct?: number;
+            /** Format: double */
+            max_correlation?: number;
+            /** Format: double */
+            min_risk_reward?: number;
+            /** Format: double */
+            max_leverage?: number;
+        };
+        RiskMetricHistory: {
+            readonly id: number;
+            /** Format: int64 */
+            portfolio_id: number;
+            /** Format: double */
+            var_95?: number;
+            /** Format: double */
+            var_99?: number;
+            /** Format: double */
+            cvar_95?: number;
+            /** Format: double */
+            cvar_99?: number;
+            method?: string;
+            /** Format: double */
+            drawdown?: number;
+            /** Format: double */
+            equity?: number;
+            /** Format: int64 */
+            open_positions_count?: number;
+            /** Format: date-time */
+            readonly recorded_at: string;
+        };
+        RiskStatus: {
+            /** Format: double */
+            equity: number;
+            /** Format: double */
+            peak_equity: number;
+            /** Format: double */
+            drawdown: number;
+            /** Format: double */
+            daily_pnl: number;
+            /** Format: double */
+            total_pnl: number;
+            open_positions: number;
+            is_halted: boolean;
+            halt_reason: string;
+        };
+        RoutingDecision: {
+            symbol: string;
+            regime: string;
+            /** Format: double */
+            confidence: number;
+            primary_strategy: string;
+            weights: unknown[];
+            /** Format: double */
+            position_size_modifier: number;
+            reasoning: string;
+        };
+        ScreenRequest: {
+            /** @default BTC/USDT */
+            symbol: string;
+            /** @default 1h */
+            timeframe: string;
+            /** @default binance */
+            exchange: string;
+            /**
+             * Format: double
+             * @default 0.001
+             */
+            fees: number;
+        };
+        ScreenResult: {
+            readonly id: number;
+            readonly job_id: string;
+            symbol: string;
+            timeframe: string;
+            strategy_name: string;
+            top_results?: unknown;
+            summary?: unknown;
+            /** Format: int64 */
+            total_combinations?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
         /**
          * @description * `buy` - buy
          *     * `sell` - sell
@@ -1363,6 +1770,87 @@ export interface components {
          * @enum {string}
          */
         StatusEnum: "pending" | "submitted" | "open" | "partial_fill" | "filled" | "cancelled" | "rejected" | "error";
+        StrategyInfo: {
+            name: string;
+            framework: string;
+            file_path: string;
+        };
+        TickerData: {
+            symbol: string;
+            /** Format: double */
+            price: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            volume_24h: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            change_24h: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            high_24h: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            low_24h: number;
+            /** Format: date-time */
+            timestamp: string;
+        };
+        TradeCheckLog: {
+            readonly id: number;
+            /** Format: int64 */
+            portfolio_id: number;
+            symbol: string;
+            side: string;
+            /** Format: double */
+            size: number;
+            /** Format: double */
+            entry_price: number;
+            /** Format: double */
+            stop_loss_price?: number | null;
+            approved: boolean;
+            reason: string;
+            /** Format: double */
+            equity_at_check?: number;
+            /** Format: double */
+            drawdown_at_check?: number;
+            /** Format: int64 */
+            open_positions_at_check?: number;
+            /** Format: date-time */
+            readonly checked_at: string;
+        };
+        TradeCheckRequest: {
+            symbol: string;
+            side: string;
+            /** Format: double */
+            size: number;
+            /** Format: double */
+            entry_price: number;
+            /** Format: double */
+            stop_loss_price?: number | null;
+        };
+        TradeCheckResponse: {
+            approved: boolean;
+            reason: string;
+        };
+        VaRResponse: {
+            /** Format: double */
+            var_95: number;
+            /** Format: double */
+            var_99: number;
+            /** Format: double */
+            cvar_95: number;
+            /** Format: double */
+            cvar_99: number;
+            method: string;
+            window_days: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1426,7 +1914,7 @@ export interface operations {
             };
         };
     };
-    backtest_compare_retrieve: {
+    backtest_compare_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1435,34 +1923,36 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BacktestResult"][];
+                };
+            };
+        };
+    };
+    backtest_results_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacktestResult"][];
+                };
             };
         };
     };
     backtest_results_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    backtest_results_retrieve_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1473,12 +1963,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BacktestResult"];
+                };
             };
         };
     };
@@ -1489,18 +1980,23 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BacktestRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
             };
         };
     };
-    backtest_strategies_retrieve: {
+    backtest_strategies_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1509,16 +2005,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StrategyInfo"][];
+                };
             };
         };
     };
-    data_retrieve: {
+    data_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1527,16 +2024,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataFileInfo"][];
+                };
             };
         };
     };
-    data_sources_retrieve: {
+    data_sources_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1545,12 +2043,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataSourceConfig"][];
+                };
             };
         };
     };
@@ -1561,18 +2060,23 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataSourceConfigCreate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataSourceConfig"];
+                };
             };
         };
     };
-    data_sources_retrieve_2: {
+    data_sources_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -1583,12 +2087,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataSourceConfig"];
+                };
             };
         };
     };
@@ -1601,14 +2106,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataSourceConfigCreate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataSourceConfig"];
+                };
             };
         };
     };
@@ -1632,7 +2142,7 @@ export interface operations {
             };
         };
     };
-    data_retrieve_2: {
+    data_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -1645,12 +2155,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DataFileInfo"];
+                };
             };
         };
     };
@@ -1661,14 +2172,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DataDownloadRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
             };
         };
     };
@@ -1679,18 +2195,26 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                type: {
+                    [key: string]: unknown;
+                };
+                properties: unknown;
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
             };
         };
     };
-    exchange_configs_retrieve: {
+    exchange_configs_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1699,12 +2223,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeConfig"][];
+                };
             };
         };
     };
@@ -1715,18 +2240,23 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExchangeConfigCreate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeConfig"];
+                };
             };
         };
     };
-    exchange_configs_retrieve_2: {
+    exchange_configs_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -1737,12 +2267,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeConfig"];
+                };
             };
         };
     };
@@ -1755,14 +2286,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExchangeConfigUpdate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeConfig"];
+                };
             };
         };
     };
@@ -1797,16 +2333,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeTestResult"];
+                };
             };
         };
     };
-    exchanges_retrieve: {
+    exchanges_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1815,12 +2352,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeInfo"][];
+                };
             };
         };
     };
@@ -1882,7 +2420,7 @@ export interface operations {
             };
         };
     };
-    jobs_retrieve: {
+    jobs_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1891,16 +2429,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Job"][];
+                };
             };
         };
     };
-    jobs_retrieve_2: {
+    jobs_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -1911,12 +2450,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
             };
         };
     };
@@ -1958,7 +2498,7 @@ export interface operations {
             };
         };
     };
-    market_ohlcv_retrieve: {
+    market_ohlcv_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1969,12 +2509,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OHLCVData"][];
+                };
             };
         };
     };
@@ -1989,16 +2530,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TickerData"];
+                };
             };
         };
     };
-    market_tickers_retrieve: {
+    market_tickers_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2007,12 +2549,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TickerData"][];
+                };
             };
         };
     };
@@ -2061,7 +2604,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                type: {
+                    [key: string]: unknown;
+                };
+                properties: unknown;
+            };
+        };
         responses: {
             /** @description No response body */
             200: {
@@ -2079,14 +2629,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MLTrainRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
             };
         };
     };
@@ -2436,7 +2991,7 @@ export interface operations {
             };
         };
     };
-    regime_current_retrieve: {
+    regime_current_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2445,16 +3000,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegimeState"][];
+                };
             };
         };
     };
-    regime_current_retrieve_2: {
+    regime_current_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -2465,16 +3021,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegimeState"];
+                };
             };
         };
     };
-    regime_history_retrieve: {
+    regime_history_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2485,12 +3042,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegimeHistoryEntry"][];
+                };
             };
         };
     };
@@ -2501,14 +3059,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegimePositionSizeRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegimePositionSizeResponse"];
+                };
             };
         };
     };
@@ -2523,16 +3086,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RoutingDecision"];
+                };
             };
         };
     };
-    regime_recommendations_retrieve: {
+    regime_recommendations_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2541,16 +3105,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RoutingDecision"][];
+                };
             };
         };
     };
-    risk_alerts_retrieve: {
+    risk_alerts_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2561,12 +3126,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertLog"][];
+                };
             };
         };
     };
@@ -2579,14 +3145,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradeCheckRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TradeCheckResponse"];
+                };
             };
         };
     };
@@ -2599,14 +3170,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquityUpdate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskStatus"];
+                };
             };
         };
     };
@@ -2619,14 +3195,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HaltRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HaltResponse"];
+                };
             };
         };
     };
@@ -2641,12 +3222,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HeatCheckResponse"];
+                };
             };
         };
     };
@@ -2661,12 +3243,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskLimits"];
+                };
             };
         };
     };
@@ -2679,18 +3262,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RiskLimitsUpdate"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskLimits"];
+                };
             };
         };
     };
-    risk_metric_history_retrieve: {
+    risk_metric_history_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2701,12 +3289,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskMetricHistory"][];
+                };
             };
         };
     };
@@ -2719,14 +3308,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionSizeRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PositionSizeResponse"];
+                };
             };
         };
     };
@@ -2741,12 +3335,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskMetricHistory"];
+                };
             };
         };
     };
@@ -2761,12 +3356,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskStatus"];
+                };
             };
         };
     };
@@ -2781,12 +3377,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HaltResponse"];
+                };
             };
         };
     };
@@ -2801,16 +3398,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RiskStatus"];
+                };
             };
         };
     };
-    risk_trade_log_retrieve: {
+    risk_trade_log_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2821,12 +3419,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TradeCheckLog"][];
+                };
             };
         };
     };
@@ -2841,16 +3440,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VaRResponse"];
+                };
             };
         };
     };
-    screening_results_retrieve: {
+    screening_results_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2859,16 +3459,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ScreenResult"][];
+                };
             };
         };
     };
-    screening_results_retrieve_2: {
+    screening_results_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -2879,12 +3480,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ScreenResult"];
+                };
             };
         };
     };
@@ -2895,14 +3497,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScreenRequest"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
             };
         };
     };
@@ -2977,12 +3584,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
             };
         };
     };
@@ -2997,30 +3605,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    metrics_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["Order"];
                 };
-                content?: never;
             };
         };
     };

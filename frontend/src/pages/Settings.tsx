@@ -5,6 +5,7 @@ import {
   dataSourcesApi,
 } from "../api/exchangeConfigs";
 import { notificationsApi } from "../api/notifications";
+import { useToast } from "../hooks/useToast";
 import type {
   ExchangeConfig,
   ExchangeConfigCreate,
@@ -320,6 +321,7 @@ function DataSourceForm({
 
 export function Settings() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Exchange configs
   const { data: configs } = useQuery({
@@ -345,6 +347,7 @@ export function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-configs"] });
       setShowAddExchange(false);
+      toast("Exchange config created", "success");
     },
   });
 
@@ -354,6 +357,7 @@ export function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exchange-configs"] });
       setEditingId(null);
+      toast("Exchange config updated", "success");
     },
   });
 
@@ -363,6 +367,7 @@ export function Settings() {
       queryClient.invalidateQueries({ queryKey: ["exchange-configs"] });
       queryClient.invalidateQueries({ queryKey: ["data-sources"] });
       setDeletingId(null);
+      toast("Exchange config deleted", "info");
     },
   });
 

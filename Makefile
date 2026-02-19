@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build clean harden audit certs backup test-security ci typecheck docker-build
+.PHONY: setup dev test lint build clean harden audit certs backup test-security ci typecheck docker-build check-schema-freshness generate-types
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -95,6 +95,14 @@ generate-types:
 	cd $(FRONTEND_DIR) && npx openapi-typescript schema.yaml -o src/types/api-schema.ts
 	@echo "✓ TypeScript API types regenerated"
 
+check-schema-freshness:
+	@echo "→ Checking schema freshness..."
+	@$(MANAGE) spectacular --file /tmp/schema-check.yaml 2>/dev/null
+	@diff -q $(CURDIR)/$(FRONTEND_DIR)/schema.yaml /tmp/schema-check.yaml >/dev/null 2>&1 \
+		&& echo "✓ Schema is up to date" \
+		|| (echo "✗ Schema is stale — run 'make generate-types' to update" && exit 1)
+	@rm -f /tmp/schema-check.yaml
+
 # ── Docker build validation ───────────────────────────────
 
 docker-build:
@@ -106,7 +114,7 @@ docker-build:
 
 # ── CI pipeline (lint + typecheck + test + audit) ─────────
 
-ci: lint typecheck test audit
+ci: lint typecheck check-schema-freshness test audit
 	@echo "✓ CI pipeline passed"
 
 # ── Security ──────────────────────────────────────────────

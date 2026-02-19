@@ -39,27 +39,39 @@ paths:
           description: No response body
   /api/backtest/compare/:
     get:
-      operationId: backtest_compare_retrieve
+      operationId: backtest_compare_list
       tags:
-      - backtest
+      - Backtest
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BacktestResult'
+          description: ''
   /api/backtest/results/:
     get:
-      operationId: backtest_results_retrieve
+      operationId: backtest_results_list
       tags:
-      - backtest
+      - Backtest
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BacktestResult'
+          description: ''
   /api/backtest/results/{result_id}/:
     get:
-      operationId: backtest_results_retrieve_2
+      operationId: backtest_results_retrieve
       parameters:
       - in: path
         name: result_id
@@ -67,64 +79,105 @@ paths:
           type: integer
         required: true
       tags:
-      - backtest
+      - Backtest
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResult'
+          description: ''
   /api/backtest/run/:
     post:
       operationId: backtest_run_create
       tags:
-      - backtest
+      - Backtest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestRequest'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+          description: ''
   /api/backtest/strategies/:
     get:
-      operationId: backtest_strategies_retrieve
+      operationId: backtest_strategies_list
       tags:
-      - backtest
+      - Backtest
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategyInfo'
+          description: ''
   /api/data/:
     get:
-      operationId: data_retrieve
+      operationId: data_list
       tags:
-      - data
+      - Data
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataFileInfo'
+          description: ''
   /api/data-sources/:
     get:
-      operationId: data_sources_retrieve
+      operationId: data_sources_list
       tags:
-      - data-sources
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataSourceConfig'
+          description: ''
     post:
       operationId: data_sources_create
       tags:
-      - data-sources
+      - Market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataSourceConfigCreate'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceConfig'
+          description: ''
   /api/data-sources/{id}/:
     get:
-      operationId: data_sources_retrieve_2
+      operationId: data_sources_retrieve
       parameters:
       - in: path
         name: id
@@ -132,12 +185,16 @@ paths:
           type: integer
         required: true
       tags:
-      - data-sources
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceConfig'
+          description: ''
     put:
       operationId: data_sources_update
       parameters:
@@ -147,12 +204,22 @@ paths:
           type: integer
         required: true
       tags:
-      - data-sources
+      - Market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataSourceConfigCreate'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceConfig'
+          description: ''
     delete:
       operationId: data_sources_destroy
       parameters:
@@ -162,7 +229,7 @@ paths:
           type: integer
         required: true
       tags:
-      - data-sources
+      - Market
       security:
       - cookieAuth: []
       responses:
@@ -170,7 +237,7 @@ paths:
           description: No response body
   /api/data/{exchange}/{symbol}/{timeframe}/:
     get:
-      operationId: data_retrieve_2
+      operationId: data_retrieve
       parameters:
       - in: path
         name: exchange
@@ -188,54 +255,106 @@ paths:
           type: string
         required: true
       tags:
-      - data
+      - Data
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataFileInfo'
+          description: ''
   /api/data/download/:
     post:
       operationId: data_download_create
       tags:
-      - data
+      - Data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataDownloadRequest'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+          description: ''
   /api/data/generate-sample/:
     post:
       operationId: data_generate_sample_create
       tags:
-      - data
+      - Data
+      requestBody:
+        content:
+          type:
+            schema:
+              type: object
+              additionalProperties: {}
+              description: Unspecified request body
+          properties:
+            schema:
+              symbols:
+                type: array
+                items:
+                  type: string
+              timeframes:
+                type: array
+                items:
+                  type: string
+              days:
+                type: integer
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+          description: ''
   /api/exchange-configs/:
     get:
-      operationId: exchange_configs_retrieve
+      operationId: exchange_configs_list
       tags:
-      - exchange-configs
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExchangeConfig'
+          description: ''
     post:
       operationId: exchange_configs_create
       tags:
-      - exchange-configs
+      - Market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeConfigCreate'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeConfig'
+          description: ''
   /api/exchange-configs/{id}/:
     get:
-      operationId: exchange_configs_retrieve_2
+      operationId: exchange_configs_retrieve
       parameters:
       - in: path
         name: id
@@ -243,12 +362,16 @@ paths:
           type: integer
         required: true
       tags:
-      - exchange-configs
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeConfig'
+          description: ''
     put:
       operationId: exchange_configs_update
       parameters:
@@ -258,12 +381,21 @@ paths:
           type: integer
         required: true
       tags:
-      - exchange-configs
+      - Market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeConfigUpdate'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeConfig'
+          description: ''
     delete:
       operationId: exchange_configs_destroy
       parameters:
@@ -273,7 +405,7 @@ paths:
           type: integer
         required: true
       tags:
-      - exchange-configs
+      - Market
       security:
       - cookieAuth: []
       responses:
@@ -289,27 +421,37 @@ paths:
           type: integer
         required: true
       tags:
-      - exchange-configs
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeTestResult'
+          description: ''
   /api/exchanges/:
     get:
-      operationId: exchanges_retrieve
+      operationId: exchanges_list
       tags:
-      - exchanges
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExchangeInfo'
+          description: ''
   /api/health/:
     get:
       operationId: health_retrieve
       tags:
-      - health
+      - Core
       security:
       - cookieAuth: []
       - {}
@@ -320,7 +462,7 @@ paths:
     get:
       operationId: indicators_retrieve
       tags:
-      - indicators
+      - Market
       security:
       - cookieAuth: []
       responses:
@@ -346,7 +488,7 @@ paths:
           type: string
         required: true
       tags:
-      - indicators
+      - Market
       security:
       - cookieAuth: []
       responses:
@@ -354,17 +496,23 @@ paths:
           description: No response body
   /api/jobs/:
     get:
-      operationId: jobs_retrieve
+      operationId: jobs_list
       tags:
-      - jobs
+      - Jobs
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+          description: ''
   /api/jobs/{job_id}/:
     get:
-      operationId: jobs_retrieve_2
+      operationId: jobs_retrieve
       parameters:
       - in: path
         name: job_id
@@ -372,12 +520,16 @@ paths:
           type: string
         required: true
       tags:
-      - jobs
+      - Jobs
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
   /api/jobs/{job_id}/cancel/:
     post:
       operationId: jobs_cancel_create
@@ -388,7 +540,7 @@ paths:
           type: string
         required: true
       tags:
-      - jobs
+      - Jobs
       security:
       - cookieAuth: []
       responses:
@@ -398,7 +550,7 @@ paths:
     get:
       operationId: live_trading_status_retrieve
       tags:
-      - live-trading
+      - Trading
       security:
       - cookieAuth: []
       responses:
@@ -406,7 +558,7 @@ paths:
           description: No response body
   /api/market/ohlcv/{symbol}/:
     get:
-      operationId: market_ohlcv_retrieve
+      operationId: market_ohlcv_list
       parameters:
       - in: path
         name: symbol
@@ -414,12 +566,18 @@ paths:
           type: string
         required: true
       tags:
-      - market
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OHLCVData'
+          description: ''
   /api/market/ticker/{symbol}/:
     get:
       operationId: market_ticker_retrieve
@@ -430,27 +588,37 @@ paths:
           type: string
         required: true
       tags:
-      - market
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickerData'
+          description: ''
   /api/market/tickers/:
     get:
-      operationId: market_tickers_retrieve
+      operationId: market_tickers_list
       tags:
-      - market
+      - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerData'
+          description: ''
   /api/ml/models/:
     get:
       operationId: ml_models_retrieve
       tags:
-      - ml
+      - ML
       security:
       - cookieAuth: []
       responses:
@@ -466,7 +634,7 @@ paths:
           type: string
         required: true
       tags:
-      - ml
+      - ML
       security:
       - cookieAuth: []
       responses:
@@ -476,7 +644,26 @@ paths:
     post:
       operationId: ml_predict_create
       tags:
-      - ml
+      - ML
+      requestBody:
+        content:
+          type:
+            schema:
+              type: object
+              additionalProperties: {}
+              description: Unspecified request body
+          properties:
+            schema:
+              model_id:
+                type: string
+              symbol:
+                type: string
+              timeframe:
+                type: string
+              exchange:
+                type: string
+              bars:
+                type: integer
       security:
       - cookieAuth: []
       responses:
@@ -486,12 +673,21 @@ paths:
     post:
       operationId: ml_train_create
       tags:
-      - ml
+      - ML
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MLTrainRequest'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+          description: ''
   /api/notifications/{portfolio_id}/preferences/:
     get:
       operationId: notifications_preferences_retrieve
@@ -502,7 +698,7 @@ paths:
           type: integer
         required: true
       tags:
-      - notifications
+      - Notifications
       security:
       - cookieAuth: []
       responses:
@@ -517,7 +713,7 @@ paths:
           type: integer
         required: true
       tags:
-      - notifications
+      - Notifications
       security:
       - cookieAuth: []
       responses:
@@ -527,7 +723,7 @@ paths:
     get:
       operationId: paper_trading_balance_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -537,7 +733,7 @@ paths:
     get:
       operationId: paper_trading_history_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -547,7 +743,7 @@ paths:
     get:
       operationId: paper_trading_log_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -557,7 +753,7 @@ paths:
     get:
       operationId: paper_trading_performance_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -567,7 +763,7 @@ paths:
     get:
       operationId: paper_trading_profit_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -577,7 +773,7 @@ paths:
     post:
       operationId: paper_trading_start_create
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -587,7 +783,7 @@ paths:
     get:
       operationId: paper_trading_status_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -597,7 +793,7 @@ paths:
     post:
       operationId: paper_trading_stop_create
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -607,7 +803,7 @@ paths:
     get:
       operationId: paper_trading_trades_retrieve
       tags:
-      - paper-trading
+      - Paper Trading
       security:
       - cookieAuth: []
       responses:
@@ -617,7 +813,7 @@ paths:
     get:
       operationId: platform_config_retrieve
       tags:
-      - platform
+      - Core
       security:
       - cookieAuth: []
       responses:
@@ -627,7 +823,7 @@ paths:
     get:
       operationId: platform_status_retrieve
       tags:
-      - platform
+      - Core
       security:
       - cookieAuth: []
       responses:
@@ -731,17 +927,23 @@ paths:
           description: ''
   /api/regime/current/:
     get:
-      operationId: regime_current_retrieve
+      operationId: regime_current_list
       tags:
-      - regime
+      - Regime
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegimeState'
+          description: ''
   /api/regime/current/{symbol}/:
     get:
-      operationId: regime_current_retrieve_2
+      operationId: regime_current_retrieve
       parameters:
       - in: path
         name: symbol
@@ -749,15 +951,19 @@ paths:
           type: string
         required: true
       tags:
-      - regime
+      - Regime
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimeState'
+          description: ''
   /api/regime/history/{symbol}/:
     get:
-      operationId: regime_history_retrieve
+      operationId: regime_history_list
       parameters:
       - in: path
         name: symbol
@@ -765,22 +971,38 @@ paths:
           type: string
         required: true
       tags:
-      - regime
+      - Regime
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegimeHistoryEntry'
+          description: ''
   /api/regime/position-size/:
     post:
       operationId: regime_position_size_create
       tags:
-      - regime
+      - Regime
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegimePositionSizeRequest'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimePositionSizeResponse'
+          description: ''
   /api/regime/recommendation/{symbol}/:
     get:
       operationId: regime_recommendation_retrieve
@@ -791,25 +1013,35 @@ paths:
           type: string
         required: true
       tags:
-      - regime
+      - Regime
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingDecision'
+          description: ''
   /api/regime/recommendations/:
     get:
-      operationId: regime_recommendations_retrieve
+      operationId: regime_recommendations_list
       tags:
-      - regime
+      - Regime
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoutingDecision'
+          description: ''
   /api/risk/{portfolio_id}/alerts/:
     get:
-      operationId: risk_alerts_retrieve
+      operationId: risk_alerts_list
       parameters:
       - in: path
         name: portfolio_id
@@ -817,12 +1049,18 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertLog'
+          description: ''
   /api/risk/{portfolio_id}/check-trade/:
     post:
       operationId: risk_check_trade_create
@@ -833,12 +1071,22 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeCheckRequest'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeCheckResponse'
+          description: ''
   /api/risk/{portfolio_id}/equity/:
     post:
       operationId: risk_equity_create
@@ -849,12 +1097,22 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquityUpdate'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskStatus'
+          description: ''
   /api/risk/{portfolio_id}/halt/:
     post:
       operationId: risk_halt_create
@@ -865,12 +1123,22 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HaltRequest'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HaltResponse'
+          description: ''
   /api/risk/{portfolio_id}/heat-check/:
     get:
       operationId: risk_heat_check_retrieve
@@ -881,12 +1149,16 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeatCheckResponse'
+          description: ''
   /api/risk/{portfolio_id}/limits/:
     get:
       operationId: risk_limits_retrieve
@@ -897,12 +1169,16 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskLimits'
+          description: ''
     put:
       operationId: risk_limits_update
       parameters:
@@ -912,15 +1188,24 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskLimitsUpdate'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskLimits'
+          description: ''
   /api/risk/{portfolio_id}/metric-history/:
     get:
-      operationId: risk_metric_history_retrieve
+      operationId: risk_metric_history_list
       parameters:
       - in: path
         name: portfolio_id
@@ -928,12 +1213,18 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RiskMetricHistory'
+          description: ''
   /api/risk/{portfolio_id}/position-size/:
     post:
       operationId: risk_position_size_create
@@ -944,12 +1235,22 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PositionSizeRequest'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionSizeResponse'
+          description: ''
   /api/risk/{portfolio_id}/record-metrics/:
     post:
       operationId: risk_record_metrics_create
@@ -960,12 +1261,16 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskMetricHistory'
+          description: ''
   /api/risk/{portfolio_id}/reset-daily/:
     post:
       operationId: risk_reset_daily_create
@@ -976,12 +1281,16 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskStatus'
+          description: ''
   /api/risk/{portfolio_id}/resume/:
     post:
       operationId: risk_resume_create
@@ -992,12 +1301,16 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HaltResponse'
+          description: ''
   /api/risk/{portfolio_id}/status/:
     get:
       operationId: risk_status_retrieve
@@ -1013,10 +1326,14 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskStatus'
+          description: ''
   /api/risk/{portfolio_id}/trade-log/:
     get:
-      operationId: risk_trade_log_retrieve
+      operationId: risk_trade_log_list
       parameters:
       - in: path
         name: portfolio_id
@@ -1024,12 +1341,18 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TradeCheckLog'
+          description: ''
   /api/risk/{portfolio_id}/var/:
     get:
       operationId: risk_var_retrieve
@@ -1040,25 +1363,35 @@ paths:
           type: integer
         required: true
       tags:
-      - risk
+      - Risk
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaRResponse'
+          description: ''
   /api/screening/results/:
     get:
-      operationId: screening_results_retrieve
+      operationId: screening_results_list
       tags:
-      - screening
+      - Screening
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScreenResult'
+          description: ''
   /api/screening/results/{result_id}/:
     get:
-      operationId: screening_results_retrieve_2
+      operationId: screening_results_retrieve
       parameters:
       - in: path
         name: result_id
@@ -1066,27 +1399,40 @@ paths:
           type: integer
         required: true
       tags:
-      - screening
+      - Screening
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenResult'
+          description: ''
   /api/screening/run/:
     post:
       operationId: screening_run_create
       tags:
-      - screening
+      - Screening
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenRequest'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+          description: ''
   /api/screening/strategies/:
     get:
       operationId: screening_strategies_retrieve
       tags:
-      - screening
+      - Screening
       security:
       - cookieAuth: []
       responses:
@@ -1137,12 +1483,16 @@ paths:
           type: integer
         required: true
       tags:
-      - trading
+      - Trading
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
   /api/trading/orders/{order_id}/cancel/:
     post:
       operationId: trading_orders_cancel_create
@@ -1153,24 +1503,461 @@ paths:
           type: integer
         required: true
       tags:
-      - trading
+      - Trading
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
-  /metrics/:
-    get:
-      operationId: metrics_retrieve
-      tags:
-      - metrics
-      security:
-      - cookieAuth: []
-      responses:
-        '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
 components:
   schemas:
+    AlertLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        portfolio_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        event_type:
+          type: string
+          maxLength: 50
+        severity:
+          type: string
+          maxLength: 20
+        message:
+          type: string
+        channel:
+          type: string
+          maxLength: 20
+        delivered:
+          type: boolean
+        error:
+          type: string
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - event_type
+      - id
+      - message
+      - portfolio_id
+      - severity
+    BacktestRequest:
+      type: object
+      properties:
+        framework:
+          type: string
+          default: freqtrade
+        strategy:
+          type: string
+          default: SampleStrategy
+        symbol:
+          type: string
+          default: BTC/USDT
+        timeframe:
+          type: string
+          default: 1h
+        timerange:
+          type: string
+          default: ''
+        exchange:
+          type: string
+          default: binance
+    BacktestResult:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job_id:
+          type: string
+          readOnly: true
+        framework:
+          type: string
+          maxLength: 20
+        strategy_name:
+          type: string
+          maxLength: 100
+        symbol:
+          type: string
+          maxLength: 20
+        timeframe:
+          type: string
+          maxLength: 10
+        timerange:
+          type: string
+          maxLength: 50
+        metrics:
+          nullable: true
+        trades:
+          nullable: true
+        config:
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - framework
+      - id
+      - job_id
+      - strategy_name
+      - symbol
+      - timeframe
+    DataDownloadRequest:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items:
+            type: string
+          default:
+          - BTC/USDT
+          - ETH/USDT
+        timeframes:
+          type: array
+          items:
+            type: string
+          default:
+          - 1h
+        exchange:
+          type: string
+          default: binance
+        since_days:
+          type: integer
+          default: 365
+    DataFileInfo:
+      type: object
+      properties:
+        exchange:
+          type: string
+        symbol:
+          type: string
+        timeframe:
+          type: string
+        rows:
+          type: integer
+        start:
+          type: string
+          nullable: true
+        end:
+          type: string
+          nullable: true
+        file:
+          type: string
+      required:
+      - end
+      - exchange
+      - file
+      - rows
+      - start
+      - symbol
+      - timeframe
+    DataSourceConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        exchange_name:
+          type: string
+          readOnly: true
+        symbols: {}
+        timeframes: {}
+        is_active:
+          type: boolean
+        fetch_interval_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        last_fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        exchange_config:
+          type: integer
+      required:
+      - created_at
+      - exchange_config
+      - exchange_name
+      - id
+      - updated_at
+    DataSourceConfigCreate:
+      type: object
+      properties:
+        exchange_config:
+          type: integer
+        symbols: {}
+        timeframes: {}
+        is_active:
+          type: boolean
+        fetch_interval_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+      required:
+      - exchange_config
+    EquityUpdate:
+      type: object
+      properties:
+        equity:
+          type: number
+          format: double
+      required:
+      - equity
+    ExchangeConfig:
+      type: object
+      description: Read serializer — never exposes raw credentials.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        api_key_masked:
+          type: string
+          readOnly: true
+        has_api_key:
+          type: boolean
+          readOnly: true
+        has_api_secret:
+          type: boolean
+          readOnly: true
+        has_passphrase:
+          type: boolean
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        exchange_id:
+          $ref: '#/components/schemas/ExchangeIdEnum'
+        is_sandbox:
+          type: boolean
+        is_default:
+          type: boolean
+        is_active:
+          type: boolean
+        last_tested_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_test_success:
+          type: boolean
+          nullable: true
+        last_test_error:
+          type: string
+          maxLength: 500
+        options: {}
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - api_key_masked
+      - created_at
+      - exchange_id
+      - has_api_key
+      - has_api_secret
+      - has_passphrase
+      - id
+      - name
+      - updated_at
+    ExchangeConfigCreate:
+      type: object
+      description: Write serializer for creating exchange configs.
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        exchange_id:
+          $ref: '#/components/schemas/ExchangeIdEnum'
+        api_key:
+          type: string
+        api_secret:
+          type: string
+        passphrase:
+          type: string
+        is_sandbox:
+          type: boolean
+        is_default:
+          type: boolean
+        is_active:
+          type: boolean
+        options: {}
+      required:
+      - exchange_id
+      - name
+    ExchangeConfigUpdate:
+      type: object
+      description: Write serializer for updating exchange configs — all fields optional.
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        exchange_id:
+          $ref: '#/components/schemas/ExchangeIdEnum'
+        api_key:
+          type: string
+        api_secret:
+          type: string
+        passphrase:
+          type: string
+        is_sandbox:
+          type: boolean
+        is_default:
+          type: boolean
+        is_active:
+          type: boolean
+        options: {}
+    ExchangeIdEnum:
+      enum:
+      - binance
+      - coinbase
+      - kraken
+      - kucoin
+      - bybit
+      type: string
+      description: |-
+        * `binance` - Binance
+        * `coinbase` - Coinbase
+        * `kraken` - Kraken
+        * `kucoin` - KuCoin
+        * `bybit` - Bybit
+    ExchangeInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        countries:
+          type: array
+          items:
+            type: string
+          default: []
+        has_fetch_tickers:
+          type: boolean
+          default: false
+        has_fetch_ohlcv:
+          type: boolean
+          default: false
+      required:
+      - id
+      - name
+    ExchangeTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        markets_count:
+          type: integer
+        message:
+          type: string
+      required:
+      - message
+      - success
+    HaltRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    HaltResponse:
+      type: object
+      properties:
+        is_halted:
+          type: boolean
+        halt_reason:
+          type: string
+        message:
+          type: string
+      required:
+      - halt_reason
+      - is_halted
+      - message
+    HeatCheckResponse:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+        issues:
+          type: array
+          items:
+            type: string
+        drawdown:
+          type: number
+          format: double
+        daily_pnl:
+          type: number
+          format: double
+        open_positions:
+          type: integer
+        max_correlation:
+          type: number
+          format: double
+        high_corr_pairs:
+          type: array
+          items: {}
+        max_concentration:
+          type: number
+          format: double
+        position_weights:
+          type: object
+          additionalProperties: {}
+        var_95:
+          type: number
+          format: double
+        var_99:
+          type: number
+          format: double
+        cvar_95:
+          type: number
+          format: double
+        cvar_99:
+          type: number
+          format: double
+        is_halted:
+          type: boolean
+      required:
+      - cvar_95
+      - cvar_99
+      - daily_pnl
+      - drawdown
+      - healthy
+      - high_corr_pairs
+      - is_halted
+      - issues
+      - max_concentration
+      - max_correlation
+      - open_positions
+      - position_weights
+      - var_95
+      - var_99
     Holding:
       type: object
       properties:
@@ -1219,6 +2006,102 @@ components:
           default: 0.0
       required:
       - symbol
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        job_type:
+          type: string
+          maxLength: 50
+        status:
+          type: string
+          maxLength: 20
+        progress:
+          type: number
+          format: double
+        progress_message:
+          type: string
+          maxLength: 200
+        params:
+          nullable: true
+        result:
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - job_type
+    JobAccepted:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+      required:
+      - job_id
+      - status
+    MLTrainRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+          default: BTC/USDT
+        timeframe:
+          type: string
+          default: 1h
+        exchange:
+          type: string
+          default: binance
+        test_ratio:
+          type: number
+          format: double
+          maximum: 0.5
+          minimum: 0.05
+          default: 0.2
+    OHLCVData:
+      type: object
+      properties:
+        timestamp:
+          type: integer
+        open:
+          type: number
+          format: double
+        high:
+          type: number
+          format: double
+        low:
+          type: number
+          format: double
+        close:
+          type: number
+          format: double
+        volume:
+          type: number
+          format: double
+      required:
+      - close
+      - high
+      - low
+      - open
+      - timestamp
+      - volume
     Order:
       type: object
       properties:
@@ -1482,6 +2365,357 @@ components:
           maxLength: 500
       required:
       - name
+    PositionSizeRequest:
+      type: object
+      properties:
+        entry_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+        risk_per_trade:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - entry_price
+      - stop_loss_price
+    PositionSizeResponse:
+      type: object
+      properties:
+        size:
+          type: number
+          format: double
+        risk_amount:
+          type: number
+          format: double
+        position_value:
+          type: number
+          format: double
+      required:
+      - position_value
+      - risk_amount
+      - size
+    RegimeHistoryEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        regime:
+          type: string
+        confidence:
+          type: number
+          format: double
+        adx_value:
+          type: number
+          format: double
+        bb_width_percentile:
+          type: number
+          format: double
+      required:
+      - adx_value
+      - bb_width_percentile
+      - confidence
+      - regime
+      - timestamp
+    RegimePositionSizeRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+        entry_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+      required:
+      - entry_price
+      - stop_loss_price
+      - symbol
+    RegimePositionSizeResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+        regime:
+          type: string
+        regime_modifier:
+          type: number
+          format: double
+        position_size:
+          type: number
+          format: double
+        entry_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+        primary_strategy:
+          type: string
+      required:
+      - entry_price
+      - position_size
+      - primary_strategy
+      - regime
+      - regime_modifier
+      - stop_loss_price
+      - symbol
+    RegimeState:
+      type: object
+      properties:
+        symbol:
+          type: string
+        regime:
+          type: string
+        confidence:
+          type: number
+          format: double
+        adx_value:
+          type: number
+          format: double
+        bb_width_percentile:
+          type: number
+          format: double
+        ema_slope:
+          type: number
+          format: double
+        trend_alignment:
+          type: number
+          format: double
+        price_structure_score:
+          type: number
+          format: double
+        transition_probabilities:
+          type: object
+          additionalProperties: {}
+          default: {}
+      required:
+      - adx_value
+      - bb_width_percentile
+      - confidence
+      - ema_slope
+      - price_structure_score
+      - regime
+      - symbol
+      - trend_alignment
+    RiskLimits:
+      type: object
+      properties:
+        max_portfolio_drawdown:
+          type: number
+          format: double
+        max_single_trade_risk:
+          type: number
+          format: double
+        max_daily_loss:
+          type: number
+          format: double
+        max_open_positions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        max_position_size_pct:
+          type: number
+          format: double
+        max_correlation:
+          type: number
+          format: double
+        min_risk_reward:
+          type: number
+          format: double
+        max_leverage:
+          type: number
+          format: double
+    RiskLimitsUpdate:
+      type: object
+      properties:
+        max_portfolio_drawdown:
+          type: number
+          format: double
+        max_single_trade_risk:
+          type: number
+          format: double
+        max_daily_loss:
+          type: number
+          format: double
+        max_open_positions:
+          type: integer
+        max_position_size_pct:
+          type: number
+          format: double
+        max_correlation:
+          type: number
+          format: double
+        min_risk_reward:
+          type: number
+          format: double
+        max_leverage:
+          type: number
+          format: double
+    RiskMetricHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        portfolio_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        var_95:
+          type: number
+          format: double
+        var_99:
+          type: number
+          format: double
+        cvar_95:
+          type: number
+          format: double
+        cvar_99:
+          type: number
+          format: double
+        method:
+          type: string
+          maxLength: 20
+        drawdown:
+          type: number
+          format: double
+        equity:
+          type: number
+          format: double
+        open_positions_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - portfolio_id
+      - recorded_at
+    RiskStatus:
+      type: object
+      properties:
+        equity:
+          type: number
+          format: double
+        peak_equity:
+          type: number
+          format: double
+        drawdown:
+          type: number
+          format: double
+        daily_pnl:
+          type: number
+          format: double
+        total_pnl:
+          type: number
+          format: double
+        open_positions:
+          type: integer
+        is_halted:
+          type: boolean
+        halt_reason:
+          type: string
+      required:
+      - daily_pnl
+      - drawdown
+      - equity
+      - halt_reason
+      - is_halted
+      - open_positions
+      - peak_equity
+      - total_pnl
+    RoutingDecision:
+      type: object
+      properties:
+        symbol:
+          type: string
+        regime:
+          type: string
+        confidence:
+          type: number
+          format: double
+        primary_strategy:
+          type: string
+        weights:
+          type: array
+          items: {}
+        position_size_modifier:
+          type: number
+          format: double
+        reasoning:
+          type: string
+      required:
+      - confidence
+      - position_size_modifier
+      - primary_strategy
+      - reasoning
+      - regime
+      - symbol
+      - weights
+    ScreenRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+          default: BTC/USDT
+        timeframe:
+          type: string
+          default: 1h
+        exchange:
+          type: string
+          default: binance
+        fees:
+          type: number
+          format: double
+          default: 0.001
+    ScreenResult:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job_id:
+          type: string
+          readOnly: true
+        symbol:
+          type: string
+          maxLength: 20
+        timeframe:
+          type: string
+          maxLength: 10
+        strategy_name:
+          type: string
+          maxLength: 50
+        top_results:
+          nullable: true
+        summary:
+          nullable: true
+        total_combinations:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - job_id
+      - strategy_name
+      - symbol
+      - timeframe
     SideEnum:
       enum:
       - buy
@@ -1510,6 +2744,165 @@ components:
         * `cancelled` - Cancelled
         * `rejected` - Rejected
         * `error` - Error
+    StrategyInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        framework:
+          type: string
+        file_path:
+          type: string
+      required:
+      - file_path
+      - framework
+      - name
+    TickerData:
+      type: object
+      properties:
+        symbol:
+          type: string
+        price:
+          type: number
+          format: double
+        volume_24h:
+          type: number
+          format: double
+          default: 0.0
+        change_24h:
+          type: number
+          format: double
+          default: 0.0
+        high_24h:
+          type: number
+          format: double
+          default: 0.0
+        low_24h:
+          type: number
+          format: double
+          default: 0.0
+        timestamp:
+          type: string
+          format: date-time
+      required:
+      - price
+      - symbol
+      - timestamp
+    TradeCheckLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        portfolio_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        symbol:
+          type: string
+          maxLength: 20
+        side:
+          type: string
+          maxLength: 10
+        size:
+          type: number
+          format: double
+        entry_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+          nullable: true
+        approved:
+          type: boolean
+        reason:
+          type: string
+          maxLength: 500
+        equity_at_check:
+          type: number
+          format: double
+        drawdown_at_check:
+          type: number
+          format: double
+        open_positions_at_check:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        checked_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approved
+      - checked_at
+      - entry_price
+      - id
+      - portfolio_id
+      - reason
+      - side
+      - size
+      - symbol
+    TradeCheckRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+        side:
+          type: string
+        size:
+          type: number
+          format: double
+        entry_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - entry_price
+      - side
+      - size
+      - symbol
+    TradeCheckResponse:
+      type: object
+      properties:
+        approved:
+          type: boolean
+        reason:
+          type: string
+      required:
+      - approved
+      - reason
+    VaRResponse:
+      type: object
+      properties:
+        var_95:
+          type: number
+          format: double
+        var_99:
+          type: number
+          format: double
+        cvar_95:
+          type: number
+          format: double
+        cvar_99:
+          type: number
+          format: double
+        method:
+          type: string
+        window_days:
+          type: integer
+      required:
+      - cvar_95
+      - cvar_99
+      - method
+      - var_95
+      - var_99
+      - window_days
   securitySchemes:
     cookieAuth:
       type: apiKey

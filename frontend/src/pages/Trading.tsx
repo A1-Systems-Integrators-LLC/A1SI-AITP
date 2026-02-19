@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApi } from "../hooks/useApi";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSystemEvents } from "../hooks/useSystemEvents";
 import { tradingApi } from "../api/trading";
 import { OrderForm } from "../components/OrderForm";
+import { QueryResult } from "../components/QueryResult";
 import type { Order, OrderStatus, TradingMode } from "../types";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -29,9 +29,10 @@ export function Trading() {
   const [mode, setMode] = useState<TradingMode>("paper");
   const { isHalted } = useSystemEvents();
 
-  const { data: orders, isLoading } = useApi<Order[]>(["orders", mode], () =>
-    tradingApi.listOrders(50, mode),
-  );
+  const ordersQuery = useQuery<Order[]>({
+    queryKey: ["orders", mode],
+    queryFn: () => tradingApi.listOrders(50, mode),
+  });
 
   const cancelMutation = useMutation({
     mutationFn: tradingApi.cancelOrder,
@@ -95,93 +96,93 @@ export function Trading() {
           <h3 className="mb-4 text-lg font-semibold">
             {mode === "live" ? "Live" : "Paper"} Orders
           </h3>
-          {isLoading && <p className="text-sm">Loading orders...</p>}
-          {orders && orders.length === 0 && (
-            <p className="text-sm text-[var(--color-text-muted)]">
-              No {mode} orders yet.
-            </p>
-          )}
-          {orders && orders.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
-                    <th className="pb-2">Symbol</th>
-                    <th className="pb-2">Side</th>
-                    <th className="pb-2">Amount</th>
-                    <th className="pb-2">Price</th>
-                    <th className="pb-2">Filled</th>
-                    <th className="pb-2">Status</th>
-                    {mode === "live" && <th className="pb-2">Action</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr
-                      key={o.id}
-                      className="border-b border-[var(--color-border)]"
-                    >
-                      <td className="py-2">{o.symbol}</td>
-                      <td
-                        className={`py-2 font-medium ${
-                          o.side === "buy"
-                            ? "text-[var(--color-success)]"
-                            : "text-[var(--color-danger)]"
-                        }`}
+          <QueryResult query={ordersQuery}>
+            {(orders) => orders.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">
+                No {mode} orders yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                      <th className="pb-2">Symbol</th>
+                      <th className="pb-2">Side</th>
+                      <th className="pb-2">Amount</th>
+                      <th className="pb-2">Price</th>
+                      <th className="pb-2">Filled</th>
+                      <th className="pb-2">Status</th>
+                      {mode === "live" && <th className="pb-2">Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr
+                        key={o.id}
+                        className="border-b border-[var(--color-border)]"
                       >
-                        {o.side.toUpperCase()}
-                      </td>
-                      <td className="py-2">{o.amount}</td>
-                      <td className="py-2">
-                        {o.avg_fill_price
-                          ? `$${o.avg_fill_price.toLocaleString()}`
-                          : o.price
-                            ? `$${o.price.toLocaleString()}`
-                            : "Market"}
-                      </td>
-                      <td className="py-2">
-                        {o.filled > 0
-                          ? `${o.filled}/${o.amount}`
-                          : "—"}
-                      </td>
-                      <td className="py-2">
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLORS[o.status] ?? ""
+                        <td className="py-2">{o.symbol}</td>
+                        <td
+                          className={`py-2 font-medium ${
+                            o.side === "buy"
+                              ? "text-[var(--color-success)]"
+                              : "text-[var(--color-danger)]"
                           }`}
                         >
-                          {o.status.replace("_", " ")}
-                        </span>
-                        {o.reject_reason && (
-                          <p className="mt-0.5 text-xs text-red-400">
-                            {o.reject_reason}
-                          </p>
-                        )}
-                        {o.error_message && (
-                          <p className="mt-0.5 text-xs text-red-400">
-                            {o.error_message}
-                          </p>
-                        )}
-                      </td>
-                      {mode === "live" && (
+                          {o.side.toUpperCase()}
+                        </td>
+                        <td className="py-2">{o.amount}</td>
                         <td className="py-2">
-                          {CANCELLABLE.has(o.status) && (
-                            <button
-                              onClick={() => cancelMutation.mutate(o.id)}
-                              disabled={cancelMutation.isPending}
-                              className="rounded border border-red-700 px-2 py-0.5 text-xs text-red-400 hover:bg-red-900/30 disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
+                          {o.avg_fill_price
+                            ? `$${o.avg_fill_price.toLocaleString()}`
+                            : o.price
+                              ? `$${o.price.toLocaleString()}`
+                              : "Market"}
+                        </td>
+                        <td className="py-2">
+                          {o.filled > 0
+                            ? `${o.filled}/${o.amount}`
+                            : "\u2014"}
+                        </td>
+                        <td className="py-2">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                              STATUS_COLORS[o.status] ?? ""
+                            }`}
+                          >
+                            {o.status.replace("_", " ")}
+                          </span>
+                          {o.reject_reason && (
+                            <p className="mt-0.5 text-xs text-red-400">
+                              {o.reject_reason}
+                            </p>
+                          )}
+                          {o.error_message && (
+                            <p className="mt-0.5 text-xs text-red-400">
+                              {o.error_message}
+                            </p>
                           )}
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        {mode === "live" && (
+                          <td className="py-2">
+                            {CANCELLABLE.has(o.status) && (
+                              <button
+                                onClick={() => cancelMutation.mutate(o.id)}
+                                disabled={cancelMutation.isPending}
+                                className="rounded border border-red-700 px-2 py-0.5 text-xs text-red-400 hover:bg-red-900/30 disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </QueryResult>
         </div>
       </div>
     </div>

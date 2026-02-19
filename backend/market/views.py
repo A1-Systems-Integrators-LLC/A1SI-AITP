@@ -4,6 +4,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,6 +18,15 @@ from market.serializers import (
     ExchangeConfigCreateSerializer,
     ExchangeConfigSerializer,
     ExchangeConfigUpdateSerializer,
+    ExchangeInfoSerializer,
+    ExchangeTestResultSerializer,
+    OHLCVDataSerializer,
+    RegimeHistoryEntrySerializer,
+    RegimePositionSizeRequestSerializer,
+    RegimePositionSizeResponseSerializer,
+    RegimeStateSerializer,
+    RoutingDecisionSerializer,
+    TickerDataSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,11 +38,19 @@ _thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="indicator")
 
 
 class ExchangeConfigListView(APIView):
+    @extend_schema(
+        responses=ExchangeConfigSerializer(many=True), tags=["Market"]
+    )
     def get(self, request: Request) -> Response:
         configs = ExchangeConfig.objects.all()
         serializer = ExchangeConfigSerializer(configs, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        request=ExchangeConfigCreateSerializer,
+        responses=ExchangeConfigSerializer,
+        tags=["Market"],
+    )
     def post(self, request: Request) -> Response:
         serializer = ExchangeConfigCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -49,12 +67,18 @@ class ExchangeConfigDetailView(APIView):
         except ExchangeConfig.DoesNotExist:
             return None
 
+    @extend_schema(responses=ExchangeConfigSerializer, tags=["Market"])
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(ExchangeConfigSerializer(obj).data)
 
+    @extend_schema(
+        request=ExchangeConfigUpdateSerializer,
+        responses=ExchangeConfigSerializer,
+        tags=["Market"],
+    )
     def put(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
@@ -64,6 +88,7 @@ class ExchangeConfigDetailView(APIView):
         instance = serializer.save()
         return Response(ExchangeConfigSerializer(instance).data)
 
+    @extend_schema(tags=["Market"])
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
@@ -73,6 +98,7 @@ class ExchangeConfigDetailView(APIView):
 
 
 class ExchangeConfigTestView(APIView):
+    @extend_schema(responses=ExchangeTestResultSerializer, tags=["Market"])
     def post(self, request: Request, pk: int) -> Response:
         import asyncio
 
@@ -139,11 +165,19 @@ class ExchangeConfigTestView(APIView):
 
 
 class DataSourceConfigListView(APIView):
+    @extend_schema(
+        responses=DataSourceConfigSerializer(many=True), tags=["Market"]
+    )
     def get(self, request: Request) -> Response:
         sources = DataSourceConfig.objects.select_related("exchange_config").all()
         serializer = DataSourceConfigSerializer(sources, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        request=DataSourceConfigCreateSerializer,
+        responses=DataSourceConfigSerializer,
+        tags=["Market"],
+    )
     def post(self, request: Request) -> Response:
         serializer = DataSourceConfigCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -159,12 +193,18 @@ class DataSourceConfigDetailView(APIView):
         except DataSourceConfig.DoesNotExist:
             return None
 
+    @extend_schema(responses=DataSourceConfigSerializer, tags=["Market"])
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(DataSourceConfigSerializer(obj).data)
 
+    @extend_schema(
+        request=DataSourceConfigCreateSerializer,
+        responses=DataSourceConfigSerializer,
+        tags=["Market"],
+    )
     def put(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
@@ -174,6 +214,7 @@ class DataSourceConfigDetailView(APIView):
         instance = serializer.save()
         return Response(DataSourceConfigSerializer(instance).data)
 
+    @extend_schema(tags=["Market"])
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
@@ -186,6 +227,9 @@ class DataSourceConfigDetailView(APIView):
 
 
 class ExchangeListView(APIView):
+    @extend_schema(
+        responses=ExchangeInfoSerializer(many=True), tags=["Market"]
+    )
     def get(self, request: Request) -> Response:
         from market.services.exchange import ExchangeService
 
@@ -194,6 +238,7 @@ class ExchangeListView(APIView):
 
 
 class TickerView(APIView):
+    @extend_schema(responses=TickerDataSerializer, tags=["Market"])
     def get(self, request: Request, symbol: str) -> Response:
         from asgiref.sync import async_to_sync
 
@@ -210,6 +255,9 @@ class TickerView(APIView):
 
 
 class TickerListView(APIView):
+    @extend_schema(
+        responses=TickerDataSerializer(many=True), tags=["Market"]
+    )
     def get(self, request: Request) -> Response:
         from asgiref.sync import async_to_sync
 
@@ -229,6 +277,9 @@ class TickerListView(APIView):
 
 
 class OHLCVView(APIView):
+    @extend_schema(
+        responses=OHLCVDataSerializer(many=True), tags=["Market"]
+    )
     def get(self, request: Request, symbol: str) -> Response:
         from asgiref.sync import async_to_sync
 
@@ -248,6 +299,7 @@ class OHLCVView(APIView):
 
 
 class IndicatorListView(APIView):
+    @extend_schema(tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.indicators import IndicatorService
 
@@ -255,6 +307,7 @@ class IndicatorListView(APIView):
 
 
 class IndicatorComputeView(APIView):
+    @extend_schema(tags=["Market"])
     def get(self, request: Request, exchange: str, symbol: str, timeframe: str) -> Response:
         from market.services.indicators import IndicatorService
 
@@ -275,12 +328,16 @@ class IndicatorComputeView(APIView):
 
 
 class RegimeCurrentAllView(APIView):
+    @extend_schema(
+        responses=RegimeStateSerializer(many=True), tags=["Regime"]
+    )
     def get(self, request: Request) -> Response:
         service = _get_regime_service()
         return Response(service.get_all_current_regimes())
 
 
 class RegimeCurrentView(APIView):
+    @extend_schema(responses=RegimeStateSerializer, tags=["Regime"])
     def get(self, request: Request, symbol: str) -> Response:
         service = _get_regime_service()
         result = service.get_current_regime(symbol)
@@ -294,6 +351,9 @@ class RegimeCurrentView(APIView):
 
 
 class RegimeHistoryView(APIView):
+    @extend_schema(
+        responses=RegimeHistoryEntrySerializer(many=True), tags=["Regime"]
+    )
     def get(self, request: Request, symbol: str) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=1000)
         service = _get_regime_service()
@@ -301,6 +361,7 @@ class RegimeHistoryView(APIView):
 
 
 class RegimeRecommendationView(APIView):
+    @extend_schema(responses=RoutingDecisionSerializer, tags=["Regime"])
     def get(self, request: Request, symbol: str) -> Response:
         service = _get_regime_service()
         result = service.get_recommendation(symbol)
@@ -314,12 +375,20 @@ class RegimeRecommendationView(APIView):
 
 
 class RegimeRecommendationAllView(APIView):
+    @extend_schema(
+        responses=RoutingDecisionSerializer(many=True), tags=["Regime"]
+    )
     def get(self, request: Request) -> Response:
         service = _get_regime_service()
         return Response(service.get_all_recommendations())
 
 
 class RegimePositionSizeView(APIView):
+    @extend_schema(
+        request=RegimePositionSizeRequestSerializer,
+        responses=RegimePositionSizeResponseSerializer,
+        tags=["Regime"],
+    )
     def post(self, request: Request) -> Response:
         from core.platform_bridge import ensure_platform_imports
 

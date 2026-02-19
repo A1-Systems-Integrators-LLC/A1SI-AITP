@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { riskApi } from "../api/risk";
+import { useToast } from "../hooks/useToast";
 import { useSystemEvents } from "../hooks/useSystemEvents";
 import type { RiskLimits, RiskStatus, VaRData, HeatCheckData, RiskMetricHistoryEntry, TradeCheckLogEntry, AlertLogEntry } from "../types";
 
 export function RiskManagement() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { isHalted: wsHalted, haltReason: wsHaltReason } = useSystemEvents();
   const [portfolioId, setPortfolioId] = useState(1);
 
@@ -61,6 +63,7 @@ export function RiskManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["risk-status", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["risk-alerts", portfolioId] });
+      toast("Trading halted", "error");
       setShowHaltConfirm(false);
       setHaltReason("");
     },
@@ -71,25 +74,23 @@ export function RiskManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["risk-status", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["risk-alerts", portfolioId] });
+      toast("Trading resumed", "success");
     },
   });
 
   // Limits editor state
   const [isEditing, setIsEditing] = useState(false);
   const [editLimits, setEditLimits] = useState<Partial<RiskLimits>>({});
-  const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const limitsMutation = useMutation({
     mutationFn: (updates: Partial<RiskLimits>) => riskApi.updateLimits(portfolioId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["risk-limits", portfolioId] });
       setIsEditing(false);
-      setSaveMsg({ type: "success", text: "Limits saved" });
-      setTimeout(() => setSaveMsg(null), 3000);
+      toast("Risk limits saved", "success");
     },
     onError: () => {
-      setSaveMsg({ type: "error", text: "Failed to save limits" });
-      setTimeout(() => setSaveMsg(null), 3000);
+      toast("Failed to save risk limits", "error");
     },
   });
 
@@ -148,13 +149,11 @@ export function RiskManagement() {
       setEditLimits({ ...limits });
     }
     setIsEditing(true);
-    setSaveMsg(null);
   }
 
   function cancelEditing() {
     setIsEditing(false);
     setEditLimits({});
-    setSaveMsg(null);
   }
 
   function saveLimits() {
@@ -306,11 +305,6 @@ export function RiskManagement() {
               </div>
             )}
           </div>
-          {saveMsg && (
-            <div className={`mb-3 rounded p-2 text-xs ${saveMsg.type === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-              {saveMsg.text}
-            </div>
-          )}
           {limits && (
             <div className="space-y-2 text-sm">
               {limitFields.map((f) => (

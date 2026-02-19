@@ -180,3 +180,9 @@ class RegimePositionSizeResponseSerializer(serializers.Serializer):
     entry_price = serializers.FloatField()
     stop_loss_price = serializers.FloatField()
     primary_strategy = serializers.CharField()
+
+
+class ExchangeTestResultSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    markets_count = serializers.IntegerField(required=False)
+    message = serializers.CharField()

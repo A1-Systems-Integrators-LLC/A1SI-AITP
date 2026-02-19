@@ -124,3 +124,8 @@ class MLPredictRequestSerializer(serializers.Serializer):
     timeframe = serializers.CharField(default="1h")
     exchange = serializers.CharField(default="binance")
     bars = serializers.IntegerField(default=50, min_value=1, max_value=1000)
+
+
+class JobAcceptedSerializer(serializers.Serializer):
+    job_id = serializers.CharField()
+    status = serializers.CharField()

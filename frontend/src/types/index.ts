@@ -1,45 +1,38 @@
 // ── Generated types from OpenAPI schema (via openapi-typescript) ──
-// Run `npm run generate:types` to regenerate from backend schema.
+// Run `npm run generate:types` or `make generate-types` to regenerate.
 import type { components } from "./api-schema";
 
+// Portfolio
 export type Holding = components["schemas"]["Holding"];
 export type HoldingCreate = components["schemas"]["HoldingCreate"];
+export type Portfolio = components["schemas"]["Portfolio"];
+export type PortfolioCreate = components["schemas"]["PortfolioCreate"];
+
+// Trading — orders and enums
 export type Order = components["schemas"]["Order"];
 export type OrderCreate = components["schemas"]["OrderCreate"];
 export type OrderFillEvent = components["schemas"]["OrderFillEvent"];
 export type OrderStatus = components["schemas"]["StatusEnum"];
 export type TradingMode = components["schemas"]["OrderModeEnum"];
-export type Portfolio = components["schemas"]["Portfolio"];
-export type PortfolioCreate = components["schemas"]["PortfolioCreate"];
 
-// ── Manual types (not yet in OpenAPI schema) ──
+// Market — exchange info, tickers, OHLCV
+export type ExchangeInfo = components["schemas"]["ExchangeInfo"];
+export type TickerData = components["schemas"]["TickerData"];
+export type OHLCVData = components["schemas"]["OHLCVData"];
+export type ExchangeTestResult = components["schemas"]["ExchangeTestResult"];
 
-export interface ExchangeInfo {
-  id: string;
-  name: string;
-  countries: string[];
-  has_fetch_tickers: boolean;
-  has_fetch_ohlcv: boolean;
-}
+// Risk — core types
+export type RiskStatus = components["schemas"]["RiskStatus"];
+export type RiskLimits = components["schemas"]["RiskLimits"];
+export type VaRData = components["schemas"]["VaRResponse"];
+export type HaltResponse = components["schemas"]["HaltResponse"];
+export type AlertLogEntry = components["schemas"]["AlertLog"];
+export type StrategyInfo = components["schemas"]["StrategyInfo"];
 
-export interface TickerData {
-  symbol: string;
-  price: number;
-  volume_24h: number;
-  change_24h: number;
-  high_24h: number;
-  low_24h: number;
-  timestamp: string;
-}
+// Analysis — jobs and backtests
+export type BacktestRequest = components["schemas"]["BacktestRequest"];
 
-export interface OHLCVData {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
+// ── Manual types (need more specific types than schema provides) ──
 
 export interface LiveTradingStatus {
   exchange_connected: boolean;
@@ -87,38 +80,7 @@ export interface ScreenResult {
   created_at: string;
 }
 
-// Risk types
-export interface RiskStatus {
-  equity: number;
-  peak_equity: number;
-  drawdown: number;
-  daily_pnl: number;
-  total_pnl: number;
-  open_positions: number;
-  is_halted: boolean;
-  halt_reason: string;
-}
-
-export interface RiskLimits {
-  max_portfolio_drawdown: number;
-  max_single_trade_risk: number;
-  max_daily_loss: number;
-  max_open_positions: number;
-  max_position_size_pct: number;
-  max_correlation: number;
-  min_risk_reward: number;
-  max_leverage: number;
-}
-
-export interface VaRData {
-  var_95: number;
-  var_99: number;
-  cvar_95: number;
-  cvar_99: number;
-  method: string;
-  window_days: number;
-}
-
+// Risk — types with complex nested structures
 export interface HeatCheckData {
   healthy: boolean;
   issues: string[];
@@ -166,24 +128,6 @@ export interface TradeCheckLogEntry {
   checked_at: string;
 }
 
-export interface HaltResponse {
-  is_halted: boolean;
-  halt_reason: string;
-  message: string;
-}
-
-export interface AlertLogEntry {
-  id: number;
-  portfolio_id: number;
-  event_type: string;
-  severity: string;
-  message: string;
-  channel: string;
-  delivered: boolean;
-  error: string;
-  created_at: string;
-}
-
 // Notification preferences
 export interface NotificationPreferences {
   portfolio_id: number;
@@ -212,13 +156,7 @@ export interface BacktestResult {
   created_at: string;
 }
 
-export interface StrategyInfo {
-  name: string;
-  framework: string;
-  file_path: string;
-}
-
-// Regime types
+// Regime types — need RegimeType union (schema only has string)
 export type RegimeType =
   | "strong_trend_up"
   | "weak_trend_up"
@@ -332,7 +270,7 @@ export interface PaperTradingLogEntry {
   [key: string]: unknown;
 }
 
-// Exchange Config types
+// Exchange Config types — manual (generated has enum exchange_id)
 export interface ExchangeConfig {
   id: number;
   name: string;
@@ -362,12 +300,6 @@ export interface ExchangeConfigCreate {
   is_default: boolean;
   is_active?: boolean;
   options?: Record<string, unknown>;
-}
-
-export interface ExchangeTestResult {
-  success: boolean;
-  markets_count?: number;
-  message: string;
 }
 
 export interface DataSourceConfig {

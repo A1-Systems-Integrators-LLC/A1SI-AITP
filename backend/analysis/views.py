@@ -1,6 +1,6 @@
-"""Analysis views — jobs, backtest, screening, data pipeline."""
+"""Analysis views — jobs, backtest, screening, data pipeline, ML."""
 
-
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -10,14 +10,20 @@ from analysis.models import BackgroundJob, BacktestResult, ScreenResult
 from analysis.serializers import (
     BacktestRequestSerializer,
     BacktestResultSerializer,
+    DataDownloadRequestSerializer,
+    DataFileInfoSerializer,
+    JobAcceptedSerializer,
     JobSerializer,
+    MLTrainRequestSerializer,
     ScreenRequestSerializer,
     ScreenResultSerializer,
+    StrategyInfoSerializer,
 )
 from core.utils import safe_int as _safe_int
 
 
 class JobListView(APIView):
+    @extend_schema(responses=JobSerializer(many=True), tags=["Jobs"])
     def get(self, request: Request) -> Response:
         job_type = request.query_params.get("job_type")
         limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
@@ -29,6 +35,7 @@ class JobListView(APIView):
 
 
 class JobDetailView(APIView):
+    @extend_schema(responses=JobSerializer, tags=["Jobs"])
     def get(self, request: Request, job_id: str) -> Response:
         try:
             job = BackgroundJob.objects.get(id=job_id)
@@ -47,6 +54,7 @@ class JobDetailView(APIView):
 
 
 class JobCancelView(APIView):
+    @extend_schema(tags=["Jobs"])
     def post(self, request: Request, job_id: str) -> Response:
         from analysis.services.job_runner import get_job_runner
 
@@ -60,6 +68,11 @@ class JobCancelView(APIView):
 
 
 class BacktestRunView(APIView):
+    @extend_schema(
+        request=BacktestRequestSerializer,
+        responses=JobAcceptedSerializer,
+        tags=["Backtest"],
+    )
     def post(self, request: Request) -> Response:
         ser = BacktestRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -79,6 +92,9 @@ class BacktestRunView(APIView):
 
 
 class BacktestResultListView(APIView):
+    @extend_schema(
+        responses=BacktestResultSerializer(many=True), tags=["Backtest"]
+    )
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 20, max_val=100)
         results = BacktestResult.objects.select_related("job").all()[:limit]
@@ -86,6 +102,7 @@ class BacktestResultListView(APIView):
 
 
 class BacktestResultDetailView(APIView):
+    @extend_schema(responses=BacktestResultSerializer, tags=["Backtest"])
     def get(self, request: Request, result_id: int) -> Response:
         try:
             result = BacktestResult.objects.select_related("job").get(id=result_id)
@@ -98,6 +115,9 @@ class BacktestResultDetailView(APIView):
 
 
 class BacktestStrategyListView(APIView):
+    @extend_schema(
+        responses=StrategyInfoSerializer(many=True), tags=["Backtest"]
+    )
     def get(self, request: Request) -> Response:
         from analysis.services.backtest import BacktestService
 
@@ -105,6 +125,9 @@ class BacktestStrategyListView(APIView):
 
 
 class BacktestCompareView(APIView):
+    @extend_schema(
+        responses=BacktestResultSerializer(many=True), tags=["Backtest"]
+    )
     def get(self, request: Request) -> Response:
         ids_param = request.query_params.get("ids", "")
         id_list = []
@@ -117,6 +140,11 @@ class BacktestCompareView(APIView):
 
 
 class ScreeningRunView(APIView):
+    @extend_schema(
+        request=ScreenRequestSerializer,
+        responses=JobAcceptedSerializer,
+        tags=["Screening"],
+    )
     def post(self, request: Request) -> Response:
         ser = ScreenRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -136,6 +164,9 @@ class ScreeningRunView(APIView):
 
 
 class ScreeningResultListView(APIView):
+    @extend_schema(
+        responses=ScreenResultSerializer(many=True), tags=["Screening"]
+    )
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 20, max_val=100)
         results = ScreenResult.objects.select_related("job").all()[:limit]
@@ -143,6 +174,7 @@ class ScreeningResultListView(APIView):
 
 
 class ScreeningResultDetailView(APIView):
+    @extend_schema(responses=ScreenResultSerializer, tags=["Screening"])
     def get(self, request: Request, result_id: int) -> Response:
         try:
             result = ScreenResult.objects.select_related("job").get(id=result_id)
@@ -152,6 +184,7 @@ class ScreeningResultDetailView(APIView):
 
 
 class ScreeningStrategyListView(APIView):
+    @extend_schema(tags=["Screening"])
     def get(self, request: Request) -> Response:
         from analysis.services.screening import STRATEGY_TYPES
 
@@ -159,6 +192,9 @@ class ScreeningStrategyListView(APIView):
 
 
 class DataListView(APIView):
+    @extend_schema(
+        responses=DataFileInfoSerializer(many=True), tags=["Data"]
+    )
     def get(self, request: Request) -> Response:
         from analysis.services.data_pipeline import DataPipelineService
 
@@ -167,6 +203,7 @@ class DataListView(APIView):
 
 
 class DataDetailView(APIView):
+    @extend_schema(responses=DataFileInfoSerializer, tags=["Data"])
     def get(self, request: Request, exchange: str, symbol: str, timeframe: str) -> Response:
         from analysis.services.data_pipeline import DataPipelineService
 
@@ -179,8 +216,12 @@ class DataDetailView(APIView):
 
 
 class DataDownloadView(APIView):
+    @extend_schema(
+        request=DataDownloadRequestSerializer,
+        responses=JobAcceptedSerializer,
+        tags=["Data"],
+    )
     def post(self, request: Request) -> Response:
-        from analysis.serializers import DataDownloadRequestSerializer
         from analysis.services.data_pipeline import DataPipelineService
         from analysis.services.job_runner import get_job_runner
 
@@ -198,6 +239,15 @@ class DataDownloadView(APIView):
 
 
 class DataGenerateSampleView(APIView):
+    @extend_schema(
+        request={"type": "object", "properties": {
+            "symbols": {"type": "array", "items": {"type": "string"}},
+            "timeframes": {"type": "array", "items": {"type": "string"}},
+            "days": {"type": "integer"},
+        }},
+        responses=JobAcceptedSerializer,
+        tags=["Data"],
+    )
     def post(self, request: Request) -> Response:
         from analysis.serializers import DataGenerateSampleRequestSerializer
         from analysis.services.data_pipeline import DataPipelineService
@@ -222,8 +272,12 @@ class DataGenerateSampleView(APIView):
 
 
 class MLTrainView(APIView):
+    @extend_schema(
+        request=MLTrainRequestSerializer,
+        responses=JobAcceptedSerializer,
+        tags=["ML"],
+    )
     def post(self, request: Request) -> Response:
-        from analysis.serializers import MLTrainRequestSerializer
         from analysis.services.job_runner import get_job_runner
         from analysis.services.ml import MLService
 
@@ -241,6 +295,7 @@ class MLTrainView(APIView):
 
 
 class MLModelListView(APIView):
+    @extend_schema(tags=["ML"])
     def get(self, request: Request) -> Response:
         from analysis.services.ml import MLService
 
@@ -248,6 +303,7 @@ class MLModelListView(APIView):
 
 
 class MLModelDetailView(APIView):
+    @extend_schema(tags=["ML"])
     def get(self, request: Request, model_id: str) -> Response:
         from analysis.services.ml import MLService
 
@@ -258,6 +314,16 @@ class MLModelDetailView(APIView):
 
 
 class MLPredictView(APIView):
+    @extend_schema(
+        request={"type": "object", "properties": {
+            "model_id": {"type": "string"},
+            "symbol": {"type": "string"},
+            "timeframe": {"type": "string"},
+            "exchange": {"type": "string"},
+            "bars": {"type": "integer"},
+        }},
+        tags=["ML"],
+    )
     def post(self, request: Request) -> Response:
         from analysis.serializers import MLPredictRequestSerializer
         from analysis.services.ml import MLService

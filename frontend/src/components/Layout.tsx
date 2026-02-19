@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { EmergencyStopButton } from "./EmergencyStopButton";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { useSystemEvents } from "../hooks/useSystemEvents";
 
 const navItems = [
@@ -88,7 +89,9 @@ export function Layout({ onLogout, username }: LayoutProps) {
           </div>
         )}
         <div className="p-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

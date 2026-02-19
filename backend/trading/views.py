@@ -55,6 +55,7 @@ class OrderListView(APIView):
 
 
 class OrderDetailView(APIView):
+    @extend_schema(responses=OrderSerializer, tags=["Trading"])
     def get(self, request: Request, order_id: int) -> Response:
         try:
             order = Order.objects.get(id=order_id)
@@ -66,6 +67,7 @@ class OrderDetailView(APIView):
 
 
 class OrderCancelView(APIView):
+    @extend_schema(responses=OrderSerializer, tags=["Trading"])
     def post(self, request: Request, order_id: int) -> Response:
         try:
             order = Order.objects.get(id=order_id)
@@ -95,6 +97,7 @@ class OrderCancelView(APIView):
 
 
 class LiveTradingStatusView(APIView):
+    @extend_schema(tags=["Trading"])
     def get(self, request: Request) -> Response:
         from market.services.exchange import ExchangeService
         from risk.models import RiskState
@@ -137,12 +140,14 @@ class LiveTradingStatusView(APIView):
 
 
 class PaperTradingStatusView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(service.get_status())
 
 
 class PaperTradingStartView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         strategy = request.data.get("strategy", "CryptoInvestorV1")
         service = _get_paper_trading_service()
@@ -150,18 +155,21 @@ class PaperTradingStartView(APIView):
 
 
 class PaperTradingStopView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(service.stop())
 
 
 class PaperTradingTradesView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(async_to_sync(service.get_open_trades)())
 
 
 class PaperTradingHistoryView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
         service = _get_paper_trading_service()
@@ -169,24 +177,28 @@ class PaperTradingHistoryView(APIView):
 
 
 class PaperTradingProfitView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(async_to_sync(service.get_profit)())
 
 
 class PaperTradingPerformanceView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(async_to_sync(service.get_performance)())
 
 
 class PaperTradingBalanceView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(async_to_sync(service.get_balance)())
 
 
 class PaperTradingLogView(APIView):
+    @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=500)
         service = _get_paper_trading_service()
