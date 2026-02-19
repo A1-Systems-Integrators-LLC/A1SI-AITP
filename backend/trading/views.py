@@ -22,8 +22,7 @@ def _safe_int(value: str | None, default: int, min_val: int = 1, max_val: int = 
 
 class OrderListView(APIView):
     def get(self, request: Request) -> Response:
-        limit = int(request.query_params.get("limit", 50))
-        limit = max(1, min(limit, 200))
+        limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
         mode = request.query_params.get("mode")
         qs = Order.objects.all()
         if mode in ("paper", "live"):

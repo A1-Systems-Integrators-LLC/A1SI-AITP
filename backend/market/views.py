@@ -23,6 +23,16 @@ logger = logging.getLogger(__name__)
 _thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="indicator")
 
 
+def _safe_int(value: str | None, default: int, min_val: int = 1, max_val: int = 1000) -> int:
+    """Safely convert a query parameter to int with bounds."""
+    if value is None:
+        return default
+    try:
+        return max(min_val, min(int(value), max_val))
+    except (ValueError, TypeError):
+        return default
+
+
 # ── Exchange Config CRUD ─────────────────────────────────────
 
 
@@ -234,8 +244,7 @@ class OHLCVView(APIView):
         from market.services.exchange import ExchangeService
 
         timeframe = request.query_params.get("timeframe", "1h")
-        limit = int(request.query_params.get("limit", 100))
-        limit = max(1, min(limit, 1000))
+        limit = _safe_int(request.query_params.get("limit"), 100, max_val=1000)
 
         async def _fetch():
             service = ExchangeService()
@@ -265,7 +274,7 @@ class IndicatorComputeView(APIView):
             if indicators_param
             else None
         )
-        limit = int(request.query_params.get("limit", 500))
+        limit = _safe_int(request.query_params.get("limit"), 500, max_val=2000)
 
         # Run in thread pool since this is CPU-bound
         future = _thread_pool.submit(
@@ -295,7 +304,7 @@ class RegimeCurrentView(APIView):
 
 class RegimeHistoryView(APIView):
     def get(self, request: Request, symbol: str) -> Response:
-        limit = int(request.query_params.get("limit", 100))
+        limit = _safe_int(request.query_params.get("limit"), 100, max_val=1000)
         service = _get_regime_service()
         return Response(service.get_regime_history(symbol, limit))
 
@@ -327,8 +336,14 @@ class RegimePositionSizeView(APIView):
         from common.risk.risk_manager import RiskManager
 
         symbol = request.data.get("symbol", "")
-        entry_price = float(request.data.get("entry_price", 0))
-        stop_loss_price = float(request.data.get("stop_loss_price", 0))
+        try:
+            entry_price = float(request.data.get("entry_price", 0))
+            stop_loss_price = float(request.data.get("stop_loss_price", 0))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid entry_price or stop_loss_price"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         service = _get_regime_service()
         risk_manager = RiskManager()

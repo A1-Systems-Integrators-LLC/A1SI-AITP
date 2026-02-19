@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "corsheaders",
     "core",
     "portfolio",
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -156,6 +158,43 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "core.exception_handler.custom_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "120/min",
+        "anon": "30/min",
+    },
+}
+
+# ── OpenAPI / drf-spectacular ─────────────────────────────────
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Crypto Investor API",
+    "DESCRIPTION": (
+        "Full-stack crypto investment platform — portfolio, trading,"
+        " market analysis, risk management, backtesting, and ML."
+    ),
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "PREPROCESSING_HOOKS": ["core.schema.auto_tag_endpoints"],
+    "SCHEMA_PATH_PREFIX": r"/api/",
+    "ENUM_NAME_OVERRIDES": {},
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+    ],
+    "TAGS": [
+        {"name": "Auth", "description": "Authentication and session management"},
+        {"name": "Portfolio", "description": "Portfolio and holdings management"},
+        {"name": "Trading", "description": "Order placement, paper trading, live trading"},
+        {"name": "Market", "description": "Exchange data, tickers, OHLCV, indicators"},
+        {"name": "Regime", "description": "Market regime detection and strategy routing"},
+        {"name": "Risk", "description": "Risk management, VaR, kill switch, alerts"},
+        {"name": "Analysis", "description": "Backtesting, screening, data pipeline"},
+        {"name": "ML", "description": "Machine learning model training and prediction"},
+        {"name": "Platform", "description": "Health, status, config, metrics"},
+    ],
 }
 
 # ── CORS ──────────────────────────────────────────────────────
@@ -209,6 +248,9 @@ RATE_LIMIT_LOGIN = 5  # login attempts per minute
 LOG_DIR = BASE_DIR / "data" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+_LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO").upper()
+_LOG_FORMAT = os.environ.get("DJANGO_LOG_FORMAT", "json" if not DEBUG else "text")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -217,28 +259,43 @@ LOGGING = {
             "format": "{asctime} {levelname} {name} {message}",
             "style": "{",
         },
+        "json": {
+            "()": "core.logging.JSONFormatter",
+        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": _LOG_FORMAT if _LOG_FORMAT in ("json", "verbose") else "verbose",
         },
         "security_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": str(LOG_DIR / "security.log"),
             "maxBytes": 10 * 1024 * 1024,  # 10 MB
             "backupCount": 10,
-            "formatter": "verbose",
+            "formatter": "json",
+        },
+        "app_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_DIR / "app.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 10,
+            "formatter": "json",
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level": _LOG_LEVEL,
     },
     "loggers": {
         "django": {"handlers": ["console"], "level": "WARNING"},
         "django.request": {"handlers": ["console"], "level": "WARNING"},
         "security": {"handlers": ["console", "security_file"], "level": "INFO", "propagate": False},
         "auth": {"handlers": ["console", "security_file"], "level": "INFO", "propagate": False},
+        "requests": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
+        "trading": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
+        "risk": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
+        "analysis": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
+        "market": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
     },
 }

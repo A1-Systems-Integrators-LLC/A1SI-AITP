@@ -1,16 +1,65 @@
 """
-Custom middleware — rate limiting, audit logging, security event logging.
+Custom middleware — request tracing, rate limiting, audit logging, security event logging.
 """
 
 import logging
 import threading
 import time
+import uuid
 from collections import defaultdict
 
 from django.conf import settings
 from django.http import JsonResponse
 
+from core.logging import request_id_var
+
 logger = logging.getLogger("security")
+request_logger = logging.getLogger("requests")
+
+
+class RequestIDMiddleware:
+    """Assign a unique request ID to every request for end-to-end tracing.
+
+    - Reads X-Request-ID from incoming header (trusted proxy), or generates one.
+    - Sets it in contextvars for structured log enrichment.
+    - Logs request start/end with method, path, status, duration, user.
+    - Returns X-Request-ID in response header.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        rid = request.META.get("HTTP_X_REQUEST_ID") or uuid.uuid4().hex[:12]
+        token = request_id_var.set(rid)
+
+        start = time.time()
+        response = self.get_response(request)
+        duration_ms = round((time.time() - start) * 1000, 1)
+
+        response["X-Request-ID"] = rid
+
+        # Log completed request
+        has_user = hasattr(request, "user") and request.user.is_authenticated
+        user = request.user.username if has_user else "-"
+        request_logger.info(
+            "%s %s %s %sms",
+            request.method,
+            request.path,
+            response.status_code,
+            duration_ms,
+            extra={
+                "request_id": rid,
+                "method": request.method,
+                "path": request.path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+                "user": user,
+            },
+        )
+
+        request_id_var.reset(token)
+        return response
 
 
 class RateLimitMiddleware:
