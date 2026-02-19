@@ -19,7 +19,7 @@ jobs:
           python -m venv backend/.venv
           backend/.venv/bin/pip install -e "backend[dev]" --quiet
       - name: Ruff lint
-        run: backend/.venv/bin/ruff check backend/core/ backend/portfolio/ backend/trading/ backend/market/ backend/risk/ backend/analysis/ backend/tests/
+        run: backend/.venv/bin/ruff check backend/core/ backend/portfolio/ backend/trading/ backend/market/ backend/risk/ backend/analysis/ backend/tests/ common/ nautilus/ hftbacktest/ research/
 
   lint-frontend:
     runs-on: ubuntu-latest

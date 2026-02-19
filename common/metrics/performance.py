@@ -9,6 +9,21 @@ import numpy as np
 import pandas as pd
 
 
+def serialize_trades_df(trades_df: pd.DataFrame) -> list[dict]:
+    """Serialize a trades DataFrame to a JSON-compatible list of dicts.
+
+    Converts Timestamp columns to strings so the result can be stored
+    in Django JSONField or written to JSON files.
+    """
+    if trades_df.empty:
+        return []
+    trades_serial = trades_df.copy()
+    for col in ["entry_time", "exit_time"]:
+        if col in trades_serial.columns:
+            trades_serial[col] = trades_serial[col].astype(str)
+    return trades_serial.to_dict("records")
+
+
 def compute_performance_metrics(trades_df: pd.DataFrame) -> dict:
     """
     Compute standard performance metrics from a trades DataFrame.

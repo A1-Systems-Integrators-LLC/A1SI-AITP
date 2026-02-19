@@ -17,7 +17,6 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import vectorbt as vbt
 
@@ -25,8 +24,8 @@ import vectorbt as vbt
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.data_pipeline.pipeline import load_ohlcv, PROCESSED_DIR
-from common.indicators.technical import sma, ema, rsi, atr_indicator, adx, bollinger_bands
+from common.data_pipeline.pipeline import load_ohlcv  # noqa: E402
+from common.indicators.technical import sma, ema, rsi, adx, bollinger_bands  # noqa: E402
 
 logger = logging.getLogger("vbt_screener")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

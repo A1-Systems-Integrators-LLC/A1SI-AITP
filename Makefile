@@ -73,7 +73,7 @@ lint: lint-backend lint-frontend
 	@echo "✓ All linting passed"
 
 lint-backend:
-	cd $(BACKEND_DIR) && $(CURDIR)/$(VENV)/bin/ruff check core/ portfolio/ trading/ market/ risk/ analysis/ tests/
+	$(VENV)/bin/ruff check $(BACKEND_DIR)/core/ $(BACKEND_DIR)/portfolio/ $(BACKEND_DIR)/trading/ $(BACKEND_DIR)/market/ $(BACKEND_DIR)/risk/ $(BACKEND_DIR)/analysis/ $(BACKEND_DIR)/tests/ common/ nautilus/ hftbacktest/ research/
 
 lint-frontend:
 	cd $(FRONTEND_DIR) && npx eslint .

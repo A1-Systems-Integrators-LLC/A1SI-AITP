@@ -22,7 +22,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.metrics.performance import compute_performance_metrics  # noqa: E402
+from common.metrics.performance import compute_performance_metrics, serialize_trades_df  # noqa: E402
 
 logger = logging.getLogger("nautilus_runner")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -170,15 +170,6 @@ def run_nautilus_backtest(
     trades_df = strategy.get_trades_df()
     metrics = compute_performance_metrics(trades_df)
 
-    # Serialize trades for JSON storage (Django JSONField, result files)
-    trades_list = []
-    if not trades_df.empty:
-        trades_serial = trades_df.copy()
-        for col in ["entry_time", "exit_time"]:
-            if col in trades_serial.columns:
-                trades_serial[col] = trades_serial[col].astype(str)
-        trades_list = trades_serial.to_dict("records")
-
     result = {
         "framework": "nautilus",
         "strategy": strategy_name,
@@ -188,7 +179,7 @@ def run_nautilus_backtest(
         "initial_balance": initial_balance,
         "bars_processed": len(df),
         "metrics": metrics,
-        "trades": trades_list,
+        "trades": serialize_trades_df(trades_df),
     }
 
     # Save to results dir

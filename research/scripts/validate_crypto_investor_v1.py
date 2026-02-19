@@ -38,8 +38,8 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from common.indicators.technical import ema, rsi, macd, bollinger_bands, sma
-from validation_engine import (
+from common.indicators.technical import ema, rsi, macd, bollinger_bands, sma  # noqa: E402
+from validation_engine import (  # noqa: E402
     run_validation,
     save_report,
     generate_synthetic_ohlcv,

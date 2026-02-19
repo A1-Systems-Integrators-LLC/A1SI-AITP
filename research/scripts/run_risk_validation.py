@@ -7,10 +7,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.data_pipeline.pipeline import load_ohlcv
-from common.regime.regime_detector import RegimeDetector
-from common.regime.strategy_router import StrategyRouter
-from common.risk.risk_manager import RiskManager
+from common.data_pipeline.pipeline import load_ohlcv  # noqa: E402
+from common.regime.regime_detector import RegimeDetector  # noqa: E402
+from common.regime.strategy_router import StrategyRouter  # noqa: E402
+from common.risk.risk_manager import RiskManager  # noqa: E402
 
 rm = RiskManager()
 detector = RegimeDetector()
