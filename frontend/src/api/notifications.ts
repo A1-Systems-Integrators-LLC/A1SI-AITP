@@ -6,5 +6,5 @@ export const notificationsApi = {
     api.get<NotificationPreferences>(`/notifications/${portfolioId}/preferences`),
 
   updatePreferences: (portfolioId: number, prefs: Partial<NotificationPreferences>) =>
-    api.put<NotificationPreferences>(`/notifications/${portfolioId}/preferences`, prefs),
+    api.put<NotificationPreferences>(`/notifications/${portfolioId}/preferences/`, prefs),
 };

@@ -5,17 +5,20 @@ import { OrderForm } from "../src/components/OrderForm";
 import { renderWithProviders, mockFetch } from "./helpers";
 
 beforeEach(() => {
-  vi.stubGlobal("fetch", mockFetch({}));
+  vi.stubGlobal("fetch", mockFetch({
+    "/api/portfolios/": [{ id: 1, name: "My Portfolio", exchange_id: "binance", holdings: [] }],
+  }));
 });
 
 describe("OrderForm", () => {
   it("renders all form fields", () => {
     renderWithProviders(<OrderForm />);
-    expect(screen.getByPlaceholderText("Symbol (e.g. BTC/USDT)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Portfolio")).toBeInTheDocument();
+    expect(screen.getByLabelText("Symbol")).toBeInTheDocument();
     expect(screen.getByText("Buy")).toBeInTheDocument();
     expect(screen.getByText("Sell")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Amount")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Price (empty for market)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Amount")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Price/)).toBeInTheDocument();
   });
 
   it("renders paper order button by default", () => {
@@ -34,7 +37,6 @@ describe("OrderForm", () => {
 
     const sellButton = screen.getByText("Sell");
     await user.click(sellButton);
-    // Sell should now be active (has the danger color class)
     expect(sellButton.className).toContain("bg-[var(--color-danger)]");
 
     const buyButton = screen.getByText("Buy");
@@ -46,7 +48,7 @@ describe("OrderForm", () => {
     renderWithProviders(<OrderForm mode="live" />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByPlaceholderText("Amount"), "0.5");
+    await user.type(screen.getByLabelText("Amount"), "0.5");
     await user.click(screen.getByRole("button", { name: "Place Live Order" }));
 
     expect(screen.getByText("Confirm")).toBeInTheDocument();
@@ -57,7 +59,7 @@ describe("OrderForm", () => {
     renderWithProviders(<OrderForm mode="live" />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByPlaceholderText("Amount"), "0.5");
+    await user.type(screen.getByLabelText("Amount"), "0.5");
     await user.click(screen.getByRole("button", { name: "Place Live Order" }));
     await user.click(screen.getByText("Cancel"));
 

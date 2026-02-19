@@ -12,9 +12,9 @@ export const paperTradingApi = {
   status: () => api.get<PaperTradingStatus>("/paper-trading/status"),
 
   start: (strategy: string) =>
-    api.post<PaperTradingAction>("/paper-trading/start", { strategy }),
+    api.post<PaperTradingAction>("/paper-trading/start/", { strategy }),
 
-  stop: () => api.post<PaperTradingAction>("/paper-trading/stop"),
+  stop: () => api.post<PaperTradingAction>("/paper-trading/stop/"),
 
   openTrades: () => api.get<PaperTrade[]>("/paper-trading/trades"),
 

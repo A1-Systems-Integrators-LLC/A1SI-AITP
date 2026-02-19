@@ -67,6 +67,7 @@ export function RiskManagement() {
       setShowHaltConfirm(false);
       setHaltReason("");
     },
+    onError: (err) => toast((err as Error).message || "Failed to halt trading", "error"),
   });
 
   const resumeMutation = useMutation({
@@ -76,6 +77,7 @@ export function RiskManagement() {
       queryClient.invalidateQueries({ queryKey: ["risk-alerts", portfolioId] });
       toast("Trading resumed", "success");
     },
+    onError: (err) => toast((err as Error).message || "Failed to resume trading", "error"),
   });
 
   // Limits editor state
@@ -102,6 +104,7 @@ export function RiskManagement() {
   const positionMutation = useMutation({
     mutationFn: () => riskApi.positionSize(portfolioId, { entry_price: entryPrice, stop_loss_price: stopLoss }),
     onSuccess: (data) => setPosResult(data),
+    onError: (err) => toast((err as Error).message || "Position sizing failed", "error"),
   });
 
   // Trade checker state
@@ -123,12 +126,16 @@ export function RiskManagement() {
       setTradeResult(data);
       queryClient.invalidateQueries({ queryKey: ["risk-trade-log", portfolioId] });
     },
+    onError: (err) => toast((err as Error).message || "Trade check failed", "error"),
   });
 
   const resetMutation = useMutation({
     mutationFn: () => riskApi.resetDaily(portfolioId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["risk-status", portfolioId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["risk-status", portfolioId] });
+      toast("Daily counters reset", "success");
+    },
+    onError: (err) => toast((err as Error).message || "Failed to reset daily counters", "error"),
   });
 
   // Prefer WS-driven halt status for instant feedback, fall back to query data
@@ -187,8 +194,9 @@ export function RiskManagement() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Risk Management</h2>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-[var(--color-text-muted)]">Portfolio ID:</label>
+          <label htmlFor="risk-portfolio-id" className="text-sm text-[var(--color-text-muted)]">Portfolio ID:</label>
           <input
+            id="risk-portfolio-id"
             type="number"
             value={portfolioId}
             onChange={(e) => setPortfolioId(Number(e.target.value))}
@@ -343,8 +351,9 @@ export function RiskManagement() {
           <h3 className="mb-4 text-lg font-semibold">Position Sizer</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Entry Price</label>
+              <label htmlFor="risk-entry-price" className="mb-1 block text-xs text-[var(--color-text-muted)]">Entry Price</label>
               <input
+                id="risk-entry-price"
                 type="number"
                 value={entryPrice}
                 onChange={(e) => setEntryPrice(Number(e.target.value))}
@@ -352,8 +361,9 @@ export function RiskManagement() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Stop Loss</label>
+              <label htmlFor="risk-stop-loss" className="mb-1 block text-xs text-[var(--color-text-muted)]">Stop Loss</label>
               <input
+                id="risk-stop-loss"
                 type="number"
                 value={stopLoss}
                 onChange={(e) => setStopLoss(Number(e.target.value))}
@@ -381,8 +391,9 @@ export function RiskManagement() {
           <h3 className="mb-4 text-lg font-semibold">Trade Checker</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+              <label htmlFor="risk-trade-symbol" className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
               <input
+                id="risk-trade-symbol"
                 value={tradeSymbol}
                 onChange={(e) => setTradeSymbol(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -404,8 +415,9 @@ export function RiskManagement() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Size</label>
+                <label htmlFor="risk-trade-size" className="mb-1 block text-xs text-[var(--color-text-muted)]">Size</label>
                 <input
+                  id="risk-trade-size"
                   type="number"
                   step="0.01"
                   value={tradeSize}
@@ -414,8 +426,9 @@ export function RiskManagement() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Entry</label>
+                <label htmlFor="risk-trade-entry" className="mb-1 block text-xs text-[var(--color-text-muted)]">Entry</label>
                 <input
+                  id="risk-trade-entry"
                   type="number"
                   value={tradeEntry}
                   onChange={(e) => setTradeEntry(Number(e.target.value))}

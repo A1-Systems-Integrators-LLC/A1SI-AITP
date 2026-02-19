@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSystemEvents } from "../hooks/useSystemEvents";
+import { useToast } from "../hooks/useToast";
 import { tradingApi } from "../api/trading";
 import { OrderForm } from "../components/OrderForm";
 import { QueryResult } from "../components/QueryResult";
@@ -26,6 +27,7 @@ const CANCELLABLE: Set<OrderStatus> = new Set([
 
 export function Trading() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [mode, setMode] = useState<TradingMode>("paper");
   const { isHalted } = useSystemEvents();
 
@@ -38,7 +40,9 @@ export function Trading() {
     mutationFn: tradingApi.cancelOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast("Order cancelled", "info");
     },
+    onError: (err) => toast((err as Error).message || "Failed to cancel order", "error"),
   });
 
   return (
@@ -112,7 +116,7 @@ export function Trading() {
                       <th className="pb-2">Price</th>
                       <th className="pb-2">Filled</th>
                       <th className="pb-2">Status</th>
-                      {mode === "live" && <th className="pb-2">Action</th>}
+                      <th className="pb-2">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -163,19 +167,17 @@ export function Trading() {
                             </p>
                           )}
                         </td>
-                        {mode === "live" && (
-                          <td className="py-2">
-                            {CANCELLABLE.has(o.status) && (
-                              <button
-                                onClick={() => cancelMutation.mutate(o.id)}
-                                disabled={cancelMutation.isPending}
-                                className="rounded border border-red-700 px-2 py-0.5 text-xs text-red-400 hover:bg-red-900/30 disabled:opacity-50"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </td>
-                        )}
+                        <td className="py-2">
+                          {CANCELLABLE.has(o.status) && (
+                            <button
+                              onClick={() => cancelMutation.mutate(o.id)}
+                              disabled={cancelMutation.isPending}
+                              className="rounded border border-red-700 px-2 py-0.5 text-xs text-red-400 hover:bg-red-900/30 disabled:opacity-50"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

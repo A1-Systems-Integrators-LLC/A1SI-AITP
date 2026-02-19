@@ -17,6 +17,7 @@ describe("HoldingsTable", () => {
   it("renders empty state when no holdings", () => {
     renderWithProviders(<HoldingsTable holdings={[]} portfolioId={1} />);
     expect(screen.getByText("No holdings yet.")).toBeInTheDocument();
+    expect(screen.getByText("+ Add Holding")).toBeInTheDocument();
   });
 
   it("renders holdings with symbol and amount", () => {
@@ -40,6 +41,11 @@ describe("HoldingsTable", () => {
     expect(deleteButtons).toHaveLength(2);
   });
 
+  it("shows add holding button when holdings exist", () => {
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    expect(screen.getByText("+ Add Holding")).toBeInTheDocument();
+  });
+
   it("enters edit mode when Edit is clicked", async () => {
     renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
     const user = userEvent.setup();
@@ -47,6 +53,7 @@ describe("HoldingsTable", () => {
     await user.click(screen.getAllByText("Edit")[0]);
 
     expect(screen.getByText("Save")).toBeInTheDocument();
+    // Cancel button appears in edit row
     expect(screen.getByText("Cancel")).toBeInTheDocument();
   });
 
@@ -68,5 +75,17 @@ describe("HoldingsTable", () => {
     expect(screen.getByText("Current Value")).toBeInTheDocument();
     expect(screen.getByText("P&L")).toBeInTheDocument();
     expect(screen.getByText("P&L %")).toBeInTheDocument();
+  });
+
+  it("shows add holding form when button clicked", async () => {
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("+ Add Holding"));
+
+    expect(screen.getByLabelText("Symbol")).toBeInTheDocument();
+    expect(screen.getByLabelText("Amount")).toBeInTheDocument();
+    expect(screen.getByLabelText("Avg Buy Price")).toBeInTheDocument();
+    expect(screen.getByText("Add")).toBeInTheDocument();
   });
 });

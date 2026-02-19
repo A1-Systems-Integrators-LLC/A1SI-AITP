@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { screeningApi } from "../api/screening";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
 
 export function Screening() {
+  const { toast } = useToast();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [symbol, setSymbol] = useState("BTC/USDT");
   const [timeframe, setTimeframe] = useState("1h");
@@ -21,6 +23,7 @@ export function Screening() {
   const runMutation = useMutation({
     mutationFn: () => screeningApi.run({ symbol, timeframe, exchange, fees }),
     onSuccess: (data) => setActiveJobId(data.job_id),
+    onError: (err) => toast((err as Error).message || "Failed to start screening", "error"),
   });
 
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
@@ -37,16 +40,18 @@ export function Screening() {
           <h3 className="mb-4 text-lg font-semibold">Configuration</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+              <label htmlFor="screen-symbol" className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
               <input
+                id="screen-symbol"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
+              <label htmlFor="screen-timeframe" className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
               <select
+                id="screen-timeframe"
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -57,8 +62,9 @@ export function Screening() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
+              <label htmlFor="screen-exchange" className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
               <select
+                id="screen-exchange"
                 value={exchange}
                 onChange={(e) => setExchange(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -68,8 +74,9 @@ export function Screening() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Fees (%)</label>
+              <label htmlFor="screen-fees" className="mb-1 block text-xs text-[var(--color-text-muted)]">Fees (%)</label>
               <input
+                id="screen-fees"
                 type="number"
                 step="0.01"
                 value={fees * 100}

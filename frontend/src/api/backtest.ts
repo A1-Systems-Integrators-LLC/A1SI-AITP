@@ -9,7 +9,7 @@ export const backtestApi = {
     timeframe: string;
     timerange?: string;
     exchange?: string;
-  }) => api.post<{ job_id: string }>("/backtest/run", params),
+  }) => api.post<{ job_id: string }>("/backtest/run/", params),
 
   results: (limit?: number) =>
     api.get<BacktestResult[]>(`/backtest/results${limit ? `?limit=${limit}` : ""}`),

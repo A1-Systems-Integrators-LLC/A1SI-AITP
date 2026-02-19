@@ -8,7 +8,7 @@ export const tradingApi = {
     return api.get<Order[]>(`/trading/orders?${params}`);
   },
   getOrder: (id: number) => api.get<Order>(`/trading/orders/${id}`),
-  createOrder: (data: OrderCreate) => api.post<Order>("/trading/orders", data),
-  cancelOrder: (id: number) => api.post<Order>(`/trading/orders/${id}/cancel`),
-  liveStatus: () => api.get<LiveTradingStatus>("/live-trading/status"),
+  createOrder: (data: OrderCreate) => api.post<Order>("/trading/orders/", data),
+  cancelOrder: (id: number) => api.post<Order>(`/trading/orders/${id}/cancel/`),
+  liveStatus: () => api.get<LiveTradingStatus>("/live-trading/status/"),
 };

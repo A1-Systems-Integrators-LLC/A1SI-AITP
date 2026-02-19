@@ -14,11 +14,11 @@ export const dataApi = {
     timeframes: string[];
     exchange: string;
     since_days: number;
-  }) => api.post<{ job_id: string }>("/data/download", params),
+  }) => api.post<{ job_id: string }>("/data/download/", params),
 
   generateSample: (params: {
     symbols: string[];
     timeframes: string[];
     days: number;
-  }) => api.post<{ job_id: string }>("/data/generate-sample", params),
+  }) => api.post<{ job_id: string }>("/data/generate-sample/", params),
 };

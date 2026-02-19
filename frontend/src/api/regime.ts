@@ -25,5 +25,5 @@ export const regimeApi = {
     symbol: string;
     entry_price: number;
     stop_loss_price: number;
-  }) => api.post<RegimePositionSize>("/regime/position-size", params),
+  }) => api.post<RegimePositionSize>("/regime/position-size/", params),
 };

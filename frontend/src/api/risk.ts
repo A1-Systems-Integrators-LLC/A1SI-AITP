@@ -9,10 +9,10 @@ export const riskApi = {
     api.get<RiskLimits>(`/risk/${portfolioId}/limits`),
 
   updateLimits: (portfolioId: number, limits: Partial<RiskLimits>) =>
-    api.put<RiskLimits>(`/risk/${portfolioId}/limits`, limits),
+    api.put<RiskLimits>(`/risk/${portfolioId}/limits/`, limits),
 
   updateEquity: (portfolioId: number, equity: number) =>
-    api.post<RiskStatus>(`/risk/${portfolioId}/equity`, { equity }),
+    api.post<RiskStatus>(`/risk/${portfolioId}/equity/`, { equity }),
 
   checkTrade: (
     portfolioId: number,
@@ -23,7 +23,7 @@ export const riskApi = {
       entry_price: number;
       stop_loss_price?: number;
     },
-  ) => api.post<{ approved: boolean; reason: string }>(`/risk/${portfolioId}/check-trade`, params),
+  ) => api.post<{ approved: boolean; reason: string }>(`/risk/${portfolioId}/check-trade/`, params),
 
   positionSize: (
     portfolioId: number,
@@ -34,12 +34,12 @@ export const riskApi = {
     },
   ) =>
     api.post<{ size: number; risk_amount: number; position_value: number }>(
-      `/risk/${portfolioId}/position-size`,
+      `/risk/${portfolioId}/position-size/`,
       params,
     ),
 
   resetDaily: (portfolioId: number) =>
-    api.post<RiskStatus>(`/risk/${portfolioId}/reset-daily`),
+    api.post<RiskStatus>(`/risk/${portfolioId}/reset-daily/`),
 
   getVaR: (portfolioId: number, method: string = "parametric") =>
     api.get<VaRData>(`/risk/${portfolioId}/var?method=${method}`),
@@ -54,10 +54,10 @@ export const riskApi = {
     api.get<TradeCheckLogEntry[]>(`/risk/${portfolioId}/trade-log?limit=${limit}`),
 
   haltTrading: (portfolioId: number, reason: string) =>
-    api.post<HaltResponse>(`/risk/${portfolioId}/halt`, { reason }),
+    api.post<HaltResponse>(`/risk/${portfolioId}/halt/`, { reason }),
 
   resumeTrading: (portfolioId: number) =>
-    api.post<HaltResponse>(`/risk/${portfolioId}/resume`),
+    api.post<HaltResponse>(`/risk/${portfolioId}/resume/`),
 
   getAlerts: (portfolioId: number, limit: number = 50) =>
     api.get<AlertLogEntry[]>(`/risk/${portfolioId}/alerts?limit=${limit}`),

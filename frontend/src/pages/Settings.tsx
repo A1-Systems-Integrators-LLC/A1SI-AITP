@@ -349,6 +349,7 @@ export function Settings() {
       setShowAddExchange(false);
       toast("Exchange config created", "success");
     },
+    onError: (err) => toast((err as Error).message || "Failed to create exchange config", "error"),
   });
 
   const updateMutation = useMutation({
@@ -359,6 +360,7 @@ export function Settings() {
       setEditingId(null);
       toast("Exchange config updated", "success");
     },
+    onError: (err) => toast((err as Error).message || "Failed to update exchange config", "error"),
   });
 
   const deleteMutation = useMutation({
@@ -369,6 +371,7 @@ export function Settings() {
       setDeletingId(null);
       toast("Exchange config deleted", "info");
     },
+    onError: (err) => toast((err as Error).message || "Failed to delete exchange config", "error"),
   });
 
   const testMutation = useMutation({
@@ -389,14 +392,18 @@ export function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["data-sources"] });
       setShowAddDataSource(false);
+      toast("Data source created", "success");
     },
+    onError: (err) => toast((err as Error).message || "Failed to create data source", "error"),
   });
 
   const deleteDSMutation = useMutation({
     mutationFn: dataSourcesApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["data-sources"] });
+      toast("Data source deleted", "info");
     },
+    onError: (err) => toast((err as Error).message || "Failed to delete data source", "error"),
   });
 
   const handleTest = (id: number) => {
@@ -680,17 +687,18 @@ function NotificationPreferencesSection() {
     queryFn: () => notificationsApi.getPreferences(portfolioId),
   });
 
-  const updateMutation = useMutation({
+  const notifUpdateMutation = useMutation({
     mutationFn: (updates: Partial<NotificationPreferences>) =>
       notificationsApi.updatePreferences(portfolioId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-prefs", portfolioId] });
     },
+    onError: (err) => toast((err as Error).message || "Failed to update notification preferences", "error"),
   });
 
   const toggle = (key: keyof NotificationPreferences) => {
     if (!prefs) return;
-    updateMutation.mutate({ [key]: !prefs[key] });
+    notifUpdateMutation.mutate({ [key]: !prefs[key] });
   };
 
   return (

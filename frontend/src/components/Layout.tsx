@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
 import { EmergencyStopButton } from "./EmergencyStopButton";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useSystemEvents } from "../hooks/useSystemEvents";
+import { useToast } from "../hooks/useToast";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -39,7 +41,27 @@ interface LayoutProps {
 }
 
 export function Layout({ onLogout, username }: LayoutProps) {
-  const { isConnected, isHalted, haltReason } = useSystemEvents();
+  const { isConnected, isHalted, haltReason, lastOrderUpdate, lastRiskAlert } = useSystemEvents();
+  const { toast } = useToast();
+  const prevOrderRef = useRef(lastOrderUpdate);
+  const prevAlertRef = useRef(lastRiskAlert);
+
+  useEffect(() => {
+    if (lastOrderUpdate && lastOrderUpdate !== prevOrderRef.current) {
+      const symbol = lastOrderUpdate.symbol as string || "";
+      const status = lastOrderUpdate.status as string || "updated";
+      toast(`Order ${symbol}: ${status}`, "info");
+    }
+    prevOrderRef.current = lastOrderUpdate;
+  }, [lastOrderUpdate, toast]);
+
+  useEffect(() => {
+    if (lastRiskAlert && lastRiskAlert !== prevAlertRef.current) {
+      const message = (lastRiskAlert.message as string) || "New risk alert";
+      toast(message, "error");
+    }
+    prevAlertRef.current = lastRiskAlert;
+  }, [lastRiskAlert, toast]);
 
   return (
     <div className="flex h-screen">

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { riskApi } from "../api/risk";
+import { useToast } from "../hooks/useToast";
 
 interface EmergencyStopButtonProps {
   portfolioId?: number;
@@ -12,6 +13,7 @@ export function EmergencyStopButton({
   isHalted,
 }: EmergencyStopButtonProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [holdProgress, setHoldProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -21,7 +23,9 @@ export function EmergencyStopButton({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["risk-status"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      toast("Trading halted", "error");
     },
+    onError: (err) => toast((err as Error).message || "Failed to halt trading", "error"),
   });
 
   const startHold = useCallback(() => {

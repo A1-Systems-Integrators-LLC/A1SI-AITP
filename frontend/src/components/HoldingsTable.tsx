@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { portfoliosApi } from "../api/portfolios";
+import { useToast } from "../hooks/useToast";
 import type { Holding } from "../types";
 
 interface HoldingsTableProps {
@@ -11,9 +12,14 @@ interface HoldingsTableProps {
 
 export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: HoldingsTableProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newSymbol, setNewSymbol] = useState("");
+  const [newAmount, setNewAmount] = useState("");
+  const [newPrice, setNewPrice] = useState("");
 
   const updateMutation = useMutation({
     mutationFn: ({ holdingId, data }: { holdingId: number; data: { amount?: number; avg_buy_price?: number } }) =>
@@ -22,11 +28,26 @@ export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: Holdings
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       setEditingId(null);
     },
+    onError: (err) => toast((err as Error).message || "Failed to update holding", "error"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (holdingId: number) => portfoliosApi.deleteHolding(portfolioId, holdingId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolios"] }),
+    onError: (err) => toast((err as Error).message || "Failed to delete holding", "error"),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: { symbol: string; amount?: number; avg_buy_price?: number }) =>
+      portfoliosApi.addHolding(portfolioId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      setShowAddForm(false);
+      setNewSymbol("");
+      setNewAmount("");
+      setNewPrice("");
+    },
+    onError: (err) => toast((err as Error).message || "Failed to add holding", "error"),
   });
 
   const startEdit = (h: Holding) => {
@@ -42,11 +63,81 @@ export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: Holdings
     });
   };
 
+  const addHoldingForm = showAddForm && (
+    <div className="mb-3 flex flex-wrap items-end gap-2">
+      <div>
+        <label htmlFor={`add-symbol-${portfolioId}`} className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+        <input
+          id={`add-symbol-${portfolioId}`}
+          type="text"
+          value={newSymbol}
+          onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
+          placeholder="BTC/USDT"
+          className="w-28 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm"
+        />
+      </div>
+      <div>
+        <label htmlFor={`add-amount-${portfolioId}`} className="mb-1 block text-xs text-[var(--color-text-muted)]">Amount</label>
+        <input
+          id={`add-amount-${portfolioId}`}
+          type="number"
+          value={newAmount}
+          onChange={(e) => setNewAmount(e.target.value)}
+          placeholder="0.0"
+          step="any"
+          className="w-24 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm"
+        />
+      </div>
+      <div>
+        <label htmlFor={`add-price-${portfolioId}`} className="mb-1 block text-xs text-[var(--color-text-muted)]">Avg Buy Price</label>
+        <input
+          id={`add-price-${portfolioId}`}
+          type="number"
+          value={newPrice}
+          onChange={(e) => setNewPrice(e.target.value)}
+          placeholder="0.00"
+          step="any"
+          className="w-24 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm"
+        />
+      </div>
+      <button
+        onClick={() =>
+          addMutation.mutate({
+            symbol: newSymbol.trim(),
+            amount: newAmount ? Number(newAmount) : undefined,
+            avg_buy_price: newPrice ? Number(newPrice) : undefined,
+          })
+        }
+        disabled={!newSymbol.trim() || addMutation.isPending}
+        className="rounded bg-green-500/20 px-3 py-1 text-sm text-green-400 hover:bg-green-500/30 disabled:opacity-50"
+      >
+        {addMutation.isPending ? "Adding..." : "Add"}
+      </button>
+      <button
+        onClick={() => setShowAddForm(false)}
+        className="rounded bg-[var(--color-bg)] px-3 py-1 text-sm text-[var(--color-text-muted)]"
+      >
+        Cancel
+      </button>
+    </div>
+  );
+
   if (holdings.length === 0) {
     return (
-      <p className="text-sm text-[var(--color-text-muted)]">
-        No holdings yet.
-      </p>
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm text-[var(--color-text-muted)]">No holdings yet.</p>
+          {!showAddForm && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="rounded bg-[var(--color-primary)]/20 px-3 py-1 text-xs text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30"
+            >
+              + Add Holding
+            </button>
+          )}
+        </div>
+        {addHoldingForm}
+      </div>
     );
   }
 
@@ -67,6 +158,17 @@ export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: Holdings
 
   return (
     <div className="overflow-x-auto">
+      <div className="mb-2 flex justify-end">
+        {!showAddForm && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="rounded bg-[var(--color-primary)]/20 px-3 py-1 text-xs text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30"
+          >
+            + Add Holding
+          </button>
+        )}
+      </div>
+      {addHoldingForm}
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dataApi } from "../api/data";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
 import type { DataFileInfo } from "../types";
 
@@ -10,6 +11,7 @@ const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
 export function DataManagement() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [downloadSymbols, setDownloadSymbols] = useState(DEFAULT_SYMBOLS.join(", "));
   const [downloadTimeframes, setDownloadTimeframes] = useState(["1h"]);
@@ -39,6 +41,7 @@ export function DataManagement() {
         since_days: downloadDays,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
+    onError: (err) => toast((err as Error).message || "Failed to start download", "error"),
   });
 
   const sampleMutation = useMutation({
@@ -49,6 +52,7 @@ export function DataManagement() {
         days: 90,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
+    onError: (err) => toast((err as Error).message || "Failed to generate sample data", "error"),
   });
 
   const tfToggle = (tf: string) => {
@@ -97,10 +101,11 @@ export function DataManagement() {
           <h3 className="mb-4 text-lg font-semibold">Download Data</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">
+              <label htmlFor="data-symbols" className="mb-1 block text-xs text-[var(--color-text-muted)]">
                 Symbols (comma-separated)
               </label>
               <input
+                id="data-symbols"
                 type="text"
                 value={downloadSymbols}
                 onChange={(e) => setDownloadSymbols(e.target.value)}
@@ -128,10 +133,11 @@ export function DataManagement() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">
+              <label htmlFor="data-exchange" className="mb-1 block text-xs text-[var(--color-text-muted)]">
                 Exchange
               </label>
               <select
+                id="data-exchange"
                 value={downloadExchange}
                 onChange={(e) => setDownloadExchange(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -142,10 +148,11 @@ export function DataManagement() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">
+              <label htmlFor="data-days" className="mb-1 block text-xs text-[var(--color-text-muted)]">
                 History (days)
               </label>
               <input
+                id="data-days"
                 type="number"
                 value={downloadDays}
                 onChange={(e) => setDownloadDays(Number(e.target.value))}

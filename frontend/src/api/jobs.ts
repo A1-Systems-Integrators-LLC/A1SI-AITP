@@ -12,5 +12,5 @@ export const jobsApi = {
 
   get: (id: string) => api.get<BackgroundJob>(`/jobs/${id}`),
 
-  cancel: (id: string) => api.post<{ status: string }>(`/jobs/${id}/cancel`),
+  cancel: (id: string) => api.post<{ status: string }>(`/jobs/${id}/cancel/`),
 };

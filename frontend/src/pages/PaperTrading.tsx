@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { paperTradingApi } from "../api/paperTrading";
 import { backtestApi } from "../api/backtest";
+import { useToast } from "../hooks/useToast";
 import type {
   PaperTradingStatus,
   PaperTrade,
@@ -13,6 +14,7 @@ import type {
 
 export function PaperTrading() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedStrategy, setSelectedStrategy] = useState("CryptoInvestorV1");
 
   const { data: status } = useQuery<PaperTradingStatus>({
@@ -70,11 +72,13 @@ export function PaperTrading() {
   const startMutation = useMutation({
     mutationFn: () => paperTradingApi.start(selectedStrategy),
     onSuccess: invalidateAll,
+    onError: (err) => toast((err as Error).message || "Failed to start paper trading", "error"),
   });
 
   const stopMutation = useMutation({
     mutationFn: paperTradingApi.stop,
     onSuccess: invalidateAll,
+    onError: (err) => toast((err as Error).message || "Failed to stop paper trading", "error"),
   });
 
   const isRunning = status?.running === true;

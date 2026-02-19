@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { mlApi, type MLModel } from "../api/ml";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
 
 export function MLModels() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [trainSymbol, setTrainSymbol] = useState("BTC/USDT");
   const [trainTimeframe, setTrainTimeframe] = useState("1h");
   const [trainExchange, setTrainExchange] = useState("binance");
@@ -37,6 +39,7 @@ export function MLModels() {
         test_ratio: testRatio,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
+    onError: (err) => toast((err as Error).message || "Failed to start training", "error"),
   });
 
   const predictMutation = useMutation({
@@ -85,8 +88,9 @@ export function MLModels() {
           <h3 className="mb-4 text-lg font-semibold">Train Model</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+              <label htmlFor="ml-symbol" className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
               <input
+                id="ml-symbol"
                 type="text"
                 value={trainSymbol}
                 onChange={(e) => setTrainSymbol(e.target.value)}
@@ -94,8 +98,9 @@ export function MLModels() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
+              <label htmlFor="ml-timeframe" className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
               <select
+                id="ml-timeframe"
                 value={trainTimeframe}
                 onChange={(e) => setTrainTimeframe(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -106,8 +111,9 @@ export function MLModels() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
+              <label htmlFor="ml-exchange" className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
               <select
+                id="ml-exchange"
                 value={trainExchange}
                 onChange={(e) => setTrainExchange(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -118,8 +124,9 @@ export function MLModels() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Test Ratio</label>
+              <label htmlFor="ml-test-ratio" className="mb-1 block text-xs text-[var(--color-text-muted)]">Test Ratio</label>
               <input
+                id="ml-test-ratio"
                 type="number"
                 value={testRatio}
                 onChange={(e) => setTestRatio(Number(e.target.value))}
@@ -144,8 +151,9 @@ export function MLModels() {
           <h3 className="mb-4 text-lg font-semibold">Predict</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Model ID</label>
+              <label htmlFor="ml-predict-model" className="mb-1 block text-xs text-[var(--color-text-muted)]">Model ID</label>
               <select
+                id="ml-predict-model"
                 value={predictModelId}
                 onChange={(e) => setPredictModelId(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"

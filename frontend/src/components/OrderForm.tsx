@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tradingApi } from "../api/trading";
+import { portfoliosApi } from "../api/portfolios";
 import { useToast } from "../hooks/useToast";
-import type { TradingMode } from "../types";
+import type { Portfolio, TradingMode } from "../types";
 
 interface OrderFormProps {
   mode?: TradingMode;
@@ -15,7 +16,13 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
+  const [selectedPortfolio, setSelectedPortfolio] = useState<string>("");
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const { data: portfolios } = useQuery<Portfolio[]>({
+    queryKey: ["portfolios"],
+    queryFn: portfoliosApi.list,
+  });
 
   const mutation = useMutation({
     mutationFn: tradingApi.createOrder,
@@ -31,15 +38,16 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
     },
   });
 
+  const activePortfolio = portfolios?.find((p) => String(p.id) === selectedPortfolio);
   const orderData = {
     symbol,
     side,
     order_type: price ? ("limit" as const) : ("market" as const),
     amount: parseFloat(amount),
     price: price ? parseFloat(price) : 0,
-    exchange_id: "binance",
+    exchange_id: activePortfolio?.exchange_id ?? "binance",
     mode,
-    portfolio_id: 1,
+    portfolio_id: activePortfolio?.id ?? 1,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -57,13 +65,33 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <input
-        type="text"
-        value={symbol}
-        onChange={(e) => setSymbol(e.target.value)}
-        placeholder="Symbol (e.g. BTC/USDT)"
-        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
-      />
+      <div>
+        <label htmlFor="order-portfolio" className="mb-1 block text-xs text-[var(--color-text-muted)]">Portfolio</label>
+        <select
+          id="order-portfolio"
+          value={selectedPortfolio}
+          onChange={(e) => setSelectedPortfolio(e.target.value)}
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        >
+          <option value="">Select portfolio...</option>
+          {portfolios?.map((p) => (
+            <option key={p.id} value={String(p.id)}>
+              {p.name} ({p.exchange_id})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="order-symbol" className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+        <input
+          id="order-symbol"
+          type="text"
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          placeholder="BTC/USDT"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        />
+      </div>
       <div className="flex gap-2">
         <button
           type="button"
@@ -88,23 +116,31 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
           Sell
         </button>
       </div>
-      <input
-        type="number"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount"
-        step="any"
-        required
-        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
-      />
-      <input
-        type="number"
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-        placeholder="Price (empty for market)"
-        step="any"
-        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
-      />
+      <div>
+        <label htmlFor="order-amount" className="mb-1 block text-xs text-[var(--color-text-muted)]">Amount</label>
+        <input
+          id="order-amount"
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0.0"
+          step="any"
+          required
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label htmlFor="order-price" className="mb-1 block text-xs text-[var(--color-text-muted)]">Price (empty for market)</label>
+        <input
+          id="order-price"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="0.00"
+          step="any"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        />
+      </div>
       <button
         type="submit"
         disabled={mutation.isPending}

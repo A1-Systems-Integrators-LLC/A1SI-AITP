@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { backtestApi } from "../api/backtest";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
 import { EquityCurve } from "../components/EquityCurve";
 import type { BacktestResult, StrategyInfo } from "../types";
 
 export function Backtesting() {
+  const { toast } = useToast();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [framework, setFramework] = useState("freqtrade");
   const [strategy, setStrategy] = useState("");
@@ -31,6 +33,7 @@ export function Backtesting() {
     mutationFn: () =>
       backtestApi.run({ framework, strategy, symbol, timeframe, timerange, exchange }),
     onSuccess: (data) => setActiveJobId(data.job_id),
+    onError: (err) => toast((err as Error).message || "Failed to start backtest", "error"),
   });
 
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
@@ -68,9 +71,10 @@ export function Backtesting() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Strategy</label>
+              <label htmlFor="bt-strategy" className="mb-1 block text-xs text-[var(--color-text-muted)]">Strategy</label>
               {filteredStrategies.length > 0 ? (
                 <select
+                  id="bt-strategy"
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value)}
                   className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -82,6 +86,7 @@ export function Backtesting() {
                 </select>
               ) : (
                 <input
+                  id="bt-strategy"
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value)}
                   placeholder="Strategy name"
@@ -90,16 +95,18 @@ export function Backtesting() {
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
+              <label htmlFor="bt-symbol" className="mb-1 block text-xs text-[var(--color-text-muted)]">Symbol</label>
               <input
+                id="bt-symbol"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
+              <label htmlFor="bt-timeframe" className="mb-1 block text-xs text-[var(--color-text-muted)]">Timeframe</label>
               <select
+                id="bt-timeframe"
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -110,8 +117,9 @@ export function Backtesting() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
+              <label htmlFor="bt-exchange" className="mb-1 block text-xs text-[var(--color-text-muted)]">Exchange</label>
               <select
+                id="bt-exchange"
                 value={exchange}
                 onChange={(e) => setExchange(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
@@ -121,8 +129,9 @@ export function Backtesting() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[var(--color-text-muted)]">Time Range</label>
+              <label htmlFor="bt-timerange" className="mb-1 block text-xs text-[var(--color-text-muted)]">Time Range</label>
               <input
+                id="bt-timerange"
                 value={timerange}
                 onChange={(e) => setTimerange(e.target.value)}
                 placeholder="e.g. 20230101-20231231"
