@@ -73,10 +73,28 @@ class JobRunner:
             result = run_fn(params, progress_callback)
 
             _job_progress[job_id] = {"progress": 1.0, "progress_message": "Complete"}
-            BackgroundJob.objects.filter(id=job_id).update(
-                status="completed", progress=1.0,
-                result=result, completed_at=datetime.now(timezone.utc),
-            )
+            job = BackgroundJob.objects.get(id=job_id)
+            job.status = "completed"
+            job.progress = 1.0
+            job.result = result
+            job.completed_at = datetime.now(timezone.utc)
+            job.save()
+
+            # Persist structured result for backtest jobs
+            if job.job_type == "backtest" and isinstance(result, dict) and "error" not in result:
+                from analysis.models import BacktestResult
+
+                BacktestResult.objects.create(
+                    job=job,
+                    framework=result.get("framework", params.get("framework", "")),
+                    strategy_name=result.get("strategy", params.get("strategy", "")),
+                    symbol=result.get("symbol", params.get("symbol", "")),
+                    timeframe=result.get("timeframe", params.get("timeframe", "")),
+                    timerange=params.get("timerange", ""),
+                    metrics=result.get("metrics"),
+                    trades=result.get("trades"),
+                    config=params,
+                )
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
             _job_progress[job_id] = {"progress": 0.0, "progress_message": f"Failed: {e}"}

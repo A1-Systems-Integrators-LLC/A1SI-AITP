@@ -19,8 +19,6 @@ from typing import Optional
 import ccxt
 import numpy as np
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 # ──────────────────────────────────────────────
 # Configuration

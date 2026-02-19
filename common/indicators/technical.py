@@ -209,7 +209,7 @@ def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
         result[f"sma_{p}"] = sma(result["close"], p)
         result[f"ema_{p}"] = ema(result["close"], p)
 
-    result[f"hull_ma_9"] = hull_ma(result["close"], 9)
+    result["hull_ma_9"] = hull_ma(result["close"], 9)
 
     # Momentum
     result["rsi_14"] = rsi(result["close"], 14)

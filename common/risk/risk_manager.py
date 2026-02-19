@@ -449,7 +449,6 @@ class RiskManager:
         Returns a dict with all risk metrics and an overall 'healthy' flag.
         Call before every trade to get a full picture.
         """
-        status = self.get_status()
         drawdown = 1.0 - (self.state.total_equity / self.state.peak_equity) if self.state.peak_equity > 0 else 0.0
 
         # Correlation matrix for open positions

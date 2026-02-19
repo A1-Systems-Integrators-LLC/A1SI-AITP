@@ -16,7 +16,7 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from common.indicators.technical import adx, bollinger_bands, ema, sma
+from common.indicators.technical import adx, bollinger_bands, ema
 
 logger = logging.getLogger("regime_detector")
 
@@ -267,7 +267,6 @@ class RegimeDetector:
         cfg = self.config
 
         # Normalize indicators to 0-1 ranges
-        adx_norm = min(adx_val / 100.0, 1.0)
         bb_norm = min(bb_pct / 100.0, 1.0)
         slope_abs = min(abs(slope) * 50, 1.0)  # slope ~0.02 → 1.0
         align_abs = min(abs(alignment), 1.0)
