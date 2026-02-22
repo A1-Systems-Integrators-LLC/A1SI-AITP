@@ -24,6 +24,17 @@ export function renderWithProviders(
 }
 
 /**
+ * Build a real Response returning JSON data so Node 20's undici
+ * does not throw "invalid onError method" on cleanup.
+ */
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
  * Mock fetch to return JSON data for matching URL patterns.
  * Returns empty array/object for unmatched routes.
  */
@@ -33,22 +44,14 @@ export function mockFetch(handlers: Record<string, unknown>) {
 
     for (const [pattern, data] of Object.entries(handlers)) {
       if (url.includes(pattern)) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(data),
-        } as Response);
+        return Promise.resolve(jsonResponse(data));
       }
     }
 
     // Default: return empty response for unmatched API calls
     if (url.startsWith("/api/")) {
       const isPost = init?.method === "POST";
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(isPost ? {} : []),
-      } as Response);
+      return Promise.resolve(jsonResponse(isPost ? {} : []));
     }
 
     return Promise.reject(new Error(`Unhandled fetch: ${url}`));
