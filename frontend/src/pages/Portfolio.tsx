@@ -63,7 +63,7 @@ export function PortfolioPage() {
   const startEditPortfolio = (p: Portfolio) => {
     setEditingPortfolioId(p.id);
     setEditName(p.name);
-    setEditExchange(p.exchange_id);
+    setEditExchange(p.exchange_id ?? "binance");
     setEditDescription(p.description || "");
   };
 

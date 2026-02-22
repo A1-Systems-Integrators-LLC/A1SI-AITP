@@ -54,6 +54,8 @@ jobs:
           python -m venv backend/.venv
           backend/.venv/bin/pip install -e "backend[dev]" --quiet
       - name: Run pytest
+        env:
+          DJANGO_DEBUG: "true"
         run: backend/.venv/bin/python -m pytest backend/tests/ -v
 
   test-frontend:
@@ -126,6 +128,8 @@ jobs:
           backend/.venv/bin/pip install -e "backend[dev]" --quiet
           cd frontend && npm ci
       - name: Check schema freshness
+        env:
+          DJANGO_DEBUG: "true"
         run: |
           cd backend && ../.venv/bin/python manage.py spectacular --file /tmp/schema-check.yaml 2>/dev/null
           diff -q frontend/schema.yaml /tmp/schema-check.yaml || {
