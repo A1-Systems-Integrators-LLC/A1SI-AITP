@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Crypto Investor API
+  title: A1SI-AITP API
   version: 0.1.0
   description: Full-stack crypto investment platform — portfolio, trading, market
     analysis, risk management, backtesting, and ML.

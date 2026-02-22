@@ -732,12 +732,12 @@ export interface paths {
             cookie?: never;
         };
         get: operations["portfolios_retrieve"];
-        put?: never;
+        put: operations["portfolios_update"];
         post?: never;
         delete: operations["portfolios_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["portfolios_partial_update"];
         trace?: never;
     };
     "/api/portfolios/{portfolio_id}/holdings/": {
@@ -751,6 +751,22 @@ export interface paths {
         put?: never;
         post: operations["portfolios_holdings_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolios/{portfolio_id}/holdings/{holding_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["portfolios_holdings_update"];
+        post?: never;
+        delete: operations["portfolios_holdings_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1210,9 +1226,15 @@ export interface components {
             framework: string;
             /** @default SampleStrategy */
             strategy: string;
-            /** @default BTC/USDT */
+            /**
+             * @description Trading pair, e.g. BTC/USDT
+             * @default BTC/USDT
+             */
             symbol: string;
-            /** @default 1h */
+            /**
+             * @description Timeframe, e.g. 1h, 4h, 1d
+             * @default 1h
+             */
             timeframe: string;
             /** @default  */
             timerange: string;
@@ -1419,6 +1441,12 @@ export interface components {
              */
             avg_buy_price: number;
         };
+        HoldingUpdate: {
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            avg_buy_price?: number;
+        };
         Job: {
             readonly id: string;
             job_type: string;
@@ -1559,6 +1587,11 @@ export interface components {
          * @enum {string}
          */
         OrderTypeEnum: "market" | "limit";
+        PatchedPortfolioUpdate: {
+            name?: string;
+            exchange_id?: string;
+            description?: string;
+        };
         Portfolio: {
             readonly id: number;
             name: string;
@@ -1576,6 +1609,11 @@ export interface components {
             exchange_id: string;
             /** @default  */
             description: string;
+        };
+        PortfolioUpdate: {
+            name?: string;
+            exchange_id?: string;
+            description?: string;
         };
         PositionSizeRequest: {
             /** Format: double */
@@ -1604,6 +1642,7 @@ export interface components {
             bb_width_percentile: number;
         };
         RegimePositionSizeRequest: {
+            /** @description Trading pair, e.g. BTC/USDT */
             symbol: string;
             /** Format: double */
             entry_price: number;
@@ -1727,9 +1766,15 @@ export interface components {
             reasoning: string;
         };
         ScreenRequest: {
-            /** @default BTC/USDT */
+            /**
+             * @description Trading pair, e.g. BTC/USDT
+             * @default BTC/USDT
+             */
             symbol: string;
-            /** @default 1h */
+            /**
+             * @description Timeframe, e.g. 1h, 4h, 1d
+             * @default 1h
+             */
             timeframe: string;
             /** @default binance */
             exchange: string;
@@ -1826,8 +1871,9 @@ export interface components {
             readonly checked_at: string;
         };
         TradeCheckRequest: {
+            /** @description Trading pair, e.g. BTC/USDT */
             symbol: string;
-            side: string;
+            side: components["schemas"]["SideEnum"];
             /** Format: double */
             size: number;
             /** Format: double */
@@ -2946,6 +2992,31 @@ export interface operations {
             };
         };
     };
+    portfolios_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PortfolioUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+        };
+    };
     portfolios_destroy: {
         parameters: {
             query?: never;
@@ -2963,6 +3034,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    portfolios_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPortfolioUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Portfolio"];
+                };
             };
         };
     };
@@ -2988,6 +3084,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Holding"];
                 };
+            };
+        };
+    };
+    portfolios_holdings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holding_id: number;
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["HoldingUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Holding"];
+                };
+            };
+        };
+    };
+    portfolios_holdings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holding_id: number;
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
