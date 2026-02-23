@@ -70,6 +70,10 @@ python run.py nautilus test           # Test NautilusTrader engine
 - Market data: `data/processed/` (Parquet, gitignored)
 - Platform orchestrator: `run.py`
 
+## Memory
+
+After completing any task that changes code, tests, dependencies, or architecture, **always update the memory file** at `~/.claude/projects/-home-rredmer-Dev-Portfolio-A1SI-AITP/memory/MEMORY.md` (and `next-steps.md` if roadmap items changed). Keep test counts, implementation status, and dependency notes current.
+
 ## Conventions
 
 - Python: ruff formatting, type hints everywhere, async def for IO
