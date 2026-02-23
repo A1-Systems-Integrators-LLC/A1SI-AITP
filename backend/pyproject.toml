@@ -77,6 +77,4 @@ filterwarnings = [
     "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
 # Retry tests that hit intermittent SQLite SQLITE_LOCKED errors
-reruns = 2
-reruns_delay = 0.5
-only_rerun = "OperationalError: database table is locked"
+addopts = "--reruns=2 --reruns-delay=0.5 --only-rerun='database table is locked'"

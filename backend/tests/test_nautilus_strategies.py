@@ -23,18 +23,25 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 def _make_ohlcv(n: int = 300, start_price: float = 100.0) -> pd.DataFrame:
-    """Generate synthetic OHLCV data for testing."""
+    """Generate synthetic OHLCV data for testing.
+
+    Enforces OHLCV constraints: high >= max(open,close), low <= min(open,close).
+    """
     np.random.seed(42)
     timestamps = pd.date_range("2024-01-01", periods=n, freq="1h", tz="UTC")
     returns = np.random.normal(0.0001, 0.01, n)
     prices = start_price * np.exp(np.cumsum(returns))
     noise = np.random.uniform(0.998, 1.002, n)
+    open_prices = prices * noise
+    close_prices = prices
+    high_prices = np.maximum(open_prices, close_prices) * np.random.uniform(1.001, 1.02, n)
+    low_prices = np.minimum(open_prices, close_prices) * np.random.uniform(0.98, 0.999, n)
     return pd.DataFrame(
         {
-            "open": prices * noise,
-            "high": prices * np.random.uniform(1.001, 1.02, n),
-            "low": prices * np.random.uniform(0.98, 0.999, n),
-            "close": prices,
+            "open": open_prices,
+            "high": high_prices,
+            "low": low_prices,
+            "close": close_prices,
             "volume": np.random.lognormal(10, 1, n),
         },
         index=timestamps,
@@ -556,14 +563,14 @@ class TestNativeEngine:
     def test_create_instrument(self):
         from nautilus.engine import create_crypto_instrument
 
-        instrument_id = create_crypto_instrument("BTC/USDT", "BINANCE")
-        assert "BTCUSDT" in str(instrument_id)
+        instrument = create_crypto_instrument("BTC/USDT", "BINANCE")
+        assert "BTCUSDT" in str(instrument.id)
 
     def test_build_bar_type(self):
         from nautilus.engine import build_bar_type, create_crypto_instrument
 
-        instrument_id = create_crypto_instrument("BTC/USDT", "BINANCE")
-        bar_type = build_bar_type(instrument_id, "1h")
+        instrument = create_crypto_instrument("BTC/USDT", "BINANCE")
+        bar_type = build_bar_type(instrument.id, "1h")
         assert "HOUR" in str(bar_type)
 
     def test_convert_df_to_bars(self):
@@ -573,10 +580,14 @@ class TestNativeEngine:
             create_crypto_instrument,
         )
 
-        instrument_id = create_crypto_instrument("BTC/USDT", "BINANCE")
-        bar_type = build_bar_type(instrument_id, "1h")
+        instrument = create_crypto_instrument("BTC/USDT", "BINANCE")
+        bar_type = build_bar_type(instrument.id, "1h")
         df = _make_ohlcv(10)
-        bars = convert_df_to_bars(df, bar_type)
+        bars = convert_df_to_bars(
+            df, bar_type,
+            price_precision=instrument.price_precision,
+            size_precision=instrument.size_precision,
+        )
         assert len(bars) == 10
 
     def test_native_strategy_registry(self):

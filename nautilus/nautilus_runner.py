@@ -203,12 +203,18 @@ def _run_native_backtest(
         engine = create_backtest_engine(log_level="WARNING")
         add_venue(engine, venue_name, starting_balance=initial_balance)
 
-        # Create instrument and bar type
-        instrument_id = create_crypto_instrument(symbol, venue_name)
+        # Create instrument, register it, and build bar type
+        instrument = create_crypto_instrument(symbol, venue_name)
+        engine.add_instrument(instrument)
+        instrument_id = instrument.id
         bar_type = build_bar_type(instrument_id, timeframe)
 
         # Convert data and add to engine
-        bars = convert_df_to_bars(df, bar_type)
+        bars = convert_df_to_bars(
+            df, bar_type,
+            price_precision=instrument.price_precision,
+            size_precision=instrument.size_precision,
+        )
         engine.add_data(bars)
 
         # Create and add native strategy

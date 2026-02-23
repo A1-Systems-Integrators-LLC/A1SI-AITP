@@ -71,9 +71,11 @@ class ModelRegistry:
         model_dir = self.models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save model
+        # Save model — LightGBM 4.x removed save_model from sklearn API;
+        # use the underlying Booster instead.
         model_path = model_dir / "model.txt"
-        model.save_model(str(model_path))  # type: ignore[union-attr]
+        booster = getattr(model, "booster_", model)
+        booster.save_model(str(model_path))
 
         # Save manifest
         manifest = {
