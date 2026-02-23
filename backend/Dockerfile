@@ -16,7 +16,7 @@ COPY configs/ ./configs/
 COPY research/scripts/ ./research/scripts/
 COPY nautilus/ ./nautilus/
 COPY freqtrade/user_data/strategies/ ./freqtrade/user_data/strategies/
-COPY freqtrade/config.json ./freqtrade/config.json
+COPY freqtrade/config.json.example ./freqtrade/config.json
 
 # Copy backend and install deps
 COPY backend/ ./backend/
