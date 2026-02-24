@@ -52,6 +52,7 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
     exchange_id: activePortfolio?.exchange_id ?? "binance",
     mode,
     portfolio_id: activePortfolio?.id ?? 1,
+    asset_class: assetClass,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
