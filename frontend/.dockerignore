@@ -6,7 +6,11 @@ tests/
 .env.local
 *.md
 *.config.ts
+!vite.config.ts
 tsconfig*.json
+!tsconfig.json
+!tsconfig.app.json
+!tsconfig.node.json
 .eslintrc*
 schema.yaml
 .github/
