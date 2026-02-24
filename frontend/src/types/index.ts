@@ -22,7 +22,7 @@ export type PortfolioCreate = components["schemas"]["PortfolioCreate"];
 export type Order = components["schemas"]["Order"];
 export type OrderCreate = components["schemas"]["OrderCreate"];
 export type OrderFillEvent = components["schemas"]["OrderFillEvent"];
-export type OrderStatus = components["schemas"]["StatusEnum"];
+export type OrderStatus = components["schemas"]["OrderStatusEnum"];
 export type TradingMode = components["schemas"]["OrderModeEnum"];
 
 // Market — exchange info, tickers, OHLCV
