@@ -256,7 +256,14 @@ class TickerView(APIView):
 
         asset_class = request.query_params.get("asset_class", "crypto")
         router = DataServiceRouter()
-        return Response(async_to_sync(router.fetch_ticker)(symbol, asset_class))
+        try:
+            return Response(async_to_sync(router.fetch_ticker)(symbol, asset_class))
+        except Exception as exc:
+            logger.warning("Ticker fetch failed for %s: %s", symbol, exc)
+            return Response(
+                {"error": f"Failed to fetch ticker for {symbol}: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
 
 class TickerListView(APIView):
@@ -276,22 +283,29 @@ class TickerListView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if asset_class in ("equity", "forex"):
-            from market.services.data_router import DataServiceRouter
+        try:
+            if asset_class in ("equity", "forex"):
+                from market.services.data_router import DataServiceRouter
 
-            router = DataServiceRouter()
-            return Response(async_to_sync(router.fetch_tickers)(
-                symbol_list, asset_class,
-            ))
+                router = DataServiceRouter()
+                return Response(async_to_sync(router.fetch_tickers)(
+                    symbol_list, asset_class,
+                ))
 
-        async def _fetch():
-            service = ExchangeService()
-            try:
-                return await service.fetch_tickers(symbol_list)
-            finally:
-                await service.close()
+            async def _fetch():
+                service = ExchangeService()
+                try:
+                    return await service.fetch_tickers(symbol_list)
+                finally:
+                    await service.close()
 
-        return Response(async_to_sync(_fetch)())
+            return Response(async_to_sync(_fetch)())
+        except Exception as exc:
+            logger.warning("Tickers fetch failed: %s", exc)
+            return Response(
+                {"error": f"Failed to fetch tickers: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
 
 class OHLCVView(APIView):
@@ -306,9 +320,16 @@ class OHLCVView(APIView):
         asset_class = request.query_params.get("asset_class", "crypto")
 
         router = DataServiceRouter()
-        return Response(async_to_sync(router.fetch_ohlcv)(
-            symbol, timeframe, limit, asset_class,
-        ))
+        try:
+            return Response(async_to_sync(router.fetch_ohlcv)(
+                symbol, timeframe, limit, asset_class,
+            ))
+        except Exception as exc:
+            logger.warning("OHLCV fetch failed for %s: %s", symbol, exc)
+            return Response(
+                {"error": f"Failed to fetch OHLCV for {symbol}: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
 
 class IndicatorListView(APIView):
