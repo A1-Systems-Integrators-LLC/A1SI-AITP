@@ -5,6 +5,7 @@ import { useJobPolling } from "../hooks/useJobPolling";
 import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
 import { QueryError } from "../components/QueryError";
+import { getErrorMessage } from "../utils/errors";
 
 export function MLModels() {
   const queryClient = useQueryClient();
@@ -40,7 +41,7 @@ export function MLModels() {
         test_ratio: testRatio,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
-    onError: (err) => toast((err as Error).message || "Failed to start training", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to start training", "error"),
   });
 
   const predictMutation = useMutation({
@@ -53,7 +54,8 @@ export function MLModels() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">ML Models</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">ML Models</h2>
 
       {modelsError && <QueryError error={modelsErr instanceof Error ? modelsErr : null} message="Failed to load ML models" />}
 
@@ -236,6 +238,7 @@ export function MLModels() {
           </div>
         )}
       </div>
+      </section>
     </div>
   );
 }

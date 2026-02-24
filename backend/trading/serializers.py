@@ -118,6 +118,7 @@ class OrderCreateSerializer(serializers.Serializer):
     symbol = serializers.RegexField(
         regex=r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}$",
         max_length=20,
+        min_length=5,
         help_text="Trading pair, e.g. BTC/USDT",
     )
     side = serializers.ChoiceField(choices=["buy", "sell"])
@@ -131,3 +132,13 @@ class OrderCreateSerializer(serializers.Serializer):
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
     )
+
+    def validate_exchange_id(self, value: str) -> str:
+        from market.models import EXCHANGE_CHOICES
+
+        valid_ids = {choice[0] for choice in EXCHANGE_CHOICES}
+        if value not in valid_ids:
+            raise serializers.ValidationError(
+                f"Invalid exchange_id '{value}'. Must be one of: {', '.join(sorted(valid_ids))}"
+            )
+        return value

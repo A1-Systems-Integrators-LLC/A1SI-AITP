@@ -9,6 +9,7 @@ import { notificationsApi } from "../api/notifications";
 import { portfoliosApi } from "../api/portfolios";
 import { useToast } from "../hooks/useToast";
 import { Pagination } from "../components/Pagination";
+import { getErrorMessage } from "../utils/errors";
 import type {
   AuditLogEntry,
   ExchangeConfig,
@@ -365,7 +366,7 @@ export function Settings() {
       setShowSaved(true);
       toast("Exchange config created", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to create exchange config", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to create exchange config", "error"),
   });
 
   const updateMutation = useMutation({
@@ -377,7 +378,7 @@ export function Settings() {
       setShowSaved(true);
       toast("Exchange config updated", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to update exchange config", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to update exchange config", "error"),
   });
 
   const deleteMutation = useMutation({
@@ -388,7 +389,7 @@ export function Settings() {
       setDeletingId(null);
       toast("Exchange config deleted", "info");
     },
-    onError: (err) => toast((err as Error).message || "Failed to delete exchange config", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to delete exchange config", "error"),
   });
 
   const testMutation = useMutation({
@@ -411,7 +412,7 @@ export function Settings() {
       setShowAddDataSource(false);
       toast("Data source created", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to create data source", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to create data source", "error"),
   });
 
   const deleteDSMutation = useMutation({
@@ -420,7 +421,7 @@ export function Settings() {
       queryClient.invalidateQueries({ queryKey: ["data-sources"] });
       toast("Data source deleted", "info");
     },
-    onError: (err) => toast((err as Error).message || "Failed to delete data source", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to delete data source", "error"),
   });
 
   const handleTest = (id: number) => {
@@ -431,7 +432,8 @@ export function Settings() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Settings</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">Settings</h2>
 
       {configsError && (
         <div className="mb-4 max-w-2xl rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
@@ -697,6 +699,7 @@ export function Settings() {
           </p>
         </div>
       </div>
+      </section>
     </div>
   );
 }
@@ -822,7 +825,7 @@ function NotificationPreferencesSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-prefs", portfolioId] });
     },
-    onError: (err) => toast((err as Error).message || "Failed to update notification preferences", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to update notification preferences", "error"),
   });
 
   const toggle = (key: keyof NotificationPreferences) => {

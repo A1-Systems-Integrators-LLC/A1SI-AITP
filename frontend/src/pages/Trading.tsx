@@ -10,6 +10,7 @@ import { QueryResult } from "../components/QueryResult";
 import { Pagination } from "../components/Pagination";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ExchangeHealthBadge } from "../components/ExchangeHealthBadge";
+import { getErrorMessage } from "../utils/errors";
 import type { Order, OrderStatus, TradingMode, TradingPerformanceSummary } from "../types";
 
 const PAGE_SIZE = 15;
@@ -63,7 +64,7 @@ export function Trading() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast("Order cancelled", "info");
     },
-    onError: (err) => toast((err as Error).message || "Failed to cancel order", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to cancel order", "error"),
   });
 
   const cancelAllMutation = useMutation({
@@ -74,16 +75,17 @@ export function Trading() {
       setShowCancelAll(false);
     },
     onError: (err) => {
-      toast((err as Error).message || "Failed to cancel all orders", "error");
+      toast(getErrorMessage(err) || "Failed to cancel all orders", "error");
       setShowCancelAll(false);
     },
   });
 
   return (
     <div>
+      <section aria-labelledby="page-heading">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">Trading</h2>
+          <h2 id="page-heading" className="text-2xl font-bold">Trading</h2>
           <ExchangeHealthBadge />
         </div>
         <div className="flex items-center gap-2">
@@ -314,6 +316,7 @@ export function Trading() {
         onConfirm={() => cancelAllMutation.mutate()}
         onCancel={() => setShowCancelAll(false)}
       />
+      </section>
     </div>
   );
 }

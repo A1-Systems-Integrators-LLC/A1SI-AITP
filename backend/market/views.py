@@ -1,9 +1,11 @@
 """Market views — exchange info, tickers, OHLCV, indicators, regime, exchange configs."""
 
+import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
+from ccxt.base.errors import ExchangeNotAvailable, NetworkError, RequestTimeout
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
@@ -328,12 +330,15 @@ class TickerView(APIView):
         router = DataServiceRouter()
         try:
             return Response(async_to_sync(router.fetch_ticker)(symbol, asset_class))
+        except (RequestTimeout, asyncio.TimeoutError) as exc:
+            logger.warning("Ticker timeout for %s: %s", symbol, exc)
+            return error_response(f"Request timed out fetching ticker for {symbol}", 408)
+        except (ExchangeNotAvailable, NetworkError) as exc:
+            logger.warning("Exchange unavailable for ticker %s: %s", symbol, exc)
+            return error_response(f"Exchange unavailable: {exc}", 503)
         except Exception as exc:
             logger.warning("Ticker fetch failed for %s: %s", symbol, exc)
-            return Response(
-                {"error": f"Failed to fetch ticker for {symbol}: {exc}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return error_response(f"Failed to fetch ticker for {symbol}: {exc}", 500)
 
 
 class TickerListView(APIView):
@@ -370,12 +375,15 @@ class TickerListView(APIView):
                     await service.close()
 
             return Response(async_to_sync(_fetch)())
+        except (RequestTimeout, asyncio.TimeoutError) as exc:
+            logger.warning("Tickers timeout: %s", exc)
+            return error_response("Request timed out fetching tickers", 408)
+        except (ExchangeNotAvailable, NetworkError) as exc:
+            logger.warning("Exchange unavailable for tickers: %s", exc)
+            return error_response(f"Exchange unavailable: {exc}", 503)
         except Exception as exc:
             logger.warning("Tickers fetch failed: %s", exc)
-            return Response(
-                {"error": f"Failed to fetch tickers: {exc}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return error_response(f"Failed to fetch tickers: {exc}", 500)
 
 
 class OHLCVView(APIView):
@@ -394,12 +402,15 @@ class OHLCVView(APIView):
             return Response(async_to_sync(router.fetch_ohlcv)(
                 symbol, timeframe, limit, asset_class,
             ))
+        except (RequestTimeout, asyncio.TimeoutError) as exc:
+            logger.warning("OHLCV timeout for %s: %s", symbol, exc)
+            return error_response(f"Request timed out fetching OHLCV for {symbol}", 408)
+        except (ExchangeNotAvailable, NetworkError) as exc:
+            logger.warning("Exchange unavailable for OHLCV %s: %s", symbol, exc)
+            return error_response(f"Exchange unavailable: {exc}", 503)
         except Exception as exc:
             logger.warning("OHLCV fetch failed for %s: %s", symbol, exc)
-            return Response(
-                {"error": f"Failed to fetch OHLCV for {symbol}: {exc}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return error_response(f"Failed to fetch OHLCV for {symbol}: {exc}", 500)
 
 
 class IndicatorListView(APIView):

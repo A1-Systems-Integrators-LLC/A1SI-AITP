@@ -1,10 +1,13 @@
 """Trading performance analytics service."""
 
+import logging
 from collections import defaultdict
 
 from django.db.models import QuerySet
 
 from trading.models import Order, OrderStatus
+
+logger = logging.getLogger(__name__)
 
 
 class TradingPerformanceService:
@@ -35,6 +38,9 @@ class TradingPerformanceService:
 
         for order in orders:
             price = order.avg_fill_price if order.avg_fill_price else order.price
+            if not price:
+                logger.warning("Skipping order %s with zero/null price", order.id)
+                continue
             entry = {"amount": order.filled or order.amount, "price": price}
             if order.side == "buy":
                 buys[order.symbol].append(entry)

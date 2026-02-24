@@ -5,6 +5,7 @@ import { portfoliosApi } from "../api/portfolios";
 import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { DEFAULT_SYMBOL } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type { Portfolio, TradingMode } from "../types";
 
 interface OrderFormProps {
@@ -38,7 +39,7 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
       setShowConfirm(false);
     },
     onError: (err) => {
-      toast((err as Error).message || "Order failed", "error");
+      toast(getErrorMessage(err) || "Order failed", "error");
     },
   });
 

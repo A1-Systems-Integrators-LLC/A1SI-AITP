@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardApi } from "../api/dashboard";
+import { formatPrice, formatVolume } from "../utils/formatters";
 import { marketApi } from "../api/market";
 import { platformApi } from "../api/platform";
 import { jobsApi } from "../api/jobs";
@@ -19,7 +20,6 @@ import {
   ASSET_CLASS_LABELS,
 } from "../constants/assetDefaults";
 import type {
-  AssetClass,
   BackgroundJob,
   DashboardKPIs,
   OHLCVData,
@@ -30,19 +30,6 @@ import type {
 } from "../types";
 
 const ALWAYS_SHOW_FRAMEWORKS = ["VectorBT", "CCXT", "Pandas", "TA-Lib"];
-
-function formatPrice(price: number, assetClass: AssetClass): string {
-  if (assetClass === "forex") return price.toFixed(5);
-  if (price < 1) return price.toFixed(6);
-  return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatVolume(volume: number): string {
-  if (volume >= 1e9) return `${(volume / 1e9).toFixed(1)}B`;
-  if (volume >= 1e6) return `${(volume / 1e6).toFixed(1)}M`;
-  if (volume >= 1e3) return `${(volume / 1e3).toFixed(1)}K`;
-  return volume.toFixed(0);
-}
 
 export function Dashboard() {
   const queryClient = useQueryClient();
@@ -102,8 +89,9 @@ export function Dashboard() {
 
   return (
     <div>
+      <section aria-labelledby="page-heading">
       <div className="mb-6 flex items-center gap-3">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <h2 id="page-heading" className="text-2xl font-bold">Dashboard</h2>
         <MarketStatusBadge assetClass={assetClass} />
       </div>
 
@@ -397,6 +385,7 @@ export function Dashboard() {
           ))}
         </div>
       </div>
+      </section>
     </div>
   );
 }

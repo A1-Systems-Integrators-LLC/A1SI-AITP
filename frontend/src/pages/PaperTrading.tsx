@@ -5,6 +5,7 @@ import { backtestApi } from "../api/backtest";
 import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { BACKTEST_FRAMEWORKS, ASSET_CLASS_LABELS } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type {
   PaperTradingStatus,
   PaperTrade,
@@ -83,13 +84,13 @@ export function PaperTrading() {
   const startMutation = useMutation({
     mutationFn: () => paperTradingApi.start(selectedStrategy),
     onSuccess: invalidateAll,
-    onError: (err) => toast((err as Error).message || "Failed to start paper trading", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to start paper trading", "error"),
   });
 
   const stopMutation = useMutation({
     mutationFn: paperTradingApi.stop,
     onSuccess: invalidateAll,
-    onError: (err) => toast((err as Error).message || "Failed to stop paper trading", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to stop paper trading", "error"),
   });
 
   const isRunning = status?.running === true;

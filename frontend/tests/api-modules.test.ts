@@ -28,6 +28,11 @@ import { exchangesApi } from "../src/api/exchanges";
 import { indicatorsApi } from "../src/api/indicators";
 import { platformApi } from "../src/api/platform";
 import { jobsApi } from "../src/api/jobs";
+import { auditApi } from "../src/api/audit";
+import { newsApi } from "../src/api/news";
+import { dashboardApi } from "../src/api/dashboard";
+import { workflowsApi } from "../src/api/workflows";
+import { schedulerApi } from "../src/api/scheduler";
 
 const mockApi = api as {
   get: ReturnType<typeof vi.fn>;
@@ -637,5 +642,190 @@ describe("jobsApi", () => {
   it("cancel sends POST", async () => {
     await jobsApi.cancel("abc-123");
     expect(mockApi.post).toHaveBeenCalledWith("/jobs/abc-123/cancel/");
+  });
+});
+
+// ── P7-4: New API module tests ─────────────────────────────
+
+describe("auditApi", () => {
+  it("list calls GET /audit-log/ without params", async () => {
+    await auditApi.list();
+    expect(mockApi.get).toHaveBeenCalledWith("/audit-log/");
+  });
+
+  it("list includes filter params", async () => {
+    await auditApi.list({ user: "admin", limit: 10 });
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/audit-log/?user=admin&limit=10",
+    );
+  });
+});
+
+describe("newsApi", () => {
+  it("list calls GET /market/news/ without params", async () => {
+    await newsApi.list();
+    expect(mockApi.get).toHaveBeenCalledWith("/market/news/");
+  });
+
+  it("list includes asset_class and limit", async () => {
+    await newsApi.list("crypto", undefined, 10);
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/news/?asset_class=crypto&limit=10",
+    );
+  });
+
+  it("sentiment calls GET /market/news/sentiment/", async () => {
+    await newsApi.sentiment("equity", 48);
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/news/sentiment/?asset_class=equity&hours=48",
+    );
+  });
+
+  it("signal calls GET /market/news/signal/", async () => {
+    await newsApi.signal("forex");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/news/signal/?asset_class=forex",
+    );
+  });
+
+  it("fetch calls POST /market/news/fetch/", async () => {
+    await newsApi.fetch("crypto");
+    expect(mockApi.post).toHaveBeenCalledWith("/market/news/fetch/", {
+      asset_class: "crypto",
+    });
+  });
+});
+
+describe("dashboardApi", () => {
+  it("kpis calls GET /dashboard/kpis/ without params", async () => {
+    await dashboardApi.kpis();
+    expect(mockApi.get).toHaveBeenCalledWith("/dashboard/kpis/");
+  });
+
+  it("kpis includes asset_class param", async () => {
+    await dashboardApi.kpis("equity");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/dashboard/kpis/?asset_class=equity",
+    );
+  });
+});
+
+describe("workflowsApi", () => {
+  it("list calls GET /workflows/", async () => {
+    await workflowsApi.list();
+    expect(mockApi.get).toHaveBeenCalledWith("/workflows/");
+  });
+
+  it("list includes asset_class", async () => {
+    await workflowsApi.list("crypto");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/workflows/?asset_class=crypto",
+    );
+  });
+
+  it("get calls GET /workflows/:id/", async () => {
+    await workflowsApi.get("wf-1");
+    expect(mockApi.get).toHaveBeenCalledWith("/workflows/wf-1/");
+  });
+
+  it("create calls POST /workflows/", async () => {
+    await workflowsApi.create({ name: "test" });
+    expect(mockApi.post).toHaveBeenCalledWith("/workflows/", { name: "test" });
+  });
+
+  it("trigger calls POST /workflows/:id/trigger/", async () => {
+    await workflowsApi.trigger("wf-1");
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/workflows/wf-1/trigger/",
+      undefined,
+    );
+  });
+
+  it("enable calls POST /workflows/:id/enable/", async () => {
+    await workflowsApi.enable("wf-1");
+    expect(mockApi.post).toHaveBeenCalledWith("/workflows/wf-1/enable/");
+  });
+
+  it("disable calls POST /workflows/:id/disable/", async () => {
+    await workflowsApi.disable("wf-1");
+    expect(mockApi.post).toHaveBeenCalledWith("/workflows/wf-1/disable/");
+  });
+
+  it("runs calls GET /workflows/:id/runs/", async () => {
+    await workflowsApi.runs("wf-1");
+    expect(mockApi.get).toHaveBeenCalledWith("/workflows/wf-1/runs/");
+  });
+
+  it("stepTypes calls GET /workflow-steps/", async () => {
+    await workflowsApi.stepTypes();
+    expect(mockApi.get).toHaveBeenCalledWith("/workflow-steps/");
+  });
+});
+
+describe("schedulerApi", () => {
+  it("status calls GET /scheduler/status/", async () => {
+    await schedulerApi.status();
+    expect(mockApi.get).toHaveBeenCalledWith("/scheduler/status/");
+  });
+
+  it("tasks calls GET /scheduler/tasks/", async () => {
+    await schedulerApi.tasks();
+    expect(mockApi.get).toHaveBeenCalledWith("/scheduler/tasks/");
+  });
+
+  it("pause calls POST /scheduler/tasks/:id/pause/", async () => {
+    await schedulerApi.pause("task-1");
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/scheduler/tasks/task-1/pause/",
+    );
+  });
+
+  it("resume calls POST /scheduler/tasks/:id/resume/", async () => {
+    await schedulerApi.resume("task-1");
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/scheduler/tasks/task-1/resume/",
+    );
+  });
+
+  it("trigger calls POST /scheduler/tasks/:id/trigger/", async () => {
+    await schedulerApi.trigger("task-1");
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/scheduler/tasks/task-1/trigger/",
+    );
+  });
+});
+
+describe("tradingApi (P7 additions)", () => {
+  it("performanceSummary calls GET /trading/performance/summary/", async () => {
+    await tradingApi.performanceSummary();
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/trading/performance/summary/",
+    );
+  });
+
+  it("performanceBySymbol calls GET /trading/performance/by-symbol/", async () => {
+    await tradingApi.performanceBySymbol();
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/trading/performance/by-symbol/",
+    );
+  });
+
+  it("cancelAll calls POST /trading/cancel-all/", async () => {
+    await tradingApi.cancelAll(2);
+    expect(mockApi.post).toHaveBeenCalledWith("/trading/cancel-all/", {
+      portfolio_id: 2,
+    });
+  });
+
+  it("exchangeHealth calls GET /trading/exchange-health/", async () => {
+    await tradingApi.exchangeHealth("binance");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/trading/exchange-health/?exchange_id=binance",
+    );
+  });
+
+  it("exchangeHealth without param calls base URL", async () => {
+    await tradingApi.exchangeHealth();
+    expect(mockApi.get).toHaveBeenCalledWith("/trading/exchange-health/");
   });
 });

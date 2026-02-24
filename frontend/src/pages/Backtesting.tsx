@@ -12,6 +12,7 @@ import {
   EXCHANGE_OPTIONS,
   TIMEFRAME_OPTIONS,
 } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type { BacktestComparison, BacktestResult, StrategyInfo } from "../types";
 
 export function Backtesting() {
@@ -45,7 +46,7 @@ export function Backtesting() {
     mutationFn: () =>
       backtestApi.run({ framework, strategy, symbol, timeframe, timerange, exchange, asset_class: assetClass }),
     onSuccess: (data) => setActiveJobId(data.job_id),
-    onError: (err) => toast((err as Error).message || "Failed to start backtest", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to start backtest", "error"),
   });
 
   const compareQuery = useQuery<BacktestComparison>({
@@ -72,7 +73,8 @@ export function Backtesting() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Backtesting</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">Backtesting</h2>
 
       {(strategiesError || historyError) && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
@@ -380,6 +382,7 @@ export function Backtesting() {
           )}
         </div>
       </div>
+      </section>
     </div>
   );
 }

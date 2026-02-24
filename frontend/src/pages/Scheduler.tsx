@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schedulerApi } from "../api/scheduler";
 import { useToast } from "../hooks/useToast";
 import { QueryError } from "../components/QueryError";
+import { getErrorMessage } from "../utils/errors";
 import type { ScheduledTask, SchedulerStatus } from "../types";
 
 export function Scheduler() {
@@ -29,7 +30,7 @@ export function Scheduler() {
       queryClient.invalidateQueries({ queryKey: ["scheduler-tasks"] });
       toast("Task paused", "info");
     },
-    onError: (err) => toast((err as Error).message || "Failed to pause task", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to pause task", "error"),
   });
 
   const resumeMutation = useMutation({
@@ -38,7 +39,7 @@ export function Scheduler() {
       queryClient.invalidateQueries({ queryKey: ["scheduler-tasks"] });
       toast("Task resumed", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to resume task", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to resume task", "error"),
   });
 
   const triggerMutation = useMutation({
@@ -47,7 +48,7 @@ export function Scheduler() {
       queryClient.invalidateQueries({ queryKey: ["scheduler-tasks"] });
       toast(`Task triggered (job: ${data.job_id})`, "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to trigger task", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to trigger task", "error"),
   });
 
   const formatInterval = (seconds: number) => {

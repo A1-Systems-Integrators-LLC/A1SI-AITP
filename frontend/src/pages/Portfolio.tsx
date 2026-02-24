@@ -9,6 +9,7 @@ import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { useTickerStream } from "../hooks/useTickerStream";
 import { EXCHANGE_OPTIONS } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type { AllocationItem, Portfolio, PortfolioCreate, TickerData } from "../types";
 
 export function PortfolioPage() {
@@ -41,7 +42,7 @@ export function PortfolioPage() {
       setNewDescription("");
       toast("Portfolio created", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to create portfolio", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to create portfolio", "error"),
   });
 
   const updateMutation = useMutation({
@@ -52,7 +53,7 @@ export function PortfolioPage() {
       setEditingPortfolioId(null);
       toast("Portfolio updated", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to update portfolio", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to update portfolio", "error"),
   });
 
   const deleteMutation = useMutation({
@@ -61,7 +62,7 @@ export function PortfolioPage() {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       toast("Portfolio deleted", "info");
     },
-    onError: (err) => toast((err as Error).message || "Failed to delete portfolio", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to delete portfolio", "error"),
   });
 
   const startEditPortfolio = (p: Portfolio) => {
@@ -111,8 +112,9 @@ export function PortfolioPage() {
 
   return (
     <div>
+      <section aria-labelledby="page-heading">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Portfolio</h2>
+        <h2 id="page-heading" className="text-2xl font-bold">Portfolio</h2>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
@@ -335,6 +337,7 @@ export function PortfolioPage() {
           )
         }
       </QueryResult>
+      </section>
     </div>
   );
 }

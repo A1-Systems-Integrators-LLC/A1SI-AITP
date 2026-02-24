@@ -33,6 +33,12 @@ class MarketData(models.Model):
 
     class Meta:
         ordering = ["-timestamp"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["symbol", "exchange_id", "timestamp"],
+                name="uniq_marketdata_symbol_exchange_ts",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.symbol} @ {self.price}"

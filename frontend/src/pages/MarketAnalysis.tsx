@@ -64,7 +64,8 @@ export function MarketAnalysis() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Market Analysis</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">Market Analysis</h2>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
@@ -164,6 +165,7 @@ export function MarketAnalysis() {
           />
         )}
       </div>
+      </section>
     </div>
   );
 }

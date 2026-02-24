@@ -1,3 +1,4 @@
+from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
@@ -133,7 +134,15 @@ class HoldingCreateView(APIView):
 
         ser = HoldingCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        holding = Holding.objects.create(portfolio_id=portfolio_id, **ser.validated_data)
+        try:
+            with transaction.atomic():
+                holding = Holding.objects.create(portfolio_id=portfolio_id, **ser.validated_data)
+        except IntegrityError:
+            return Response(
+                {"error": f"Holding for symbol '{ser.validated_data['symbol']}'"
+                 " already exists in this portfolio"},
+                status=status.HTTP_409_CONFLICT,
+            )
         return Response(
             HoldingSerializer(holding).data,
             status=status.HTTP_201_CREATED,

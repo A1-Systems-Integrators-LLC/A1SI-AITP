@@ -55,6 +55,16 @@ class PortfolioCreateSerializer(serializers.Serializer):
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
     )
 
+    def validate_exchange_id(self, value: str) -> str:
+        from market.models import EXCHANGE_CHOICES
+
+        valid_ids = {choice[0] for choice in EXCHANGE_CHOICES}
+        if value not in valid_ids:
+            raise serializers.ValidationError(
+                f"Invalid exchange_id '{value}'. Must be one of: {', '.join(sorted(valid_ids))}"
+            )
+        return value
+
 
 class PortfolioUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100, required=False)

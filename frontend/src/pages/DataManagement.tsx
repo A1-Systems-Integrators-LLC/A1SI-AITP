@@ -11,6 +11,7 @@ import {
   EXCHANGE_OPTIONS,
   TIMEFRAME_OPTIONS,
 } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type { DataFileInfo, DataQualityResponse } from "../types";
 
 export function DataManagement() {
@@ -52,7 +53,7 @@ export function DataManagement() {
         asset_class: assetClass,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
-    onError: (err) => toast((err as Error).message || "Failed to start download", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to start download", "error"),
   });
 
   const sampleMutation = useMutation({
@@ -63,7 +64,7 @@ export function DataManagement() {
         days: 90,
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
-    onError: (err) => toast((err as Error).message || "Failed to generate sample data", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to generate sample data", "error"),
   });
 
   const tfToggle = (tf: string) => {
@@ -84,7 +85,8 @@ export function DataManagement() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Data Management</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">Data Management</h2>
 
       {filesError && <QueryError error={null} message="Failed to load data files" />}
 
@@ -358,6 +360,7 @@ export function DataManagement() {
           </p>
         )}
       </div>
+      </section>
     </div>
   );
 }

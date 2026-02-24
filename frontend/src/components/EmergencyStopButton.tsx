@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { riskApi } from "../api/risk";
 import { useToast } from "../hooks/useToast";
+import { getErrorMessage } from "../utils/errors";
 
 interface EmergencyStopButtonProps {
   portfolioId?: number;
@@ -25,7 +26,7 @@ export function EmergencyStopButton({
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast("Trading halted", "error");
     },
-    onError: (err) => toast((err as Error).message || "Failed to halt trading", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to halt trading", "error"),
   });
 
   const startHold = useCallback(() => {

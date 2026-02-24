@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { ProgressBar } from "../components/ProgressBar";
 import { DEFAULT_SYMBOL, EXCHANGE_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_FEES } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 
 export function Screening() {
   const { toast } = useToast();
@@ -26,7 +27,7 @@ export function Screening() {
   const runMutation = useMutation({
     mutationFn: () => screeningApi.run({ symbol, timeframe, exchange, fees, asset_class: assetClass }),
     onSuccess: (data) => setActiveJobId(data.job_id),
-    onError: (err) => toast((err as Error).message || "Failed to start screening", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to start screening", "error"),
   });
 
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
@@ -35,7 +36,8 @@ export function Screening() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Strategy Screening</h2>
+      <section aria-labelledby="page-heading">
+      <h2 id="page-heading" className="mb-6 text-2xl font-bold">Strategy Screening</h2>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Config Form */}
@@ -199,6 +201,7 @@ export function Screening() {
           )}
         </div>
       </div>
+      </section>
     </div>
   );
 }

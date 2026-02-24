@@ -47,6 +47,12 @@ class Holding(models.Model):
                 name="idx_holding_portfolio_symbol",
             ),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["portfolio", "symbol"],
+                name="uniq_holding_portfolio_symbol",
+            ),
+        ]
 
     def clean(self) -> None:
         errors: dict[str, list[str]] = {}

@@ -8,6 +8,7 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { Pagination } from "../components/Pagination";
 import { DEFAULT_SYMBOL } from "../constants/assetDefaults";
+import { getErrorMessage } from "../utils/errors";
 import type { Portfolio, RiskLimits, RiskStatus, VaRData, HeatCheckData, RiskMetricHistoryEntry, TradeCheckLogEntry, AlertLogEntry } from "../types";
 
 const PAGE_SIZE = 15;
@@ -91,7 +92,7 @@ export function RiskManagement() {
       setShowHaltConfirm(false);
       setHaltReason("");
     },
-    onError: (err) => toast((err as Error).message || "Failed to halt trading", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to halt trading", "error"),
   });
 
   const resumeMutation = useMutation({
@@ -101,7 +102,7 @@ export function RiskManagement() {
       queryClient.invalidateQueries({ queryKey: ["risk-alerts", portfolioId] });
       toast("Trading resumed", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to resume trading", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to resume trading", "error"),
   });
 
   const recordMetricsMutation = useMutation({
@@ -110,7 +111,7 @@ export function RiskManagement() {
       queryClient.invalidateQueries({ queryKey: ["risk-metric-history", portfolioId] });
       toast("Metrics snapshot recorded", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to record metrics", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to record metrics", "error"),
   });
 
   // Limits editor state
@@ -142,7 +143,7 @@ export function RiskManagement() {
   const positionMutation = useMutation({
     mutationFn: () => riskApi.positionSize(portfolioId, { entry_price: entryPrice, stop_loss_price: stopLoss }),
     onSuccess: (data) => setPosResult(data),
-    onError: (err) => toast((err as Error).message || "Position sizing failed", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Position sizing failed", "error"),
   });
 
   // Trade checker state
@@ -164,7 +165,7 @@ export function RiskManagement() {
       setTradeResult(data);
       queryClient.invalidateQueries({ queryKey: ["risk-trade-log", portfolioId] });
     },
-    onError: (err) => toast((err as Error).message || "Trade check failed", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Trade check failed", "error"),
   });
 
   const resetMutation = useMutation({
@@ -173,7 +174,7 @@ export function RiskManagement() {
       queryClient.invalidateQueries({ queryKey: ["risk-status", portfolioId] });
       toast("Daily counters reset", "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to reset daily counters", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to reset daily counters", "error"),
   });
 
   // Prefer WS-driven halt status for instant feedback, fall back to query data
@@ -229,8 +230,9 @@ export function RiskManagement() {
 
   return (
     <div>
+      <section aria-labelledby="page-heading">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Risk Management</h2>
+        <h2 id="page-heading" className="text-2xl font-bold">Risk Management</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -840,6 +842,7 @@ export function RiskManagement() {
           </p>
         )}
       </div>
+      </section>
     </div>
   );
 }

@@ -376,6 +376,18 @@ class CancelAllOrdersView(APIView):
         from trading.services.live_trading import LiveTradingService
 
         cancelled = async_to_sync(LiveTradingService.cancel_all_open_orders)(portfolio_id)
+
+        # Audit log entry
+        from risk.models import AlertLog
+
+        username = request.user.get_username() if request.user.is_authenticated else "anonymous"
+        AlertLog.objects.create(
+            portfolio_id=portfolio_id,
+            event_type="cancel_all_orders",
+            severity="warning",
+            message=f"Cancelled {cancelled} orders for portfolio {portfolio_id} by {username}",
+        )
+
         return Response({"cancelled_count": cancelled, "portfolio_id": portfolio_id})
 
 

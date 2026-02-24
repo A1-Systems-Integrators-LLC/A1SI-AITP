@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { portfoliosApi } from "../api/portfolios";
 import { useToast } from "../hooks/useToast";
+import { getErrorMessage } from "../utils/errors";
 import type { Holding } from "../types";
 
 interface HoldingsTableProps {
@@ -28,13 +29,13 @@ export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: Holdings
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       setEditingId(null);
     },
-    onError: (err) => toast((err as Error).message || "Failed to update holding", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to update holding", "error"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (holdingId: number) => portfoliosApi.deleteHolding(portfolioId, holdingId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolios"] }),
-    onError: (err) => toast((err as Error).message || "Failed to delete holding", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to delete holding", "error"),
   });
 
   const addMutation = useMutation({
@@ -47,7 +48,7 @@ export function HoldingsTable({ holdings, portfolioId, priceMap = {} }: Holdings
       setNewAmount("");
       setNewPrice("");
     },
-    onError: (err) => toast((err as Error).message || "Failed to add holding", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to add holding", "error"),
   });
 
   const startEdit = (h: Holding) => {

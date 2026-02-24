@@ -5,6 +5,7 @@ import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { AssetClassBadge } from "../components/AssetClassBadge";
 import { QueryError } from "../components/QueryError";
+import { getErrorMessage } from "../utils/errors";
 import type {
   StepType,
   WorkflowDetail,
@@ -39,7 +40,7 @@ export function Workflows() {
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
       toast(`Workflow triggered (job: ${data.job_id})`, "success");
     },
-    onError: (err) => toast((err as Error).message || "Failed to trigger workflow", "error"),
+    onError: (err) => toast(getErrorMessage(err) || "Failed to trigger workflow", "error"),
   });
 
   const enableMutation = useMutation({

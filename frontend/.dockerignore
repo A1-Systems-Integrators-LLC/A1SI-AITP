@@ -1,7 +1,14 @@
 node_modules/
 dist/
 coverage/
+tests/
 .env
 .env.local
 *.md
+*.config.ts
+tsconfig*.json
+.eslintrc*
+schema.yaml
+.github/
+.git/
 .DS_Store
