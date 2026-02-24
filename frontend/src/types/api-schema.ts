@@ -420,6 +420,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/market/status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["market_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/ticker/{symbol}/": {
         parameters: {
             query?: never;
@@ -1221,6 +1237,13 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `crypto` - Crypto
+         *     * `equity` - Equity
+         *     * `forex` - Forex
+         * @enum {string}
+         */
+        AssetClassEnum: "crypto" | "equity" | "forex";
         BacktestRequest: {
             /** @default freqtrade */
             framework: string;
@@ -1240,11 +1263,14 @@ export interface components {
             timerange: string;
             /** @default binance */
             exchange: string;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         BacktestResult: {
             readonly id: number;
             readonly job_id: string;
             framework: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             strategy_name: string;
             symbol: string;
             timeframe: string;
@@ -1273,6 +1299,8 @@ export interface components {
             exchange: string;
             /** @default 365 */
             since_days: number;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         DataFileInfo: {
             exchange: string;
@@ -1286,6 +1314,7 @@ export interface components {
         DataSourceConfig: {
             readonly id: number;
             readonly exchange_name: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             symbols?: unknown;
             timeframes?: unknown;
             is_active?: boolean;
@@ -1297,10 +1326,10 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
-            exchange_config: number;
+            exchange_config?: number | null;
         };
         DataSourceConfigCreate: {
-            exchange_config: number;
+            exchange_config?: number | null;
             symbols?: unknown;
             timeframes?: unknown;
             is_active?: boolean;
@@ -1320,6 +1349,7 @@ export interface components {
             readonly has_passphrase: boolean;
             name: string;
             exchange_id: components["schemas"]["ExchangeIdEnum"];
+            asset_class?: components["schemas"]["AssetClassEnum"];
             is_sandbox?: boolean;
             is_default?: boolean;
             is_active?: boolean;
@@ -1363,9 +1393,10 @@ export interface components {
          *     * `kraken` - Kraken
          *     * `kucoin` - KuCoin
          *     * `bybit` - Bybit
+         *     * `yfinance` - Yahoo Finance
          * @enum {string}
          */
-        ExchangeIdEnum: "binance" | "coinbase" | "kraken" | "kucoin" | "bybit";
+        ExchangeIdEnum: "binance" | "coinbase" | "kraken" | "kucoin" | "bybit" | "yfinance";
         ExchangeInfo: {
             id: string;
             name: string;
@@ -1419,6 +1450,7 @@ export interface components {
             readonly id: number;
             readonly portfolio_id: number;
             symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             /** Format: double */
             amount?: number;
             /** Format: double */
@@ -1440,6 +1472,8 @@ export interface components {
              * @default 0
              */
             avg_buy_price: number;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         HoldingUpdate: {
             /** Format: double */
@@ -1499,6 +1533,7 @@ export interface components {
             exchange_id: string;
             readonly exchange_order_id: string;
             symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             side: string;
             order_type: string;
             /** Format: double */
@@ -1555,6 +1590,8 @@ export interface components {
             portfolio_id: number;
             /** Format: double */
             stop_loss_price?: number | null;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         /**
          * @description * `paper` - paper
@@ -1596,6 +1633,7 @@ export interface components {
             readonly id: number;
             name: string;
             exchange_id?: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             description?: string;
             readonly holdings: components["schemas"]["Holding"][];
             /** Format: date-time */
@@ -1609,6 +1647,8 @@ export interface components {
             exchange_id: string;
             /** @default  */
             description: string;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         PortfolioUpdate: {
             name?: string;
@@ -1783,11 +1823,14 @@ export interface components {
              * @default 0.001
              */
             fees: number;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         ScreenResult: {
             readonly id: number;
             readonly job_id: string;
             symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             timeframe: string;
             strategy_name: string;
             top_results?: unknown;
@@ -1852,6 +1895,7 @@ export interface components {
             /** Format: int64 */
             portfolio_id: number;
             symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
             side: string;
             /** Format: double */
             size: number;
@@ -1880,6 +1924,8 @@ export interface components {
             entry_price: number;
             /** Format: double */
             stop_loss_price?: number | null;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
         };
         TradeCheckResponse: {
             approved: boolean;
@@ -2106,7 +2152,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["DataSourceConfigCreate"];
             };
@@ -2152,7 +2198,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["DataSourceConfigCreate"];
             };
@@ -2562,6 +2608,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OHLCVData"][];
                 };
+            };
+        };
+    };
+    market_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

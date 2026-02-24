@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build clean harden audit certs backup test-security ci typecheck docker-build check-schema-freshness generate-types docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean
+.PHONY: setup dev test lint build clean harden audit certs backup test-security ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -9,7 +9,7 @@ MANAGE := cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) manage.py
 
 # ── Setup ──────────────────────────────────────────────────
 
-setup: setup-backend setup-frontend
+setup: setup-backend setup-frontend install-hooks
 	@echo "✓ Setup complete"
 
 setup-backend:
@@ -69,7 +69,7 @@ test-security:
 
 # ── Linting ────────────────────────────────────────────────
 
-lint: lint-backend lint-frontend
+lint: lint-backend lint-frontend check-schema-freshness
 	@echo "✓ All linting passed"
 
 lint-backend:
@@ -80,7 +80,7 @@ lint-frontend:
 
 # ── Build ──────────────────────────────────────────────────
 
-build:
+build: generate-types
 	cd $(FRONTEND_DIR) && npm run build
 	@echo "✓ Frontend built to $(FRONTEND_DIR)/dist/"
 
@@ -102,6 +102,11 @@ check-schema-freshness:
 		&& echo "✓ Schema is up to date" \
 		|| (echo "✗ Schema is stale — run 'make generate-types' to update" && exit 1)
 	@rm -f /tmp/schema-check.yaml
+
+install-hooks:
+	@cp scripts/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "✓ Git hooks installed"
 
 # ── Docker ────────────────────────────────────────────────
 

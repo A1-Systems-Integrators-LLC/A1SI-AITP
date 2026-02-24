@@ -165,7 +165,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DataSourceConfigCreate'
-        required: true
       security:
       - cookieAuth: []
       responses:
@@ -210,7 +209,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DataSourceConfigCreate'
-        required: true
       security:
       - cookieAuth: []
       responses:
@@ -578,6 +576,16 @@ paths:
                 items:
                   $ref: '#/components/schemas/OHLCVData'
           description: ''
+  /api/market/status/:
+    get:
+      operationId: market_status_retrieve
+      tags:
+      - Market
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/market/ticker/{symbol}/:
     get:
       operationId: market_ticker_retrieve
@@ -1651,6 +1659,16 @@ components:
       - message
       - portfolio_id
       - severity
+    AssetClassEnum:
+      enum:
+      - crypto
+      - equity
+      - forex
+      type: string
+      description: |-
+        * `crypto` - Crypto
+        * `equity` - Equity
+        * `forex` - Forex
     BacktestRequest:
       type: object
       properties:
@@ -1680,6 +1698,10 @@ components:
           type: string
           default: binance
           minLength: 1
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
     BacktestResult:
       type: object
       properties:
@@ -1692,6 +1714,8 @@ components:
         framework:
           type: string
           maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         strategy_name:
           type: string
           maxLength: 100
@@ -1747,6 +1771,10 @@ components:
           maximum: 3650
           minimum: 1
           default: 365
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
     DataFileInfo:
       type: object
       properties:
@@ -1783,6 +1811,8 @@ components:
         exchange_name:
           type: string
           readOnly: true
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         symbols: {}
         timeframes: {}
         is_active:
@@ -1806,9 +1836,9 @@ components:
           readOnly: true
         exchange_config:
           type: integer
+          nullable: true
       required:
       - created_at
-      - exchange_config
       - exchange_name
       - id
       - updated_at
@@ -1817,6 +1847,7 @@ components:
       properties:
         exchange_config:
           type: integer
+          nullable: true
         symbols: {}
         timeframes: {}
         is_active:
@@ -1826,8 +1857,6 @@ components:
           maximum: 9223372036854775807
           minimum: -9223372036854775808
           format: int64
-      required:
-      - exchange_config
     EquityUpdate:
       type: object
       properties:
@@ -1861,6 +1890,8 @@ components:
           maxLength: 100
         exchange_id:
           $ref: '#/components/schemas/ExchangeIdEnum'
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         is_sandbox:
           type: boolean
         is_default:
@@ -1950,6 +1981,7 @@ components:
       - kraken
       - kucoin
       - bybit
+      - yfinance
       type: string
       description: |-
         * `binance` - Binance
@@ -1957,6 +1989,7 @@ components:
         * `kraken` - Kraken
         * `kucoin` - KuCoin
         * `bybit` - Bybit
+        * `yfinance` - Yahoo Finance
     ExchangeInfo:
       type: object
       properties:
@@ -2082,6 +2115,8 @@ components:
         symbol:
           type: string
           maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         amount:
           type: number
           format: double
@@ -2116,6 +2151,10 @@ components:
           type: number
           format: double
           default: 0.0
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
       required:
       - symbol
     HoldingUpdate:
@@ -2238,6 +2277,8 @@ components:
         symbol:
           type: string
           maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         side:
           type: string
           maxLength: 10
@@ -2380,6 +2421,10 @@ components:
           format: double
           minimum: 0.0
           nullable: true
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
       required:
       - amount
       - side
@@ -2460,6 +2505,8 @@ components:
         exchange_id:
           type: string
           maxLength: 50
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         description:
           type: string
           maxLength: 500
@@ -2496,6 +2543,10 @@ components:
           type: string
           default: ''
           maxLength: 500
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
       required:
       - name
     PortfolioUpdate:
@@ -2857,6 +2908,10 @@ components:
           maximum: 0.1
           minimum: 0.0
           default: 0.001
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
     ScreenResult:
       type: object
       properties:
@@ -2869,6 +2924,8 @@ components:
         symbol:
           type: string
           maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         timeframe:
           type: string
           maxLength: 10
@@ -2981,6 +3038,8 @@ components:
         symbol:
           type: string
           maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
         side:
           type: string
           maxLength: 10
@@ -3047,6 +3106,10 @@ components:
           format: double
           minimum: 0.0
           nullable: true
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
       required:
       - entry_price
       - side

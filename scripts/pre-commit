@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Pre-commit hook: check OpenAPI schema freshness when backend files are staged.
+# Installed by `make install-hooks` (or `make setup`).
+set -euo pipefail
+
+# Only check if backend Python files are in the staging area
+if git diff --cached --name-only | grep -qE '^backend/.*\.py$'; then
+    echo "→ Backend files staged — checking schema freshness..."
+    make check-schema-freshness || {
+        echo ""
+        echo "Schema is stale. Run 'make generate-types' and stage the updated files:"
+        echo "  make generate-types"
+        echo "  git add frontend/schema.yaml frontend/src/types/api-schema.ts"
+        echo ""
+        exit 1
+    }
+fi
