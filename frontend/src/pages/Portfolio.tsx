@@ -9,7 +9,7 @@ import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { useTickerStream } from "../hooks/useTickerStream";
 import { EXCHANGE_OPTIONS } from "../constants/assetDefaults";
-import type { Portfolio, PortfolioCreate, TickerData } from "../types";
+import type { AllocationItem, Portfolio, PortfolioCreate, TickerData } from "../types";
 
 export function PortfolioPage() {
   const queryClient = useQueryClient();
@@ -324,6 +324,10 @@ export function PortfolioPage() {
                     )}
 
                     <HoldingsTable holdings={p.holdings} portfolioId={p.id} priceMap={priceMap} />
+
+                    {p.holdings.length > 0 && (
+                      <AllocationSection portfolioId={p.id} />
+                    )}
                   </div>
                 );
               })}
@@ -331,6 +335,67 @@ export function PortfolioPage() {
           )
         }
       </QueryResult>
+    </div>
+  );
+}
+
+function AllocationSection({ portfolioId }: { portfolioId: number }) {
+  const [showAllocation, setShowAllocation] = useState(false);
+
+  const { data: allocation } = useQuery<AllocationItem[]>({
+    queryKey: ["portfolio-allocation", portfolioId],
+    queryFn: () => portfoliosApi.allocation(portfolioId),
+    enabled: showAllocation,
+    refetchInterval: showAllocation ? 60000 : false,
+  });
+
+  return (
+    <div className="mt-4">
+      <button
+        onClick={() => setShowAllocation(!showAllocation)}
+        className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+      >
+        {showAllocation ? "Hide" : "Show"} Allocation Breakdown
+      </button>
+      {showAllocation && allocation && allocation.length > 0 && (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                <th className="pb-2 pr-3">Symbol</th>
+                <th className="pb-2 pr-3 text-right">Amount</th>
+                <th className="pb-2 pr-3 text-right">Price</th>
+                <th className="pb-2 pr-3 text-right">Value</th>
+                <th className="pb-2 pr-3 text-right">Cost</th>
+                <th className="pb-2 pr-3 text-right">P&L</th>
+                <th className="pb-2 pr-3 text-right">P&L %</th>
+                <th className="pb-2 text-right">Weight</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allocation.map((a) => (
+                <tr key={a.symbol} className="border-b border-[var(--color-border)] last:border-0">
+                  <td className="py-2 pr-3 font-medium">
+                    {a.symbol}
+                    {a.price_stale && <span className="ml-1 text-xs text-yellow-400" title="Price unavailable, using cost basis">*</span>}
+                  </td>
+                  <td className="py-2 pr-3 text-right font-mono text-xs">{a.amount}</td>
+                  <td className="py-2 pr-3 text-right font-mono text-xs">${a.current_price.toLocaleString()}</td>
+                  <td className="py-2 pr-3 text-right font-mono text-xs">${a.market_value.toLocaleString()}</td>
+                  <td className="py-2 pr-3 text-right font-mono text-xs">${a.cost_basis.toLocaleString()}</td>
+                  <td className={`py-2 pr-3 text-right font-mono text-xs ${a.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {a.pnl >= 0 ? "+" : ""}${a.pnl.toLocaleString()}
+                  </td>
+                  <td className={`py-2 pr-3 text-right font-mono text-xs ${a.pnl_pct >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {a.pnl_pct >= 0 ? "+" : ""}{a.pnl_pct.toFixed(2)}%
+                  </td>
+                  <td className="py-2 text-right font-mono text-xs">{a.weight.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

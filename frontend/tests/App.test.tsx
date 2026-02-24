@@ -37,14 +37,14 @@ describe("App", () => {
     expect(nav).toHaveTextContent("Paper Trade");
   });
 
-  it("renders all 12 navigation items", async () => {
+  it("renders all 14 navigation items", async () => {
     renderWithProviders(<App />);
     await waitFor(() => {
       expect(screen.getByRole("navigation")).toBeInTheDocument();
     });
     const nav = screen.getByRole("navigation");
     const links = nav.querySelectorAll("a");
-    expect(links.length).toBe(12);
+    expect(links.length).toBe(14);
   });
 });
 

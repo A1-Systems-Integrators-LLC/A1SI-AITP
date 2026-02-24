@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { AssetClass, BacktestResult, StrategyInfo } from "../types";
+import type { AssetClass, BacktestComparison, BacktestResult, StrategyInfo } from "../types";
 
 export const backtestApi = {
   run: (params: {
@@ -20,5 +20,5 @@ export const backtestApi = {
   strategies: () => api.get<StrategyInfo[]>("/backtest/strategies/"),
 
   compare: (ids: number[]) =>
-    api.get<BacktestResult[]>(`/backtest/compare/?ids=${ids.join(",")}`),
+    api.get<BacktestComparison>(`/backtest/compare/?ids=${ids.join(",")}`),
 };

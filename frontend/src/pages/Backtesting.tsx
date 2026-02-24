@@ -12,7 +12,7 @@ import {
   EXCHANGE_OPTIONS,
   TIMEFRAME_OPTIONS,
 } from "../constants/assetDefaults";
-import type { BacktestResult, StrategyInfo } from "../types";
+import type { BacktestComparison, BacktestResult, StrategyInfo } from "../types";
 
 export function Backtesting() {
   const queryClient = useQueryClient();
@@ -21,6 +21,7 @@ export function Backtesting() {
 
   useEffect(() => { document.title = "Backtesting | A1SI-AITP"; }, []);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [framework, setFramework] = useState(BACKTEST_FRAMEWORKS[assetClass][0]?.value ?? "freqtrade");
   const [strategy, setStrategy] = useState("");
   const [symbol, setSymbol] = useState(DEFAULT_SYMBOL[assetClass]);
@@ -46,6 +47,21 @@ export function Backtesting() {
     onSuccess: (data) => setActiveJobId(data.job_id),
     onError: (err) => toast((err as Error).message || "Failed to start backtest", "error"),
   });
+
+  const compareQuery = useQuery<BacktestComparison>({
+    queryKey: ["backtest-compare", Array.from(selectedIds).sort().join(",")],
+    queryFn: () => backtestApi.compare(Array.from(selectedIds)),
+    enabled: selectedIds.size >= 2,
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
   const jobResult = job.data?.result as Record<string, unknown> | undefined;
@@ -236,18 +252,26 @@ export function Backtesting() {
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">History</h3>
-                <button
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ["backtest-results"] })}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
-                  title="Refresh history"
-                >
-                  &#8635; Refresh
-                </button>
+                <div className="flex gap-2">
+                  {selectedIds.size >= 2 && (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {selectedIds.size} selected for comparison
+                    </span>
+                  )}
+                  <button
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["backtest-results"] })}
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
+                    title="Refresh history"
+                  >
+                    &#8635; Refresh
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                      <th className="pb-2 pr-2 w-8"></th>
                       <th className="pb-2 pr-4">Framework</th>
                       <th className="pb-2 pr-4">Strategy</th>
                       <th className="pb-2 pr-4">Symbol</th>
@@ -261,7 +285,16 @@ export function Backtesting() {
                   </thead>
                   <tbody>
                     {history.map((r) => (
-                      <tr key={r.id} className="border-b border-[var(--color-border)] last:border-0">
+                      <tr key={r.id} className={`border-b border-[var(--color-border)] last:border-0 ${selectedIds.has(r.id) ? "bg-[var(--color-primary)]/5" : ""}`}>
+                        <td className="py-2 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => toggleSelect(r.id)}
+                            className="rounded"
+                            aria-label={`Select ${r.strategy_name} for comparison`}
+                          />
+                        </td>
                         <td className="py-2 pr-4 capitalize">{r.framework}</td>
                         <td className="truncate max-w-[200px] py-2 pr-4 font-medium" title={r.strategy_name}>{r.strategy_name}</td>
                         <td className="py-2 pr-4">{r.symbol}</td>
@@ -281,6 +314,49 @@ export function Backtesting() {
                         <td className="py-2 text-xs text-[var(--color-text-muted)]">
                           {new Date(r.created_at).toLocaleDateString()}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Comparison Table */}
+          {compareQuery.data?.comparison && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+              <h3 className="mb-4 text-lg font-semibold">Comparison</h3>
+              {compareQuery.data.comparison.best_strategy && (
+                <p className="mb-3 text-sm">
+                  Best overall: <span className="font-bold text-green-400">{compareQuery.data.comparison.best_strategy}</span>
+                </p>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                      <th className="pb-2 pr-4">Metric</th>
+                      {compareQuery.data.comparison.metrics_table[0] &&
+                        Object.keys(compareQuery.data.comparison.metrics_table[0].values).map((key) => (
+                          <th key={key} className="pb-2 pr-4 text-right">{key}</th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareQuery.data.comparison.metrics_table.map((row) => (
+                      <tr key={row.metric} className="border-b border-[var(--color-border)] last:border-0">
+                        <td className="py-2 pr-4 font-medium capitalize">{row.metric.replace(/_/g, " ")}</td>
+                        {Object.entries(row.values).map(([key, val]) => {
+                          const isBest = key === row.best;
+                          return (
+                            <td
+                              key={key}
+                              className={`py-2 pr-4 text-right font-mono text-xs ${isBest ? "font-bold text-green-400" : ""}`}
+                            >
+                              {val != null ? (typeof val === "number" ? val.toFixed(4) : String(val)) : "—"}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>

@@ -459,6 +459,167 @@ export interface SentimentSummary {
   neutral_count: number;
 }
 
+// Portfolio Analytics types
+export interface PortfolioSummary {
+  total_value: number;
+  total_cost: number;
+  unrealized_pnl: number;
+  pnl_pct: number;
+  holding_count: number;
+  currency: string;
+}
+
+export interface AllocationItem {
+  symbol: string;
+  amount: number;
+  current_price: number;
+  market_value: number;
+  cost_basis: number;
+  pnl: number;
+  pnl_pct: number;
+  weight: number;
+  price_stale: boolean;
+}
+
+// Scheduler types
+export interface SchedulerStatus {
+  running: boolean;
+  total_tasks: number;
+  active_tasks: number;
+  paused_tasks: number;
+}
+
+export interface ScheduledTask {
+  id: string;
+  name: string;
+  description: string;
+  task_type: string;
+  status: string;
+  interval_seconds: number;
+  params: Record<string, unknown>;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  last_run_job_id: string | null;
+  next_run_at: string | null;
+  run_count: number;
+  error_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Workflow types
+export interface WorkflowListItem {
+  id: string;
+  name: string;
+  description: string;
+  asset_class: AssetClass;
+  is_template: boolean;
+  is_active: boolean;
+  schedule_interval_seconds: number | null;
+  schedule_enabled: boolean;
+  last_run_at: string | null;
+  run_count: number;
+  step_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowStep {
+  id: number;
+  order: number;
+  name: string;
+  step_type: string;
+  params: Record<string, unknown>;
+  condition: string;
+  timeout_seconds: number;
+}
+
+export interface WorkflowDetail extends WorkflowListItem {
+  params: Record<string, unknown>;
+  steps: WorkflowStep[];
+}
+
+export interface WorkflowRunListItem {
+  id: string;
+  workflow_name: string;
+  status: string;
+  trigger: string;
+  current_step: number;
+  total_steps: number;
+  job_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface WorkflowStepRun {
+  id: number;
+  order: number;
+  step_name: string;
+  step_type: string;
+  status: string;
+  input_data: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  condition_met: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_seconds: number | null;
+}
+
+export interface WorkflowRunDetail extends WorkflowRunListItem {
+  params: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  step_runs: WorkflowStepRun[];
+}
+
+export interface StepType {
+  step_type: string;
+  description: string;
+}
+
+// Data Quality types
+export interface DataQualityReport {
+  symbol: string;
+  timeframe: string;
+  exchange: string;
+  rows: number;
+  date_range: (string | null)[];
+  gaps: Record<string, unknown>[];
+  nan_columns: Record<string, number>;
+  outliers: Record<string, unknown>[];
+  ohlc_violations: Record<string, unknown>[];
+  is_stale: boolean;
+  stale_hours: number;
+  passed: boolean;
+  issues_summary: string[];
+}
+
+export interface DataQualityResponse {
+  total: number;
+  passed: number;
+  failed: number;
+  reports: DataQualityReport[];
+}
+
+// Backtest Comparison types
+export interface BacktestComparisonMetric {
+  metric: string;
+  values: Record<string, number | null>;
+  best: string | null;
+  rankings: Record<string, number>;
+}
+
+export interface BacktestComparison {
+  results: BacktestResult[];
+  comparison: {
+    metrics_table: BacktestComparisonMetric[];
+    best_strategy: string | null;
+    rankings: Record<string, Record<string, number>>;
+  };
+}
+
 // Platform types
 export interface FrameworkStatus {
   name: string;

@@ -8,10 +8,13 @@ from rest_framework.views import APIView
 
 from analysis.models import BackgroundJob, BacktestResult, ScreenResult, Workflow, WorkflowRun
 from analysis.serializers import (
+    BacktestComparisonSerializer,
     BacktestRequestSerializer,
     BacktestResultSerializer,
     DataDownloadRequestSerializer,
     DataFileInfoSerializer,
+    DataQualityReportSerializer,
+    DataQualitySummarySerializer,
     JobAcceptedSerializer,
     JobSerializer,
     MLTrainRequestSerializer,
@@ -130,7 +133,14 @@ class BacktestStrategyListView(APIView):
 
 
 class BacktestCompareView(APIView):
-    @extend_schema(responses=BacktestResultSerializer(many=True), tags=["Backtest"])
+    COMPARE_METRICS = [
+        "total_return", "sharpe_ratio", "max_drawdown", "win_rate",
+        "profit_factor", "total_trades",
+    ]
+    # Metrics where lower is better
+    LOWER_IS_BETTER = {"max_drawdown"}
+
+    @extend_schema(responses=BacktestComparisonSerializer, tags=["Backtest"])
     def get(self, request: Request) -> Response:
         ids_param = request.query_params.get("ids", "")
         id_list = []
@@ -138,8 +148,64 @@ class BacktestCompareView(APIView):
             x = x.strip()
             if x.isdigit():
                 id_list.append(int(x))
-        results = BacktestResult.objects.select_related("job").filter(id__in=id_list)
-        return Response(BacktestResultSerializer(results, many=True).data)
+        results = list(BacktestResult.objects.select_related("job").filter(id__in=id_list))
+
+        if len(results) < 2:
+            return Response(
+                BacktestResultSerializer(results, many=True).data,
+            )
+
+        # Build comparison
+        metrics_table = []
+        rankings: dict[str, dict[str, int]] = {}
+        best_per_metric: dict[str, str | None] = {}
+
+        for metric_name in self.COMPARE_METRICS:
+            values: dict[str, float | None] = {}
+            for r in results:
+                key = f"{r.strategy_name} (#{r.id})"
+                raw = r.metrics.get(metric_name) if r.metrics else None
+                values[key] = float(raw) if raw is not None else None
+
+            # Rank non-null values
+            valid = {k: v for k, v in values.items() if v is not None}
+            lower_better = metric_name in self.LOWER_IS_BETTER
+            sorted_keys = sorted(valid, key=lambda k: valid[k], reverse=not lower_better)
+            rank_map = {k: i + 1 for i, k in enumerate(sorted_keys)}
+            # Assign worst rank to nulls
+            for k in values:
+                if k not in rank_map:
+                    rank_map[k] = len(values)
+
+            best = sorted_keys[0] if sorted_keys else None
+
+            metrics_table.append({
+                "metric": metric_name,
+                "values": values,
+                "best": best,
+                "rankings": rank_map,
+            })
+            rankings[metric_name] = rank_map
+            best_per_metric[metric_name] = best
+
+        # Overall best: lowest average rank
+        all_keys = [f"{r.strategy_name} (#{r.id})" for r in results]
+        avg_ranks = {}
+        for key in all_keys:
+            ranks = [rankings[m].get(key, len(all_keys)) for m in self.COMPARE_METRICS]
+            avg_ranks[key] = sum(ranks) / len(ranks) if ranks else float("inf")
+        best_strategy = min(avg_ranks, key=avg_ranks.get) if avg_ranks else None
+
+        comparison = {
+            "metrics_table": metrics_table,
+            "best_strategy": best_strategy,
+            "rankings": rankings,
+        }
+
+        return Response({
+            "results": BacktestResultSerializer(results, many=True).data,
+            "comparison": comparison,
+        })
 
 
 class ScreeningRunView(APIView):
@@ -343,6 +409,77 @@ class MLPredictView(APIView):
         if "error" in result:
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         return Response(result)
+
+
+# ── Data Quality views ─────────────────────────────────────
+
+class DataQualityListView(APIView):
+    @extend_schema(responses=DataQualitySummarySerializer, tags=["Data"])
+    def get(self, request: Request) -> Response:
+        from core.platform_bridge import ensure_platform_imports
+
+        ensure_platform_imports()
+        try:
+            from common.data_pipeline.pipeline import validate_all_data
+
+            reports = validate_all_data()
+            report_dicts = [_quality_report_to_dict(r) for r in reports]
+            passed = sum(1 for r in reports if r.passed)
+            return Response({
+                "total": len(reports),
+                "passed": passed,
+                "failed": len(reports) - passed,
+                "reports": report_dicts,
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"Data quality check failed: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DataQualityDetailView(APIView):
+    @extend_schema(responses=DataQualityReportSerializer, tags=["Data"])
+    def get(self, request: Request, symbol: str, timeframe: str) -> Response:
+        from core.platform_bridge import ensure_platform_imports
+
+        ensure_platform_imports()
+        real_symbol = symbol.replace("_", "/")
+        exchange = request.query_params.get("exchange", "binance")
+        try:
+            from common.data_pipeline.pipeline import validate_data
+
+            report = validate_data(real_symbol, timeframe, exchange)
+            return Response(_quality_report_to_dict(report))
+        except FileNotFoundError:
+            return Response(
+                {"error": "Data file not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Quality check failed: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+def _quality_report_to_dict(report: object) -> dict:
+    """Convert DataQualityReport dataclass to dict."""
+    return {
+        "symbol": report.symbol,
+        "timeframe": report.timeframe,
+        "exchange": report.exchange,
+        "rows": report.rows,
+        "date_range": list(report.date_range),
+        "gaps": report.gaps,
+        "nan_columns": report.nan_columns,
+        "outliers": report.outliers,
+        "ohlc_violations": report.ohlc_violations,
+        "is_stale": report.is_stale,
+        "stale_hours": round(report.stale_hours, 1),
+        "passed": report.passed,
+        "issues_summary": report.issues_summary,
+    }
 
 
 # ── Workflow views ───────────────────────────────────────────

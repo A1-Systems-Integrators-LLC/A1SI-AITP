@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { AssetClass, DataFileInfo } from "../types";
+import type { AssetClass, DataFileInfo, DataQualityReport, DataQualityResponse } from "../types";
 
 export const dataApi = {
   list: (asset_class?: AssetClass) => {
@@ -25,4 +25,12 @@ export const dataApi = {
     timeframes: string[];
     days: number;
   }) => api.post<{ job_id: string }>("/data/generate-sample/", params),
+
+  quality: () => api.get<DataQualityResponse>("/data/quality/"),
+
+  qualityDetail: (symbol: string, timeframe: string, exchange?: string) => {
+    const safeSymbol = symbol.replace("/", "_");
+    const qs = exchange ? `?exchange=${exchange}` : "";
+    return api.get<DataQualityReport>(`/data/quality/${safeSymbol}/${timeframe}/${qs}`);
+  },
 };

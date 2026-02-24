@@ -11,7 +11,13 @@ from rest_framework.views import APIView
 
 from core.utils import safe_int as _safe_int
 from trading.models import Order, OrderStatus, TradingMode
-from trading.serializers import OrderCreateSerializer, OrderSerializer
+from trading.serializers import (
+    CancelAllResponseSerializer,
+    CancelAllSerializer,
+    ExchangeHealthSerializer,
+    OrderCreateSerializer,
+    OrderSerializer,
+)
 
 # Cached exchange connectivity check for LiveTradingStatusView
 _exchange_check_cache: dict[str, object] = {
@@ -237,6 +243,62 @@ class PaperTradingLogView(APIView):
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=500)
         service = _get_paper_trading_service()
         return Response(service.get_log_entries(limit))
+
+
+class CancelAllOrdersView(APIView):
+    @extend_schema(
+        request=CancelAllSerializer,
+        responses=CancelAllResponseSerializer,
+        tags=["Trading"],
+    )
+    def post(self, request: Request) -> Response:
+        ser = CancelAllSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        portfolio_id = ser.validated_data["portfolio_id"]
+
+        from portfolio.models import Portfolio
+
+        if not Portfolio.objects.filter(id=portfolio_id).exists():
+            return Response(
+                {"error": "Portfolio not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from trading.services.live_trading import LiveTradingService
+
+        cancelled = async_to_sync(LiveTradingService.cancel_all_open_orders)(portfolio_id)
+        return Response({"cancelled_count": cancelled, "portfolio_id": portfolio_id})
+
+
+class ExchangeHealthView(APIView):
+    @extend_schema(responses=ExchangeHealthSerializer, tags=["Trading"])
+    def get(self, request: Request) -> Response:
+        from market.services.exchange import ExchangeService
+
+        exchange_id = request.query_params.get("exchange_id", "binance")
+        start = time.monotonic()
+
+        async def _check():
+            service = ExchangeService(exchange_id=exchange_id)
+            try:
+                exchange = await service._get_exchange()
+                await exchange.load_markets()
+                return True, ""
+            except Exception as e:
+                return False, str(e)[:200]
+            finally:
+                await service.close()
+
+        connected, error = async_to_sync(_check)()
+        latency_ms = (time.monotonic() - start) * 1000
+
+        return Response({
+            "exchange_id": exchange_id,
+            "connected": connected,
+            "latency_ms": round(latency_ms, 1),
+            "last_checked": datetime.now(timezone.utc).isoformat(),
+            "error": error if not connected else None,
+        })
 
 
 # Singleton paper trading service

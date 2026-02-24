@@ -6,11 +6,13 @@ from rest_framework.views import APIView
 
 from portfolio.models import Holding, Portfolio
 from portfolio.serializers import (
+    AllocationItemSerializer,
     HoldingCreateSerializer,
     HoldingSerializer,
     HoldingUpdateSerializer,
     PortfolioCreateSerializer,
     PortfolioSerializer,
+    PortfolioSummarySerializer,
     PortfolioUpdateSerializer,
 )
 
@@ -136,3 +138,27 @@ class HoldingCreateView(APIView):
             HoldingSerializer(holding).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class PortfolioSummaryView(APIView):
+    @extend_schema(responses=PortfolioSummarySerializer, tags=["Portfolio"])
+    def get(self, request: Request, portfolio_id: int) -> Response:
+        from portfolio.services.analytics import PortfolioAnalyticsService
+
+        try:
+            summary = PortfolioAnalyticsService.get_portfolio_summary(portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(PortfolioSummarySerializer(summary).data)
+
+
+class PortfolioAllocationView(APIView):
+    @extend_schema(responses=AllocationItemSerializer(many=True), tags=["Portfolio"])
+    def get(self, request: Request, portfolio_id: int) -> Response:
+        from portfolio.services.analytics import PortfolioAnalyticsService
+
+        try:
+            allocation = PortfolioAnalyticsService.get_allocation(portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AllocationItemSerializer(allocation, many=True).data)

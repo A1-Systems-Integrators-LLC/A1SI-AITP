@@ -10,6 +10,8 @@ from analysis.views import (
     DataDownloadView,
     DataGenerateSampleView,
     DataListView,
+    DataQualityDetailView,
+    DataQualityListView,
     JobCancelView,
     JobDetailView,
     JobListView,
@@ -60,6 +62,12 @@ urlpatterns = [
     path("data/", DataListView.as_view(), name="data-list"),
     path("data/download/", DataDownloadView.as_view(), name="data-download"),
     path("data/generate-sample/", DataGenerateSampleView.as_view(), name="data-generate-sample"),
+    path("data/quality/", DataQualityListView.as_view(), name="data-quality-list"),
+    path(
+        "data/quality/<str:symbol>/<str:timeframe>/",
+        DataQualityDetailView.as_view(),
+        name="data-quality-detail",
+    ),
     path(
         "data/<str:exchange>/<str:symbol>/<str:timeframe>/",
         DataDetailView.as_view(),

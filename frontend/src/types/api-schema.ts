@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["backtest_compare_list"];
+        get: operations["backtest_compare_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -222,6 +222,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["data_generate_sample_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/quality/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["data_quality_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data/quality/{symbol}/{timeframe}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["data_quality_retrieve_2"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -820,6 +852,22 @@ export interface paths {
         patch: operations["portfolios_partial_update"];
         trace?: never;
     };
+    "/api/portfolios/{portfolio_id}/allocation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["portfolios_allocation_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/portfolios/{portfolio_id}/holdings/": {
         parameters: {
             query?: never;
@@ -847,6 +895,22 @@ export interface paths {
         put: operations["portfolios_holdings_update"];
         post?: never;
         delete: operations["portfolios_holdings_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolios/{portfolio_id}/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["portfolios_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1332,6 +1396,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trading/cancel-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["trading_cancel_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trading/exchange-health/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["trading_exchange_health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trading/orders/": {
         parameters: {
             query?: never;
@@ -1541,6 +1637,24 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        AllocationItem: {
+            symbol: string;
+            /** Format: double */
+            amount: number;
+            /** Format: double */
+            current_price: number;
+            /** Format: double */
+            market_value: number;
+            /** Format: double */
+            cost_basis: number;
+            /** Format: double */
+            pnl: number;
+            /** Format: double */
+            pnl_pct: number;
+            /** Format: double */
+            weight: number;
+            price_stale: boolean;
+        };
         /**
          * @description * `crypto` - Crypto
          *     * `equity` - Equity
@@ -1548,6 +1662,12 @@ export interface components {
          * @enum {string}
          */
         AssetClassEnum: "crypto" | "equity" | "forex";
+        BacktestComparison: {
+            results: components["schemas"]["BacktestResult"][];
+            comparison: {
+                [key: string]: unknown;
+            };
+        };
         BacktestRequest: {
             /** @default freqtrade */
             framework: string;
@@ -1585,6 +1705,13 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        CancelAll: {
+            portfolio_id: number;
+        };
+        CancelAllResponse: {
+            cancelled_count: number;
+            portfolio_id: number;
+        };
         DataDownloadRequest: {
             /**
              * @default [
@@ -1614,6 +1741,36 @@ export interface components {
             start: string | null;
             end: string | null;
             file: string;
+        };
+        DataQualityReport: {
+            symbol: string;
+            timeframe: string;
+            exchange: string;
+            rows: number;
+            date_range: (string | null)[];
+            gaps: {
+                [key: string]: unknown;
+            }[];
+            nan_columns: {
+                [key: string]: number;
+            };
+            outliers: {
+                [key: string]: unknown;
+            }[];
+            ohlc_violations: {
+                [key: string]: unknown;
+            }[];
+            is_stale: boolean;
+            /** Format: double */
+            stale_hours: number;
+            passed: boolean;
+            issues_summary: string[];
+        };
+        DataQualitySummary: {
+            total: number;
+            passed: number;
+            failed: number;
+            reports: components["schemas"]["DataQualityReport"][];
         };
         DataSourceConfig: {
             readonly id: number;
@@ -1690,6 +1847,13 @@ export interface components {
             is_default?: boolean;
             is_active?: boolean;
             options?: unknown;
+        };
+        ExchangeHealth: {
+            exchange_id: string;
+            connected: boolean;
+            /** Format: double */
+            latency_ms: number;
+            last_checked: string;
         };
         /**
          * @description * `binance` - Binance
@@ -1965,6 +2129,18 @@ export interface components {
             description: string;
             /** @default crypto */
             asset_class: components["schemas"]["AssetClassEnum"];
+        };
+        PortfolioSummary: {
+            /** Format: double */
+            total_value: number;
+            /** Format: double */
+            total_cost: number;
+            /** Format: double */
+            unrealized_pnl: number;
+            /** Format: double */
+            pnl_pct: number;
+            holding_count: number;
+            currency: string;
         };
         PortfolioUpdate: {
             name?: string;
@@ -2473,7 +2649,7 @@ export interface operations {
             };
         };
     };
-    backtest_compare_list: {
+    backtest_compare_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -2487,7 +2663,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BacktestResult"][];
+                    "application/json": components["schemas"]["BacktestComparison"];
                 };
             };
         };
@@ -2769,6 +2945,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+        };
+    };
+    data_quality_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataQualitySummary"];
+                };
+            };
+        };
+    };
+    data_quality_retrieve_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+                timeframe: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataQualityReport"];
                 };
             };
         };
@@ -3665,6 +3882,27 @@ export interface operations {
             };
         };
     };
+    portfolios_allocation_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationItem"][];
+                };
+            };
+        };
+    };
     portfolios_holdings_create: {
         parameters: {
             query?: never;
@@ -3734,6 +3972,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    portfolios_summary_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioSummary"];
+                };
             };
         };
     };
@@ -4390,6 +4649,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    trading_cancel_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelAll"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelAllResponse"];
+                };
+            };
+        };
+    };
+    trading_exchange_health_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeHealth"];
+                };
             };
         };
     };

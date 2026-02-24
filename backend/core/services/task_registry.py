@@ -121,21 +121,32 @@ def _run_order_sync(params: dict, progress_cb: ProgressCallback) -> dict[str, An
 
 
 def _run_data_quality(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Check for stale data across asset classes."""
+    """Run full data quality validation across all data files."""
     from core.platform_bridge import ensure_platform_imports
 
     ensure_platform_imports()
     progress_cb(0.1, "Checking data quality")
     try:
-        from common.data_pipeline.pipeline import DataPipeline
+        from common.data_pipeline.pipeline import validate_all_data
 
-        pipeline = DataPipeline()
-        stale = {}
-        for ac in ("crypto", "equity", "forex"):
-            result = pipeline.detect_stale_data(asset_class=ac)
-            if result:
-                stale[ac] = result
-        return {"status": "completed", "stale_data": stale}
+        reports = validate_all_data()
+        passed = sum(1 for r in reports if r.passed)
+        failed = len(reports) - passed
+
+        summary = {
+            "total": len(reports),
+            "passed": passed,
+            "failed": failed,
+            "issues": [],
+        }
+        for r in reports:
+            if not r.passed:
+                summary["issues"].append(
+                    f"{r.symbol}/{r.timeframe}: {', '.join(r.issues_summary)}"
+                )
+
+        progress_cb(0.9, f"Validated {len(reports)} files")
+        return {"status": "completed", "quality_summary": summary}
     except Exception as e:
         logger.warning("Data quality check failed: %s", e)
         return {"status": "error", "error": str(e)}

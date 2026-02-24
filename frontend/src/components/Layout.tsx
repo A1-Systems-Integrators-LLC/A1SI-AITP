@@ -12,6 +12,8 @@ import {
   Play,
   PlayCircle,
   BrainCircuit,
+  Clock,
+  GitBranch,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -36,6 +38,8 @@ const navItems = [
   { to: "/backtest", icon: Play, label: "Backtest" },
   { to: "/paper-trading", icon: PlayCircle, label: "Paper Trade" },
   { to: "/ml", icon: BrainCircuit, label: "ML Models" },
+  { to: "/scheduler", icon: Clock, label: "Scheduler" },
+  { to: "/workflows", icon: GitBranch, label: "Workflows" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

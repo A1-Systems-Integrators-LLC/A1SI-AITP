@@ -71,6 +71,22 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
 
+class CancelAllSerializer(serializers.Serializer):
+    portfolio_id = serializers.IntegerField(min_value=1)
+
+
+class CancelAllResponseSerializer(serializers.Serializer):
+    cancelled_count = serializers.IntegerField()
+    portfolio_id = serializers.IntegerField()
+
+
+class ExchangeHealthSerializer(serializers.Serializer):
+    exchange_id = serializers.CharField()
+    connected = serializers.BooleanField()
+    latency_ms = serializers.FloatField()
+    last_checked = serializers.CharField()
+
+
 class OrderCreateSerializer(serializers.Serializer):
     symbol = serializers.RegexField(
         regex=r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}$",

@@ -196,6 +196,41 @@ class JobAcceptedSerializer(serializers.Serializer):
     status = serializers.CharField()
 
 
+class DataQualityReportSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    timeframe = serializers.CharField()
+    exchange = serializers.CharField()
+    rows = serializers.IntegerField()
+    date_range = serializers.ListField(child=serializers.CharField(allow_null=True))
+    gaps = serializers.ListField(child=serializers.DictField())
+    nan_columns = serializers.DictField(child=serializers.IntegerField())
+    outliers = serializers.ListField(child=serializers.DictField())
+    ohlc_violations = serializers.ListField(child=serializers.DictField())
+    is_stale = serializers.BooleanField()
+    stale_hours = serializers.FloatField()
+    passed = serializers.BooleanField()
+    issues_summary = serializers.ListField(child=serializers.CharField())
+
+
+class DataQualitySummarySerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    passed = serializers.IntegerField()
+    failed = serializers.IntegerField()
+    reports = DataQualityReportSerializer(many=True)
+
+
+class BacktestComparisonMetricSerializer(serializers.Serializer):
+    metric = serializers.CharField()
+    values = serializers.DictField(child=serializers.FloatField(allow_null=True))
+    best = serializers.CharField(allow_null=True)
+    rankings = serializers.DictField(child=serializers.IntegerField())
+
+
+class BacktestComparisonSerializer(serializers.Serializer):
+    results = BacktestResultSerializer(many=True)
+    comparison = serializers.DictField()
+
+
 # ── Workflow serializers ─────────────────────────────────────
 
 

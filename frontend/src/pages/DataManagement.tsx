@@ -10,7 +10,7 @@ import {
   EXCHANGE_OPTIONS,
   TIMEFRAME_OPTIONS,
 } from "../constants/assetDefaults";
-import type { DataFileInfo } from "../types";
+import type { DataFileInfo, DataQualityResponse } from "../types";
 
 export function DataManagement() {
   const queryClient = useQueryClient();
@@ -70,6 +70,14 @@ export function DataManagement() {
       prev.includes(tf) ? prev.filter((t) => t !== tf) : [...prev, tf],
     );
   };
+
+  const [showQuality, setShowQuality] = useState(false);
+
+  const qualityQuery = useQuery<DataQualityResponse>({
+    queryKey: ["data-quality"],
+    queryFn: dataApi.quality,
+    enabled: showQuality,
+  });
 
   const isJobActive = job.data?.status === "pending" || job.data?.status === "running";
 
@@ -266,6 +274,85 @@ export function DataManagement() {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      {/* Data Quality Section */}
+      <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Data Quality</h3>
+          <button
+            onClick={() => {
+              setShowQuality(true);
+              if (showQuality) qualityQuery.refetch();
+            }}
+            disabled={qualityQuery.isFetching}
+            className="rounded-lg bg-[var(--color-primary)] px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+          >
+            {qualityQuery.isFetching ? "Checking..." : "Run Quality Check"}
+          </button>
+        </div>
+        {qualityQuery.data && (
+          <>
+            <div className="mb-4 flex gap-4 text-sm">
+              <span className="text-green-400">{qualityQuery.data.passed} passed</span>
+              <span className="text-red-400">{qualityQuery.data.failed} failed</span>
+              <span className="text-[var(--color-text-muted)]">{qualityQuery.data.total} total</span>
+            </div>
+            {qualityQuery.data.reports.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                      <th className="pb-2 pr-3">Symbol</th>
+                      <th className="pb-2 pr-3">Timeframe</th>
+                      <th className="pb-2 pr-3">Rows</th>
+                      <th className="pb-2 pr-3">Status</th>
+                      <th className="pb-2 pr-3">Gaps</th>
+                      <th className="pb-2 pr-3">Outliers</th>
+                      <th className="pb-2 pr-3">Stale</th>
+                      <th className="pb-2">Issues</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {qualityQuery.data.reports.map((r) => (
+                      <tr key={`${r.symbol}-${r.timeframe}`} className="border-b border-[var(--color-border)] last:border-0">
+                        <td className="py-2 pr-3 font-medium">{r.symbol}</td>
+                        <td className="py-2 pr-3">{r.timeframe}</td>
+                        <td className="py-2 pr-3 font-mono text-xs">{r.rows.toLocaleString()}</td>
+                        <td className="py-2 pr-3">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            r.passed
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-red-500/20 text-red-400"
+                          }`}>
+                            {r.passed ? "pass" : "fail"}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 font-mono text-xs">{r.gaps.length}</td>
+                        <td className="py-2 pr-3 font-mono text-xs">{r.outliers.length}</td>
+                        <td className="py-2 pr-3">
+                          {r.is_stale ? (
+                            <span className="text-xs text-yellow-400">{r.stale_hours.toFixed(0)}h</span>
+                          ) : (
+                            <span className="text-xs text-green-400">fresh</span>
+                          )}
+                        </td>
+                        <td className="max-w-[200px] truncate py-2 text-xs text-[var(--color-text-muted)]" title={r.issues_summary.join("; ")}>
+                          {r.issues_summary.length > 0 ? r.issues_summary.join("; ") : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+        {!showQuality && (
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Click &quot;Run Quality Check&quot; to validate all data files for gaps, outliers, and staleness.
+          </p>
         )}
       </div>
     </div>

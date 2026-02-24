@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Holding, Portfolio } from "../types";
+import type { AllocationItem, Holding, Portfolio, PortfolioSummary } from "../types";
 
 export const portfoliosApi = {
   list: () => api.get<Portfolio[]>("/portfolios/"),
@@ -17,4 +17,6 @@ export const portfoliosApi = {
     api.put<Holding>(`/portfolios/${portfolioId}/holdings/${holdingId}/`, data),
   deleteHolding: (portfolioId: number, holdingId: number) =>
     api.delete<void>(`/portfolios/${portfolioId}/holdings/${holdingId}/`),
+  summary: (id: number) => api.get<PortfolioSummary>(`/portfolios/${id}/summary/`),
+  allocation: (id: number) => api.get<AllocationItem[]>(`/portfolios/${id}/allocation/`),
 };

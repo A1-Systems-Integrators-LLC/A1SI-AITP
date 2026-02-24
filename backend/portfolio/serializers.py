@@ -65,3 +65,24 @@ class PortfolioUpdateSerializer(serializers.Serializer):
 class HoldingUpdateSerializer(serializers.Serializer):
     amount = serializers.FloatField(required=False)
     avg_buy_price = serializers.FloatField(required=False)
+
+
+class PortfolioSummarySerializer(serializers.Serializer):
+    total_value = serializers.FloatField()
+    total_cost = serializers.FloatField()
+    unrealized_pnl = serializers.FloatField()
+    pnl_pct = serializers.FloatField()
+    holding_count = serializers.IntegerField()
+    currency = serializers.CharField()
+
+
+class AllocationItemSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    amount = serializers.FloatField()
+    current_price = serializers.FloatField()
+    market_value = serializers.FloatField()
+    cost_basis = serializers.FloatField()
+    pnl = serializers.FloatField()
+    pnl_pct = serializers.FloatField()
+    weight = serializers.FloatField()
+    price_stale = serializers.BooleanField()

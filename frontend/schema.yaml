@@ -39,7 +39,7 @@ paths:
           description: No response body
   /api/backtest/compare/:
     get:
-      operationId: backtest_compare_list
+      operationId: backtest_compare_retrieve
       tags:
       - Backtest
       security:
@@ -49,9 +49,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BacktestResult'
+                $ref: '#/components/schemas/BacktestComparison'
           description: ''
   /api/backtest/results/:
     get:
@@ -314,6 +312,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobAccepted'
+          description: ''
+  /api/data/quality/:
+    get:
+      operationId: data_quality_retrieve
+      tags:
+      - Data
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataQualitySummary'
+          description: ''
+  /api/data/quality/{symbol}/{timeframe}/:
+    get:
+      operationId: data_quality_retrieve_2
+      parameters:
+      - in: path
+        name: symbol
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: timeframe
+        schema:
+          type: string
+        required: true
+      tags:
+      - Data
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataQualityReport'
           description: ''
   /api/exchange-configs/:
     get:
@@ -995,6 +1032,28 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/portfolios/{portfolio_id}/allocation/:
+    get:
+      operationId: portfolios_allocation_list
+      parameters:
+      - in: path
+        name: portfolio_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Portfolio
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AllocationItem'
+          description: ''
   /api/portfolios/{portfolio_id}/holdings/:
     post:
       operationId: portfolios_holdings_create
@@ -1071,6 +1130,26 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/portfolios/{portfolio_id}/summary/:
+    get:
+      operationId: portfolios_summary_retrieve
+      parameters:
+      - in: path
+        name: portfolio_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Portfolio
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioSummary'
+          description: ''
   /api/regime/current/:
     get:
       operationId: regime_current_list
@@ -1668,6 +1747,40 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/trading/cancel-all/:
+    post:
+      operationId: trading_cancel_all_create
+      tags:
+      - Trading
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelAll'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelAllResponse'
+          description: ''
+  /api/trading/exchange-health/:
+    get:
+      operationId: trading_exchange_health_retrieve
+      tags:
+      - Trading
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeHealth'
+          description: ''
   /api/trading/orders/:
     get:
       operationId: trading_orders_list
@@ -1969,6 +2082,44 @@ components:
       - message
       - portfolio_id
       - severity
+    AllocationItem:
+      type: object
+      properties:
+        symbol:
+          type: string
+        amount:
+          type: number
+          format: double
+        current_price:
+          type: number
+          format: double
+        market_value:
+          type: number
+          format: double
+        cost_basis:
+          type: number
+          format: double
+        pnl:
+          type: number
+          format: double
+        pnl_pct:
+          type: number
+          format: double
+        weight:
+          type: number
+          format: double
+        price_stale:
+          type: boolean
+      required:
+      - amount
+      - cost_basis
+      - current_price
+      - market_value
+      - pnl
+      - pnl_pct
+      - price_stale
+      - symbol
+      - weight
     AssetClassEnum:
       enum:
       - crypto
@@ -1979,6 +2130,19 @@ components:
         * `crypto` - Crypto
         * `equity` - Equity
         * `forex` - Forex
+    BacktestComparison:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BacktestResult'
+        comparison:
+          type: object
+          additionalProperties: {}
+      required:
+      - comparison
+      - results
     BacktestRequest:
       type: object
       properties:
@@ -2056,6 +2220,24 @@ components:
       - strategy_name
       - symbol
       - timeframe
+    CancelAll:
+      type: object
+      properties:
+        portfolio_id:
+          type: integer
+          minimum: 1
+      required:
+      - portfolio_id
+    CancelAllResponse:
+      type: object
+      properties:
+        cancelled_count:
+          type: integer
+        portfolio_id:
+          type: integer
+      required:
+      - cancelled_count
+      - portfolio_id
     DataDownloadRequest:
       type: object
       properties:
@@ -2112,6 +2294,84 @@ components:
       - start
       - symbol
       - timeframe
+    DataQualityReport:
+      type: object
+      properties:
+        symbol:
+          type: string
+        timeframe:
+          type: string
+        exchange:
+          type: string
+        rows:
+          type: integer
+        date_range:
+          type: array
+          items:
+            type: string
+            nullable: true
+        gaps:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        nan_columns:
+          type: object
+          additionalProperties:
+            type: integer
+        outliers:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        ohlc_violations:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        is_stale:
+          type: boolean
+        stale_hours:
+          type: number
+          format: double
+        passed:
+          type: boolean
+        issues_summary:
+          type: array
+          items:
+            type: string
+      required:
+      - date_range
+      - exchange
+      - gaps
+      - is_stale
+      - issues_summary
+      - nan_columns
+      - ohlc_violations
+      - outliers
+      - passed
+      - rows
+      - stale_hours
+      - symbol
+      - timeframe
+    DataQualitySummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataQualityReport'
+      required:
+      - failed
+      - passed
+      - reports
+      - total
     DataSourceConfig:
       type: object
       properties:
@@ -2284,6 +2544,23 @@ components:
         is_active:
           type: boolean
         options: {}
+    ExchangeHealth:
+      type: object
+      properties:
+        exchange_id:
+          type: string
+        connected:
+          type: boolean
+        latency_ms:
+          type: number
+          format: double
+        last_checked:
+          type: string
+      required:
+      - connected
+      - exchange_id
+      - last_checked
+      - latency_ms
     ExchangeIdEnum:
       enum:
       - binance
@@ -2879,6 +3156,32 @@ components:
           default: crypto
       required:
       - name
+    PortfolioSummary:
+      type: object
+      properties:
+        total_value:
+          type: number
+          format: double
+        total_cost:
+          type: number
+          format: double
+        unrealized_pnl:
+          type: number
+          format: double
+        pnl_pct:
+          type: number
+          format: double
+        holding_count:
+          type: integer
+        currency:
+          type: string
+      required:
+      - currency
+      - holding_count
+      - pnl_pct
+      - total_cost
+      - total_value
+      - unrealized_pnl
     PortfolioUpdate:
       type: object
       properties:
