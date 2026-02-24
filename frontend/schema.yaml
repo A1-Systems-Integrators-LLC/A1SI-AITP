@@ -554,6 +554,36 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/market/news/:
+    get:
+      operationId: market_news_retrieve
+      tags:
+      - Market
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/market/news/fetch/:
+    post:
+      operationId: market_news_fetch_create
+      tags:
+      - Market
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/market/news/sentiment/:
+    get:
+      operationId: market_news_sentiment_retrieve
+      tags:
+      - Market
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/market/ohlcv/{symbol}/:
     get:
       operationId: market_ohlcv_list
@@ -1479,6 +1509,90 @@ paths:
               schema:
                 $ref: '#/components/schemas/VaRResponse'
           description: ''
+  /api/scheduler/status/:
+    get:
+      operationId: scheduler_status_retrieve
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/scheduler/tasks/:
+    get:
+      operationId: scheduler_tasks_retrieve
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/scheduler/tasks/{task_id}/:
+    get:
+      operationId: scheduler_tasks_retrieve_2
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/scheduler/tasks/{task_id}/pause/:
+    post:
+      operationId: scheduler_tasks_pause_create
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/scheduler/tasks/{task_id}/resume/:
+    post:
+      operationId: scheduler_tasks_resume_create
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/scheduler/tasks/{task_id}/trigger/:
+    post:
+      operationId: scheduler_tasks_trigger_create
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Scheduler
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/screening/results/:
     get:
       operationId: screening_results_list
@@ -3173,5 +3287,7 @@ tags:
   description: Backtesting, screening, data pipeline
 - name: ML
   description: Machine learning model training and prediction
+- name: Scheduler
+  description: Task scheduling and automated execution
 - name: Platform
   description: Health, status, config, metrics

@@ -6,6 +6,12 @@ from core.views import (
     NotificationPreferencesView,
     PlatformConfigView,
     PlatformStatusView,
+    ScheduledTaskDetailView,
+    ScheduledTaskListView,
+    ScheduledTaskPauseView,
+    ScheduledTaskResumeView,
+    ScheduledTaskTriggerView,
+    SchedulerStatusView,
 )
 
 urlpatterns = [
@@ -19,5 +25,28 @@ urlpatterns = [
         "notifications/<int:portfolio_id>/preferences/",
         NotificationPreferencesView.as_view(),
         name="notification-prefs",
+    ),
+    # Scheduler
+    path("scheduler/status/", SchedulerStatusView.as_view(), name="scheduler-status"),
+    path("scheduler/tasks/", ScheduledTaskListView.as_view(), name="scheduler-task-list"),
+    path(
+        "scheduler/tasks/<str:task_id>/",
+        ScheduledTaskDetailView.as_view(),
+        name="scheduler-task-detail",
+    ),
+    path(
+        "scheduler/tasks/<str:task_id>/pause/",
+        ScheduledTaskPauseView.as_view(),
+        name="scheduler-task-pause",
+    ),
+    path(
+        "scheduler/tasks/<str:task_id>/resume/",
+        ScheduledTaskResumeView.as_view(),
+        name="scheduler-task-resume",
+    ),
+    path(
+        "scheduler/tasks/<str:task_id>/trigger/",
+        ScheduledTaskTriggerView.as_view(),
+        name="scheduler-task-trigger",
     ),
 ]

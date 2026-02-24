@@ -367,6 +367,32 @@ export interface RiskAlertEvent {
 
 export type SystemEvent = HaltStatusEvent | OrderUpdateEvent | RiskAlertEvent;
 
+// News types
+export interface NewsArticle {
+  article_id: string;
+  title: string;
+  url: string;
+  source: string;
+  summary: string;
+  published_at: string;
+  symbols: string[];
+  asset_class: AssetClass;
+  sentiment_score: number;
+  sentiment_label: "positive" | "negative" | "neutral";
+  created_at: string;
+}
+
+export interface SentimentSummary {
+  asset_class: string;
+  hours: number;
+  total_articles: number;
+  avg_score: number;
+  overall_label: "positive" | "negative" | "neutral";
+  positive_count: number;
+  negative_count: number;
+  neutral_count: number;
+}
+
 // Platform types
 export interface FrameworkStatus {
   name: string;

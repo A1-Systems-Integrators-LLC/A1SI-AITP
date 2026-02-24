@@ -310,6 +310,40 @@ hftbacktest:
       quote_interval: 4        # Requote every N ticks
 
 # ──────────────────────────────────────────────
+# News & Sentiment
+# ──────────────────────────────────────────────
+news:
+  # NewsAPI.org (optional, free tier = 100 req/day)
+  # Set NEWSAPI_KEY env var to enable
+  newsapi_enabled: false
+
+  # RSS feeds per asset class (always active, no API key needed)
+  rss_feeds:
+    crypto:
+      - name: "CoinDesk"
+        url: "https://www.coindesk.com/arc/outboundfeeds/rss/"
+      - name: "CoinTelegraph"
+        url: "https://cointelegraph.com/rss"
+      - name: "Decrypt"
+        url: "https://decrypt.co/feed"
+    equity:
+      - name: "Yahoo Finance"
+        url: "https://finance.yahoo.com/news/rssindex"
+      - name: "MarketWatch"
+        url: "https://feeds.marketwatch.com/marketwatch/topstories/"
+    forex:
+      - name: "DailyFX"
+        url: "https://www.dailyfx.com/feeds/market-news"
+      - name: "ForexFactory"
+        url: "https://www.forexfactory.com/rss.php"
+
+  # Article retention
+  max_articles: 1000  # Oldest auto-deleted beyond this cap
+
+  # Fetch interval (used by scheduler)
+  fetch_interval_minutes: 30
+
+# ──────────────────────────────────────────────
 # Monitoring & alerts
 # ──────────────────────────────────────────────
 monitoring:

@@ -10,6 +10,9 @@ from market.views import (
     IndicatorComputeView,
     IndicatorListView,
     MarketStatusView,
+    NewsFetchView,
+    NewsListView,
+    NewsSentimentView,
     OHLCVView,
     RegimeCurrentAllView,
     RegimeCurrentView,
@@ -64,4 +67,8 @@ urlpatterns = [
         name="regime-recommendations",
     ),
     path("regime/position-size/", RegimePositionSizeView.as_view(), name="regime-position-size"),
+    # News
+    path("market/news/", NewsListView.as_view(), name="news-list"),
+    path("market/news/sentiment/", NewsSentimentView.as_view(), name="news-sentiment"),
+    path("market/news/fetch/", NewsFetchView.as_view(), name="news-fetch"),
 ]

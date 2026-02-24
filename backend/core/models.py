@@ -1,6 +1,37 @@
 from django.db import models
 
 
+class ScheduledTask(models.Model):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    STATUS_CHOICES = [
+        (ACTIVE, "Active"),
+        (PAUSED, "Paused"),
+    ]
+
+    id = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=500, default="", blank=True)
+    task_type = models.CharField(max_length=50, db_index=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
+    interval_seconds = models.IntegerField(null=True, blank=True)
+    params = models.JSONField(default=dict, blank=True)
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_run_status = models.CharField(max_length=20, default="", blank=True)
+    last_run_job_id = models.CharField(max_length=36, default="", blank=True)
+    next_run_at = models.DateTimeField(null=True, blank=True)
+    run_count = models.IntegerField(default=0)
+    error_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.name} ({self.task_type}) [{self.status}]"
+
+
 class AuditLog(models.Model):
     user = models.CharField(max_length=150)
     action = models.CharField(max_length=500)

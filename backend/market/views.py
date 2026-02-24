@@ -34,6 +34,57 @@ logger = logging.getLogger(__name__)
 _thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="indicator")
 
 
+# ── News views ──────────────────────────────────────────────
+
+
+class NewsListView(APIView):
+    @extend_schema(tags=["Market"])
+    def get(self, request: Request) -> Response:
+        from market.services.news import NewsService
+
+        asset_class = request.query_params.get("asset_class")
+        symbol = request.query_params.get("symbol")
+        limit = _safe_int(request.query_params.get("limit"), 20, max_val=100)
+
+        service = NewsService()
+        articles = service.get_articles(asset_class, symbol, limit)
+        return Response(articles)
+
+
+class NewsSentimentView(APIView):
+    @extend_schema(tags=["Market"])
+    def get(self, request: Request) -> Response:
+        from market.services.news import NewsService
+
+        asset_class = request.query_params.get("asset_class")
+        hours = _safe_int(request.query_params.get("hours"), 24, max_val=168)
+
+        service = NewsService()
+        summary = service.get_sentiment_summary(asset_class, hours)
+        return Response(summary)
+
+
+class NewsFetchView(APIView):
+    @extend_schema(tags=["Market"])
+    def post(self, request: Request) -> Response:
+        from market.services.news import NewsService
+
+        asset_class = request.data.get("asset_class", "crypto")
+        if asset_class not in ("crypto", "equity", "forex"):
+            return Response(
+                {"error": "Invalid asset_class"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = NewsService()
+        count = service.fetch_and_store(asset_class)
+        return Response({
+            "asset_class": asset_class,
+            "articles_fetched": count,
+            "message": f"Fetched {count} new articles for {asset_class}",
+        })
+
+
 # ── Market Status ────────────────────────────────────────────
 
 

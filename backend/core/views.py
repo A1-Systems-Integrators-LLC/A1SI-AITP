@@ -131,6 +131,75 @@ class MetricsView(APIView):
         return HttpResponse(metrics.collect(), content_type="text/plain; charset=utf-8")
 
 
+# ── Scheduler views ──────────────────────────────────────────
+
+
+class SchedulerStatusView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def get(self, request: Request) -> Response:
+        from core.services.scheduler import get_scheduler
+
+        return Response(get_scheduler().get_status())
+
+
+class ScheduledTaskListView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def get(self, request: Request) -> Response:
+        from core.models import ScheduledTask
+        from core.serializers import ScheduledTaskSerializer
+
+        tasks = ScheduledTask.objects.all()
+        return Response(ScheduledTaskSerializer(tasks, many=True).data)
+
+
+class ScheduledTaskDetailView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def get(self, request: Request, task_id: str) -> Response:
+        from core.models import ScheduledTask
+        from core.serializers import ScheduledTaskSerializer
+
+        try:
+            task = ScheduledTask.objects.get(id=task_id)
+        except ScheduledTask.DoesNotExist:
+            return Response({"error": "Task not found"}, status=404)
+        return Response(ScheduledTaskSerializer(task).data)
+
+
+class ScheduledTaskPauseView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def post(self, request: Request, task_id: str) -> Response:
+        from core.services.scheduler import get_scheduler
+
+        if get_scheduler().pause_task(task_id):
+            return Response({"message": f"Task {task_id} paused"})
+        return Response({"error": "Task not found"}, status=404)
+
+
+class ScheduledTaskResumeView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def post(self, request: Request, task_id: str) -> Response:
+        from core.services.scheduler import get_scheduler
+
+        if get_scheduler().resume_task(task_id):
+            return Response({"message": f"Task {task_id} resumed"})
+        return Response({"error": "Task not found"}, status=404)
+
+
+class ScheduledTaskTriggerView(APIView):
+    @extend_schema(tags=["Scheduler"])
+    def post(self, request: Request, task_id: str) -> Response:
+        from core.services.scheduler import get_scheduler
+
+        job_id = get_scheduler().trigger_task(task_id)
+        if job_id:
+            return Response({
+                "job_id": job_id,
+                "task_id": task_id,
+                "message": f"Task {task_id} triggered",
+            })
+        return Response({"error": "Task not found or no executor"}, status=404)
+
+
 def _get_framework_status() -> list[dict]:
     from core.platform_bridge import PROJECT_ROOT
 

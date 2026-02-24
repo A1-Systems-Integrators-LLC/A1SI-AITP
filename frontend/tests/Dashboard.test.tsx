@@ -118,6 +118,33 @@ const mockEquityTickers = [
   },
 ];
 
+const mockNewsSentiment = {
+  asset_class: "crypto",
+  hours: 24,
+  total_articles: 2,
+  avg_score: 0.25,
+  overall_label: "positive",
+  positive_count: 1,
+  negative_count: 0,
+  neutral_count: 1,
+};
+
+const mockNewsArticles = [
+  {
+    article_id: "test1",
+    title: "Test News Article",
+    url: "https://example.com/test",
+    source: "TestSource",
+    summary: "Test summary",
+    published_at: new Date().toISOString(),
+    symbols: [],
+    asset_class: "crypto",
+    sentiment_score: 0.5,
+    sentiment_label: "positive",
+    created_at: new Date().toISOString(),
+  },
+];
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
@@ -129,6 +156,8 @@ beforeEach(() => {
       "/api/risk/1/status/": mockRiskStatus,
       "/api/market/tickers": mockTickers,
       "/api/market/ohlcv": mockOhlcv,
+      "/api/market/news/sentiment": mockNewsSentiment,
+      "/api/market/news": mockNewsArticles,
     }),
   );
 });
@@ -190,6 +219,8 @@ describe("Dashboard", () => {
         "/api/risk/1/status/": mockRiskStatus,
         "/api/market/tickers": mockEquityTickers,
         "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
       }),
     );
     renderWithProviders(<Dashboard />, { assetClass: "equity" });
@@ -208,6 +239,8 @@ describe("Dashboard", () => {
         "/api/jobs": mockJobs,
         "/api/risk/1/status/": mockRiskStatus,
         "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
       }),
     );
     renderWithProviders(<Dashboard />);
@@ -224,6 +257,8 @@ describe("Dashboard", () => {
         "/api/risk/1/status/": mockRiskStatus,
         "/api/market/tickers": mockEquityTickers,
         "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
       }),
     );
     renderWithProviders(<Dashboard />, { assetClass: "equity" });
@@ -238,5 +273,11 @@ describe("Dashboard", () => {
     renderWithProviders(<Dashboard />);
     expect(await screen.findByText("Available Exchanges")).toBeInTheDocument();
     expect(screen.getByText("Binance")).toBeInTheDocument();
+  });
+
+  it("renders news feed section", async () => {
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("News Feed")).toBeInTheDocument();
+    expect(await screen.findByText("Test News Article")).toBeInTheDocument();
   });
 });

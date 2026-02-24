@@ -11,6 +11,7 @@ import { ProgressBar } from "../components/ProgressBar";
 import { MarketStatusBadge } from "../components/MarketStatusBadge";
 import { PriceChart } from "../components/PriceChart";
 import { AssetClassBadge } from "../components/AssetClassBadge";
+import { NewsFeed } from "../components/NewsFeed";
 import {
   DEFAULT_SYMBOLS,
   DEFAULT_SYMBOL,
@@ -238,6 +239,9 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* News Feed */}
+      <NewsFeed />
 
       {/* Regime Overview */}
       {assetClass === "crypto" ? (

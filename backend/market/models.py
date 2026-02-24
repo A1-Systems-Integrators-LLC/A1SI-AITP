@@ -74,6 +74,34 @@ class ExchangeConfig(models.Model):
         super().save(*args, **kwargs)
 
 
+class NewsArticle(models.Model):
+    article_id = models.CharField(max_length=64, unique=True, db_index=True)
+    title = models.CharField(max_length=500)
+    url = models.URLField(max_length=1000)
+    source = models.CharField(max_length=100)
+    summary = models.TextField(blank=True, default="")
+    published_at = models.DateTimeField(db_index=True)
+    symbols = models.JSONField(default=list, blank=True)
+    asset_class = models.CharField(
+        max_length=10,
+        choices=AssetClass.choices,
+        default=AssetClass.CRYPTO,
+        db_index=True,
+    )
+    sentiment_score = models.FloatField(default=0.0)
+    sentiment_label = models.CharField(max_length=10, default="neutral")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-published_at"]
+        indexes = [
+            models.Index(fields=["asset_class", "-published_at"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.sentiment_label}] {self.title[:80]}"
+
+
 class DataSourceConfig(models.Model):
     exchange_config = models.ForeignKey(
         ExchangeConfig, on_delete=models.CASCADE, related_name="data_sources",

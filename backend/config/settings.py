@@ -208,6 +208,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Risk", "description": "Risk management, VaR, kill switch, alerts"},
         {"name": "Analysis", "description": "Backtesting, screening, data pipeline"},
         {"name": "ML", "description": "Machine learning model training and prediction"},
+        {"name": "Scheduler", "description": "Task scheduling and automated execution"},
         {"name": "Platform", "description": "Health, status, config, metrics"},
     ],
 }
@@ -262,6 +263,64 @@ if EXCHANGE_API_KEY and not TESTING:
     )
 
 MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "2"))
+
+# ── Scheduler ────────────────────────────────────────────────
+SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "true").lower() in ("true", "1", "yes")
+SCHEDULER_MAX_WORKERS = int(os.environ.get("SCHEDULER_MAX_WORKERS", "2"))
+
+NEWSAPI_KEY = os.environ.get("NEWSAPI_KEY", "")
+
+SCHEDULED_TASKS = {
+    "data_refresh_crypto": {
+        "name": "Crypto Data Refresh",
+        "description": "Refresh OHLCV for crypto watchlist",
+        "task_type": "data_refresh",
+        "interval_seconds": 3600,
+        "params": {"asset_class": "crypto"},
+    },
+    "data_refresh_equity": {
+        "name": "Equity Data Refresh",
+        "description": "Refresh OHLCV for equity watchlist",
+        "task_type": "data_refresh",
+        "interval_seconds": 86400,
+        "params": {"asset_class": "equity"},
+    },
+    "data_refresh_forex": {
+        "name": "Forex Data Refresh",
+        "description": "Refresh OHLCV for forex watchlist",
+        "task_type": "data_refresh",
+        "interval_seconds": 14400,
+        "params": {"asset_class": "forex"},
+    },
+    "regime_detection": {
+        "name": "Regime Detection",
+        "description": "Crypto regime detection",
+        "task_type": "regime_detection",
+        "interval_seconds": 900,
+        "params": {},
+    },
+    "order_sync": {
+        "name": "Order Sync",
+        "description": "Sync open live orders",
+        "task_type": "order_sync",
+        "interval_seconds": 300,
+        "params": {},
+    },
+    "data_quality_check": {
+        "name": "Data Quality Check",
+        "description": "Check for stale data",
+        "task_type": "data_quality",
+        "interval_seconds": 3600,
+        "params": {},
+    },
+    "news_fetch": {
+        "name": "News Fetch",
+        "description": "Fetch latest news",
+        "task_type": "news_fetch",
+        "interval_seconds": 1800,
+        "params": {},
+    },
+}
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -329,5 +388,6 @@ LOGGING = {
         "risk": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
         "analysis": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
         "market": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
+        "scheduler": {"handlers": ["console", "app_file"], "level": "INFO", "propagate": False},
     },
 }

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from market.models import DataSourceConfig, ExchangeConfig
+from market.models import DataSourceConfig, ExchangeConfig, NewsArticle
 
 # ── Exchange Config serializers ──────────────────────────────
 
@@ -190,3 +190,35 @@ class ExchangeTestResultSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     markets_count = serializers.IntegerField(required=False)
     message = serializers.CharField()
+
+
+# ── News serializers ─────────────────────────────────────────
+
+
+class NewsArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsArticle
+        fields = [
+            "article_id",
+            "title",
+            "url",
+            "source",
+            "summary",
+            "published_at",
+            "symbols",
+            "asset_class",
+            "sentiment_score",
+            "sentiment_label",
+            "created_at",
+        ]
+
+
+class NewsSentimentSummarySerializer(serializers.Serializer):
+    asset_class = serializers.CharField()
+    hours = serializers.IntegerField()
+    total_articles = serializers.IntegerField()
+    avg_score = serializers.FloatField()
+    overall_label = serializers.CharField()
+    positive_count = serializers.IntegerField()
+    negative_count = serializers.IntegerField()
+    neutral_count = serializers.IntegerField()
