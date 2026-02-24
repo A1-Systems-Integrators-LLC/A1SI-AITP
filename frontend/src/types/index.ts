@@ -673,3 +673,34 @@ export interface PlatformStatus {
   data_files: number;
   active_jobs: number;
 }
+
+// Dashboard KPI types
+export interface DashboardKPIs {
+  portfolio: {
+    count: number;
+    total_value: number;
+    total_cost: number;
+    unrealized_pnl: number;
+    pnl_pct: number;
+  };
+  trading: {
+    total_trades: number;
+    win_rate: number;
+    total_pnl: number;
+    profit_factor: number | null;
+    open_orders: number;
+  };
+  risk: {
+    equity: number;
+    drawdown: number;
+    daily_pnl: number;
+    is_halted: boolean;
+    open_positions: number;
+  };
+  platform: {
+    data_files: number;
+    active_jobs: number;
+    framework_count: number;
+  };
+  generated_at: string;
+}

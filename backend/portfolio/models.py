@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from market.constants import AssetClass
@@ -46,6 +47,15 @@ class Holding(models.Model):
                 name="idx_holding_portfolio_symbol",
             ),
         ]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.amount is not None and self.amount < 0:
+            errors.setdefault("amount", []).append("Amount must be >= 0.")
+        if self.avg_buy_price is not None and self.avg_buy_price < 0:
+            errors.setdefault("avg_buy_price", []).append("avg_buy_price must be >= 0.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.symbol} x{self.amount}"

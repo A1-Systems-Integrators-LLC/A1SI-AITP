@@ -145,4 +145,17 @@ describe("Scheduler - Status Cards", () => {
     renderWithProviders(<Scheduler />);
     expect(await screen.findByText("No scheduled tasks found.")).toBeInTheDocument();
   });
+
+  it("shows error state when API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("scheduler/tasks")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({ "/api/scheduler/status": mockStatus })(input, init);
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("Failed to load scheduler tasks")).toBeInTheDocument();
+  });
 });

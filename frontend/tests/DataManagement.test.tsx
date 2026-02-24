@@ -172,4 +172,17 @@ describe("DataManagement - Table Headers", () => {
     expect(screen.getByText("Start")).toBeInTheDocument();
     expect(screen.getByText("End")).toBeInTheDocument();
   });
+
+  it("shows error state when API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/data/")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<DataManagement />);
+    expect(await screen.findByText("Failed to load data files")).toBeInTheDocument();
+  });
 });

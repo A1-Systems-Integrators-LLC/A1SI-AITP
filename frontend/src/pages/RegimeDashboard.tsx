@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { regimeApi } from "../api/regime";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { Pagination } from "../components/Pagination";
+import { QueryError } from "../components/QueryError";
 import type {
   RegimeState,
   RegimeType,
@@ -55,7 +56,7 @@ export function RegimeDashboard() {
   const [selectedSymbol, setSelectedSymbol] = useLocalStorage("ci:regime-symbol", SYMBOLS[0]);
   const [historyPage, setHistoryPage] = useState(1);
 
-  const { data: regimeState } = useQuery<RegimeState>({
+  const { data: regimeState, isError: regimeError, error: regimeErr } = useQuery<RegimeState>({
     queryKey: ["regime-current", selectedSymbol],
     queryFn: () => regimeApi.getCurrent(selectedSymbol),
     refetchInterval: 30000,
@@ -78,6 +79,7 @@ export function RegimeDashboard() {
 
   return (
     <div>
+      {regimeError && <QueryError error={regimeErr instanceof Error ? regimeErr : null} message="Failed to load regime data" />}
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Regime Dashboard</h2>

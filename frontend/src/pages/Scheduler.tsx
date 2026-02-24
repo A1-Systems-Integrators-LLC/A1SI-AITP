@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schedulerApi } from "../api/scheduler";
 import { useToast } from "../hooks/useToast";
+import { QueryError } from "../components/QueryError";
 import type { ScheduledTask, SchedulerStatus } from "../types";
 
 export function Scheduler() {
@@ -16,7 +17,7 @@ export function Scheduler() {
     refetchInterval: 30000,
   });
 
-  const { data: tasks, isLoading } = useQuery<ScheduledTask[]>({
+  const { data: tasks, isLoading, isError: tasksError, error: tasksErr } = useQuery<ScheduledTask[]>({
     queryKey: ["scheduler-tasks"],
     queryFn: schedulerApi.tasks,
     refetchInterval: 30000,
@@ -61,6 +62,8 @@ export function Scheduler() {
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold">Scheduler</h2>
+
+      {tasksError && <QueryError error={tasksErr instanceof Error ? tasksErr : null} message="Failed to load scheduler tasks" />}
 
       {/* Status bar */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">

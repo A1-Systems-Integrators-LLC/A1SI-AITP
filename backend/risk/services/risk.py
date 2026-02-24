@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from channels.layers import get_channel_layer
+from django.db import transaction
 
 from core.platform_bridge import ensure_platform_imports
 from core.services.notification import NotificationService
@@ -97,21 +98,22 @@ class RiskManagementService:
     ) -> RiskLimits:
         from risk.models import RiskLimitChange
 
-        limits = RiskManagementService._get_or_create_limits(portfolio_id)
-        for key, value in updates.items():
-            if value is not None and hasattr(limits, key):
-                old_value = getattr(limits, key)
-                if old_value != value:
-                    RiskLimitChange.objects.create(
-                        portfolio_id=portfolio_id,
-                        field_name=key,
-                        old_value=str(old_value),
-                        new_value=str(value),
-                        changed_by=changed_by,
-                        reason=reason,
-                    )
-                    setattr(limits, key, value)
-        limits.save()
+        with transaction.atomic():
+            limits = RiskManagementService._get_or_create_limits(portfolio_id)
+            for key, value in updates.items():
+                if value is not None and hasattr(limits, key):
+                    old_value = getattr(limits, key)
+                    if old_value != value:
+                        RiskLimitChange.objects.create(
+                            portfolio_id=portfolio_id,
+                            field_name=key,
+                            old_value=str(old_value),
+                            new_value=str(value),
+                            changed_by=changed_by,
+                            reason=reason,
+                        )
+                        setattr(limits, key, value)
+            limits.save()
         return limits
 
     @staticmethod
@@ -333,20 +335,21 @@ class RiskManagementService:
 
     @staticmethod
     def halt_trading(portfolio_id: int, reason: str) -> dict:
-        state = RiskManagementService._get_or_create_state(portfolio_id)
-        state.is_halted = True
-        state.halt_reason = reason
-        state.save()
+        with transaction.atomic():
+            state = RiskManagementService._get_or_create_state(portfolio_id)
+            state.is_halted = True
+            state.halt_reason = reason
+            state.save()
 
-        AlertLog.objects.create(
-            portfolio_id=portfolio_id,
-            event_type="kill_switch_halt",
-            severity="warning",
-            message=f"Kill switch HALT: {reason}",
-            channel="log",
-            delivered=True,
-            error="",
-        )
+            AlertLog.objects.create(
+                portfolio_id=portfolio_id,
+                event_type="kill_switch_halt",
+                severity="warning",
+                message=f"Kill switch HALT: {reason}",
+                channel="log",
+                delivered=True,
+                error="",
+            )
 
         return {"is_halted": True, "halt_reason": reason, "message": f"Trading halted: {reason}"}
 
@@ -400,20 +403,21 @@ class RiskManagementService:
 
     @staticmethod
     def resume_trading(portfolio_id: int) -> dict:
-        state = RiskManagementService._get_or_create_state(portfolio_id)
-        state.is_halted = False
-        state.halt_reason = ""
-        state.save()
+        with transaction.atomic():
+            state = RiskManagementService._get_or_create_state(portfolio_id)
+            state.is_halted = False
+            state.halt_reason = ""
+            state.save()
 
-        AlertLog.objects.create(
-            portfolio_id=portfolio_id,
-            event_type="kill_switch_resume",
-            severity="info",
-            message="Kill switch RESUME: Trading resumed",
-            channel="log",
-            delivered=True,
-            error="",
-        )
+            AlertLog.objects.create(
+                portfolio_id=portfolio_id,
+                event_type="kill_switch_resume",
+                severity="info",
+                message="Kill switch RESUME: Trading resumed",
+                channel="log",
+                delivered=True,
+                error="",
+            )
 
         return {"is_halted": False, "halt_reason": "", "message": "Trading resumed"}
 

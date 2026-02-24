@@ -53,10 +53,16 @@ jobs:
         run: |
           python -m venv backend/.venv
           backend/.venv/bin/pip install -e "backend[dev,analysis]" --quiet
-      - name: Run pytest
+      - name: Run pytest with coverage
         env:
           DJANGO_DEBUG: "true"
-        run: backend/.venv/bin/python -m pytest backend/tests/ -v
+        run: backend/.venv/bin/python -m pytest backend/tests/ -v --cov=backend --cov-report=xml --cov-report=term-missing
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage.xml
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -70,8 +76,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: cd frontend && npm ci
-      - name: Run vitest
-        run: cd frontend && npx vitest run
+      - name: Run vitest with coverage
+        run: cd frontend && npx vitest run --coverage
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
       - name: Check bundle size
         run: |
           cd frontend && npm run build

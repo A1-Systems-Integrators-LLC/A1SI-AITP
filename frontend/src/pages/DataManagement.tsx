@@ -5,6 +5,7 @@ import { useJobPolling } from "../hooks/useJobPolling";
 import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { ProgressBar } from "../components/ProgressBar";
+import { QueryError } from "../components/QueryError";
 import {
   DEFAULT_SYMBOLS as DEFAULT_SYMBOLS_MAP,
   EXCHANGE_OPTIONS,
@@ -84,6 +85,8 @@ export function DataManagement() {
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold">Data Management</h2>
+
+      {filesError && <QueryError error={null} message="Failed to load data files" />}
 
       {/* Active Job Progress */}
       {activeJobId && job.data && (

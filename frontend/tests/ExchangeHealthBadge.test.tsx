@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { ExchangeHealthBadge } from "../src/components/ExchangeHealthBadge";
 import { renderWithProviders, mockFetch } from "./helpers";

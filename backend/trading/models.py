@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -119,6 +120,19 @@ class Order(models.Model):
                 name="idx_order_created_desc",
             ),
         ]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.amount is not None and self.amount <= 0:
+            errors.setdefault("amount", []).append("Amount must be greater than 0.")
+        if self.price is not None and self.price < 0:
+            errors.setdefault("price", []).append("Price must be >= 0.")
+        if self.order_type == "limit" and (self.price is None or self.price <= 0):
+            errors.setdefault("price", []).append("Limit orders require a price > 0.")
+        if self.side not in ("buy", "sell"):
+            errors.setdefault("side", []).append("Side must be 'buy' or 'sell'.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.side} {self.symbol} x{self.amount} [{self.status}]"

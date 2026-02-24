@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { dashboardApi } from "../api/dashboard";
 import { marketApi } from "../api/market";
-import { portfoliosApi } from "../api/portfolios";
 import { platformApi } from "../api/platform";
 import { jobsApi } from "../api/jobs";
 import { regimeApi } from "../api/regime";
-import { riskApi } from "../api/risk";
-import { tradingApi } from "../api/trading";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { ProgressBar } from "../components/ProgressBar";
 import { MarketStatusBadge } from "../components/MarketStatusBadge";
@@ -23,14 +21,12 @@ import {
 import type {
   AssetClass,
   BackgroundJob,
+  DashboardKPIs,
   OHLCVData,
   PlatformStatus,
-  Portfolio,
   RegimeState,
   RegimeType,
-  RiskStatus,
   TickerData,
-  TradingPerformanceSummary,
 } from "../types";
 
 const ALWAYS_SHOW_FRAMEWORKS = ["VectorBT", "CCXT", "Pandas", "TA-Lib"];
@@ -55,9 +51,11 @@ export function Dashboard() {
 
   useEffect(() => { document.title = "Dashboard | A1SI-AITP"; }, []);
 
-  const portfolios = useQuery<Portfolio[]>({
-    queryKey: ["portfolios"],
-    queryFn: portfoliosApi.list,
+  // Aggregated KPI query — replaces portfolios, risk status, trading performance, and data_files
+  const kpis = useQuery<DashboardKPIs>({
+    queryKey: ["dashboard-kpis", assetClass],
+    queryFn: () => dashboardApi.kpis(assetClass),
+    refetchInterval: 30000,
   });
 
   const { data: platformStatus } = useQuery<PlatformStatus>({
@@ -68,7 +66,7 @@ export function Dashboard() {
   const { data: recentJobs } = useQuery<BackgroundJob[]>({
     queryKey: ["recent-jobs"],
     queryFn: () => jobsApi.list(undefined, 5),
-    refetchInterval: 30000, // 30s fallback (WebSocket handles real-time)
+    refetchInterval: 30000,
   });
 
   const activeJobs = recentJobs?.filter(
@@ -78,11 +76,10 @@ export function Dashboard() {
   const { data: regimeStates } = useQuery<RegimeState[]>({
     queryKey: ["regime-overview"],
     queryFn: regimeApi.getCurrentAll,
-    refetchInterval: 120000, // 2min fallback (WebSocket handles regime changes)
+    refetchInterval: 120000,
     enabled: assetClass === "crypto",
   });
 
-  // Watchlist tickers
   const { data: tickerData, isLoading: tickersLoading } = useQuery<TickerData[]>({
     queryKey: ["watchlist-tickers", assetClass],
     queryFn: () => marketApi.tickers(DEFAULT_SYMBOLS[assetClass], assetClass),
@@ -90,38 +87,18 @@ export function Dashboard() {
     retry: 1,
   });
 
-  // Daily OHLCV for chart
   const { data: ohlcvData, isLoading: ohlcvLoading } = useQuery<OHLCVData[]>({
     queryKey: ["dashboard-ohlcv", chartSymbol, assetClass],
     queryFn: () => marketApi.ohlcv(chartSymbol, "1d", 30, assetClass),
     retry: 1,
   });
 
-  // Trading performance
-  const { data: tradingPerf } = useQuery<TradingPerformanceSummary>({
-    queryKey: ["trading-performance-dashboard"],
-    queryFn: () => tradingApi.performanceSummary(),
-  });
-
-  // Compute aggregate portfolio value from holdings
-  const totalValue = portfolios.data?.reduce(
-    (sum, p) => sum + p.holdings.reduce((s, h) => s + (h.amount ?? 0) * (h.avg_buy_price ?? 0), 0),
-    0,
-  ) ?? 0;
-
-  // Fetch risk status for the first portfolio (daily P&L)
-  const primaryPortfolioId = portfolios.data?.[0]?.id;
-  const { data: riskStatus } = useQuery<RiskStatus>({
-    queryKey: ["risk-status", primaryPortfolioId],
-    queryFn: () => riskApi.getStatus(primaryPortfolioId!),
-    enabled: primaryPortfolioId != null,
-  });
-
-  // Filter frameworks by asset class
   const frameworkLabels = BACKTEST_FRAMEWORKS[assetClass].map((f) => f.label);
   const filteredFrameworks = platformStatus?.frameworks.filter(
     (fw) => ALWAYS_SHOW_FRAMEWORKS.includes(fw.name) || frameworkLabels.includes(fw.name),
   );
+
+  const dailyPnl = kpis.data?.risk?.daily_pnl;
 
   return (
     <div>
@@ -130,9 +107,9 @@ export function Dashboard() {
         <MarketStatusBadge assetClass={assetClass} />
       </div>
 
-      {portfolios.isError && (
+      {kpis.isError && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-          <p>Failed to load portfolios: {portfolios.error instanceof Error ? portfolios.error.message : "Unknown error"}</p>
+          <p>Failed to load dashboard data: {kpis.error instanceof Error ? kpis.error.message : "Unknown error"}</p>
         </div>
       )}
 
@@ -140,8 +117,8 @@ export function Dashboard() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
         <SummaryCard
           label="Portfolios"
-          value={portfolios.data?.length ?? 0}
-          loading={portfolios.isLoading}
+          value={kpis.data?.portfolio.count ?? 0}
+          loading={kpis.isLoading}
         />
         <SummaryCard
           label="Data Sources"
@@ -149,7 +126,8 @@ export function Dashboard() {
         />
         <SummaryCard
           label="Data Files"
-          value={platformStatus?.data_files ?? 0}
+          value={kpis.data?.platform.data_files ?? 0}
+          loading={kpis.isLoading}
         />
         <SummaryCard
           label="Active Jobs"
@@ -158,13 +136,13 @@ export function Dashboard() {
         />
         <SummaryCard
           label="Portfolio Value"
-          text={`$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          loading={portfolios.isLoading}
+          text={`$${(kpis.data?.portfolio.total_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          loading={kpis.isLoading}
         />
         <SummaryCard
           label="Daily P&L"
-          text={riskStatus ? `$${riskStatus.daily_pnl.toFixed(2)}` : "—"}
-          textColor={riskStatus && riskStatus.daily_pnl >= 0 ? "text-green-400" : riskStatus && riskStatus.daily_pnl < 0 ? "text-red-400" : ""}
+          text={dailyPnl != null ? `$${dailyPnl.toFixed(2)}` : "\u2014"}
+          textColor={dailyPnl != null && dailyPnl >= 0 ? "text-green-400" : dailyPnl != null && dailyPnl < 0 ? "text-red-400" : ""}
         />
         <SummaryCard label="Status" text="Online" textColor="text-[var(--color-success)]" />
       </div>
@@ -284,27 +262,27 @@ export function Dashboard() {
       )}
 
       {/* Trading Performance Card */}
-      {tradingPerf && tradingPerf.total_trades > 0 && (
+      {kpis.data?.trading && kpis.data.trading.total_trades > 0 && (
         <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
           <h3 className="mb-4 text-lg font-semibold">Trading Performance</h3>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Win Rate</p>
-              <p className="text-xl font-bold">{tradingPerf.win_rate.toFixed(1)}%</p>
+              <p className="text-xl font-bold">{kpis.data.trading.win_rate.toFixed(1)}%</p>
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Total P&L</p>
-              <p className={`text-xl font-bold ${tradingPerf.total_pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                ${tradingPerf.total_pnl.toFixed(2)}
+              <p className={`text-xl font-bold ${kpis.data.trading.total_pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                ${kpis.data.trading.total_pnl.toFixed(2)}
               </p>
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Profit Factor</p>
-              <p className="text-xl font-bold">{tradingPerf.profit_factor != null ? tradingPerf.profit_factor.toFixed(2) : "\u221E"}</p>
+              <p className="text-xl font-bold">{kpis.data.trading.profit_factor != null ? kpis.data.trading.profit_factor.toFixed(2) : "\u221E"}</p>
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Trades</p>
-              <p className="text-xl font-bold">{tradingPerf.total_trades}</p>
+              <p className="text-xl font-bold">{kpis.data.trading.total_trades}</p>
             </div>
           </div>
         </div>

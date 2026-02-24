@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { Workflows } from "../src/pages/Workflows";
 import { renderWithProviders, mockFetch } from "./helpers";
 
@@ -141,5 +141,18 @@ describe("Workflows - Interaction", () => {
     renderWithProviders(<Workflows />);
     // Should render page heading even with no workflows
     expect(screen.getByText("Workflows")).toBeInTheDocument();
+  });
+
+  it("shows error state when API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("workflows")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({ "/api/workflow-steps": mockStepTypes })(input, init);
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<Workflows />);
+    expect(await screen.findByText("Failed to load workflows")).toBeInTheDocument();
   });
 });

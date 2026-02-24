@@ -25,6 +25,11 @@ services:
       - backend-data:/project/backend/data
       - market-data:/project/data
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -45,12 +50,17 @@ services:
     ports:
       - "3000:80"
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     deploy:
       resources:
         limits:
           memory: 256m
         reservations:
-          memory: 64m
+          memory: 128m
     depends_on:
       backend:
         condition: service_healthy

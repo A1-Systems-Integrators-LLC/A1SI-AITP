@@ -101,4 +101,20 @@ describe("RegimeDashboard", () => {
     renderWithProviders(<RegimeDashboard />);
     expect(await screen.findByText("Regime History")).toBeInTheDocument();
   });
+
+  it("shows error state when API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("regime/current")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({
+        "/api/regime/recommendation/BTC": mockRecommendation,
+        "/api/regime/history/BTC": mockHistory,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<RegimeDashboard />);
+    expect(await screen.findByText("Failed to load regime data")).toBeInTheDocument();
+  });
 });

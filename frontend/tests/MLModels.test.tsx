@@ -70,4 +70,17 @@ describe("MLModels", () => {
     renderWithProviders(<MLModels />);
     expect(screen.getByRole("button", { name: "Run Prediction" })).toBeDisabled();
   });
+
+  it("shows error state when API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("ml/models")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<MLModels />);
+    expect(await screen.findByText("Failed to load ML models")).toBeInTheDocument();
+  });
 });

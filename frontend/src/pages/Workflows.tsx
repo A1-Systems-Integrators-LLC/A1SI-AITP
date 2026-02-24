@@ -4,6 +4,7 @@ import { workflowsApi } from "../api/workflows";
 import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { AssetClassBadge } from "../components/AssetClassBadge";
+import { QueryError } from "../components/QueryError";
 import type {
   StepType,
   WorkflowDetail,
@@ -22,7 +23,7 @@ export function Workflows() {
 
   useEffect(() => { document.title = "Workflows | A1SI-AITP"; }, []);
 
-  const { data: workflows, isLoading } = useQuery<WorkflowListItem[]>({
+  const { data: workflows, isLoading, isError: workflowsError, error: workflowsErr } = useQuery<WorkflowListItem[]>({
     queryKey: ["workflows", assetClass],
     queryFn: () => workflowsApi.list(assetClass),
   });
@@ -63,6 +64,8 @@ export function Workflows() {
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold">Workflows</h2>
+
+      {workflowsError && <QueryError error={workflowsErr instanceof Error ? workflowsErr : null} message="Failed to load workflows" />}
 
       {/* Workflow list */}
       <div className="space-y-4">

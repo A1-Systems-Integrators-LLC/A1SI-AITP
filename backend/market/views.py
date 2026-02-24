@@ -10,6 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.error_response import error_response
 from core.utils import safe_int as _safe_int
 from market.models import DataSourceConfig, ExchangeConfig
 from market.serializers import (
@@ -158,7 +159,7 @@ class ExchangeConfigDetailView(APIView):
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Exchange config not found", 404)
         return Response(ExchangeConfigSerializer(obj).data)
 
     @extend_schema(
@@ -169,7 +170,7 @@ class ExchangeConfigDetailView(APIView):
     def put(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Exchange config not found", 404)
         serializer = ExchangeConfigUpdateSerializer(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -179,7 +180,7 @@ class ExchangeConfigDetailView(APIView):
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Exchange config not found", 404)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -193,7 +194,7 @@ class ExchangeConfigTestView(APIView):
         try:
             config = ExchangeConfig.objects.get(pk=pk)
         except ExchangeConfig.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Exchange config not found", 404)
 
         async def _test_connection():
             exchange_class = getattr(ccxt, config.exchange_id)
@@ -278,7 +279,7 @@ class DataSourceConfigDetailView(APIView):
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Data source config not found", 404)
         return Response(DataSourceConfigSerializer(obj).data)
 
     @extend_schema(
@@ -289,7 +290,7 @@ class DataSourceConfigDetailView(APIView):
     def put(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Data source config not found", 404)
         serializer = DataSourceConfigCreateSerializer(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -299,7 +300,7 @@ class DataSourceConfigDetailView(APIView):
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return error_response("Data source config not found", 404)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

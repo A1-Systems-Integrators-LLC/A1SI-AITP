@@ -129,6 +129,14 @@ const mockNewsSentiment = {
   neutral_count: 1,
 };
 
+const mockKpis = {
+  portfolio: { count: 1, total_value: 10000 },
+  trading: { total_trades: 5, win_rate: 60.0, total_pnl: 500.0, profit_factor: 2.0 },
+  risk: { daily_pnl: 125.5, drawdown: 0.048, is_halted: false },
+  platform: { data_files: 12, active_jobs: 2 },
+  generated_at: new Date().toISOString(),
+};
+
 const mockNewsArticles = [
   {
     article_id: "test1",
@@ -158,6 +166,7 @@ beforeEach(() => {
       "/api/market/ohlcv": mockOhlcv,
       "/api/market/news/sentiment": mockNewsSentiment,
       "/api/market/news": mockNewsArticles,
+      "/api/dashboard/kpis/": mockKpis,
     }),
   );
 });
@@ -221,6 +230,7 @@ describe("Dashboard", () => {
         "/api/market/ohlcv": mockOhlcv,
         "/api/market/news/sentiment": mockNewsSentiment,
         "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
       }),
     );
     renderWithProviders(<Dashboard />, { assetClass: "equity" });
@@ -241,6 +251,7 @@ describe("Dashboard", () => {
         "/api/market/ohlcv": mockOhlcv,
         "/api/market/news/sentiment": mockNewsSentiment,
         "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
       }),
     );
     renderWithProviders(<Dashboard />);
@@ -259,6 +270,7 @@ describe("Dashboard", () => {
         "/api/market/ohlcv": mockOhlcv,
         "/api/market/news/sentiment": mockNewsSentiment,
         "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
       }),
     );
     renderWithProviders(<Dashboard />, { assetClass: "equity" });

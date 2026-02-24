@@ -4,6 +4,7 @@ import { mlApi, type MLModel } from "../api/ml";
 import { useJobPolling } from "../hooks/useJobPolling";
 import { useToast } from "../hooks/useToast";
 import { ProgressBar } from "../components/ProgressBar";
+import { QueryError } from "../components/QueryError";
 
 export function MLModels() {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export function MLModels() {
   const [predictModelId, setPredictModelId] = useState("");
   const [predictResult, setPredictResult] = useState<string | null>(null);
 
-  const { data: models, isLoading } = useQuery<MLModel[]>({
+  const { data: models, isLoading, isError: modelsError, error: modelsErr } = useQuery<MLModel[]>({
     queryKey: ["ml-models"],
     queryFn: mlApi.listModels,
   });
@@ -53,6 +54,8 @@ export function MLModels() {
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold">ML Models</h2>
+
+      {modelsError && <QueryError error={modelsErr instanceof Error ? modelsErr : null} message="Failed to load ML models" />}
 
       {/* Active Job Progress */}
       {activeJobId && job.data && (

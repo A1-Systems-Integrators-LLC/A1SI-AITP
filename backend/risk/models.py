@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from market.constants import AssetClass
@@ -29,6 +30,26 @@ class RiskLimits(models.Model):
     max_correlation = models.FloatField(default=0.70)
     min_risk_reward = models.FloatField(default=1.5)
     max_leverage = models.FloatField(default=1.0)
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        for field in ("max_portfolio_drawdown", "max_single_trade_risk", "max_daily_loss",
+                       "max_position_size_pct", "max_correlation"):
+            val = getattr(self, field, None)
+            if val is not None and (val < 0 or val > 1):
+                errors.setdefault(field, []).append(f"{field} must be between 0 and 1.")
+        if self.max_open_positions is not None and self.max_open_positions < 0:
+            errors.setdefault("max_open_positions", []).append(
+                "max_open_positions must be >= 0."
+            )
+        if self.min_risk_reward is not None and self.min_risk_reward < 0:
+            errors.setdefault("min_risk_reward", []).append(
+                "min_risk_reward must be >= 0."
+            )
+        if self.max_leverage is not None and self.max_leverage < 0:
+            errors.setdefault("max_leverage", []).append("max_leverage must be >= 0.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"RiskLimits(portfolio={self.portfolio_id})"
