@@ -5,6 +5,8 @@ import { backtestApi } from "../api/backtest";
 import { useToast } from "../hooks/useToast";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { BACKTEST_FRAMEWORKS, ASSET_CLASS_LABELS } from "../constants/assetDefaults";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { WidgetErrorFallback } from "../components/WidgetErrorFallback";
 import { getErrorMessage } from "../utils/errors";
 import type {
   PaperTradingStatus,
@@ -166,6 +168,7 @@ export function PaperTrading() {
         </div>
       )}
 
+      <ErrorBoundary fallback={<WidgetErrorFallback name="Paper Trading" />}>
       {/* Status Bar */}
       <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
         <div className="flex items-center gap-4">
@@ -436,6 +439,7 @@ export function PaperTrading() {
           </p>
         )}
       </div>
+      </ErrorBoundary>
     </div>
   );
 }

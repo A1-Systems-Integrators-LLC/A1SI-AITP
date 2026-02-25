@@ -6,6 +6,8 @@ import { useToast } from "../hooks/useToast";
 import { useSystemEvents } from "../hooks/useSystemEvents";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useAssetClass } from "../hooks/useAssetClass";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { WidgetErrorFallback } from "../components/WidgetErrorFallback";
 import { Pagination } from "../components/Pagination";
 import { DEFAULT_SYMBOL } from "../constants/assetDefaults";
 import { getErrorMessage } from "../utils/errors";
@@ -269,6 +271,7 @@ export function RiskManagement() {
         </div>
       )}
 
+      <ErrorBoundary fallback={<WidgetErrorFallback name="Risk Management" />}>
       {/* Status Cards — 5 columns with Total PnL */}
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
         <StatusCard label="Equity" value={`$${(status?.equity ?? 0).toLocaleString()}`} />
@@ -842,6 +845,7 @@ export function RiskManagement() {
           </p>
         )}
       </div>
+      </ErrorBoundary>
       </section>
     </div>
   );

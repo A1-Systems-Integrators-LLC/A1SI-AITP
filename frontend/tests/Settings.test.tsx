@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { Settings } from "../src/pages/Settings";
+import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { WidgetErrorFallback } from "../src/components/WidgetErrorFallback";
 import { renderWithProviders, mockFetch } from "./helpers";
 
 const mockConfigs = [
@@ -296,5 +298,186 @@ describe("Settings - Empty State", () => {
     expect(
       await screen.findByText(/No exchange connections configured/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Settings - Notification Preferences", () => {
+  it("renders notification toggle labels", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/portfolios": [{ id: 1, name: "Main" }],
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("Order Submitted")).toBeInTheDocument();
+    expect(screen.getByText("Order Filled")).toBeInTheDocument();
+    expect(screen.getByText("Order Cancelled")).toBeInTheDocument();
+    expect(screen.getByText("Risk Halt/Resume")).toBeInTheDocument();
+    expect(screen.getByText("Trade Rejected")).toBeInTheDocument();
+    expect(screen.getByText("Daily Summary")).toBeInTheDocument();
+  });
+
+  it("renders Telegram and Webhook channel checkboxes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/portfolios": [{ id: 1, name: "Main" }],
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("Telegram")).toBeInTheDocument();
+    expect(screen.getByText("Webhook")).toBeInTheDocument();
+  });
+
+  it("shows portfolio selector when portfolios exist", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/portfolios": [{ id: 1, name: "Main" }, { id: 2, name: "Test" }],
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("Portfolio:")).toBeInTheDocument();
+  });
+});
+
+describe("Settings - Audit Log", () => {
+  it("renders Audit Log section heading", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/audit-log": { results: [], total: 0 },
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("Audit Log")).toBeInTheDocument();
+  });
+
+  it("shows empty message when no audit entries", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/audit-log": { results: [], total: 0 },
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("No audit log entries found.")).toBeInTheDocument();
+  });
+
+  it("shows audit log entries in table", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/audit-log": {
+          results: [
+            {
+              id: 1,
+              user: "admin",
+              action: "POST /api/trading/orders/",
+              ip_address: "127.0.0.1",
+              status_code: 201,
+              created_at: "2026-02-25T10:00:00Z",
+            },
+          ],
+          total: 1,
+        },
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("admin")).toBeInTheDocument();
+    expect(screen.getByText("POST /api/trading/orders/")).toBeInTheDocument();
+    expect(screen.getByText("201")).toBeInTheDocument();
+  });
+
+  it("has user filter input", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": mockConfigs,
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+        "/api/audit-log": { results: [], total: 0 },
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByPlaceholderText("Filter by user")).toBeInTheDocument();
+  });
+});
+
+describe("Settings - Data Source Display", () => {
+  beforeEach(setupMocks);
+
+  it("shows fetch interval", async () => {
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText(/Every 60min/)).toBeInTheDocument();
+  });
+
+  it("shows timeframe badges", async () => {
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("1h")).toBeInTheDocument();
+    expect(await screen.findByText("4h")).toBeInTheDocument();
+  });
+
+  it("shows Add Data Source button when configs exist", async () => {
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("Add Data Source")).toBeInTheDocument();
+  });
+
+  it("shows last fetched time", async () => {
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText(/Last:/)).toBeInTheDocument();
+  });
+});
+
+describe("Settings - Live badge for non-sandbox config", () => {
+  it("shows live badge when is_sandbox is false", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/exchange-configs": [
+          { ...mockConfigs[0], is_sandbox: false, is_default: false },
+        ],
+        "/api/data-sources": mockDataSources,
+        "/api/notifications/preferences": mockNotifPrefs,
+      }),
+    );
+    renderWithProviders(<Settings />);
+    expect(await screen.findByText("live")).toBeInTheDocument();
+  });
+});
+
+describe("Settings - ErrorBoundary", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("catches render errors with named fallback", () => {
+    function ThrowingChild() { throw new Error("render crash"); }
+    renderWithProviders(
+      <ErrorBoundary fallback={<WidgetErrorFallback name="Settings" />}>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText("Settings unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });

@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { mlApi, type MLModel } from "../api/ml";
 import { useJobPolling } from "../hooks/useJobPolling";
 import { useToast } from "../hooks/useToast";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { WidgetErrorFallback } from "../components/WidgetErrorFallback";
 import { ProgressBar } from "../components/ProgressBar";
 import { QueryError } from "../components/QueryError";
 import { getErrorMessage } from "../utils/errors";
@@ -59,6 +61,7 @@ export function MLModels() {
 
       {modelsError && <QueryError error={modelsErr instanceof Error ? modelsErr : null} message="Failed to load ML models" />}
 
+      <ErrorBoundary fallback={<WidgetErrorFallback name="ML Models" />}>
       {/* Active Job Progress */}
       {activeJobId && job.data && (
         <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -238,6 +241,7 @@ export function MLModels() {
           </div>
         )}
       </div>
+      </ErrorBoundary>
       </section>
     </div>
   );

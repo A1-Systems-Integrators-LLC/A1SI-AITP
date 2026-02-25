@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import { RiskManagement } from "../src/pages/RiskManagement";
+import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { WidgetErrorFallback } from "../src/components/WidgetErrorFallback";
 import { renderWithProviders, mockFetch } from "./helpers";
 
 const mockStatus = {
@@ -587,5 +589,22 @@ describe("RiskManagement - Portfolio Health Details", () => {
     renderWithProviders(<RiskManagement />);
     expect(await screen.findByText(/Drawdown warning/)).toBeInTheDocument();
     expect(await screen.findByText(/VaR warning/)).toBeInTheDocument();
+  });
+});
+
+describe("RiskManagement - ErrorBoundary", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("catches render errors with named fallback", () => {
+    function ThrowingChild() { throw new Error("render crash"); }
+    renderWithProviders(
+      <ErrorBoundary fallback={<WidgetErrorFallback name="Risk Management" />}>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText("Risk Management unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });

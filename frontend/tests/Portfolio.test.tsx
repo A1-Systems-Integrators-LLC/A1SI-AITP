@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PortfolioPage } from "../src/pages/Portfolio";
 import { renderWithProviders, mockFetch } from "./helpers";
@@ -160,5 +160,42 @@ describe("Portfolio - Portfolio Cards", () => {
     await user.click(dialogCancel);
 
     expect(screen.queryByText("Delete Portfolio")).not.toBeInTheDocument();
+  });
+});
+
+describe("Portfolio - Allocation Section", () => {
+  it("shows Show Allocation Breakdown button", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/portfolios": [
+          { id: 1, name: "Main", exchange_id: "binance", holdings: [
+            { id: 1, symbol: "BTC/USDT", amount: 1.5, avg_buy_price: 40000 }
+          ], created_at: "", updated_at: "" },
+        ],
+        "/api/market/tickers": [{ symbol: "BTC/USDT", price: 42000, change_pct: 2.5 }],
+        "/api/portfolios/1/allocation": [
+          { symbol: "BTC/USDT", amount: 1.5, current_price: 42000, market_value: 63000, cost_basis: 60000, pnl: 3000, pnl_pct: 5.0, weight: 100.0, price_stale: false },
+        ],
+      }),
+    );
+    renderWithProviders(<PortfolioPage />);
+    expect(await screen.findByText("Show Allocation Breakdown")).toBeInTheDocument();
+  });
+});
+
+describe("Portfolio - Empty State", () => {
+  it("shows message when no portfolios exist", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/portfolios": [],
+        "/api/market/tickers": [],
+      }),
+    );
+    renderWithProviders(<PortfolioPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/No portfolios/i)).toBeInTheDocument();
+    });
   });
 });

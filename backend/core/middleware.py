@@ -227,8 +227,10 @@ class AuditMiddleware:
                     ip_address=ip.split(",")[0].strip() if ip else "",
                     status_code=status_code,
                 )
+            except (ImportError, RuntimeError) as e:
+                logger.debug("Audit log write failed (app not ready): %s", e)
             except Exception as e:
-                logger.debug(f"Audit log write failed: {e}")
+                logger.warning("Audit log write failed: %s", e)
 
         thread = threading.Thread(target=_write, daemon=True)
         thread.start()

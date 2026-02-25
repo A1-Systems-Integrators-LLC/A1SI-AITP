@@ -521,7 +521,12 @@ class DataQualityListView(APIView):
                     "reports": report_dicts,
                 }
             )
-        except Exception as e:
+        except ImportError as e:
+            return Response(
+                {"error": f"Data quality module not available: {e}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except (OSError, ValueError) as e:
             return Response(
                 {"error": f"Data quality check failed: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -546,7 +551,12 @@ class DataQualityDetailView(APIView):
                 {"error": "Data file not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except Exception as e:
+        except ImportError as e:
+            return Response(
+                {"error": f"Data quality module not available: {e}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except (OSError, ValueError) as e:
             return Response(
                 {"error": f"Quality check failed: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

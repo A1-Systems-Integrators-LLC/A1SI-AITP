@@ -181,3 +181,64 @@ describe("Scheduler - ARIA Labels", () => {
     expect(screen.getByLabelText("Trigger task Regime Detection")).toBeInTheDocument();
   });
 });
+
+describe("Scheduler - Task Table Details", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      }),
+    );
+  });
+
+  it("shows interval in human-readable format (hours)", async () => {
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("1h")).toBeInTheDocument();
+  });
+
+  it("shows interval in minutes for <1h", async () => {
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("2m")).toBeInTheDocument();
+  });
+
+  it("shows task type column", async () => {
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("data_refresh")).toBeInTheDocument();
+    expect(screen.getByText("regime_detection")).toBeInTheDocument();
+  });
+
+  it("shows run count in table", async () => {
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("42")).toBeInTheDocument();
+  });
+
+  it("shows error count with red for errors > 0", async () => {
+    renderWithProviders(<Scheduler />);
+    const cell = await screen.findByText("1");
+    // The error count cell with value 1 should have red text
+    expect(cell.closest("span")?.className || cell.className).toContain("text-red");
+  });
+
+  it("shows dash for null last_run_at", async () => {
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Regime Detection");
+    const dashes = screen.getAllByText("—");
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows seconds format for interval < 60", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": [
+          { ...mockTasks[0], interval_seconds: 45 },
+        ],
+      }),
+    );
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("45s")).toBeInTheDocument();
+  });
+});

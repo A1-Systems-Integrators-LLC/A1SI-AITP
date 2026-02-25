@@ -33,10 +33,10 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     coverage: {
       thresholds: {
-        statements: 60,
-        branches: 50,
+        statements: 70,
+        branches: 65,
         functions: 60,
-        lines: 60,
+        lines: 70,
       },
     },
   },

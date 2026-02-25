@@ -113,12 +113,14 @@ def _fetch_prices(holdings: list[Holding], exchange_id: str) -> dict[str, float]
                     if ticker and ticker.get("price"):
                         results[h.symbol] = ticker["price"]
                 except Exception:
-                    logger.debug("Failed to fetch price for %s", h.symbol)
+                    logger.warning("Failed to fetch price for %s on %s", h.symbol, exchange_id)
             await service.close()
             return results
 
         prices = async_to_sync(_fetch_all)()
-    except Exception:
-        logger.warning("Price fetch failed, using cost basis", exc_info=True)
+    except ImportError:
+        logger.warning("ExchangeService not available, using cost basis for all holdings")
+    except (ConnectionError, TimeoutError, OSError) as e:
+        logger.warning("Price fetch failed (%s), using cost basis: %s", type(e).__name__, e)
 
     return prices

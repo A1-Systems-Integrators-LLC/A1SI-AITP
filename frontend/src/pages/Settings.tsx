@@ -8,6 +8,8 @@ import { auditApi } from "../api/audit";
 import { notificationsApi } from "../api/notifications";
 import { portfoliosApi } from "../api/portfolios";
 import { useToast } from "../hooks/useToast";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { WidgetErrorFallback } from "../components/WidgetErrorFallback";
 import { Pagination } from "../components/Pagination";
 import { getErrorMessage } from "../utils/errors";
 import type {
@@ -450,6 +452,7 @@ export function Settings() {
         </div>
       )}
 
+      <ErrorBoundary fallback={<WidgetErrorFallback name="Settings" />}>
       <div className="max-w-2xl space-y-6">
         {/* Exchange Connections */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
@@ -703,6 +706,7 @@ export function Settings() {
           </p>
         </div>
       </div>
+      </ErrorBoundary>
       </section>
     </div>
   );
