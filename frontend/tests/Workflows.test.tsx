@@ -350,6 +350,26 @@ describe("Workflows - Step Types Panel", () => {
   });
 });
 
+describe("Workflows - Mutation Errors", () => {
+  it("shows error toast when enable mutation fails", async () => {
+    const enableFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/enable") && init?.method === "POST") {
+        return Promise.reject(new TypeError("Network error"));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(new Response(JSON.stringify(mockWorkflows), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(new Response(JSON.stringify(mockStepTypes), { status: 200, headers: { "Content-Type": "application/json" } }));
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+    vi.stubGlobal("fetch", enableFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    // Signal Pipeline has schedule_enabled=false → "Enable" button
+    const enableBtn = await screen.findByText("Enable");
+    fireEvent.click(enableBtn);
+    expect(await screen.findByText(/Network error|Failed to enable/)).toBeInTheDocument();
+  });
+});
+
 describe("Workflows - Empty State Text", () => {
   it("shows no workflows found message", async () => {
     vi.stubGlobal(

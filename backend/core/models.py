@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -27,6 +28,17 @@ class ScheduledTask(models.Model):
 
     class Meta:
         ordering = ["id"]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.interval_seconds is not None and self.interval_seconds <= 0:
+            errors.setdefault("interval_seconds", []).append("Interval must be > 0.")
+        if self.run_count is not None and self.run_count < 0:
+            errors.setdefault("run_count", []).append("Run count must be >= 0.")
+        if self.error_count is not None and self.error_count < 0:
+            errors.setdefault("error_count", []).append("Error count must be >= 0.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.name} ({self.task_type}) [{self.status}]"

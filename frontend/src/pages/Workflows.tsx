@@ -49,6 +49,7 @@ export function Workflows() {
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
       toast("Workflow schedule enabled", "success");
     },
+    onError: (err) => toast(getErrorMessage(err) || "Failed to enable workflow schedule", "error"),
   });
 
   const disableMutation = useMutation({
@@ -57,6 +58,7 @@ export function Workflows() {
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
       toast("Workflow schedule disabled", "info");
     },
+    onError: (err) => toast(getErrorMessage(err) || "Failed to disable workflow schedule", "error"),
   });
 
   const formatDate = (d: string | null) =>

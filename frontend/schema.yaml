@@ -50,7 +50,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+          description: ''
   /api/auth/login/:
     post:
       operationId: auth_login_create
@@ -202,7 +206,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardKPI'
+          description: ''
   /api/data/:
     get:
       operationId: data_list
@@ -368,23 +376,9 @@ paths:
       - Data
       requestBody:
         content:
-          type:
+          application/json:
             schema:
-              type: object
-              additionalProperties: {}
-              description: Unspecified request body
-          properties:
-            schema:
-              symbols:
-                type: array
-                items:
-                  type: string
-              timeframes:
-                type: array
-                items:
-                  type: string
-              days:
-                type: integer
+              $ref: '#/components/schemas/DataGenerateSampleRequest'
       security:
       - cookieAuth: []
       responses:
@@ -543,7 +537,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyRotationResponse'
+          description: ''
   /api/exchange-configs/{id}/test/:
     post:
       operationId: exchange_configs_test_create
@@ -590,20 +588,30 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+          description: ''
   /api/indicators/:
     get:
-      operationId: indicators_retrieve
+      operationId: indicators_list
       tags:
       - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IndicatorInfo'
+          description: ''
   /api/indicators/{exchange}/{symbol}/{timeframe}/:
     get:
-      operationId: indicators_retrieve_2
+      operationId: indicators_retrieve
       parameters:
       - in: path
         name: exchange
@@ -678,7 +686,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCancelResponse'
+          description: ''
   /api/live-trading/status/:
     get:
       operationId: live_trading_status_retrieve
@@ -688,7 +700,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveTradingStatus'
+          description: ''
   /api/market/circuit-breaker/:
     get:
       operationId: market_circuit_breaker_retrieve
@@ -698,7 +714,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CircuitBreakerListResponse'
+          description: ''
     post:
       operationId: market_circuit_breaker_create
       tags:
@@ -707,17 +727,27 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CircuitBreakerReset'
+          description: ''
   /api/market/news/:
     get:
-      operationId: market_news_retrieve
+      operationId: market_news_list
       tags:
       - Market
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NewsArticle'
+          description: ''
   /api/market/news/fetch/:
     post:
       operationId: market_news_fetch_create
@@ -727,7 +757,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsFetchResponse'
+          description: ''
   /api/market/news/sentiment/:
     get:
       operationId: market_news_sentiment_retrieve
@@ -737,7 +771,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsSentimentSummary'
+          description: ''
   /api/market/news/signal/:
     get:
       operationId: market_news_signal_retrieve
@@ -747,7 +785,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentimentSignal'
+          description: ''
   /api/market/ohlcv/{symbol}/:
     get:
       operationId: market_ohlcv_list
@@ -805,7 +847,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketStatus'
+          description: ''
   /api/market/ticker/{symbol}/:
     get:
       operationId: market_ticker_retrieve
@@ -859,17 +905,23 @@ paths:
           description: ''
   /api/ml/models/:
     get:
-      operationId: ml_models_retrieve
+      operationId: ml_models_list
       tags:
       - ML
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MLModelInfo'
+          description: ''
   /api/ml/models/{model_id}/:
     get:
-      operationId: ml_models_retrieve_2
+      operationId: ml_models_retrieve
       parameters:
       - in: path
         name: model_id
@@ -882,7 +934,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MLModelInfo'
+          description: ''
   /api/ml/predict/:
     post:
       operationId: ml_predict_create
@@ -890,28 +946,19 @@ paths:
       - ML
       requestBody:
         content:
-          type:
+          application/json:
             schema:
-              type: object
-              additionalProperties: {}
-              description: Unspecified request body
-          properties:
-            schema:
-              model_id:
-                type: string
-              symbol:
-                type: string
-              timeframe:
-                type: string
-              exchange:
-                type: string
-              bars:
-                type: integer
+              $ref: '#/components/schemas/MLPredictRequest'
+        required: true
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MLPredictionResponse'
+          description: ''
   /api/ml/train/:
     post:
       operationId: ml_train_create
@@ -946,7 +993,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+          description: ''
     put:
       operationId: notifications_preferences_update
       parameters:
@@ -957,11 +1008,20 @@ paths:
         required: true
       tags:
       - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+          description: ''
   /api/paper-trading/balance/:
     get:
       operationId: paper_trading_balance_retrieve
@@ -1021,7 +1081,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperTradingStatusResponse'
+          description: ''
   /api/paper-trading/status/:
     get:
       operationId: paper_trading_status_retrieve
@@ -1031,7 +1095,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperTradingStatusResponse'
+          description: ''
   /api/paper-trading/stop/:
     post:
       operationId: paper_trading_stop_create
@@ -1041,7 +1109,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperTradingStatusResponse'
+          description: ''
   /api/paper-trading/trades/:
     get:
       operationId: paper_trading_trades_retrieve
@@ -1071,7 +1143,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformStatus'
+          description: ''
   /api/portfolios/:
     get:
       operationId: portfolios_list
@@ -1812,20 +1888,30 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulerStatus'
+          description: ''
   /api/scheduler/tasks/:
     get:
-      operationId: scheduler_tasks_retrieve
+      operationId: scheduler_tasks_list
       tags:
       - Scheduler
       security:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledTask'
+          description: ''
   /api/scheduler/tasks/{task_id}/:
     get:
-      operationId: scheduler_tasks_retrieve_2
+      operationId: scheduler_tasks_retrieve
       parameters:
       - in: path
         name: task_id
@@ -1838,7 +1924,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+          description: ''
   /api/scheduler/tasks/{task_id}/pause/:
     post:
       operationId: scheduler_tasks_pause_create
@@ -1854,7 +1944,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskActionResponse'
+          description: ''
   /api/scheduler/tasks/{task_id}/resume/:
     post:
       operationId: scheduler_tasks_resume_create
@@ -1870,7 +1964,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskActionResponse'
+          description: ''
   /api/scheduler/tasks/{task_id}/trigger/:
     post:
       operationId: scheduler_tasks_trigger_create
@@ -1886,7 +1984,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTriggerResponse'
+          description: ''
   /api/screening/results/:
     get:
       operationId: screening_results_list
@@ -2188,7 +2290,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCancelResponse'
+          description: ''
   /api/workflow-steps/:
     get:
       operationId: workflow_steps_retrieve
@@ -2284,7 +2390,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowScheduleResponse'
+          description: ''
   /api/workflows/{workflow_id}/enable/:
     post:
       operationId: workflows_enable_create
@@ -2300,7 +2410,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowScheduleResponse'
+          description: ''
   /api/workflows/{workflow_id}/runs/:
     get:
       operationId: workflows_runs_list
@@ -2338,7 +2452,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowTriggerResponse'
+          description: ''
 components:
   schemas:
     AlertLog:
@@ -2427,6 +2545,47 @@ components:
         * `crypto` - Crypto
         * `equity` - Equity
         * `forex` - Forex
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: string
+          maxLength: 150
+        action:
+          type: string
+          maxLength: 500
+        ip_address:
+          type: string
+          nullable: true
+        status_code:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - created_at
+      - id
+      - user
+    AuditLogListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        total:
+          type: integer
+      required:
+      - results
+      - total
     BacktestComparison:
       type: object
       properties:
@@ -2535,6 +2694,135 @@ components:
       required:
       - cancelled_count
       - portfolio_id
+    CircuitBreakerListResponse:
+      type: object
+      properties:
+        breakers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitBreakerStatus'
+      required:
+      - breakers
+    CircuitBreakerReset:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    CircuitBreakerStatus:
+      type: object
+      properties:
+        exchange_id:
+          type: string
+        state:
+          type: string
+        failure_count:
+          type: integer
+      required:
+      - exchange_id
+      - failure_count
+      - state
+    DashboardKPI:
+      type: object
+      properties:
+        portfolio:
+          $ref: '#/components/schemas/DashboardPortfolioKPI'
+        trading:
+          $ref: '#/components/schemas/DashboardTradingKPI'
+        risk:
+          $ref: '#/components/schemas/DashboardRiskKPI'
+        platform:
+          $ref: '#/components/schemas/DashboardPlatformKPI'
+        generated_at:
+          type: string
+      required:
+      - generated_at
+      - platform
+      - portfolio
+      - risk
+      - trading
+    DashboardPlatformKPI:
+      type: object
+      properties:
+        data_files:
+          type: integer
+        active_jobs:
+          type: integer
+        framework_count:
+          type: integer
+      required:
+      - active_jobs
+      - data_files
+      - framework_count
+    DashboardPortfolioKPI:
+      type: object
+      properties:
+        count:
+          type: integer
+        total_value:
+          type: number
+          format: double
+        total_cost:
+          type: number
+          format: double
+        unrealized_pnl:
+          type: number
+          format: double
+        pnl_pct:
+          type: number
+          format: double
+      required:
+      - count
+      - pnl_pct
+      - total_cost
+      - total_value
+      - unrealized_pnl
+    DashboardRiskKPI:
+      type: object
+      properties:
+        equity:
+          type: number
+          format: double
+        drawdown:
+          type: number
+          format: double
+        daily_pnl:
+          type: number
+          format: double
+        is_halted:
+          type: boolean
+        open_positions:
+          type: integer
+      required:
+      - daily_pnl
+      - drawdown
+      - equity
+      - is_halted
+      - open_positions
+    DashboardTradingKPI:
+      type: object
+      properties:
+        total_trades:
+          type: integer
+        win_rate:
+          type: number
+          format: double
+        total_pnl:
+          type: number
+          format: double
+        profit_factor:
+          type: number
+          format: double
+          nullable: true
+        open_orders:
+          type: integer
+      required:
+      - open_orders
+      - profit_factor
+      - total_pnl
+      - total_trades
+      - win_rate
     DataDownloadRequest:
       type: object
       properties:
@@ -2591,6 +2879,27 @@ components:
       - start
       - symbol
       - timeframe
+    DataGenerateSampleRequest:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items:
+            type: string
+          default:
+          - BTC/USDT
+          - ETH/USDT
+        timeframes:
+          type: array
+          items:
+            type: string
+          default:
+          - 1h
+        days:
+          type: integer
+          maximum: 3650
+          minimum: 1
+          default: 90
     DataQualityReport:
       type: object
       properties:
@@ -2724,6 +3033,17 @@ components:
           maximum: 9223372036854775807
           minimum: -9223372036854775808
           format: int64
+    DetailedHealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        checks:
+          type: object
+          additionalProperties: {}
+      required:
+      - checks
+      - status
     EquityUpdate:
       type: object
       properties:
@@ -3054,6 +3374,19 @@ components:
         avg_buy_price:
           type: number
           format: double
+    IndicatorInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+      required:
+      - category
+      - description
+      - name
     Job:
       type: object
       properties:
@@ -3105,6 +3438,99 @@ components:
       required:
       - job_id
       - status
+    JobCancelResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    KeyRotationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        markets_count:
+          type: integer
+        message:
+          type: string
+        key_rotated_at:
+          type: string
+      required:
+      - key_rotated_at
+      - markets_count
+      - message
+      - success
+    LiveTradingStatus:
+      type: object
+      properties:
+        exchange_connected:
+          type: boolean
+        exchange_error:
+          type: string
+        is_halted:
+          type: boolean
+        active_live_orders:
+          type: integer
+      required:
+      - active_live_orders
+      - exchange_connected
+      - exchange_error
+      - is_halted
+    MLModelInfo:
+      type: object
+      properties:
+        model_id:
+          type: string
+        symbol:
+          type: string
+        timeframe:
+          type: string
+        exchange:
+          type: string
+        created_at:
+          type: string
+      required:
+      - created_at
+      - exchange
+      - model_id
+      - symbol
+      - timeframe
+    MLPredictRequest:
+      type: object
+      properties:
+        model_id:
+          type: string
+        symbol:
+          type: string
+          default: BTC/USDT
+        timeframe:
+          type: string
+          default: 1h
+        exchange:
+          type: string
+          default: binance
+        bars:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 50
+      required:
+      - model_id
+    MLPredictionResponse:
+      type: object
+      properties:
+        model_id:
+          type: string
+        prediction:
+          type: integer
+        confidence:
+          type: number
+          format: double
+      required:
+      - confidence
+      - model_id
+      - prediction
     MLTrainRequest:
       type: object
       properties:
@@ -3123,6 +3549,131 @@ components:
           maximum: 0.5
           minimum: 0.05
           default: 0.2
+    MarketStatus:
+      type: object
+      properties:
+        asset_class:
+          type: string
+        is_open:
+          type: boolean
+        next_open:
+          type: string
+          nullable: true
+        next_close:
+          type: string
+          nullable: true
+      required:
+      - asset_class
+      - is_open
+      - next_close
+      - next_open
+    NewsArticle:
+      type: object
+      properties:
+        article_id:
+          type: string
+          maxLength: 64
+        title:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+          maxLength: 1000
+        source:
+          type: string
+          maxLength: 100
+        summary:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        symbols: {}
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
+        sentiment_score:
+          type: number
+          format: double
+        sentiment_label:
+          type: string
+          maxLength: 10
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - article_id
+      - created_at
+      - published_at
+      - source
+      - title
+      - url
+    NewsFetchResponse:
+      type: object
+      properties:
+        asset_class:
+          type: string
+        articles_fetched:
+          type: integer
+        message:
+          type: string
+      required:
+      - articles_fetched
+      - asset_class
+      - message
+    NewsSentimentSummary:
+      type: object
+      properties:
+        asset_class:
+          type: string
+        hours:
+          type: integer
+        total_articles:
+          type: integer
+        avg_score:
+          type: number
+          format: double
+        overall_label:
+          type: string
+        positive_count:
+          type: integer
+        negative_count:
+          type: integer
+        neutral_count:
+          type: integer
+      required:
+      - asset_class
+      - avg_score
+      - hours
+      - negative_count
+      - neutral_count
+      - overall_label
+      - positive_count
+      - total_articles
+    NotificationPreferences:
+      type: object
+      properties:
+        portfolio_id:
+          type: integer
+          readOnly: true
+        telegram_enabled:
+          type: boolean
+        webhook_enabled:
+          type: boolean
+        on_order_submitted:
+          type: boolean
+        on_order_filled:
+          type: boolean
+        on_order_cancelled:
+          type: boolean
+        on_risk_halt:
+          type: boolean
+        on_trade_rejected:
+          type: boolean
+        on_daily_summary:
+          type: boolean
+      required:
+      - portfolio_id
     OHLCVData:
       type: object
       properties:
@@ -3390,6 +3941,19 @@ components:
       description: |-
         * `market` - market
         * `limit` - limit
+    PaperTradingStatusResponse:
+      type: object
+      properties:
+        running:
+          type: boolean
+        strategy:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          nullable: true
+      required:
+      - running
     PatchedPortfolioUpdate:
       type: object
       properties:
@@ -3402,6 +3966,20 @@ components:
         description:
           type: string
           maxLength: 500
+    PlatformStatus:
+      type: object
+      properties:
+        frameworks:
+          type: array
+          items: {}
+        data_files:
+          type: integer
+        active_jobs:
+          type: integer
+      required:
+      - active_jobs
+      - data_files
+      - frameworks
     Portfolio:
       type: object
       properties:
@@ -3863,6 +4441,92 @@ components:
       - regime
       - symbol
       - weights
+    ScheduledTask:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        task_type:
+          type: string
+          maxLength: 50
+        status:
+          $ref: '#/components/schemas/ScheduledTaskStatusEnum'
+        interval_seconds:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        params: {}
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_run_status:
+          type: string
+          maxLength: 20
+        last_run_job_id:
+          type: string
+          maxLength: 36
+        next_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        run_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        error_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - task_type
+      - updated_at
+    ScheduledTaskStatusEnum:
+      enum:
+      - active
+      - paused
+      type: string
+      description: |-
+        * `active` - Active
+        * `paused` - Paused
+    SchedulerStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        total_tasks:
+          type: integer
+        active_tasks:
+          type: integer
+        paused_tasks:
+          type: integer
+      required:
+      - active_tasks
+      - paused_tasks
+      - running
+      - total_tasks
     ScreenRequest:
       type: object
       properties:
@@ -3932,6 +4596,50 @@ components:
       - strategy_name
       - symbol
       - timeframe
+    SentimentSignal:
+      type: object
+      properties:
+        signal:
+          type: number
+          format: double
+        conviction:
+          type: number
+          format: double
+        signal_label:
+          type: string
+        position_modifier:
+          type: number
+          format: double
+        article_count:
+          type: integer
+        avg_age_hours:
+          type: number
+          format: double
+        asset_class:
+          type: string
+        thresholds:
+          $ref: '#/components/schemas/SentimentSignalThresholds'
+      required:
+      - article_count
+      - asset_class
+      - avg_age_hours
+      - conviction
+      - position_modifier
+      - signal
+      - signal_label
+      - thresholds
+    SentimentSignalThresholds:
+      type: object
+      properties:
+        bullish:
+          type: number
+          format: double
+        bearish:
+          type: number
+          format: double
+      required:
+      - bearish
+      - bullish
     SideEnum:
       enum:
       - buy
@@ -4012,6 +4720,26 @@ components:
       - win_count
       - win_rate
       - worst_trade
+    TaskActionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    TaskTriggerResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        task_id:
+          type: string
+        message:
+          type: string
+      required:
+      - job_id
+      - message
+      - task_id
     TickerData:
       type: object
       properties:
@@ -4489,6 +5217,16 @@ components:
       - id
       - job_id
       - workflow_name
+    WorkflowScheduleResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        workflow_id:
+          type: string
+      required:
+      - status
+      - workflow_id
     WorkflowStep:
       type: object
       properties:
@@ -4579,6 +5317,16 @@ components:
         * `completed` - Completed
         * `failed` - Failed
         * `skipped` - Skipped
+    WorkflowTriggerResponse:
+      type: object
+      properties:
+        workflow_run_id:
+          type: string
+        job_id:
+          type: string
+      required:
+      - job_id
+      - workflow_run_id
   securitySchemes:
     cookieAuth:
       type: apiKey

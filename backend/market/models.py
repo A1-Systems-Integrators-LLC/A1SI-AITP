@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from market.constants import AssetClass
@@ -39,6 +40,15 @@ class MarketData(models.Model):
                 name="uniq_marketdata_symbol_exchange_ts",
             ),
         ]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.price is not None and self.price < 0:
+            errors.setdefault("price", []).append("Price must be >= 0.")
+        if self.volume_24h is not None and self.volume_24h < 0:
+            errors.setdefault("volume_24h", []).append("Volume must be >= 0.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.symbol} @ {self.price}"
@@ -105,6 +115,22 @@ class NewsArticle(models.Model):
             models.Index(fields=["asset_class", "-published_at"]),
         ]
 
+    VALID_SENTIMENT_LABELS = {"positive", "negative", "neutral"}
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.sentiment_score is not None and not (-1 <= self.sentiment_score <= 1):
+            errors.setdefault("sentiment_score", []).append(
+                "Sentiment score must be between -1 and 1."
+            )
+        if self.sentiment_label and self.sentiment_label not in self.VALID_SENTIMENT_LABELS:
+            valid = ", ".join(sorted(self.VALID_SENTIMENT_LABELS))
+            errors.setdefault("sentiment_label", []).append(
+                f"Invalid label '{self.sentiment_label}'. Must be one of: {valid}."
+            )
+        if errors:
+            raise ValidationError(errors)
+
     def __str__(self):
         return f"[{self.sentiment_label}] {self.title[:80]}"
 
@@ -129,6 +155,17 @@ class DataSourceConfig(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if not self.symbols:
+            errors.setdefault("symbols", []).append("Symbols list must not be empty.")
+        if self.fetch_interval_minutes is not None and self.fetch_interval_minutes <= 0:
+            errors.setdefault("fetch_interval_minutes", []).append(
+                "Fetch interval must be > 0."
+            )
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"DataSource({self.exchange_config.name}: {self.symbols})"

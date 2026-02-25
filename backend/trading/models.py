@@ -176,5 +176,16 @@ class OrderFillEvent(models.Model):
     class Meta:
         ordering = ["-filled_at"]
 
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.fill_price is not None and self.fill_price < 0:
+            errors.setdefault("fill_price", []).append("Fill price must be >= 0.")
+        if self.fill_amount is not None and self.fill_amount <= 0:
+            errors.setdefault("fill_amount", []).append("Fill amount must be > 0.")
+        if self.fee is not None and self.fee < 0:
+            errors.setdefault("fee", []).append("Fee must be >= 0.")
+        if errors:
+            raise ValidationError(errors)
+
     def __str__(self):
         return f"Fill {self.fill_amount}@{self.fill_price} for Order#{self.order_id}"

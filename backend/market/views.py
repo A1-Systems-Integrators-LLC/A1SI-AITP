@@ -16,6 +16,8 @@ from core.error_response import error_response
 from core.utils import safe_int as _safe_int
 from market.models import DataSourceConfig, ExchangeConfig
 from market.serializers import (
+    CircuitBreakerListResponseSerializer,
+    CircuitBreakerResetSerializer,
     DataSourceConfigCreateSerializer,
     DataSourceConfigSerializer,
     ExchangeConfigCreateSerializer,
@@ -23,12 +25,19 @@ from market.serializers import (
     ExchangeConfigUpdateSerializer,
     ExchangeInfoSerializer,
     ExchangeTestResultSerializer,
+    IndicatorInfoSerializer,
+    KeyRotationResponseSerializer,
+    MarketStatusSerializer,
+    NewsArticleSerializer,
+    NewsFetchResponseSerializer,
+    NewsSentimentSummarySerializer,
     OHLCVDataSerializer,
     RegimeHistoryEntrySerializer,
     RegimePositionSizeRequestSerializer,
     RegimePositionSizeResponseSerializer,
     RegimeStateSerializer,
     RoutingDecisionSerializer,
+    SentimentSignalSerializer,
     TickerDataSerializer,
 )
 
@@ -41,7 +50,7 @@ _thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="indicator")
 
 
 class NewsListView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=NewsArticleSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
 
@@ -55,7 +64,7 @@ class NewsListView(APIView):
 
 
 class NewsSentimentView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=NewsSentimentSummarySerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
 
@@ -68,7 +77,7 @@ class NewsSentimentView(APIView):
 
 
 class SentimentSignalView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=SentimentSignalSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
 
@@ -86,7 +95,7 @@ class SentimentSignalView(APIView):
 
 
 class NewsFetchView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=NewsFetchResponseSerializer, tags=["Market"])
     def post(self, request: Request) -> Response:
         from market.services.news import NewsService
 
@@ -112,7 +121,7 @@ class NewsFetchView(APIView):
 
 
 class MarketStatusView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=MarketStatusSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         asset_class = request.query_params.get("asset_class", "crypto")
         if asset_class not in ("crypto", "equity", "forex"):
@@ -180,7 +189,7 @@ class ExchangeConfigDetailView(APIView):
         instance = serializer.save()
         return Response(ExchangeConfigSerializer(instance).data)
 
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses={204: None}, tags=["Market"])
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(pk)
         if obj is None:
@@ -252,7 +261,7 @@ class ExchangeConfigTestView(APIView):
 class ExchangeConfigRotateView(APIView):
     """Rotate exchange API keys with validation."""
 
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=KeyRotationResponseSerializer, tags=["Market"])
     def post(self, request: Request, pk: int) -> Response:
         import ccxt.async_support as ccxt
         from asgiref.sync import async_to_sync
@@ -544,7 +553,7 @@ class OHLCVView(APIView):
 
 
 class IndicatorListView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=IndicatorInfoSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.indicators import IndicatorService
 
@@ -688,13 +697,13 @@ class RegimePositionSizeView(APIView):
 
 
 class CircuitBreakerStatusView(APIView):
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=CircuitBreakerListResponseSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.circuit_breaker import get_all_breakers
 
         return Response({"breakers": get_all_breakers()})
 
-    @extend_schema(tags=["Market"])
+    @extend_schema(responses=CircuitBreakerResetSerializer, tags=["Market"])
     def post(self, request: Request) -> Response:
         from market.services.circuit_breaker import reset_breaker
 

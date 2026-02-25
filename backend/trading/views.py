@@ -15,8 +15,10 @@ from trading.serializers import (
     CancelAllResponseSerializer,
     CancelAllSerializer,
     ExchangeHealthSerializer,
+    LiveTradingStatusSerializer,
     OrderCreateSerializer,
     OrderSerializer,
+    PaperTradingStatusResponseSerializer,
     SymbolPerformanceSerializer,
     TradingPerformanceFilterSerializer,
     TradingPerformanceSummarySerializer,
@@ -181,7 +183,7 @@ class OrderCancelView(APIView):
 
 
 class LiveTradingStatusView(APIView):
-    @extend_schema(tags=["Trading"])
+    @extend_schema(responses=LiveTradingStatusSerializer, tags=["Trading"])
     def get(self, request: Request) -> Response:
         from risk.models import RiskState
 
@@ -353,14 +355,14 @@ class TradingPerformanceBySymbolView(APIView):
 
 
 class PaperTradingStatusView(APIView):
-    @extend_schema(tags=["Paper Trading"])
+    @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(service.get_status())
 
 
 class PaperTradingStartView(APIView):
-    @extend_schema(tags=["Paper Trading"])
+    @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         strategy = request.data.get("strategy", "CryptoInvestorV1")
         service = _get_paper_trading_service()
@@ -368,7 +370,7 @@ class PaperTradingStartView(APIView):
 
 
 class PaperTradingStopView(APIView):
-    @extend_schema(tags=["Paper Trading"])
+    @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         service = _get_paper_trading_service()
         return Response(service.stop())

@@ -29,7 +29,7 @@ export function Login({ onLogin }: LoginProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
       <div className="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-lg">
         <div className="mb-6 flex flex-col items-center gap-2">
           <Shield size={40} className="text-[var(--color-primary)]" />
@@ -92,6 +92,6 @@ export function Login({ onLogin }: LoginProps) {
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

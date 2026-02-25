@@ -233,6 +233,49 @@ class NewsSentimentSummarySerializer(serializers.Serializer):
     neutral_count = serializers.IntegerField()
 
 
+# ── OpenAPI response serializers ─────────────────────────────
+
+
+class NewsFetchResponseSerializer(serializers.Serializer):
+    asset_class = serializers.CharField()
+    articles_fetched = serializers.IntegerField()
+    message = serializers.CharField()
+
+
+class MarketStatusSerializer(serializers.Serializer):
+    asset_class = serializers.CharField()
+    is_open = serializers.BooleanField()
+    next_open = serializers.CharField(allow_null=True)
+    next_close = serializers.CharField(allow_null=True)
+
+
+class IndicatorInfoSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    description = serializers.CharField()
+    category = serializers.CharField()
+
+
+class CircuitBreakerStatusSerializer(serializers.Serializer):
+    exchange_id = serializers.CharField()
+    state = serializers.CharField()
+    failure_count = serializers.IntegerField()
+
+
+class CircuitBreakerListResponseSerializer(serializers.Serializer):
+    breakers = CircuitBreakerStatusSerializer(many=True)
+
+
+class CircuitBreakerResetSerializer(serializers.Serializer):
+    message = serializers.CharField()
+
+
+class KeyRotationResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    markets_count = serializers.IntegerField()
+    message = serializers.CharField()
+    key_rotated_at = serializers.CharField()
+
+
 class SentimentSignalThresholdsSerializer(serializers.Serializer):
     bullish = serializers.FloatField()
     bearish = serializers.FloatField()

@@ -11,6 +11,18 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.serializers import (
+    AuditLogListResponseSerializer,
+    DashboardKPISerializer,
+    DetailedHealthResponseSerializer,
+    NotificationPreferencesSerializer,
+    PlatformStatusSerializer,
+    ScheduledTaskSerializer,
+    SchedulerStatusSerializer,
+    TaskActionResponseSerializer,
+    TaskTriggerResponseSerializer,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,6 +48,7 @@ class MetricsTokenOrSessionAuth(BasePermission):
 
 class AuditLogListView(APIView):
     @extend_schema(
+        responses=AuditLogListResponseSerializer,
         tags=["Core"],
         parameters=[
             OpenApiParameter("user", str, description="Filter by username"),
@@ -100,7 +113,10 @@ class AuditLogListView(APIView):
 class HealthView(APIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(tags=["Core"])
+    @extend_schema(
+        responses={200: DetailedHealthResponseSerializer},
+        tags=["Core"],
+    )
     def get(self, request: Request) -> Response:
         if request.query_params.get("detailed") != "true":
             return Response({"status": "ok"})
@@ -230,6 +246,7 @@ class HealthView(APIView):
 
 class DashboardKPIView(APIView):
     @extend_schema(
+        responses=DashboardKPISerializer,
         tags=["Core"],
         parameters=[
             OpenApiParameter(
@@ -248,7 +265,7 @@ class DashboardKPIView(APIView):
 
 
 class PlatformStatusView(APIView):
-    @extend_schema(tags=["Core"])
+    @extend_schema(responses=PlatformStatusSerializer, tags=["Core"])
     def get(self, request: Request) -> Response:
         from analysis.models import BackgroundJob
         from core.platform_bridge import get_processed_dir
@@ -290,18 +307,20 @@ class PlatformConfigView(APIView):
 
 
 class NotificationPreferencesView(APIView):
-    @extend_schema(tags=["Notifications"])
+    @extend_schema(responses=NotificationPreferencesSerializer, tags=["Notifications"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from core.models import NotificationPreferences
-        from core.serializers import NotificationPreferencesSerializer
 
         prefs, _ = NotificationPreferences.objects.get_or_create(portfolio_id=portfolio_id)
         return Response(NotificationPreferencesSerializer(prefs).data)
 
-    @extend_schema(tags=["Notifications"])
+    @extend_schema(
+        request=NotificationPreferencesSerializer,
+        responses=NotificationPreferencesSerializer,
+        tags=["Notifications"],
+    )
     def put(self, request: Request, portfolio_id: int) -> Response:
         from core.models import NotificationPreferences
-        from core.serializers import NotificationPreferencesSerializer
 
         prefs, _ = NotificationPreferences.objects.get_or_create(portfolio_id=portfolio_id)
         ser = NotificationPreferencesSerializer(prefs, data=request.data, partial=True)
@@ -390,7 +409,7 @@ class MetricsView(APIView):
 
 
 class SchedulerStatusView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=SchedulerStatusSerializer, tags=["Scheduler"])
     def get(self, request: Request) -> Response:
         from core.services.scheduler import get_scheduler
 
@@ -398,20 +417,18 @@ class SchedulerStatusView(APIView):
 
 
 class ScheduledTaskListView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=ScheduledTaskSerializer(many=True), tags=["Scheduler"])
     def get(self, request: Request) -> Response:
         from core.models import ScheduledTask
-        from core.serializers import ScheduledTaskSerializer
 
         tasks = ScheduledTask.objects.all()
         return Response(ScheduledTaskSerializer(tasks, many=True).data)
 
 
 class ScheduledTaskDetailView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=ScheduledTaskSerializer, tags=["Scheduler"])
     def get(self, request: Request, task_id: str) -> Response:
         from core.models import ScheduledTask
-        from core.serializers import ScheduledTaskSerializer
 
         try:
             task = ScheduledTask.objects.get(id=task_id)
@@ -421,7 +438,7 @@ class ScheduledTaskDetailView(APIView):
 
 
 class ScheduledTaskPauseView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=TaskActionResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler
 
@@ -431,7 +448,7 @@ class ScheduledTaskPauseView(APIView):
 
 
 class ScheduledTaskResumeView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=TaskActionResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler
 
@@ -441,7 +458,7 @@ class ScheduledTaskResumeView(APIView):
 
 
 class ScheduledTaskTriggerView(APIView):
-    @extend_schema(tags=["Scheduler"])
+    @extend_schema(responses=TaskTriggerResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler
 

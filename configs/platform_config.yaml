@@ -308,6 +308,27 @@ hftbacktest:
       max_position: 1.0        # Max absolute position
       drawdown_halt_pct: 0.05  # Halt at 5% drawdown
       quote_interval: 4        # Requote every N ticks
+    MomentumScalper:
+      lookback: 20             # EMA lookback for momentum
+      entry_threshold: 0.0005  # 5 bps/tick momentum to enter
+      exit_threshold: 0.0002   # 2 bps momentum to exit
+      order_size: 0.01
+      max_hold_ticks: 50       # Forced exit after N ticks
+      max_position: 1.0
+      drawdown_halt_pct: 0.03
+    GridTrader:
+      grid_spacing: 0.002      # 20 bps between grid levels
+      num_levels: 3            # Levels on each side
+      order_size: 0.01
+      max_position: 1.0
+      drawdown_halt_pct: 0.05
+    MeanReversionScalper:
+      lookback: 50             # Rolling VWAP window (ticks)
+      deviation_threshold: 0.001  # 10 bps deviation to enter
+      order_size: 0.01
+      max_hold_ticks: 40       # Forced exit after N ticks
+      max_position: 1.0
+      drawdown_halt_pct: 0.04
 
 # ──────────────────────────────────────────────
 # News & Sentiment

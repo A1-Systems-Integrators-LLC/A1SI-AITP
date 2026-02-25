@@ -396,7 +396,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["indicators_retrieve"];
+        get: operations["indicators_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -412,7 +412,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["indicators_retrieve_2"];
+        get: operations["indicators_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -508,7 +508,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["market_news_retrieve"];
+        get: operations["market_news_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -636,7 +636,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["ml_models_retrieve"];
+        get: operations["ml_models_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -652,7 +652,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["ml_models_retrieve_2"];
+        get: operations["ml_models_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1340,7 +1340,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["scheduler_tasks_retrieve"];
+        get: operations["scheduler_tasks_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1356,7 +1356,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["scheduler_tasks_retrieve_2"];
+        get: operations["scheduler_tasks_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1791,6 +1791,20 @@ export interface components {
          * @enum {string}
          */
         AssetClassEnum: "crypto" | "equity" | "forex";
+        AuditLog: {
+            readonly id: number;
+            user: string;
+            action: string;
+            ip_address?: string | null;
+            /** Format: int64 */
+            status_code?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        AuditLogListResponse: {
+            results: components["schemas"]["AuditLog"][];
+            total: number;
+        };
         BacktestComparison: {
             results: components["schemas"]["BacktestResult"][];
             comparison: {
@@ -1841,6 +1855,60 @@ export interface components {
             cancelled_count: number;
             portfolio_id: number;
         };
+        CircuitBreakerListResponse: {
+            breakers: components["schemas"]["CircuitBreakerStatus"][];
+        };
+        CircuitBreakerReset: {
+            message: string;
+        };
+        CircuitBreakerStatus: {
+            exchange_id: string;
+            state: string;
+            failure_count: number;
+        };
+        DashboardKPI: {
+            portfolio: components["schemas"]["DashboardPortfolioKPI"];
+            trading: components["schemas"]["DashboardTradingKPI"];
+            risk: components["schemas"]["DashboardRiskKPI"];
+            platform: components["schemas"]["DashboardPlatformKPI"];
+            generated_at: string;
+        };
+        DashboardPlatformKPI: {
+            data_files: number;
+            active_jobs: number;
+            framework_count: number;
+        };
+        DashboardPortfolioKPI: {
+            count: number;
+            /** Format: double */
+            total_value: number;
+            /** Format: double */
+            total_cost: number;
+            /** Format: double */
+            unrealized_pnl: number;
+            /** Format: double */
+            pnl_pct: number;
+        };
+        DashboardRiskKPI: {
+            /** Format: double */
+            equity: number;
+            /** Format: double */
+            drawdown: number;
+            /** Format: double */
+            daily_pnl: number;
+            is_halted: boolean;
+            open_positions: number;
+        };
+        DashboardTradingKPI: {
+            total_trades: number;
+            /** Format: double */
+            win_rate: number;
+            /** Format: double */
+            total_pnl: number;
+            /** Format: double */
+            profit_factor: number | null;
+            open_orders: number;
+        };
         DataDownloadRequest: {
             /**
              * @default [
@@ -1870,6 +1938,23 @@ export interface components {
             start: string | null;
             end: string | null;
             file: string;
+        };
+        DataGenerateSampleRequest: {
+            /**
+             * @default [
+             *       "BTC/USDT",
+             *       "ETH/USDT"
+             *     ]
+             */
+            symbols: string[];
+            /**
+             * @default [
+             *       "1h"
+             *     ]
+             */
+            timeframes: string[];
+            /** @default 90 */
+            days: number;
         };
         DataQualityReport: {
             symbol: string;
@@ -1925,6 +2010,12 @@ export interface components {
             is_active?: boolean;
             /** Format: int64 */
             fetch_interval_minutes?: number;
+        };
+        DetailedHealthResponse: {
+            status: string;
+            checks: {
+                [key: string]: unknown;
+            };
         };
         EquityUpdate: {
             /** Format: double */
@@ -2080,6 +2171,11 @@ export interface components {
             /** Format: double */
             avg_buy_price?: number;
         };
+        IndicatorInfo: {
+            name: string;
+            description: string;
+            category: string;
+        };
         Job: {
             readonly id: string;
             job_type: string;
@@ -2101,6 +2197,45 @@ export interface components {
             job_id: string;
             status: string;
         };
+        JobCancelResponse: {
+            status: string;
+        };
+        KeyRotationResponse: {
+            success: boolean;
+            markets_count: number;
+            message: string;
+            key_rotated_at: string;
+        };
+        LiveTradingStatus: {
+            exchange_connected: boolean;
+            exchange_error: string;
+            is_halted: boolean;
+            active_live_orders: number;
+        };
+        MLModelInfo: {
+            model_id: string;
+            symbol: string;
+            timeframe: string;
+            exchange: string;
+            created_at: string;
+        };
+        MLPredictRequest: {
+            model_id: string;
+            /** @default BTC/USDT */
+            symbol: string;
+            /** @default 1h */
+            timeframe: string;
+            /** @default binance */
+            exchange: string;
+            /** @default 50 */
+            bars: number;
+        };
+        MLPredictionResponse: {
+            model_id: string;
+            prediction: number;
+            /** Format: double */
+            confidence: number;
+        };
         MLTrainRequest: {
             /** @default BTC/USDT */
             symbol: string;
@@ -2113,6 +2248,56 @@ export interface components {
              * @default 0.2
              */
             test_ratio: number;
+        };
+        MarketStatus: {
+            asset_class: string;
+            is_open: boolean;
+            next_open: string | null;
+            next_close: string | null;
+        };
+        NewsArticle: {
+            article_id: string;
+            title: string;
+            /** Format: uri */
+            url: string;
+            source: string;
+            summary?: string;
+            /** Format: date-time */
+            published_at: string;
+            symbols?: unknown;
+            asset_class?: components["schemas"]["AssetClassEnum"];
+            /** Format: double */
+            sentiment_score?: number;
+            sentiment_label?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        NewsFetchResponse: {
+            asset_class: string;
+            articles_fetched: number;
+            message: string;
+        };
+        NewsSentimentSummary: {
+            asset_class: string;
+            hours: number;
+            total_articles: number;
+            /** Format: double */
+            avg_score: number;
+            overall_label: string;
+            positive_count: number;
+            negative_count: number;
+            neutral_count: number;
+        };
+        NotificationPreferences: {
+            readonly portfolio_id: number;
+            telegram_enabled?: boolean;
+            webhook_enabled?: boolean;
+            on_order_submitted?: boolean;
+            on_order_filled?: boolean;
+            on_order_cancelled?: boolean;
+            on_risk_halt?: boolean;
+            on_trade_rejected?: boolean;
+            on_daily_summary?: boolean;
         };
         OHLCVData: {
             timestamp: number;
@@ -2235,10 +2420,20 @@ export interface components {
          * @enum {string}
          */
         OrderTypeEnum: "market" | "limit";
+        PaperTradingStatusResponse: {
+            running: boolean;
+            strategy?: string | null;
+            started_at?: string | null;
+        };
         PatchedPortfolioUpdate: {
             name?: string;
             exchange_id?: string;
             description?: string;
+        };
+        PlatformStatus: {
+            frameworks: unknown[];
+            data_files: number;
+            active_jobs: number;
         };
         Portfolio: {
             readonly id: number;
@@ -2444,6 +2639,42 @@ export interface components {
             /** Format: double */
             sentiment_modifier?: number | null;
         };
+        ScheduledTask: {
+            id: string;
+            name: string;
+            description?: string;
+            task_type: string;
+            status?: components["schemas"]["ScheduledTaskStatusEnum"];
+            /** Format: int64 */
+            interval_seconds?: number | null;
+            params?: unknown;
+            /** Format: date-time */
+            last_run_at?: string | null;
+            last_run_status?: string;
+            last_run_job_id?: string;
+            /** Format: date-time */
+            next_run_at?: string | null;
+            /** Format: int64 */
+            run_count?: number;
+            /** Format: int64 */
+            error_count?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `active` - Active
+         *     * `paused` - Paused
+         * @enum {string}
+         */
+        ScheduledTaskStatusEnum: "active" | "paused";
+        SchedulerStatus: {
+            running: boolean;
+            total_tasks: number;
+            active_tasks: number;
+            paused_tasks: number;
+        };
         ScreenRequest: {
             /**
              * @description Trading pair, e.g. BTC/USDT
@@ -2478,6 +2709,26 @@ export interface components {
             total_combinations?: number;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        SentimentSignal: {
+            /** Format: double */
+            signal: number;
+            /** Format: double */
+            conviction: number;
+            signal_label: string;
+            /** Format: double */
+            position_modifier: number;
+            article_count: number;
+            /** Format: double */
+            avg_age_hours: number;
+            asset_class: string;
+            thresholds: components["schemas"]["SentimentSignalThresholds"];
+        };
+        SentimentSignalThresholds: {
+            /** Format: double */
+            bullish: number;
+            /** Format: double */
+            bearish: number;
         };
         /**
          * @description * `buy` - buy
@@ -2518,6 +2769,14 @@ export interface components {
             /** Format: double */
             worst_trade: number;
             symbol: string;
+        };
+        TaskActionResponse: {
+            message: string;
+        };
+        TaskTriggerResponse: {
+            job_id: string;
+            task_id: string;
+            message: string;
         };
         TickerData: {
             symbol: string;
@@ -2732,6 +2991,10 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        WorkflowScheduleResponse: {
+            status: string;
+            workflow_id: string;
+        };
         WorkflowStep: {
             readonly id: number;
             /** Format: int64 */
@@ -2770,6 +3033,10 @@ export interface components {
          * @enum {string}
          */
         WorkflowStepRunStatusEnum: "pending" | "running" | "completed" | "failed" | "skipped";
+        WorkflowTriggerResponse: {
+            workflow_run_id: string;
+            job_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2803,12 +3070,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AuditLogListResponse"];
+                };
             };
         };
     };
@@ -2984,12 +3252,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DashboardKPI"];
+                };
             };
         };
     };
@@ -3175,10 +3444,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                type: {
-                    [key: string]: unknown;
-                };
-                properties: unknown;
+                "application/json": components["schemas"]["DataGenerateSampleRequest"];
             };
         };
         responses: {
@@ -3352,12 +3618,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["KeyRotationResponse"];
+                };
             };
         };
     };
@@ -3410,16 +3677,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DetailedHealthResponse"];
+                };
             };
         };
     };
-    indicators_retrieve: {
+    indicators_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -3428,16 +3696,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["IndicatorInfo"][];
+                };
             };
         };
     };
-    indicators_retrieve_2: {
+    indicators_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -3510,12 +3779,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobCancelResponse"];
+                };
             };
         };
     };
@@ -3528,12 +3798,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LiveTradingStatus"];
+                };
             };
         };
     };
@@ -3546,12 +3817,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CircuitBreakerListResponse"];
+                };
             };
         };
     };
@@ -3564,16 +3836,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CircuitBreakerReset"];
+                };
             };
         };
     };
-    market_news_retrieve: {
+    market_news_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -3582,12 +3855,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NewsArticle"][];
+                };
             };
         };
     };
@@ -3600,12 +3874,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NewsFetchResponse"];
+                };
             };
         };
     };
@@ -3618,12 +3893,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NewsSentimentSummary"];
+                };
             };
         };
     };
@@ -3636,12 +3912,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SentimentSignal"];
+                };
             };
         };
     };
@@ -3682,12 +3959,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MarketStatus"];
+                };
             };
         };
     };
@@ -3736,7 +4014,7 @@ export interface operations {
             };
         };
     };
-    ml_models_retrieve: {
+    ml_models_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -3745,16 +4023,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MLModelInfo"][];
+                };
             };
         };
     };
-    ml_models_retrieve_2: {
+    ml_models_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -3765,12 +4044,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MLModelInfo"];
+                };
             };
         };
     };
@@ -3781,21 +4061,19 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                type: {
-                    [key: string]: unknown;
-                };
-                properties: unknown;
+                "application/json": components["schemas"]["MLPredictRequest"];
             };
         };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MLPredictionResponse"];
+                };
             };
         };
     };
@@ -3833,12 +4111,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
             };
         };
     };
@@ -3851,14 +4130,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferences"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
             };
         };
     };
@@ -3961,12 +4245,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaperTradingStatusResponse"];
+                };
             };
         };
     };
@@ -3979,12 +4264,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaperTradingStatusResponse"];
+                };
             };
         };
     };
@@ -3997,12 +4283,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaperTradingStatusResponse"];
+                };
             };
         };
     };
@@ -4051,12 +4338,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PlatformStatus"];
+                };
             };
         };
     };
@@ -4807,16 +5095,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SchedulerStatus"];
+                };
             };
         };
     };
-    scheduler_tasks_retrieve: {
+    scheduler_tasks_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -4825,16 +5114,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ScheduledTask"][];
+                };
             };
         };
     };
-    scheduler_tasks_retrieve_2: {
+    scheduler_tasks_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -4845,12 +5135,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ScheduledTask"];
+                };
             };
         };
     };
@@ -4865,12 +5156,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TaskActionResponse"];
+                };
             };
         };
     };
@@ -4885,12 +5177,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TaskActionResponse"];
+                };
             };
         };
     };
@@ -4905,12 +5198,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TaskTriggerResponse"];
+                };
             };
         };
     };
@@ -5224,12 +5518,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["JobCancelResponse"];
+                };
             };
         };
     };
@@ -5345,12 +5640,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["WorkflowScheduleResponse"];
+                };
             };
         };
     };
@@ -5365,12 +5661,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["WorkflowScheduleResponse"];
+                };
             };
         };
     };
@@ -5406,12 +5703,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["WorkflowTriggerResponse"];
+                };
             };
         };
     };

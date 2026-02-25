@@ -82,6 +82,33 @@ class DashboardKPISerializer(serializers.Serializer):
     generated_at = serializers.CharField()
 
 
+# ── OpenAPI response serializers ─────────────────────────────
+
+
+class HealthResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class DetailedHealthResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    checks = serializers.DictField()
+
+
+class PlatformStatusSerializer(serializers.Serializer):
+    frameworks = serializers.ListField()
+    data_files = serializers.IntegerField()
+    active_jobs = serializers.IntegerField()
+
+
+class AuditLogListResponseSerializer(serializers.Serializer):
+    results = AuditLogSerializer(many=True)
+    total = serializers.IntegerField()
+
+
+class TaskActionResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+
+
 class NotificationPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationPreferences

@@ -294,6 +294,37 @@ class WorkflowCreateSerializer(serializers.Serializer):
     steps = WorkflowCreateStepSerializer(many=True)
 
 
+# ── OpenAPI response serializers ─────────────────────────────
+
+
+class JobCancelResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class MLModelInfoSerializer(serializers.Serializer):
+    model_id = serializers.CharField()
+    symbol = serializers.CharField()
+    timeframe = serializers.CharField()
+    exchange = serializers.CharField()
+    created_at = serializers.CharField()
+
+
+class MLPredictionResponseSerializer(serializers.Serializer):
+    model_id = serializers.CharField()
+    prediction = serializers.IntegerField()
+    confidence = serializers.FloatField()
+
+
+class WorkflowTriggerResponseSerializer(serializers.Serializer):
+    workflow_run_id = serializers.CharField()
+    job_id = serializers.CharField()
+
+
+class WorkflowScheduleResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    workflow_id = serializers.CharField()
+
+
 class WorkflowStepRunSerializer(serializers.ModelSerializer):
     step_name = serializers.CharField(source="step.name", read_only=True)
     step_type = serializers.CharField(source="step.step_type", read_only=True)

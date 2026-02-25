@@ -114,6 +114,26 @@ class SymbolPerformanceSerializer(TradingPerformanceSummarySerializer):
     symbol = serializers.CharField()
 
 
+# ── OpenAPI response serializers ─────────────────────────────
+
+
+class LiveTradingStatusSerializer(serializers.Serializer):
+    exchange_connected = serializers.BooleanField()
+    exchange_error = serializers.CharField(allow_blank=True)
+    is_halted = serializers.BooleanField()
+    active_live_orders = serializers.IntegerField()
+
+
+class PaperTradingStatusResponseSerializer(serializers.Serializer):
+    running = serializers.BooleanField()
+    strategy = serializers.CharField(allow_null=True, required=False)
+    started_at = serializers.CharField(allow_null=True, required=False)
+
+
+class PaperTradingProfitSerializer(serializers.Serializer):
+    total_profit = serializers.FloatField()
+
+
 class OrderCreateSerializer(serializers.Serializer):
     symbol = serializers.RegexField(
         regex=r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}$",

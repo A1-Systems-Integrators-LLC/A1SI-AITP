@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from market.constants import AssetClass
@@ -26,6 +27,20 @@ class BackgroundJob(models.Model):
                 name="idx_job_status_created",
             ),
         ]
+
+    VALID_STATUSES = {"pending", "running", "completed", "failed", "cancelled"}
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.progress is not None and not (0 <= self.progress <= 1):
+            errors.setdefault("progress", []).append("Progress must be between 0 and 1.")
+        if self.status and self.status not in self.VALID_STATUSES:
+            valid = ", ".join(sorted(self.VALID_STATUSES))
+            errors.setdefault("status", []).append(
+                f"Invalid status '{self.status}'. Must be one of: {valid}."
+            )
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"Job({self.id[:8]}... {self.job_type} {self.status})"
@@ -98,6 +113,15 @@ class Workflow(models.Model):
     class Meta:
         ordering = ["-updated_at"]
 
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.schedule_interval_seconds is not None and self.schedule_interval_seconds <= 0:
+            errors.setdefault("schedule_interval_seconds", []).append(
+                "Schedule interval must be > 0 when set."
+            )
+        if errors:
+            raise ValidationError(errors)
+
     def __str__(self):
         return f"Workflow({self.id}: {self.name})"
 
@@ -114,6 +138,15 @@ class WorkflowStep(models.Model):
     class Meta:
         ordering = ["order"]
         unique_together = [("workflow", "order")]
+
+    def clean(self) -> None:
+        errors: dict[str, list[str]] = {}
+        if self.order is not None and self.order < 1:
+            errors.setdefault("order", []).append("Order must be >= 1.")
+        if self.timeout_seconds is not None and self.timeout_seconds <= 0:
+            errors.setdefault("timeout_seconds", []).append("Timeout must be > 0.")
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return f"Step({self.workflow_id}/{self.order}: {self.name})"

@@ -16,10 +16,15 @@ from analysis.serializers import (
     BacktestResultSerializer,
     DataDownloadRequestSerializer,
     DataFileInfoSerializer,
+    DataGenerateSampleRequestSerializer,
     DataQualityReportSerializer,
     DataQualitySummarySerializer,
     JobAcceptedSerializer,
+    JobCancelResponseSerializer,
     JobSerializer,
+    MLModelInfoSerializer,
+    MLPredictionResponseSerializer,
+    MLPredictRequestSerializer,
     MLTrainRequestSerializer,
     ScreenRequestSerializer,
     ScreenResultSerializer,
@@ -29,6 +34,8 @@ from analysis.serializers import (
     WorkflowListSerializer,
     WorkflowRunDetailSerializer,
     WorkflowRunListSerializer,
+    WorkflowScheduleResponseSerializer,
+    WorkflowTriggerResponseSerializer,
 )
 from core.utils import safe_int as _safe_int
 
@@ -65,7 +72,7 @@ class JobDetailView(APIView):
 
 
 class JobCancelView(APIView):
-    @extend_schema(tags=["Jobs"])
+    @extend_schema(responses=JobCancelResponseSerializer, tags=["Jobs"])
     def post(self, request: Request, job_id: str) -> Response:
         from analysis.services.job_runner import get_job_runner
 
@@ -396,19 +403,11 @@ class DataDownloadView(APIView):
 
 class DataGenerateSampleView(APIView):
     @extend_schema(
-        request={
-            "type": "object",
-            "properties": {
-                "symbols": {"type": "array", "items": {"type": "string"}},
-                "timeframes": {"type": "array", "items": {"type": "string"}},
-                "days": {"type": "integer"},
-            },
-        },
+        request=DataGenerateSampleRequestSerializer,
         responses=JobAcceptedSerializer,
         tags=["Data"],
     )
     def post(self, request: Request) -> Response:
-        from analysis.serializers import DataGenerateSampleRequestSerializer
         from analysis.services.data_pipeline import DataPipelineService
         from analysis.services.job_runner import get_job_runner
 
@@ -454,7 +453,7 @@ class MLTrainView(APIView):
 
 
 class MLModelListView(APIView):
-    @extend_schema(tags=["ML"])
+    @extend_schema(responses=MLModelInfoSerializer(many=True), tags=["ML"])
     def get(self, request: Request) -> Response:
         from analysis.services.ml import MLService
 
@@ -462,7 +461,7 @@ class MLModelListView(APIView):
 
 
 class MLModelDetailView(APIView):
-    @extend_schema(tags=["ML"])
+    @extend_schema(responses=MLModelInfoSerializer, tags=["ML"])
     def get(self, request: Request, model_id: str) -> Response:
         from analysis.services.ml import MLService
 
@@ -474,20 +473,11 @@ class MLModelDetailView(APIView):
 
 class MLPredictView(APIView):
     @extend_schema(
-        request={
-            "type": "object",
-            "properties": {
-                "model_id": {"type": "string"},
-                "symbol": {"type": "string"},
-                "timeframe": {"type": "string"},
-                "exchange": {"type": "string"},
-                "bars": {"type": "integer"},
-            },
-        },
+        request=MLPredictRequestSerializer,
+        responses=MLPredictionResponseSerializer,
         tags=["ML"],
     )
     def post(self, request: Request) -> Response:
-        from analysis.serializers import MLPredictRequestSerializer
         from analysis.services.ml import MLService
 
         ser = MLPredictRequestSerializer(data=request.data)
@@ -639,7 +629,7 @@ class WorkflowDetailView(APIView):
             return Response({"error": "Workflow not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(WorkflowDetailSerializer(wf).data)
 
-    @extend_schema(tags=["Workflows"])
+    @extend_schema(responses={204: None}, tags=["Workflows"])
     def delete(self, request: Request, workflow_id: str) -> Response:
         try:
             wf = Workflow.objects.get(id=workflow_id)
@@ -655,7 +645,7 @@ class WorkflowDetailView(APIView):
 
 
 class WorkflowTriggerView(APIView):
-    @extend_schema(tags=["Workflows"])
+    @extend_schema(responses=WorkflowTriggerResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         from analysis.services.workflow_engine import WorkflowEngine
 
@@ -677,7 +667,7 @@ class WorkflowTriggerView(APIView):
 
 
 class WorkflowEnableView(APIView):
-    @extend_schema(tags=["Workflows"])
+    @extend_schema(responses=WorkflowScheduleResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         try:
             wf = Workflow.objects.get(id=workflow_id)
@@ -689,7 +679,7 @@ class WorkflowEnableView(APIView):
 
 
 class WorkflowDisableView(APIView):
-    @extend_schema(tags=["Workflows"])
+    @extend_schema(responses=WorkflowScheduleResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         try:
             wf = Workflow.objects.get(id=workflow_id)
@@ -730,7 +720,7 @@ class WorkflowRunDetailView(APIView):
 
 
 class WorkflowRunCancelView(APIView):
-    @extend_schema(tags=["Workflows"])
+    @extend_schema(responses=JobCancelResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, run_id: str) -> Response:
         from analysis.services.workflow_engine import WorkflowEngine
 
