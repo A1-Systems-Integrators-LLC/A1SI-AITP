@@ -2,8 +2,11 @@
 
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 from analysis.models import BackgroundJob, BacktestResult, ScreenResult, WorkflowRun
 from risk.models import AlertLog, RiskLimitChange, TradeCheckLog
@@ -73,5 +76,6 @@ class TestMigrationsFresh:
             [sys.executable, "manage.py", "makemigrations", "--check", "--dry-run"],
             capture_output=True,
             text=True,
+            cwd=BACKEND_DIR,
         )
         assert result.returncode == 0, f"Pending migrations detected: {result.stdout}"
