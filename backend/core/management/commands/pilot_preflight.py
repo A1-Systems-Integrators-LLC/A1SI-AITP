@@ -127,7 +127,7 @@ def _check_scheduler() -> CheckResult:
     except Exception:
         running = False
 
-    key_tasks = ["risk_monitor", "order_sync", "data_refresh"]
+    key_tasks = ["risk_monitoring", "order_sync", "data_refresh_crypto"]
     existing = set(
         ScheduledTask.objects.filter(
             id__in=key_tasks, status=ScheduledTask.ACTIVE,

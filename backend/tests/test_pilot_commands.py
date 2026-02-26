@@ -66,7 +66,7 @@ class TestPilotPreflight:
     def _create_scheduled_tasks(self):
         from core.models import ScheduledTask
 
-        for task_id in ["risk_monitor", "order_sync", "data_refresh"]:
+        for task_id in ["risk_monitoring", "order_sync", "data_refresh_crypto"]:
             ScheduledTask.objects.create(
                 id=task_id,
                 name=task_id,
