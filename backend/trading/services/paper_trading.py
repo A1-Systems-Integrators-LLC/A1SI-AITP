@@ -21,7 +21,6 @@ class PaperTradingService:
         self._process: subprocess.Popen | None = None
         self._strategy: str = ""
         self._started_at: datetime | None = None
-        self._jwt_token: str | None = None
 
         ft_config = self._read_ft_config()
         api_cfg = ft_config.get("api_server", {})
@@ -90,7 +89,6 @@ class PaperTradingService:
 
         self._strategy = strategy
         self._started_at = datetime.now(timezone.utc)
-        self._jwt_token = None
         self._log_event("started", {"strategy": strategy, "pid": self._process.pid})
         logger.info(f"Paper trading started: {strategy} (PID {self._process.pid})")
         return {
@@ -117,7 +115,6 @@ class PaperTradingService:
         self._log_event("stopped", {"pid": pid, "strategy": strategy})
         logger.info(f"Paper trading stopped: {strategy} (PID {pid})")
         self._process = None
-        self._jwt_token = None
         return {"status": "stopped", "pid": pid}
 
     def get_status(self) -> dict:
@@ -142,42 +139,20 @@ class PaperTradingService:
             "uptime_seconds": round(uptime),
         }
 
-    async def _get_token(self) -> str | None:
-        if self._jwt_token:
-            return self._jwt_token
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{self._ft_api_url}/api/v1/token/login",
-                    data={"username": self._ft_username, "password": self._ft_password},
-                    timeout=5.0,
-                )
-                if resp.status_code == 200:
-                    self._jwt_token = resp.json().get("access_token")
-                    return self._jwt_token
-        except httpx.ConnectError:
-            logger.debug("Freqtrade API not reachable")
-        except Exception as e:
-            logger.debug(f"Failed to get Freqtrade token: {e}")
-        return None
-
     async def _ft_get(self, endpoint: str) -> Any:
+        """Call Freqtrade REST API using HTTP Basic auth."""
         if not self.is_running:
             return None
-        token = await self._get_token()
-        if not token:
-            return None
         try:
+            auth = httpx.BasicAuth(self._ft_username, self._ft_password)
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{self._ft_api_url}/api/v1/{endpoint}",
-                    headers={"Authorization": f"Bearer {token}"},
+                    auth=auth,
                     timeout=5.0,
                 )
                 if resp.status_code == 200:
                     return resp.json()
-                if resp.status_code == 401:
-                    self._jwt_token = None
         except httpx.ConnectError:
             logger.debug(f"Freqtrade API not reachable for {endpoint}")
         except Exception as e:
