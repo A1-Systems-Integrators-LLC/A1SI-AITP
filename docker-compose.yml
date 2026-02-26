@@ -12,20 +12,23 @@ services:
       DJANGO_ENCRYPTION_KEY: "${DJANGO_ENCRYPTION_KEY:?Set DJANGO_ENCRYPTION_KEY in .env}"
       CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8000"
-      EXCHANGE_ID: "${EXCHANGE_ID:-binance}"
+      EXCHANGE_ID: "${EXCHANGE_ID:-kraken}"
       EXCHANGE_API_KEY: "${EXCHANGE_API_KEY:-}"
       EXCHANGE_API_SECRET: "${EXCHANGE_API_SECRET:-}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
       TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
       NOTIFICATION_WEBHOOK_URL: "${NOTIFICATION_WEBHOOK_URL:-}"
+      FREQTRADE_API_URL: "http://host.docker.internal:8080"
+      FREQTRADE_USERNAME: "${FREQTRADE_USERNAME:-freqtrader}"
+      FREQTRADE_PASSWORD: "${FREQTRADE_PASSWORD:-freqtrader}"
       DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"
       DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-admin@localhost}"
       DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - backend-data:/project/backend/data
       - market-data:/project/data
-    cpus: "4"
-    pids_limit: 512
     init: true
     restart: unless-stopped
     logging:
@@ -36,7 +39,9 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "4"
           memory: 8g
+          pids: 512
         reservations:
           memory: 1g
     healthcheck:
@@ -52,8 +57,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:8080"
-    cpus: "1"
-    pids_limit: 256
     init: true
     volumes:
       - nginx-logs:/var/log/nginx
@@ -66,7 +69,9 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "1"
           memory: 512m
+          pids: 256
         reservations:
           memory: 256m
     depends_on:

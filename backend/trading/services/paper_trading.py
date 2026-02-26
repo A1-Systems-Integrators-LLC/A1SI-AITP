@@ -26,11 +26,17 @@ class PaperTradingService:
 
         ft_config = self._read_ft_config()
         api_cfg = ft_config.get("api_server", {})
-        host = api_cfg.get("listen_ip_address", "127.0.0.1")
-        port = api_cfg.get("listen_port", 8080)
-        self._ft_api_url = f"http://{host}:{port}"
-        self._ft_username = api_cfg.get("username", "freqtrader")
-        self._ft_password = api_cfg.get("password", "freqtrader")
+
+        # Allow env var override for Docker (container can't reach host 127.0.0.1)
+        env_url = os.environ.get("FREQTRADE_API_URL")
+        if env_url:
+            self._ft_api_url = env_url.rstrip("/")
+        else:
+            host = api_cfg.get("listen_ip_address", "127.0.0.1")
+            port = api_cfg.get("listen_port", 8080)
+            self._ft_api_url = f"http://{host}:{port}"
+        self._ft_username = os.environ.get("FREQTRADE_USERNAME") or api_cfg.get("username", "freqtrader")
+        self._ft_password = os.environ.get("FREQTRADE_PASSWORD") or api_cfg.get("password", "freqtrader")
 
         log_base = log_dir or (PROJECT_ROOT / "data")
         log_base.mkdir(parents=True, exist_ok=True)
