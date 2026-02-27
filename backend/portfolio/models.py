@@ -10,7 +10,7 @@ class Portfolio(models.Model):
     # needed, add `user = models.ForeignKey(settings.AUTH_USER_MODEL, ...)`
     # and filter querysets by request.user in views.
     name = models.CharField(max_length=100)
-    exchange_id = models.CharField(max_length=50, default="binance")
+    exchange_id = models.CharField(max_length=50, default="kraken")
     asset_class = models.CharField(
         max_length=10,
         choices=AssetClass.choices,

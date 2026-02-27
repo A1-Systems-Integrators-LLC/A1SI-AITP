@@ -135,7 +135,7 @@ freqtrade:
 
   # Standalone ML pipeline (common/ml/)
   ml:
-    enabled: false  # Enable after validation
+    enabled: true
     model_storage_path: "models"  # Relative to project root
 
     # Feature engineering

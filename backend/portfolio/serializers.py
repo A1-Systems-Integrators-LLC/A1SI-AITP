@@ -49,7 +49,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 class PortfolioCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
-    exchange_id = serializers.CharField(max_length=50, default="binance")
+    exchange_id = serializers.CharField(max_length=50, default="kraken")
     description = serializers.CharField(max_length=500, default="", allow_blank=True)
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,

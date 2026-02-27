@@ -40,7 +40,7 @@ class ScreenerService:
 
         symbol = params.get("symbol", "BTC/USDT")
         timeframe = params.get("timeframe", "1h")
-        exchange = params.get("exchange", "binance")
+        exchange = params.get("exchange", "kraken")
         fees = params.get("fees", 0.001)
 
         progress_cb(0.05, f"Loading {symbol} {timeframe} data...")

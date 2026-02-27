@@ -53,8 +53,8 @@ class TaskScheduler:
 
         self._sync_tasks_to_db()
         self._sync_workflows_to_db()
-        self._schedule_active_tasks()
         self._scheduler.start()
+        self._schedule_active_tasks()
         self._running = True
         atexit.register(self.shutdown)
         logger.info("TaskScheduler started with %d tasks", self._active_task_count())
@@ -96,6 +96,8 @@ class TaskScheduler:
                     "description": cfg.get("description", ""),
                     "asset_class": cfg.get("asset_class", "crypto"),
                     "is_template": True,
+                    "schedule_enabled": cfg.get("schedule_enabled", False),
+                    "schedule_interval_seconds": cfg.get("schedule_interval_seconds"),
                 },
             )
             if created:
@@ -103,7 +105,7 @@ class TaskScheduler:
                     WorkflowStep.objects.create(workflow=wf, **step_data)
 
     def _schedule_active_tasks(self) -> None:
-        """Add APScheduler jobs for all active tasks."""
+        """Add APScheduler jobs for all active tasks and enabled workflows."""
         from core.models import ScheduledTask
 
         for task in ScheduledTask.objects.filter(status=ScheduledTask.ACTIVE):
@@ -118,10 +120,32 @@ class TaskScheduler:
                 )
                 # Update next_run_at from APScheduler
                 job = self._scheduler.get_job(task.id)
-                if job and job.next_run_time:
+                nrt = getattr(job, "next_run_time", None) if job else None
+                if nrt:
                     ScheduledTask.objects.filter(id=task.id).update(
-                        next_run_at=job.next_run_time,
+                        next_run_at=nrt,
                     )
+
+        # Schedule enabled workflows
+        from analysis.models import Workflow
+
+        for wf in Workflow.objects.filter(schedule_enabled=True, is_active=True):
+            if wf.schedule_interval_seconds and wf.schedule_interval_seconds > 0:
+                job_id = f"workflow_{wf.id}"
+                self._scheduler.add_job(
+                    self._execute_workflow,
+                    "interval",
+                    seconds=wf.schedule_interval_seconds,
+                    id=job_id,
+                    args=[wf.id],
+                    replace_existing=True,
+                )
+                apjob = self._scheduler.get_job(job_id)
+                nrt = getattr(apjob, "next_run_time", None) if apjob else None
+                logger.info(
+                    "Scheduled workflow %s (%s) every %ds, next: %s",
+                    wf.name, wf.id, wf.schedule_interval_seconds, nrt,
+                )
 
     def _active_task_count(self) -> int:
         from core.models import ScheduledTask
@@ -164,8 +188,9 @@ class TaskScheduler:
         # Update next_run_at from APScheduler
         if self._scheduler:
             apjob = self._scheduler.get_job(task_id)
-            if apjob and apjob.next_run_time:
-                update_fields["next_run_at"] = apjob.next_run_time
+            nrt = getattr(apjob, "next_run_time", None) if apjob else None
+            if nrt:
+                update_fields["next_run_at"] = nrt
 
         ScheduledTask.objects.filter(id=task_id).update(**update_fields)
         logger.info("Task %s submitted as job %s", task_id, job_id)
@@ -243,9 +268,10 @@ class TaskScheduler:
                 replace_existing=True,
             )
             apjob = self._scheduler.get_job(task_id)
-            if apjob and apjob.next_run_time:
+            nrt = getattr(apjob, "next_run_time", None) if apjob else None
+            if nrt:
                 ScheduledTask.objects.filter(id=task_id).update(
-                    next_run_at=apjob.next_run_time,
+                    next_run_at=nrt,
                 )
 
         logger.info("Task %s resumed", task_id)
@@ -309,6 +335,48 @@ class TaskScheduler:
             pass
 
         return job_id
+
+    def _execute_workflow(self, workflow_id: str) -> None:
+        """Execute a scheduled workflow via WorkflowEngine."""
+        from analysis.models import Workflow
+
+        try:
+            wf = Workflow.objects.get(id=workflow_id)
+        except Workflow.DoesNotExist:
+            logger.error("Scheduled workflow %s not found", workflow_id)
+            return
+
+        if not wf.schedule_enabled or not wf.is_active:
+            return
+
+        try:
+            from analysis.services.workflow_engine import WorkflowEngine
+
+            run_id, job_id = WorkflowEngine.trigger(
+                workflow_id=workflow_id,
+                trigger="scheduled",
+                params=wf.params,
+            )
+            logger.info("Workflow %s triggered as job %s (run %s)", wf.name, job_id, run_id)
+
+            wf.last_run_at = datetime.now(tz=timezone.utc)
+            wf.save(update_fields=["last_run_at"])
+
+            try:
+                from core.services.ws_broadcast import broadcast_scheduler_event
+
+                broadcast_scheduler_event(
+                    task_id=f"workflow_{workflow_id}",
+                    task_name=wf.name,
+                    task_type="workflow",
+                    status="triggered",
+                    job_id=job_id,
+                    message=f"Workflow {wf.name} auto-triggered",
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning("Scheduled workflow %s failed: %s", workflow_id, e)
 
     def get_status(self) -> dict[str, Any]:
         """Return scheduler status summary."""

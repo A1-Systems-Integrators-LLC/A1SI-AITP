@@ -170,7 +170,7 @@ class RegimeService:
         try:
             from common.data_pipeline.pipeline import load_ohlcv
 
-            df = load_ohlcv(symbol, "1h", "binance")
+            df = load_ohlcv(symbol, "1h", "kraken")
             if df is not None and not df.empty:
                 return df
         except Exception as e:

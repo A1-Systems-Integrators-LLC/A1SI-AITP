@@ -51,6 +51,8 @@ class VolatilityBreakout(IStrategy):
     INTERFACE_VERSION = 3
     timeframe = "1h"
     can_short = False
+    # Warm-up: breakout period up to 30, EMA 50, plus BB/RSI/ADX/ATR.
+    startup_candle_count = 80
 
     # ── Risk API integration ──
     risk_api_url = "http://127.0.0.1:8000"
@@ -64,6 +66,7 @@ class VolatilityBreakout(IStrategy):
     }
 
     stoploss = -0.03  # -3% hard stop (breakouts fail fast)
+    use_custom_stoploss = True
 
     trailing_stop = True
     trailing_stop_positive = 0.02

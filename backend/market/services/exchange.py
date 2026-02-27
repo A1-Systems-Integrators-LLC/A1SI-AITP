@@ -12,7 +12,12 @@ SUPPORTED_EXCHANGES = ["binance", "coinbase", "kraken", "kucoin", "bybit"]
 
 
 def _load_db_config(config_id: int | None = None):
-    """Load ExchangeConfig from DB. Returns None if unavailable."""
+    """Load ExchangeConfig from DB. Returns None if unavailable.
+
+    Safe to call from both sync and async contexts — catches
+    SynchronousOnlyOperation when invoked under ASGI and defers
+    DB lookup to the first awaited call.
+    """
     try:
         from market.models import ExchangeConfig
     except ImportError:
@@ -25,7 +30,10 @@ def _load_db_config(config_id: int | None = None):
     except ExchangeConfig.DoesNotExist:
         return None
     except Exception:
-        logger.warning("Failed to load exchange config from DB", exc_info=True)
+        # SynchronousOnlyOperation lands here when called from async context.
+        # The caller falls back to settings.EXCHANGE_ID; the async path in
+        # _get_exchange() will attempt a deferred DB load instead.
+        logger.debug("Deferred exchange config load (async context)")
         return None
 
 
@@ -40,6 +48,14 @@ class ExchangeService:
 
     async def _get_exchange(self) -> ccxt.Exchange:
         if self._exchange is None:
+            # Deferred DB load if sync init couldn't access ORM (async context)
+            if self._db_config is None:
+                from asgiref.sync import sync_to_async
+
+                self._db_config = await sync_to_async(_load_db_config)()
+                if self._db_config:
+                    self._exchange_id = self._db_config.exchange_id
+
             exchange_class = getattr(ccxt, self._exchange_id)
             config: dict[str, object] = {"enableRateLimit": True}
 

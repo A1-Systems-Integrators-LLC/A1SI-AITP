@@ -122,7 +122,7 @@ class BacktestService:
         strategy = params.get("strategy", "")
         symbol = params.get("symbol", "BTC/USDT")
         timeframe = params.get("timeframe", "1h")
-        exchange = params.get("exchange", "binance")
+        exchange = params.get("exchange", "kraken")
         initial_balance = params.get("initial_balance", 10000.0)
 
         progress_cb(0.1, "Loading NautilusTrader...")
@@ -155,7 +155,7 @@ class BacktestService:
         strategy = params.get("strategy", "")
         symbol = params.get("symbol", "BTC/USDT")
         timeframe = params.get("timeframe", "1h")
-        exchange = params.get("exchange", "binance")
+        exchange = params.get("exchange", "kraken")
         initial_balance = params.get("initial_balance", 10000.0)
         latency_ns = params.get("latency_ns", 1_000_000)
 

@@ -357,8 +357,13 @@ class TradingPerformanceBySymbolView(APIView):
 class PaperTradingStatusView(APIView):
     @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
-        service = _get_paper_trading_service()
-        return Response(service.get_status())
+        services = _get_paper_trading_services()
+        statuses = []
+        for name, svc in services.items():
+            status = svc.get_status()
+            status["instance"] = name
+            statuses.append(status)
+        return Response(statuses)
 
 
 class PaperTradingStartView(APIView):
@@ -379,45 +384,83 @@ class PaperTradingStopView(APIView):
 class PaperTradingTradesView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
-        service = _get_paper_trading_service()
-        return Response(async_to_sync(service.get_open_trades)())
+        services = _get_paper_trading_services()
+        all_trades = []
+        for name, svc in services.items():
+            trades = async_to_sync(svc.get_open_trades)()
+            for t in trades:
+                t["instance"] = name
+            all_trades.extend(trades)
+        return Response(all_trades)
 
 
 class PaperTradingHistoryView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
-        service = _get_paper_trading_service()
-        return Response(async_to_sync(service.get_trade_history)(limit))
+        services = _get_paper_trading_services()
+        all_history = []
+        for name, svc in services.items():
+            history = async_to_sync(svc.get_trade_history)(limit)
+            for t in history:
+                t["instance"] = name
+            all_history.extend(history)
+        return Response(all_history)
 
 
 class PaperTradingProfitView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
-        service = _get_paper_trading_service()
-        return Response(async_to_sync(service.get_profit)())
+        services = _get_paper_trading_services()
+        profits = []
+        for name, svc in services.items():
+            profit = async_to_sync(svc.get_profit)()
+            if profit:
+                profit["instance"] = name
+                profits.append(profit)
+        return Response(profits)
 
 
 class PaperTradingPerformanceView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
-        service = _get_paper_trading_service()
-        return Response(async_to_sync(service.get_performance)())
+        services = _get_paper_trading_services()
+        all_perf = []
+        for name, svc in services.items():
+            perf = async_to_sync(svc.get_performance)()
+            for p in perf:
+                p["instance"] = name
+            all_perf.extend(perf)
+        return Response(all_perf)
 
 
 class PaperTradingBalanceView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
-        service = _get_paper_trading_service()
-        return Response(async_to_sync(service.get_balance)())
+        services = _get_paper_trading_services()
+        balances = []
+        for name, svc in services.items():
+            bal = async_to_sync(svc.get_balance)()
+            if bal:
+                bal["instance"] = name
+                balances.append(bal)
+        return Response(balances)
 
 
 class PaperTradingLogView(APIView):
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=500)
-        service = _get_paper_trading_service()
-        return Response(service.get_log_entries(limit))
+        services = _get_paper_trading_services()
+        all_logs = []
+        for name, svc in services.items():
+            logs = svc.get_log_entries(limit)
+            for entry in logs:
+                entry["instance"] = name
+            all_logs.extend(logs)
+        # Sort by timestamp descending, return limited
+        all_logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        return Response(all_logs[:limit])
 
 
 class CancelAllOrdersView(APIView):
@@ -490,17 +533,39 @@ class ExchangeHealthView(APIView):
         )
 
 
-# Singleton paper trading service
-_paper_trading_service = None
+# Multi-instance paper trading services
+_paper_trading_services: dict | None = None
 _paper_trading_lock = __import__("threading").Lock()
 
 
-def _get_paper_trading_service():
-    global _paper_trading_service
-    if _paper_trading_service is None:
+def _get_paper_trading_services() -> dict:
+    """Return dict of {name: PaperTradingService} for all configured instances."""
+    global _paper_trading_services
+    if _paper_trading_services is None:
         with _paper_trading_lock:
-            if _paper_trading_service is None:
+            if _paper_trading_services is None:
+                from django.conf import settings as django_settings
+
                 from trading.services.paper_trading import PaperTradingService
 
-                _paper_trading_service = PaperTradingService()
-    return _paper_trading_service
+                instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
+                if not instances:
+                    # Fallback to single-instance for backwards compat
+                    _paper_trading_services = {
+                        "default": PaperTradingService()
+                    }
+                else:
+                    _paper_trading_services = {}
+                    for inst in instances:
+                        _paper_trading_services[inst["name"]] = PaperTradingService(
+                            api_url=inst.get("url"),
+                            instance_name=inst["name"],
+                            config_file=inst.get("config", "config.json"),
+                        )
+    return _paper_trading_services
+
+
+def _get_paper_trading_service():
+    """Return the primary (first) paper trading service for backwards compat."""
+    services = _get_paper_trading_services()
+    return next(iter(services.values()))

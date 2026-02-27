@@ -32,7 +32,7 @@ class TestPortfolioCRUD:
         )
         assert resp.status_code == 201
         assert resp.json()["name"] == "Minimal"
-        assert resp.json()["exchange_id"] == "binance"  # default
+        assert resp.json()["exchange_id"] == "kraken"  # default
 
     def test_get_portfolio(self, authenticated_client):
         create_resp = authenticated_client.post(

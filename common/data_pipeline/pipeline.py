@@ -49,7 +49,7 @@ logger = logging.getLogger("data_pipeline")
 # Exchange Factory
 # ──────────────────────────────────────────────
 
-def get_exchange(exchange_id: str = "binance", sandbox: bool = True) -> ccxt.Exchange:
+def get_exchange(exchange_id: str = "kraken", sandbox: bool = True) -> ccxt.Exchange:
     """Create a CCXT exchange instance with optional sandbox mode."""
     exchange_class = getattr(ccxt, exchange_id)
     config = {
@@ -83,7 +83,7 @@ def fetch_ohlcv(
     symbol: str,
     timeframe: str = "1h",
     since_days: int = 365,
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
     limit_per_request: int = 1000,
 ) -> pd.DataFrame:
     """
@@ -199,7 +199,7 @@ def save_ohlcv(
     df: pd.DataFrame,
     symbol: str,
     timeframe: str,
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
     directory: Optional[Path] = None,
 ) -> Path:
     """Save OHLCV DataFrame to Parquet, merging with existing data.
@@ -229,7 +229,7 @@ def save_ohlcv(
 def load_ohlcv(
     symbol: str,
     timeframe: str,
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
     directory: Optional[Path] = None,
     start: Optional[str] = None,
     end: Optional[str] = None,
@@ -285,7 +285,7 @@ def fetch_ohlcv_multi(
     timeframe: str = "1h",
     since_days: int = 365,
     asset_class: str = "crypto",
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
 ) -> pd.DataFrame:
     """Fetch OHLCV data routing to the correct data source by asset class.
 
@@ -320,7 +320,7 @@ _DEFAULT_WATCHLISTS: dict[str, list[str]] = {
 def download_watchlist(
     symbols: Optional[list] = None,
     timeframes: Optional[list] = None,
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
     since_days: int = 365,
     asset_class: str = "crypto",
 ) -> dict:
@@ -546,7 +546,7 @@ def check_ohlc_integrity(df: pd.DataFrame) -> list[dict]:
 def validate_data(
     symbol: str,
     timeframe: str,
-    exchange_id: str = "binance",
+    exchange_id: str = "kraken",
     directory: Optional[Path] = None,
     max_stale_hours: float = 2.0,
     price_spike_pct: float = 0.20,
@@ -779,7 +779,7 @@ if __name__ == "__main__":
     dl = sub.add_parser("download", help="Download OHLCV data")
     dl.add_argument("--symbols", nargs="+", default=["BTC/USDT", "ETH/USDT"])
     dl.add_argument("--timeframes", nargs="+", default=["1h", "4h", "1d"])
-    dl.add_argument("--exchange", default="binance")
+    dl.add_argument("--exchange", default="kraken")
     dl.add_argument("--days", type=int, default=365)
 
     # List command
@@ -789,7 +789,7 @@ if __name__ == "__main__":
     info = sub.add_parser("info", help="Show info about a data file")
     info.add_argument("symbol")
     info.add_argument("--timeframe", default="1h")
-    info.add_argument("--exchange", default="binance")
+    info.add_argument("--exchange", default="kraken")
 
     args = parser.parse_args()
 

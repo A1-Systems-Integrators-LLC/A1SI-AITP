@@ -133,7 +133,7 @@ def main():
     )
     parser.add_argument("--symbol", default="BTC/USDT", help="Trading pair")
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
-    parser.add_argument("--exchange", default="binance", help="Exchange")
+    parser.add_argument("--exchange", default="kraken", help="Exchange")
     parser.add_argument(
         "--fees",
         type=float,

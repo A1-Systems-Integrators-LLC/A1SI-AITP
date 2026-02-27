@@ -42,6 +42,8 @@ class BollingerMeanReversion(IStrategy):
     INTERFACE_VERSION = 3
     timeframe = "1h"
     can_short = False
+    # Warm-up: BB period up to 30, plus RSI/ADX/ATR 14 — need at least 30 candles.
+    startup_candle_count = 50
 
     # ── Risk API integration ──
     risk_api_url = "http://127.0.0.1:8000"
@@ -55,6 +57,7 @@ class BollingerMeanReversion(IStrategy):
     }
 
     stoploss = -0.04
+    use_custom_stoploss = True
     trailing_stop = True
     trailing_stop_positive = 0.01
     trailing_stop_positive_offset = 0.025

@@ -46,7 +46,7 @@ class BacktestRequestSerializer(serializers.Serializer):
         help_text="Timeframe, e.g. 1h, 4h, 1d",
     )
     timerange = serializers.CharField(default="", allow_blank=True)
-    exchange = serializers.CharField(default="binance", min_length=1)
+    exchange = serializers.CharField(default="kraken", min_length=1)
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
     )
@@ -92,7 +92,7 @@ class ScreenRequestSerializer(serializers.Serializer):
         default="1h",
         help_text="Timeframe, e.g. 1h, 4h, 1d",
     )
-    exchange = serializers.CharField(default="binance", min_length=1)
+    exchange = serializers.CharField(default="kraken", min_length=1)
     fees = serializers.FloatField(default=0.001, min_value=0.0, max_value=0.1)
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
@@ -142,7 +142,7 @@ class DataDetailInfoSerializer(serializers.Serializer):
 class DataDownloadRequestSerializer(serializers.Serializer):
     symbols = serializers.ListField(child=serializers.CharField(), default=["BTC/USDT", "ETH/USDT"])
     timeframes = serializers.ListField(child=serializers.CharField(), default=["1h"])
-    exchange = serializers.CharField(default="binance", min_length=1)
+    exchange = serializers.CharField(default="kraken", min_length=1)
     since_days = serializers.IntegerField(default=365, min_value=1, max_value=3650)
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
@@ -179,7 +179,7 @@ class PaperTradingActionSerializer(serializers.Serializer):
 class MLTrainRequestSerializer(serializers.Serializer):
     symbol = serializers.CharField(default="BTC/USDT")
     timeframe = serializers.CharField(default="1h")
-    exchange = serializers.CharField(default="binance")
+    exchange = serializers.CharField(default="kraken")
     test_ratio = serializers.FloatField(default=0.2, min_value=0.05, max_value=0.5)
 
 
@@ -187,7 +187,7 @@ class MLPredictRequestSerializer(serializers.Serializer):
     model_id = serializers.CharField()
     symbol = serializers.CharField(default="BTC/USDT")
     timeframe = serializers.CharField(default="1h")
-    exchange = serializers.CharField(default="binance")
+    exchange = serializers.CharField(default="kraken")
     bars = serializers.IntegerField(default=50, min_value=1, max_value=1000)
 
 

@@ -51,7 +51,7 @@ def _load_platform_config() -> dict:
 def convert_ohlcv_to_hft_ticks(
     symbol: str = "BTC/USDT",
     timeframe: str = "1h",
-    exchange: str = "binance",
+    exchange: str = "kraken",
 ) -> Path:
     """
     Convert OHLCV Parquet data to synthetic tick numpy arrays.
@@ -88,7 +88,7 @@ def run_hft_backtest(
     strategy_name: str,
     symbol: str = "BTC/USDT",
     timeframe: str = "1h",
-    exchange: str = "binance",
+    exchange: str = "kraken",
     latency_ns: int = 1_000_000,
     initial_balance: float = 10000.0,
 ) -> dict:
@@ -177,14 +177,14 @@ if __name__ == "__main__":
     conv = sub.add_parser("convert", help="Convert OHLCV data to tick format")
     conv.add_argument("--symbol", default="BTC/USDT")
     conv.add_argument("--timeframe", default="1h")
-    conv.add_argument("--exchange", default="binance")
+    conv.add_argument("--exchange", default="kraken")
 
     # Backtest
     bt = sub.add_parser("backtest", help="Run HFT backtest")
     bt.add_argument("--strategy", required=True, help="Strategy name from registry")
     bt.add_argument("--symbol", default="BTC/USDT")
     bt.add_argument("--timeframe", default="1h")
-    bt.add_argument("--exchange", default="binance")
+    bt.add_argument("--exchange", default="kraken")
     bt.add_argument("--latency", type=int, default=1_000_000, help="Latency in nanoseconds")
     bt.add_argument("--balance", type=float, default=10000.0)
 

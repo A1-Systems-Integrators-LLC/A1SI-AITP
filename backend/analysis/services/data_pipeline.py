@@ -70,7 +70,7 @@ class DataPipelineService:
 
         symbols = params.get("symbols", ["BTC/USDT"])[:50]
         timeframes = params.get("timeframes", ["1h"])[:10]
-        exchange_id = params.get("exchange", "binance")
+        exchange_id = params.get("exchange", "kraken")
         since_days = params.get("since_days", 365)
 
         results = {}

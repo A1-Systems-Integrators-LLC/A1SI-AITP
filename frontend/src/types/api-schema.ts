@@ -1828,7 +1828,7 @@ export interface components {
             timeframe: string;
             /** @default  */
             timerange: string;
-            /** @default binance */
+            /** @default kraken */
             exchange: string;
             /** @default crypto */
             asset_class: components["schemas"]["AssetClassEnum"];
@@ -1923,7 +1923,7 @@ export interface components {
              *     ]
              */
             timeframes: string[];
-            /** @default binance */
+            /** @default kraken */
             exchange: string;
             /** @default 365 */
             since_days: number;
@@ -2225,7 +2225,7 @@ export interface components {
             symbol: string;
             /** @default 1h */
             timeframe: string;
-            /** @default binance */
+            /** @default kraken */
             exchange: string;
             /** @default 50 */
             bars: number;
@@ -2241,7 +2241,7 @@ export interface components {
             symbol: string;
             /** @default 1h */
             timeframe: string;
-            /** @default binance */
+            /** @default kraken */
             exchange: string;
             /**
              * Format: double
@@ -2366,7 +2366,7 @@ export interface components {
              * @default 0
              */
             price: number;
-            /** @default binance */
+            /** @default kraken */
             exchange_id: string;
             /** @default paper */
             mode: components["schemas"]["OrderCreateModeEnum"];
@@ -2449,7 +2449,7 @@ export interface components {
         };
         PortfolioCreate: {
             name: string;
-            /** @default binance */
+            /** @default kraken */
             exchange_id: string;
             /** @default  */
             description: string;
@@ -2686,7 +2686,7 @@ export interface components {
              * @default 1h
              */
             timeframe: string;
-            /** @default binance */
+            /** @default kraken */
             exchange: string;
             /**
              * Format: double

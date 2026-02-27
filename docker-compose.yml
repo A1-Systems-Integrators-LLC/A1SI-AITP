@@ -19,6 +19,8 @@ services:
       TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
       NOTIFICATION_WEBHOOK_URL: "${NOTIFICATION_WEBHOOK_URL:-}"
       FREQTRADE_API_URL: "http://host.docker.internal:8080"
+      FREQTRADE_BMR_API_URL: "http://host.docker.internal:8083"
+      FREQTRADE_VB_API_URL: "http://host.docker.internal:8084"
       FREQTRADE_USERNAME: "${FREQTRADE_USERNAME:-freqtrader}"
       FREQTRADE_PASSWORD: "${FREQTRADE_PASSWORD:-freqtrader}"
       DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"

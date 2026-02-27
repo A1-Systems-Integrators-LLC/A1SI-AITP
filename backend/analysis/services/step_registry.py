@@ -52,7 +52,7 @@ def _step_vbt_screen(params: dict, progress_cb: ProgressCallback) -> dict[str, A
         screen_params = {
             "symbol": params.get("symbol", "BTC/USDT"),
             "timeframe": params.get("timeframe", "1h"),
-            "exchange": params.get("exchange", "binance"),
+            "exchange": params.get("exchange", "kraken"),
             "fees": params.get("fees", 0.001),
             "asset_class": params.get("asset_class", "crypto"),
         }
@@ -199,6 +199,12 @@ def _step_strategy_recommend(params: dict, progress_cb: ProgressCallback) -> dic
         return {"status": "error", "error": str(e)}
 
 
+def _step_ml_training(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Train ML model within workflow."""
+    from core.services.task_registry import _run_ml_training
+    return _run_ml_training(params, progress_cb)
+
+
 # ── Registry ────────────────────────────────────────────────
 
 STEP_REGISTRY: dict[str, StepExecutor] = {
@@ -214,6 +220,7 @@ STEP_REGISTRY: dict[str, StepExecutor] = {
     "composite_score": _step_composite_score,
     "alert_evaluate": _step_alert_evaluate,
     "strategy_recommend": _step_strategy_recommend,
+    "ml_training": _step_ml_training,
 }
 
 
@@ -230,6 +237,7 @@ def get_step_types() -> list[dict[str, str]]:
         "composite_score": "Combine regime + sentiment into composite score",
         "alert_evaluate": "Evaluate thresholds and send notifications",
         "strategy_recommend": "Get strategy routing recommendations",
+        "ml_training": "Train LightGBM model on OHLCV data",
     }
     return [
         {"step_type": k, "description": descriptions.get(k, "")}

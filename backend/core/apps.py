@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 
 from django.apps import AppConfig
 from django.conf import settings
@@ -34,10 +35,15 @@ class CoreConfig(AppConfig):
     def ready(self):
         connection_created.connect(_set_sqlite_pragmas)
 
-        # Start scheduler only once (RUN_MAIN guard for dev server auto-reload)
+        # Start scheduler once per process.
+        # RUN_MAIN is only set by Django's autoreload (runserver).
+        # Under Daphne/gunicorn/Docker, it's never set — so we also start
+        # when RUN_MAIN is absent (i.e., single-process ASGI server).
+        # Deferred via timer so DB is fully ready (avoids "database during
+        # app initialization" warning).
         if (
             getattr(settings, "SCHEDULER_ENABLED", False)
             and not getattr(settings, "TESTING", False)
-            and os.environ.get("RUN_MAIN") == "true"
+            and os.environ.get("RUN_MAIN", "true") == "true"
         ):
-            _start_scheduler()
+            threading.Timer(2.0, _start_scheduler).start()

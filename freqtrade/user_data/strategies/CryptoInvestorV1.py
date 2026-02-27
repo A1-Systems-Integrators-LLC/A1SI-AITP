@@ -55,6 +55,8 @@ class CryptoInvestorV1(IStrategy):
     INTERFACE_VERSION = 3
     timeframe = "1h"
     can_short = False
+    # Warm-up: need at least buy_ema_slow (100) candles for indicators to be valid.
+    startup_candle_count = 150
 
     # ── Risk API integration ──
     risk_api_url = "http://127.0.0.1:8000"
@@ -70,6 +72,7 @@ class CryptoInvestorV1(IStrategy):
 
     # ── Stop loss ──
     stoploss = -0.05  # -5% hard stop loss (ATR-based custom stop is primary)
+    use_custom_stoploss = True
 
     # ── Trailing stop ──
     trailing_stop = True
@@ -87,10 +90,12 @@ class CryptoInvestorV1(IStrategy):
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
 
     # ── Hyperopt parameters ──
-    buy_ema_fast = IntParameter(20, 80, default=50, space="buy", optimize=True)
-    buy_ema_slow = IntParameter(100, 300, default=200, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 45, default=40, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(70, 90, default=80, space="sell", optimize=True)
+    # Pilot-tuned: relaxed from 50/200/40 to generate trades in sideways markets.
+    # Run hyperopt (--epochs 200) on recent kraken data to further optimize.
+    buy_ema_fast = IntParameter(10, 80, default=21, space="buy", optimize=True)
+    buy_ema_slow = IntParameter(50, 300, default=100, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 55, default=45, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(65, 90, default=75, space="sell", optimize=True)
     atr_multiplier = DecimalParameter(1.5, 3.5, default=2.0, decimals=1, space="buy", optimize=True)
 
     # ── Informative pairs ──
@@ -165,18 +170,19 @@ class CryptoInvestorV1(IStrategy):
         # Condition 2: RSI pullback in uptrend
         conditions.append(dataframe["rsi"] < self.buy_rsi_threshold.value)
 
-        # Condition 3: Volume confirmation
-        conditions.append(dataframe["volume_ratio"] > 0.8)
+        # Condition 3: Volume confirmation (relaxed from 0.8 for pilot)
+        conditions.append(dataframe["volume_ratio"] > 0.5)
 
-        # Condition 4: MACD momentum (histogram positive or turning)
+        # Condition 4: MACD momentum improving (relaxed: histogram rising OR above signal)
         conditions.append(
-            (dataframe["macdhist"] > 0) |
-            (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
+            (dataframe["macdhist"] > 0)
+            | (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
+            | (dataframe["macd"] > dataframe["macdsignal"])
         )
 
-        # Condition 5: Not near Bollinger upper band (avoid chasing)
+        # Condition 5: Not near Bollinger upper band (relaxed from 0.98 for pilot)
         conditions.append(
-            dataframe["close"] < dataframe["bb_upper"] * 0.98
+            dataframe["close"] < dataframe["bb_upper"] * 0.95
         )
 
         # Condition 6: Basic volume filter

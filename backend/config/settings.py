@@ -256,7 +256,7 @@ USE_TZ = True
 # ExchangeConfig model (encrypted). If both are set, the DB config takes
 # priority. Run `manage.py migrate_env_credentials` to migrate, then unset
 # these env vars.
-EXCHANGE_ID = os.environ.get("EXCHANGE_ID", "binance")
+EXCHANGE_ID = os.environ.get("EXCHANGE_ID", "kraken")
 EXCHANGE_API_KEY = os.environ.get("EXCHANGE_API_KEY", "")
 EXCHANGE_API_SECRET = os.environ.get("EXCHANGE_API_SECRET", "")
 
@@ -273,6 +273,28 @@ if EXCHANGE_API_KEY and not TESTING:
 MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "2"))
 
 ORDER_SYNC_TIMEOUT_HOURS = int(os.environ.get("ORDER_SYNC_TIMEOUT_HOURS", "24"))
+
+# ── Freqtrade Instances (multi-strategy paper trading) ───────
+FREQTRADE_INSTANCES = [
+    {
+        "name": "CryptoInvestorV1",
+        "config": "config.json",
+        "port": 8080,
+        "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:8080"),
+    },
+    {
+        "name": "BollingerMeanReversion",
+        "config": "config_bmr.json",
+        "port": 8083,
+        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:8083"),
+    },
+    {
+        "name": "VolatilityBreakout",
+        "config": "config_vb.json",
+        "port": 8084,
+        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:8084"),
+    },
+]
 
 # ── Scheduler ────────────────────────────────────────────────
 SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -345,6 +367,34 @@ SCHEDULED_TASKS = {
         "interval_seconds": 86400,
         "params": {},
     },
+    "vbt_screen_crypto": {
+        "name": "VBT Crypto Screen",
+        "description": "Daily VectorBT strategy screen on crypto watchlist",
+        "task_type": "vbt_screen",
+        "interval_seconds": 86400,
+        "params": {"asset_class": "crypto", "timeframe": "1h"},
+    },
+    "vbt_screen_forex": {
+        "name": "VBT Forex Screen",
+        "description": "Daily VectorBT strategy screen on forex pairs",
+        "task_type": "vbt_screen",
+        "interval_seconds": 86400,
+        "params": {"asset_class": "forex", "timeframe": "1h"},
+    },
+    "vbt_screen_equity": {
+        "name": "VBT Equity Screen",
+        "description": "Daily VectorBT strategy screen on equities",
+        "task_type": "vbt_screen",
+        "interval_seconds": 86400,
+        "params": {"asset_class": "equity", "timeframe": "1d"},
+    },
+    "ml_training": {
+        "name": "ML Model Training",
+        "description": "Weekly LightGBM model training on BTC/ETH/SOL",
+        "task_type": "ml_training",
+        "interval_seconds": 604800,
+        "params": {"symbols": ["BTC/USDT", "ETH/USDT", "SOL/USDT"], "timeframe": "1h"},
+    },
 }
 
 # ── Workflow templates ────────────────────────────────────────
@@ -383,12 +433,26 @@ WORKFLOW_TEMPLATES: dict = {
         "name": "Full Analysis Pipeline",
         "description": "Complete analysis chain: data, regime, sentiment, composite, alerts",
         "asset_class": "crypto",
+        "schedule_interval_seconds": 21600,
+        "schedule_enabled": True,
         "steps": [
             {"order": 1, "name": "Refresh Data", "step_type": "data_refresh"},
             {"order": 2, "name": "Detect Regimes", "step_type": "regime_detection"},
             {"order": 3, "name": "Aggregate Sentiment", "step_type": "sentiment_aggregate"},
             {"order": 4, "name": "Composite Score", "step_type": "composite_score"},
             {"order": 5, "name": "Evaluate Alerts", "step_type": "alert_evaluate"},
+        ],
+    },
+    "ml_training_pipeline": {
+        "name": "ML Training Pipeline",
+        "description": "Weekly ML model training: refresh data, train models, evaluate",
+        "asset_class": "crypto",
+        "schedule_interval_seconds": 604800,
+        "schedule_enabled": True,
+        "steps": [
+            {"order": 1, "name": "Refresh Data", "step_type": "data_refresh"},
+            {"order": 2, "name": "Train ML Model", "step_type": "ml_training"},
+            {"order": 3, "name": "Evaluate Alerts", "step_type": "alert_evaluate"},
         ],
     },
 }

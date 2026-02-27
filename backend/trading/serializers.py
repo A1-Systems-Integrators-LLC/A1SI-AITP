@@ -145,7 +145,7 @@ class OrderCreateSerializer(serializers.Serializer):
     order_type = serializers.ChoiceField(choices=["market", "limit"], default="market")
     amount = serializers.FloatField(min_value=1e-8)
     price = serializers.FloatField(default=0.0, min_value=0.0)
-    exchange_id = serializers.CharField(max_length=50, default="binance")
+    exchange_id = serializers.CharField(max_length=50, default="kraken")
     mode = serializers.ChoiceField(choices=["paper", "live"], default="paper")
     portfolio_id = serializers.IntegerField(default=1, min_value=1)
     stop_loss_price = serializers.FloatField(required=False, allow_null=True, min_value=0.0)

@@ -19,22 +19,33 @@ logger = logging.getLogger("paper_trading")
 
 
 class PaperTradingService:
-    def __init__(self, log_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        log_dir: Path | None = None,
+        api_url: str | None = None,
+        instance_name: str = "",
+        config_file: str = "config.json",
+    ) -> None:
         self._process: subprocess.Popen | None = None
         self._strategy: str = ""
         self._started_at: datetime | None = None
+        self._instance_name = instance_name
+        self._config_file = config_file
 
-        ft_config = self._read_ft_config()
+        ft_config = self._read_ft_config(config_file)
         api_cfg = ft_config.get("api_server", {})
 
-        # Allow env var override for Docker (container can't reach host 127.0.0.1)
-        env_url = os.environ.get("FREQTRADE_API_URL")
-        if env_url:
-            self._ft_api_url = env_url.rstrip("/")
+        # Explicit URL (from settings) > env var > config file
+        if api_url:
+            self._ft_api_url = api_url.rstrip("/")
         else:
-            host = api_cfg.get("listen_ip_address", "127.0.0.1")
-            port = api_cfg.get("listen_port", 8080)
-            self._ft_api_url = f"http://{host}:{port}"
+            env_url = os.environ.get("FREQTRADE_API_URL")
+            if env_url:
+                self._ft_api_url = env_url.rstrip("/")
+            else:
+                host = api_cfg.get("listen_ip_address", "127.0.0.1")
+                port = api_cfg.get("listen_port", 8080)
+                self._ft_api_url = f"http://{host}:{port}"
         self._ft_username = (
             os.environ.get("FREQTRADE_USERNAME") or api_cfg.get("username", "freqtrader")
         )
@@ -47,8 +58,8 @@ class PaperTradingService:
         self._log_path = log_base / "paper_trading_log.jsonl"
 
     @staticmethod
-    def _read_ft_config() -> dict:
-        config_path = get_freqtrade_dir() / "config.json"
+    def _read_ft_config(config_file: str = "config.json") -> dict:
+        config_path = get_freqtrade_dir() / config_file
         if config_path.exists():
             try:
                 with open(config_path) as f:
@@ -95,11 +106,11 @@ class PaperTradingService:
                 "pid": self._process.pid if self._process else self._find_freqtrade_pid(),
             }
 
-        ft_config = get_freqtrade_dir() / "config.json"
+        ft_config = get_freqtrade_dir() / self._config_file
         strat_path = get_freqtrade_dir() / "user_data" / "strategies"
 
         if not ft_config.exists():
-            return {"status": "error", "error": "Freqtrade config.json not found"}
+            return {"status": "error", "error": f"Freqtrade {self._config_file} not found"}
 
         cmd = [
             sys.executable,

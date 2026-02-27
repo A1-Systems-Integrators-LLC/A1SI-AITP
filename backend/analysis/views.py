@@ -530,7 +530,7 @@ class DataQualityDetailView(APIView):
 
         ensure_platform_imports()
         real_symbol = symbol.replace("_", "/")
-        exchange = request.query_params.get("exchange", "binance")
+        exchange = request.query_params.get("exchange", "kraken")
         try:
             from common.data_pipeline.pipeline import validate_data
 

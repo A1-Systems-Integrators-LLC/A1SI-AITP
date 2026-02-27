@@ -16,14 +16,14 @@ class MLService:
         Params:
             symbol: Trading pair (e.g. "BTC/USDT")
             timeframe: Candle timeframe (e.g. "1h")
-            exchange: Exchange id (e.g. "binance")
+            exchange: Exchange id (e.g. "kraken")
             test_ratio: Fraction for time-series test split (default 0.2)
         """
         ensure_platform_imports()
 
         symbol = params.get("symbol", "BTC/USDT")
         timeframe = params.get("timeframe", "1h")
-        exchange = params.get("exchange", "binance")
+        exchange = params.get("exchange", "kraken")
         test_ratio = params.get("test_ratio", 0.2)
 
         progress_cb(0.1, "Loading data...")
@@ -86,7 +86,7 @@ class MLService:
         model_id = params.get("model_id", "")
         symbol = params.get("symbol", "BTC/USDT")
         timeframe = params.get("timeframe", "1h")
-        exchange = params.get("exchange", "binance")
+        exchange = params.get("exchange", "kraken")
         n_bars = params.get("bars", 50)
 
         if not model_id:

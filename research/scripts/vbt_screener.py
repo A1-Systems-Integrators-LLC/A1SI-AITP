@@ -594,7 +594,7 @@ _ASSET_CLASS_FEES: dict[str, float] = {
 def run_full_screen(
     symbol: str = "BTC/USDT",
     timeframe: str = "1h",
-    exchange: str = "binance",
+    exchange: str = "kraken",
     fees: float | None = None,
     asset_class: str = "crypto",
 ) -> dict:
@@ -726,7 +726,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VectorBT Strategy Screener")
     parser.add_argument("--symbol", default="BTC/USDT", help="Trading pair")
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
-    parser.add_argument("--exchange", default="binance", help="Exchange")
+    parser.add_argument("--exchange", default="kraken", help="Exchange")
     parser.add_argument("--fees", type=float, default=None, help="Trading fees (0.001 = 0.1%%)")
     parser.add_argument("--asset-class", default="crypto", choices=["crypto", "equity", "forex"],
                         dest="asset_class", help="Asset class")

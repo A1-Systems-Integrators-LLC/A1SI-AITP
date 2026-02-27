@@ -259,6 +259,83 @@ def _run_db_maintenance(params: dict, progress_cb: ProgressCallback) -> dict[str
     return {"status": "completed", "wal_checkpoint": wal_result}
 
 
+def _run_vbt_screen(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Run VectorBT strategy screen on watchlist symbols."""
+    from core.platform_bridge import ensure_platform_imports, get_platform_config
+
+    ensure_platform_imports()
+    asset_class = params.get("asset_class", "crypto")
+    timeframe = params.get("timeframe", "1h")
+    config = get_platform_config()
+    data_cfg = config.get("data", {})
+
+    watchlist_key = {
+        "crypto": "watchlist",
+        "equity": "equity_watchlist",
+        "forex": "forex_watchlist",
+    }.get(asset_class, "watchlist")
+    symbols = data_cfg.get(watchlist_key, [])
+
+    if not symbols:
+        return {"status": "skipped", "reason": f"No {asset_class} watchlist configured"}
+
+    progress_cb(0.1, f"Screening {len(symbols)} {asset_class} symbols")
+    results = []
+    for i, symbol in enumerate(symbols[:10]):
+        try:
+            from analysis.services.screening import ScreenerService
+
+            screen_params = {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "exchange": params.get("exchange", "kraken"),
+                "asset_class": asset_class,
+            }
+            result = ScreenerService.run_full_screen(
+                screen_params,
+                lambda p, m: progress_cb(0.1 + 0.8 * (i + p) / len(symbols), m),
+            )
+            results.append({"symbol": symbol, "status": "completed", "result": result})
+        except Exception as e:
+            logger.warning("VBT screen failed for %s: %s", symbol, e)
+            results.append({"symbol": symbol, "status": "error", "error": str(e)})
+        progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Screened {i + 1}/{len(symbols)}")
+
+    return {"status": "completed", "symbols_screened": len(results), "results": results}
+
+
+def _run_ml_training(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Train ML models on OHLCV data for specified symbols."""
+    progress_cb(0.1, "Starting ML training")
+    symbols = params.get("symbols", [params.get("symbol", "BTC/USDT")])
+    if isinstance(symbols, str):
+        symbols = [symbols]
+    timeframe = params.get("timeframe", "1h")
+
+    results = []
+    for i, symbol in enumerate(symbols):
+        try:
+            from analysis.services.ml import MLService
+
+            train_params = {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "exchange": params.get("exchange", "kraken"),
+                "test_ratio": params.get("test_ratio", 0.2),
+            }
+            result = MLService.train(
+                train_params,
+                lambda p, m: progress_cb(0.1 + 0.8 * (i + p) / len(symbols), m),
+            )
+            results.append({"symbol": symbol, **result})
+        except Exception as e:
+            logger.warning("ML training failed for %s: %s", symbol, e)
+            results.append({"symbol": symbol, "status": "error", "error": str(e)})
+        progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Trained {i + 1}/{len(symbols)}")
+
+    return {"status": "completed", "models_trained": len(results), "results": results}
+
+
 TASK_REGISTRY: dict[str, TaskExecutor] = {
     "data_refresh": _run_data_refresh,
     "regime_detection": _run_regime_detection,
@@ -268,4 +345,6 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "workflow": _run_workflow,
     "risk_monitoring": _run_risk_monitoring,
     "db_maintenance": _run_db_maintenance,
+    "vbt_screen": _run_vbt_screen,
+    "ml_training": _run_ml_training,
 }

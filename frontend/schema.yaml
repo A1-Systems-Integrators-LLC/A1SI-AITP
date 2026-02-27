@@ -2626,7 +2626,7 @@ components:
           default: ''
         exchange:
           type: string
-          default: binance
+          default: kraken
           minLength: 1
         asset_class:
           allOf:
@@ -2841,7 +2841,7 @@ components:
           - 1h
         exchange:
           type: string
-          default: binance
+          default: kraken
           minLength: 1
         since_days:
           type: integer
@@ -3509,7 +3509,7 @@ components:
           default: 1h
         exchange:
           type: string
-          default: binance
+          default: kraken
         bars:
           type: integer
           maximum: 1000
@@ -3542,7 +3542,7 @@ components:
           default: 1h
         exchange:
           type: string
-          default: binance
+          default: kraken
         test_ratio:
           type: number
           format: double
@@ -3846,7 +3846,7 @@ components:
           default: 0.0
         exchange_id:
           type: string
-          default: binance
+          default: kraken
           maxLength: 50
         mode:
           allOf:
@@ -4024,7 +4024,7 @@ components:
           maxLength: 100
         exchange_id:
           type: string
-          default: binance
+          default: kraken
           maxLength: 50
         description:
           type: string
@@ -4544,7 +4544,7 @@ components:
           pattern: ^[0-9]+[smhdwM]$
         exchange:
           type: string
-          default: binance
+          default: kraken
           minLength: 1
         fees:
           type: number

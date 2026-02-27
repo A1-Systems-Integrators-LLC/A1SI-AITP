@@ -275,7 +275,7 @@ def _generate_sample_data():
             else:
                 resampled = df
 
-            path = save_ohlcv(resampled, symbol, tf, "binance")
+            path = save_ohlcv(resampled, symbol, tf, "kraken")
             print(f"  ✅ {symbol} {tf}: {len(resampled)} rows → {path.name}")
 
     print("\nSample data generation complete!")
@@ -586,7 +586,7 @@ Examples:
     dl = data_sub.add_parser("download", help="Download OHLCV data")
     dl.add_argument("--symbols", default=None, help="Comma-separated symbols")
     dl.add_argument("--timeframes", default=None, help="Comma-separated timeframes")
-    dl.add_argument("--exchange", default="binance")
+    dl.add_argument("--exchange", default="kraken")
     dl.add_argument("--days", type=int, default=365)
     dl.add_argument("--asset-class", default="crypto", choices=["crypto", "equity", "forex"],
                     dest="asset_class", help="Asset class")
@@ -594,7 +594,7 @@ Examples:
     info = data_sub.add_parser("info", help="Show data file info")
     info.add_argument("symbol")
     info.add_argument("--timeframe", default="1h")
-    info.add_argument("--exchange", default="binance")
+    info.add_argument("--exchange", default="kraken")
     data_sub.add_parser("generate-sample", help="Generate synthetic test data")
 
     # Research
@@ -603,7 +603,7 @@ Examples:
     scr = res_sub.add_parser("screen", help="Run strategy screener")
     scr.add_argument("--symbol", default="BTC/USDT")
     scr.add_argument("--timeframe", default="1h")
-    scr.add_argument("--exchange", default="binance")
+    scr.add_argument("--exchange", default="kraken")
     scr.add_argument("--fees", type=float, default=None)
     scr.add_argument("--asset-class", default="crypto", choices=["crypto", "equity", "forex"],
                     dest="asset_class", help="Asset class")
@@ -628,12 +628,12 @@ Examples:
     nt_conv = nt_sub.add_parser("convert", help="Convert data to Nautilus format")
     nt_conv.add_argument("--symbol", default="BTC/USDT")
     nt_conv.add_argument("--timeframe", default="1h")
-    nt_conv.add_argument("--exchange", default="binance")
+    nt_conv.add_argument("--exchange", default="kraken")
     nt_bt = nt_sub.add_parser("backtest", help="Run NautilusTrader backtest")
     nt_bt.add_argument("--strategy", required=True, help="Strategy name from registry")
     nt_bt.add_argument("--symbol", default="BTC/USDT")
     nt_bt.add_argument("--timeframe", default="1h")
-    nt_bt.add_argument("--exchange", default="binance")
+    nt_bt.add_argument("--exchange", default="kraken")
     nt_bt.add_argument("--balance", type=float, default=10000.0)
     nt_bt.add_argument("--asset-class", default="crypto", choices=["crypto", "equity", "forex"],
                        dest="asset_class", help="Asset class")
@@ -645,14 +645,14 @@ Examples:
     ml_train = ml_sub.add_parser("train", help="Train ML model")
     ml_train.add_argument("--symbol", default="BTC/USDT")
     ml_train.add_argument("--timeframe", default="1h")
-    ml_train.add_argument("--exchange", default="binance")
+    ml_train.add_argument("--exchange", default="kraken")
     ml_train.add_argument("--test-ratio", type=float, default=0.2)
     ml_sub.add_parser("list-models", help="List trained models")
     ml_pred = ml_sub.add_parser("predict", help="Run prediction")
     ml_pred.add_argument("--model-id", default="", dest="model_id")
     ml_pred.add_argument("--symbol", default="BTC/USDT")
     ml_pred.add_argument("--timeframe", default="1h")
-    ml_pred.add_argument("--exchange", default="binance")
+    ml_pred.add_argument("--exchange", default="kraken")
     ml_pred.add_argument("--bars", type=int, default=50)
 
     # hftbacktest
@@ -662,13 +662,13 @@ Examples:
     hft_bt.add_argument("--strategy", required=True, help="Strategy name from registry")
     hft_bt.add_argument("--symbol", default="BTC/USDT")
     hft_bt.add_argument("--timeframe", default="1h")
-    hft_bt.add_argument("--exchange", default="binance")
+    hft_bt.add_argument("--exchange", default="kraken")
     hft_bt.add_argument("--latency", type=int, default=1_000_000, help="Latency in ns")
     hft_bt.add_argument("--balance", type=float, default=10000.0)
     hft_conv = hft_sub.add_parser("convert", help="Convert OHLCV to tick data")
     hft_conv.add_argument("--symbol", default="BTC/USDT")
     hft_conv.add_argument("--timeframe", default="1h")
-    hft_conv.add_argument("--exchange", default="binance")
+    hft_conv.add_argument("--exchange", default="kraken")
     hft_sub.add_parser("list-strategies", help="List registered strategies")
     hft_sub.add_parser("test", help="Test hftbacktest module")
 
