@@ -288,7 +288,7 @@ def _run_vbt_screen(params: dict, progress_cb: ProgressCallback) -> dict[str, An
             }
             result = ScreenerService.run_full_screen(
                 screen_params,
-                lambda p, m: progress_cb(0.1 + 0.8 * (i + p) / len(symbols), m),
+                lambda p, m, _i=i: progress_cb(0.1 + 0.8 * (_i + p) / len(symbols), m),
             )
             results.append({"symbol": symbol, "status": "completed", "result": result})
         except Exception as e:
@@ -320,7 +320,7 @@ def _run_ml_training(params: dict, progress_cb: ProgressCallback) -> dict[str, A
             }
             result = MLService.train(
                 train_params,
-                lambda p, m: progress_cb(0.1 + 0.8 * (i + p) / len(symbols), m),
+                lambda p, m, _i=i: progress_cb(0.1 + 0.8 * (_i + p) / len(symbols), m),
             )
             results.append({"symbol": symbol, **result})
         except Exception as e:
