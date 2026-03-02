@@ -18,7 +18,7 @@ def _run_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, 
     from core.platform_bridge import ensure_platform_imports, get_platform_config
 
     ensure_platform_imports()
-    from common.data_pipeline.pipeline import DataPipeline
+    from common.data_pipeline.pipeline import download_watchlist
 
     asset_class = params.get("asset_class", "crypto")
     config = get_platform_config()
@@ -35,19 +35,14 @@ def _run_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, 
         return {"status": "skipped", "reason": f"No {asset_class} watchlist configured"}
 
     progress_cb(0.1, f"Refreshing {len(symbols)} {asset_class} symbols")
-    pipeline = DataPipeline()
-    results = pipeline.fetch_ohlcv_multi(
+    results = download_watchlist(
         symbols=symbols[:50],
         timeframes=["1h"],
         asset_class=asset_class,
     )
-    progress_cb(0.9, "Saving data")
-    saved = 0
-    for key, df in results.items():
-        if df is not None and not df.empty:
-            pipeline.save_ohlcv(df, key[0], key[1], asset_class=asset_class)
-            saved += 1
+    progress_cb(0.9, "Data refresh complete")
 
+    saved = sum(1 for v in results.values() if v is not None)
     return {"status": "completed", "symbols": len(symbols), "saved": saved}
 
 

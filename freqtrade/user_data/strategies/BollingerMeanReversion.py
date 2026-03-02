@@ -8,15 +8,16 @@ Logic:
         - Price closes below lower Bollinger Band (2 std dev)
         - RSI < 35 (oversold confirmation)
         - Volume spike (volume > 1.5x 20-period average)
-        - ADX < 30 (ranging market, mean-reversion favorable)
+        - ADX < 50 (allows oversold bounces in moderate-to-strong trends)
+        - Tighter stoploss when ADX > 35 (risk-adjusted for trend strength)
 
     EXIT:
         - Price reaches Bollinger middle band (SMA 20)
         - RSI > 65
         - Tiered ROI
 
-Best suited for ranging/consolidating markets. Paired with trend detection
-to automatically disable in strong trending conditions.
+Best suited for ranging/consolidating markets, but also catches oversold
+bounces in downtrends with tighter risk management.
 """
 
 import logging
@@ -72,9 +73,10 @@ class BollingerMeanReversion(IStrategy):
 
     # Hyperopt parameters
     buy_bb_period = IntParameter(15, 30, default=20, space="buy", optimize=True)
-    buy_bb_std = DecimalParameter(1.5, 3.0, default=2.0, decimals=1, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 40, default=35, space="buy", optimize=True)
-    buy_volume_factor = DecimalParameter(1.0, 2.5, default=1.5, decimals=1, space="buy", optimize=True)
+    buy_bb_std = DecimalParameter(1.0, 3.0, default=1.5, decimals=1, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 45, default=40, space="buy", optimize=True)
+    buy_volume_factor = DecimalParameter(0.3, 2.5, default=0.5, decimals=1, space="buy", optimize=True)
+    buy_adx_ceiling = IntParameter(25, 60, default=50, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(55, 75, default=65, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -125,8 +127,8 @@ class BollingerMeanReversion(IStrategy):
             # Volume spike
             dataframe["volume_ratio"] > float(self.buy_volume_factor.value),
 
-            # Ranging market (low ADX = mean reversion more likely to work)
-            dataframe["adx"] < 30,
+            # ADX ceiling — allow entry in moderate-to-strong trends for oversold bounces
+            dataframe["adx"] < self.buy_adx_ceiling.value,
 
             # Not in extreme downtrend (some floor)
             dataframe["rsi"] > 10,
@@ -211,11 +213,13 @@ class BollingerMeanReversion(IStrategy):
 
         last_candle = dataframe.iloc[-1]
         atr = last_candle.get("atr", 0)
+        adx = last_candle.get("adx", 0)
         if atr == 0:
             return self.stoploss
 
-        # 1.5x ATR stop for mean-reversion (tighter than trend following)
-        atr_stop = -(atr * 1.5) / current_rate
+        # Tighter stop in strong trends (ADX > 35) — mean reversion is riskier
+        atr_mult = 1.2 if adx > 35 else 1.5
+        atr_stop = -(atr * atr_mult) / current_rate
 
         if current_profit > 0.03:
             atr_stop = max(atr_stop, -0.015)

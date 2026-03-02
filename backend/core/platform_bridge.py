@@ -38,3 +38,14 @@ def get_freqtrade_dir() -> Path:
 def get_platform_config_path() -> Path:
     """Return path to platform_config.yaml."""
     return PROJECT_ROOT / "configs" / "platform_config.yaml"
+
+
+def get_platform_config() -> dict:
+    """Load and return the platform config as a dict."""
+    import yaml
+
+    path = get_platform_config_path()
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        return yaml.safe_load(f) or {}

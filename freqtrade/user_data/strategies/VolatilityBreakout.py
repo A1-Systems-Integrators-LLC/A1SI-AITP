@@ -12,8 +12,8 @@ Logic:
         - Close > N-period high (breakout)
         - Volume > factor * SMA(20) (volume confirmation)
         - BB width expanding (volatility expanding)
-        - ADX 15-25 rising (trend emerging, not yet strong)
-        - RSI 40-70 (not oversold/overbought — fresh move)
+        - ADX 15-45 rising (emerging-to-moderate trend)
+        - RSI 30-70 (recovering from oversold or neutral — fresh move)
 
     EXIT:
         - RSI > 85 (exhaustion)
@@ -84,8 +84,8 @@ class VolatilityBreakout(IStrategy):
     breakout_period = IntParameter(10, 30, default=20, space="buy", optimize=True)
     volume_factor = DecimalParameter(1.2, 3.0, default=1.8, decimals=1, space="buy", optimize=True)
     adx_low = IntParameter(10, 20, default=15, space="buy", optimize=True)
-    adx_high = IntParameter(20, 35, default=25, space="buy", optimize=True)
-    rsi_low = IntParameter(35, 50, default=40, space="buy", optimize=True)
+    adx_high = IntParameter(25, 55, default=45, space="buy", optimize=True)
+    rsi_low = IntParameter(25, 45, default=30, space="buy", optimize=True)
     rsi_high = IntParameter(60, 75, default=70, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(80, 95, default=85, space="sell", optimize=True)
     adx_tolerance = DecimalParameter(0.0, 1.5, default=0.5, decimals=1, space="buy", optimize=True)
