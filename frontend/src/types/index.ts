@@ -230,6 +230,10 @@ export interface PaperTradingStatus {
   started_at: string | null;
   uptime_seconds: number;
   exit_code: number | null;
+  instance?: string;
+  exchange?: string;
+  dry_run?: boolean;
+  state?: string;
 }
 
 export interface PaperTradingAction {

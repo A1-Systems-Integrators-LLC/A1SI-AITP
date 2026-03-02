@@ -27,7 +27,7 @@ export function PaperTrading() {
 
   useEffect(() => { document.title = "Paper Trading | A1SI-AITP"; }, []);
 
-  const { data: status, isError: statusError } = useQuery<PaperTradingStatus>({
+  const { data: statuses, isError: statusError } = useQuery<PaperTradingStatus[]>({
     queryKey: ["paper-trading-status"],
     queryFn: paperTradingApi.status,
     refetchInterval: 5000,
@@ -42,32 +42,36 @@ export function PaperTrading() {
   const frameworkValues = frameworkList.map((f) => f.value);
   const filteredStrategies = strategies?.filter((s) => frameworkValues.includes(s.framework)) ?? [];
 
+  // Derive running state from instance list
+  const anyRunning = statuses?.some((s) => s.running) ?? false;
+  const runningCount = statuses?.filter((s) => s.running).length ?? 0;
+
   const { data: openTrades } = useQuery<PaperTrade[]>({
     queryKey: ["paper-trading-trades"],
     queryFn: paperTradingApi.openTrades,
     refetchInterval: 5000,
-    enabled: status?.running === true,
+    enabled: anyRunning,
   });
 
-  const { data: profit } = useQuery<PaperTradingProfit>({
+  const { data: profits } = useQuery<PaperTradingProfit[]>({
     queryKey: ["paper-trading-profit"],
     queryFn: paperTradingApi.profit,
     refetchInterval: 10000,
-    enabled: status?.running === true,
+    enabled: anyRunning,
   });
 
   const { data: performance } = useQuery<PaperTradingPerformance[]>({
     queryKey: ["paper-trading-performance"],
     queryFn: paperTradingApi.performance,
     refetchInterval: 10000,
-    enabled: status?.running === true,
+    enabled: anyRunning,
   });
 
   const { data: history } = useQuery<PaperTrade[]>({
     queryKey: ["paper-trading-history"],
     queryFn: () => paperTradingApi.history(50),
     refetchInterval: 10000,
-    enabled: status?.running === true,
+    enabled: anyRunning,
   });
 
   const { data: logEntries } = useQuery<PaperTradingLogEntry[]>({
@@ -95,16 +99,12 @@ export function PaperTrading() {
     onError: (err) => toast(getErrorMessage(err) || "Failed to stop paper trading", "error"),
   });
 
-  const isRunning = status?.running === true;
-
-  function formatUptime(seconds: number): string {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  }
+  // Aggregate profit across instances
+  const totalProfit = profits?.reduce((sum, p) => sum + (p.profit_all_coin ?? 0), 0) ?? 0;
+  const totalTrades = profits?.reduce((sum, p) => sum + (p.trade_count ?? 0), 0) ?? 0;
+  const totalClosed = profits?.reduce((sum, p) => sum + (p.closed_trade_count ?? 0), 0) ?? 0;
+  const totalWinning = profits?.reduce((sum, p) => sum + (p.winning_trades ?? 0), 0) ?? 0;
+  const totalClosedPct = profits?.reduce((sum, p) => sum + (p.profit_closed_percent ?? 0), 0) ?? 0;
 
   return (
     <div>
@@ -112,7 +112,7 @@ export function PaperTrading() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Paper Trading</h2>
         <div className="flex items-center gap-3">
-          {!isRunning && (
+          {!anyRunning && (
             <select
               value={selectedStrategy}
               onChange={(e) => setSelectedStrategy(e.target.value)}
@@ -127,7 +127,7 @@ export function PaperTrading() {
               ))}
             </select>
           )}
-          {isRunning ? (
+          {anyRunning ? (
             <button
               onClick={() => stopMutation.mutate()}
               disabled={stopMutation.isPending}
@@ -169,33 +169,52 @@ export function PaperTrading() {
       )}
 
       <ErrorBoundary fallback={<WidgetErrorFallback name="Paper Trading" />}>
-      {/* Status Bar */}
+      {/* Instance Status Cards */}
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+        {statuses?.map((inst) => (
+          <div
+            key={inst.instance ?? inst.strategy}
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className={`h-3 w-3 rounded-full ${inst.running ? "animate-pulse bg-green-400" : "bg-gray-500"}`}
+              />
+              <span className="font-medium text-sm">
+                {inst.instance ?? inst.strategy ?? "Unknown"}
+              </span>
+            </div>
+            <div className="space-y-1 text-xs text-[var(--color-text-muted)]">
+              <div>Status: <span className={inst.running ? "text-green-400" : "text-red-400"}>{inst.running ? "Running" : "Stopped"}</span></div>
+              {inst.strategy && <div>Strategy: <span className="font-mono">{inst.strategy}</span></div>}
+              {inst.exchange && <div>Exchange: <span className="font-mono">{inst.exchange}</span></div>}
+              {inst.dry_run != null && <div>Mode: {inst.dry_run ? "Dry Run" : "Live"}</div>}
+            </div>
+          </div>
+        )) ?? (
+          <div className="col-span-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-gray-500" />
+              <span className="font-medium">No instances configured</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Overall Status Bar */}
       <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span
-              className={`h-3 w-3 rounded-full ${isRunning ? "animate-pulse bg-green-400" : "bg-gray-500"}`}
+              className={`h-3 w-3 rounded-full ${anyRunning ? "animate-pulse bg-green-400" : "bg-gray-500"}`}
             />
             <span className="font-medium">
-              {isRunning ? "Running" : "Stopped"}
+              {anyRunning ? `${runningCount} Instance${runningCount > 1 ? "s" : ""} Running` : "All Stopped"}
             </span>
           </div>
-          {isRunning && status && (
-            <>
-              <span className="text-sm text-[var(--color-text-muted)]">
-                Strategy: <span className="font-mono">{status.strategy}</span>
-              </span>
-              <span className="text-sm text-[var(--color-text-muted)]">
-                Uptime: <span className="font-mono">{formatUptime(status.uptime_seconds)}</span>
-              </span>
-              <span className="text-sm text-[var(--color-text-muted)]">
-                PID: <span className="font-mono">{status.pid}</span>
-              </span>
-            </>
-          )}
-          {!isRunning && status?.exit_code != null && (
-            <span className="text-sm text-red-400">
-              Exit code: {status.exit_code}
+          {anyRunning && (
+            <span className="text-sm text-[var(--color-text-muted)]">
+              Strategies: <span className="font-mono">{statuses?.filter((s) => s.running).map((s) => s.strategy).join(", ")}</span>
             </span>
           )}
         </div>
@@ -206,44 +225,32 @@ export function PaperTrading() {
         <StatCard
           label="Total Profit"
           value={
-            profit?.profit_all_coin != null
-              ? `${profit.profit_all_coin >= 0 ? "+" : ""}${profit.profit_all_coin.toFixed(4)}`
+            profits && profits.length > 0
+              ? `${totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(4)}`
               : "—"
           }
-          className={
-            (profit?.profit_all_coin ?? 0) >= 0
-              ? "text-green-400"
-              : "text-red-400"
-          }
+          className={totalProfit >= 0 ? "text-green-400" : "text-red-400"}
         />
         <StatCard
           label="Win Rate"
           value={
-            profit?.winning_trades != null && profit.closed_trade_count
-              ? `${((profit.winning_trades / profit.closed_trade_count) * 100).toFixed(1)}%`
+            totalClosed > 0
+              ? `${((totalWinning / totalClosed) * 100).toFixed(1)}%`
               : "—"
           }
         />
         <StatCard
           label="Trades"
-          value={
-            profit?.trade_count != null
-              ? String(profit.trade_count)
-              : "—"
-          }
+          value={profits && profits.length > 0 ? String(totalTrades) : "—"}
         />
         <StatCard
           label="Closed P/L"
           value={
-            profit?.profit_closed_percent != null
-              ? `${profit.profit_closed_percent >= 0 ? "+" : ""}${profit.profit_closed_percent.toFixed(2)}%`
+            profits && profits.length > 0
+              ? `${totalClosedPct >= 0 ? "+" : ""}${totalClosedPct.toFixed(2)}%`
               : "—"
           }
-          className={
-            (profit?.profit_closed_percent ?? 0) >= 0
-              ? "text-green-400"
-              : "text-red-400"
-          }
+          className={totalClosedPct >= 0 ? "text-green-400" : "text-red-400"}
         />
       </div>
 
@@ -252,7 +259,7 @@ export function PaperTrading() {
         {/* Open Trades */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
           <h3 className="mb-4 text-lg font-semibold">Open Trades</h3>
-          {!isRunning ? (
+          {!anyRunning ? (
             <p className="text-sm text-[var(--color-text-muted)]">
               Start paper trading to see open trades
             </p>
@@ -335,7 +342,7 @@ export function PaperTrading() {
             </div>
           ) : (
             <p className="text-sm text-[var(--color-text-muted)]">
-              {isRunning ? "No performance data yet" : "Start paper trading to see performance"}
+              {anyRunning ? "No performance data yet" : "Start paper trading to see performance"}
             </p>
           )}
         </div>
@@ -394,7 +401,7 @@ export function PaperTrading() {
           </div>
         ) : (
           <p className="text-sm text-[var(--color-text-muted)]">
-            {isRunning ? "No closed trades yet" : "No trade history available"}
+            {anyRunning ? "No closed trades yet" : "No trade history available"}
           </p>
         )}
       </div>

@@ -9,7 +9,7 @@ import type {
 } from "../types";
 
 export const paperTradingApi = {
-  status: () => api.get<PaperTradingStatus>("/paper-trading/status/"),
+  status: () => api.get<PaperTradingStatus[]>("/paper-trading/status/"),
 
   start: (strategy: string) =>
     api.post<PaperTradingAction>("/paper-trading/start/", { strategy }),
@@ -21,7 +21,7 @@ export const paperTradingApi = {
   history: (limit = 50) =>
     api.get<PaperTrade[]>(`/paper-trading/history/?limit=${limit}`),
 
-  profit: () => api.get<PaperTradingProfit>("/paper-trading/profit/"),
+  profit: () => api.get<PaperTradingProfit[]>("/paper-trading/profit/"),
 
   performance: () =>
     api.get<PaperTradingPerformance[]>("/paper-trading/performance/"),
