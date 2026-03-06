@@ -195,7 +195,7 @@ class VolatilityBreakout(IStrategy):
 
             stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
             resp = requests.post(
-                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade",
+                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
                 json={
                     "symbol": pair,
                     "side": side,

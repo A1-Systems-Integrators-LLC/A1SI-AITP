@@ -1667,8 +1667,6 @@ paths:
             schema:
               $ref: '#/components/schemas/TradeCheckRequest'
         required: true
-      security:
-      - cookieAuth: []
       responses:
         '200':
           content:

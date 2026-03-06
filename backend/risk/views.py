@@ -72,6 +72,11 @@ class EquityUpdateView(APIView):
 
 
 class TradeCheckView(APIView):
+    # Allow unauthenticated access for internal Freqtrade risk gate calls.
+    # This endpoint only reads risk state and returns approve/reject — no mutations.
+    authentication_classes = []
+    permission_classes = []
+
     @extend_schema(
         request=TradeCheckRequestSerializer,
         responses=TradeCheckResponseSerializer,
