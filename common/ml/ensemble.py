@@ -1,5 +1,4 @@
-"""
-ML Model Ensemble
+"""ML Model Ensemble
 =================
 Multi-model ensemble with 3 aggregation modes.
 Combines predictions from multiple models for more robust signals.
@@ -99,6 +98,7 @@ class ModelEnsemble:
 
         Returns:
             Number of models loaded.
+
         """
         all_models = self._registry.list_models()
         if not all_models:
@@ -110,8 +110,7 @@ class ModelEnsemble:
         if symbol:
             sym_clean = symbol.replace("/", "")
             sym_matches = [
-                m for m in candidates
-                if m.get("symbol", "").replace("/", "") == sym_clean
+                m for m in candidates if m.get("symbol", "").replace("/", "") == sym_clean
             ]
             if sym_matches:
                 candidates = sym_matches
@@ -119,8 +118,7 @@ class ModelEnsemble:
         # Filter by asset class
         if asset_class and len(candidates) > self._max_models:
             ac_matches = [
-                m for m in candidates
-                if asset_class.lower() in (m.get("label", "") or "").lower()
+                m for m in candidates if asset_class.lower() in (m.get("label", "") or "").lower()
             ]
             if ac_matches:
                 candidates = ac_matches
@@ -128,8 +126,7 @@ class ModelEnsemble:
         # Regime-gated: filter by regime in metadata
         if self._mode == "regime_gated" and regime:
             regime_matches = [
-                m for m in candidates
-                if regime.lower() in (m.get("label", "") or "").lower()
+                m for m in candidates if regime.lower() in (m.get("label", "") or "").lower()
             ]
             if regime_matches:
                 candidates = regime_matches
@@ -160,6 +157,7 @@ class ModelEnsemble:
 
         Returns:
             True if added, False if at capacity or load failed.
+
         """
         if len(self._models) >= self._max_models:
             logger.warning("Ensemble at capacity (%d)", self._max_models)
@@ -185,6 +183,7 @@ class ModelEnsemble:
 
         Returns:
             EnsembleResult or None if no models loaded.
+
         """
         if not self._models:
             return None

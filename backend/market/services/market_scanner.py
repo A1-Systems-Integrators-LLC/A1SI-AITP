@@ -180,7 +180,7 @@ class MarketScannerService:
 
                 # --- Momentum Shift ---
                 opp = self._check_momentum_shift(
-                    symbol, macd_df, latest_close, timeframe
+                    symbol, macd_df, latest_close, timeframe,
                 )
                 if opp:
                     opp = self._enrich_score(opp, latest_rsi, latest_adx)
@@ -434,7 +434,7 @@ class MarketScannerService:
 
     @staticmethod
     def _enrich_score(
-        opp: dict[str, Any], rsi: float, adx_val: float
+        opp: dict[str, Any], rsi: float, adx_val: float,
     ) -> dict[str, Any]:
         """Add confluence bonus to score based on multiple indicator alignment."""
         bonus = 0

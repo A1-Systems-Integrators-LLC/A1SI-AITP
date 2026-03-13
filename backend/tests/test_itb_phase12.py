@@ -303,7 +303,8 @@ class TestLoadTrackerFromDb(TestCase):
 
 class TestSignalServiceSuccessPaths:
     """Cover success paths in _get_regime_state, _get_ml_prediction,
-    _get_sentiment_signal, _get_scanner_score."""
+    _get_sentiment_signal, _get_scanner_score.
+    """
 
     def test_get_regime_state_success(self):
         from analysis.services.signal_service import SignalService
@@ -335,8 +336,8 @@ class TestSignalServiceSuccessPaths:
         mock_df = MagicMock()
         mock_df.empty = False
         # build_feature_matrix returns (X, y, feature_names) tuple
-        mock_X = pd.DataFrame({"f1": [1.0]})
-        mock_features = (mock_X, pd.Series([1]), ["f1"])
+        mock_x = pd.DataFrame({"f1": [1.0]})
+        mock_features = (mock_x, pd.Series([1]), ["f1"])
 
         mock_load = MagicMock(return_value=mock_df)
         mock_build = MagicMock(return_value=mock_features)
@@ -501,7 +502,8 @@ class TestAggregatorEdgeCases:
 
     def test_label_neutral_below_threshold(self):
         """Cover line 280: LABEL_NEUTRAL when score is just below threshold but
-        above all tier offsets (i.e. below threshold + 0 offset)."""
+        above all tier offsets (i.e. below threshold + 0 offset).
+        """
         # Score 54.9 < threshold 55, but >= threshold → False for all tiers
         # Falls through to score >= threshold check at line 280 → False
         # Returns LABEL_AVOID
@@ -524,7 +526,8 @@ class TestAggregatorEdgeCases:
 
 class TestFeedbackKeepRange:
     """Cover line 155: 'keep' reasoning for 45-60% win rate,
-    and line 179: 'threshold unchanged' for 50-65% win rate."""
+    and line 179: 'threshold unchanged' for 50-65% win rate.
+    """
 
     def setup_method(self):
         from common.signals.feedback import PerformanceFeedback
@@ -834,7 +837,8 @@ class TestStrategyOrchestratorFallback:
 
 class TestEndToEndConvictionPipeline:
     """Integration test: signal computation → entry gate → position sizing
-    → exit advice → feedback recording."""
+    → exit advice → feedback recording.
+    """
 
     def test_full_pipeline(self):
         from common.signals.aggregator import SignalAggregator

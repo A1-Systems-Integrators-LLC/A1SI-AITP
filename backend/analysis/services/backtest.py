@@ -16,12 +16,11 @@ class BacktestService:
         framework = params.get("framework", "freqtrade")
         if framework == "freqtrade":
             return BacktestService._run_freqtrade(params, progress_cb)
-        elif framework == "nautilus":
+        if framework == "nautilus":
             return BacktestService._run_nautilus(params, progress_cb)
-        elif framework == "hftbacktest":
+        if framework == "hftbacktest":
             return BacktestService._run_hft(params, progress_cb)
-        else:
-            return {"error": f"Unknown framework: {framework}"}
+        return {"error": f"Unknown framework: {framework}"}
 
     @staticmethod
     def _run_freqtrade(params: dict, progress_cb: Callable) -> dict:
@@ -55,7 +54,7 @@ class BacktestService:
         try:
             progress_cb(0.3, "Running backtest...")
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=600, cwd=str(ft_dir)
+                cmd, capture_output=True, text=True, timeout=600, cwd=str(ft_dir),
             )
             progress_cb(0.9, "Parsing results...")
 
@@ -96,7 +95,7 @@ class BacktestService:
                                             strat_data.get("wins", 0)
                                             / max(strat_data.get("total_trades", 1), 1)
                                         ),
-                                    }
+                                    },
                                 )
                                 break
                     except Exception as e:
@@ -205,7 +204,7 @@ class BacktestService:
                         "name": f.stem,
                         "framework": "freqtrade",
                         "file_path": str(f),
-                    }
+                    },
                 )
 
         # Nautilus strategies (registry-based)
@@ -219,7 +218,7 @@ class BacktestService:
                         "name": name,
                         "framework": "nautilus",
                         "file_path": "",
-                    }
+                    },
                 )
         except ImportError:
             pass
@@ -234,7 +233,7 @@ class BacktestService:
                         "name": name,
                         "framework": "hftbacktest",
                         "file_path": "",
-                    }
+                    },
                 )
         except ImportError:
             pass

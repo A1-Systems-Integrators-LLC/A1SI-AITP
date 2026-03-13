@@ -1,6 +1,4 @@
-"""
-Risk management service — wraps common.risk.risk_manager with Django ORM persistence.
-"""
+"""Risk management service — wraps common.risk.risk_manager with Django ORM persistence."""
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -162,12 +160,16 @@ class RiskManagementService:
             if approved and composite_score < 55:
                 logger.warning(
                     "Risk approved but low conviction (%.1f) for %s %s — ML disagrees",
-                    composite_score, side, symbol,
+                    composite_score,
+                    side,
+                    symbol,
                 )
             elif not approved and composite_score >= 75:
                 logger.info(
                     "Risk rejected despite high conviction (%.1f) for %s %s",
-                    composite_score, side, symbol,
+                    composite_score,
+                    side,
+                    symbol,
                 )
 
         if not approved:
@@ -265,8 +267,7 @@ class RiskManagementService:
 
     @staticmethod
     def _get_regime_risk_multiplier() -> tuple[float, str]:
-        """
-        Get adaptive risk tightening multiplier based on current market regime.
+        """Get adaptive risk tightening multiplier based on current market regime.
 
         Returns (multiplier, regime_name) where multiplier < 1.0 means tighter limits.
         STRONG_TREND_DOWN: 0.5x (50% tighter), HIGH_VOLATILITY: 0.7x (30% tighter).
@@ -335,7 +336,9 @@ class RiskManagementService:
                     "effective_drawdown": round(effective_drawdown, 4),
                 }
                 logger.info(
-                    "Regime %s: adaptive risk tightening %.0f%% (daily_loss %.1f%%→%.1f%%, drawdown %.1f%%→%.1f%%)",
+                    "Regime %s: adaptive risk tightening %.0f%%"
+                    " (daily_loss %.1f%%→%.1f%%,"
+                    " drawdown %.1f%%→%.1f%%)",
                     regime_name,
                     (1 - regime_multiplier) * 100,
                     limits_config.max_daily_loss * 100,
@@ -346,16 +349,20 @@ class RiskManagementService:
 
             # Check drawdown limit (regime-adjusted)
             if drawdown >= effective_drawdown:
-                reason = (
-                    f"Drawdown {drawdown:.1%} exceeded limit "
-                    f"{effective_drawdown:.1%}"
-                )
+                reason = f"Drawdown {drawdown:.1%} exceeded limit {effective_drawdown:.1%}"
                 if regime_multiplier < 1.0:
-                    reason += f" (tightened from {limits_config.max_portfolio_drawdown:.1%} due to {regime_name})"
+                    reason += (
+                        f" (tightened from"
+                        f" {limits_config.max_portfolio_drawdown:.1%}"
+                        f" due to {regime_name})"
+                    )
                 RiskManagementService.halt_trading(portfolio_id, reason)
                 try:
                     RiskManagementService.send_notification(
-                        portfolio_id, "risk_auto_halt", "critical", reason,
+                        portfolio_id,
+                        "risk_auto_halt",
+                        "critical",
+                        reason,
                     )
                 except Exception as e:
                     logger.error("Failed to send auto-halt notification: %s", e)
@@ -366,15 +373,19 @@ class RiskManagementService:
             # Check daily loss limit (regime-adjusted)
             if daily_loss_pct >= effective_daily_loss:
                 reason = (
-                    f"Daily loss {daily_loss_pct:.1%} exceeded limit "
-                    f"{effective_daily_loss:.1%}"
+                    f"Daily loss {daily_loss_pct:.1%} exceeded limit {effective_daily_loss:.1%}"
                 )
                 if regime_multiplier < 1.0:
-                    reason += f" (tightened from {limits_config.max_daily_loss:.1%} due to {regime_name})"
+                    reason += (
+                        f" (tightened from {limits_config.max_daily_loss:.1%} due to {regime_name})"
+                    )
                 RiskManagementService.halt_trading(portfolio_id, reason)
                 try:
                     RiskManagementService.send_notification(
-                        portfolio_id, "risk_auto_halt", "critical", reason,
+                        portfolio_id,
+                        "risk_auto_halt",
+                        "critical",
+                        reason,
                     )
                 except Exception as e:
                     logger.error("Failed to send auto-halt notification: %s", e)
@@ -392,7 +403,10 @@ class RiskManagementService:
                     msg += f" (tightened by {regime_name})"
                 try:
                     RiskManagementService.send_notification(
-                        portfolio_id, "risk_warning", "warning", msg,
+                        portfolio_id,
+                        "risk_warning",
+                        "warning",
+                        msg,
                         telegram_rate_key=f"risk_warning:{portfolio_id}",
                         telegram_cooldown=3600.0,
                     )
@@ -410,7 +424,7 @@ class RiskManagementService:
             RiskMetricHistory.objects.filter(
                 portfolio_id=portfolio_id,
                 recorded_at__gte=cutoff,
-            ).order_by("-recorded_at")
+            ).order_by("-recorded_at"),
         )
 
     @staticmethod
@@ -562,7 +576,7 @@ class RiskManagementService:
             )
         else:
             delivered, error = NotificationService.send_telegram_sync(
-                f"[{severity.upper()}] {message}"
+                f"[{severity.upper()}] {message}",
             )
         AlertLog.objects.create(
             portfolio_id=portfolio_id,
@@ -597,5 +611,5 @@ class RiskManagementService:
     @staticmethod
     def get_trade_log(portfolio_id: int, limit: int = 50) -> list:
         return list(
-            TradeCheckLog.objects.filter(portfolio_id=portfolio_id).order_by("-checked_at")[:limit]
+            TradeCheckLog.objects.filter(portfolio_id=portfolio_id).order_by("-checked_at")[:limit],
         )

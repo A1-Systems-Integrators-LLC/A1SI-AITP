@@ -1,5 +1,4 @@
-"""
-Tests for notification service and alert logging — Django version.
+"""Tests for notification service and alert logging — Django version.
 """
 
 from types import SimpleNamespace

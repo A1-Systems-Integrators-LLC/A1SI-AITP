@@ -1,5 +1,4 @@
-"""
-Tests for data pipeline quality monitoring — Sprint 1, Item 1.4
+"""Tests for data pipeline quality monitoring — Sprint 1, Item 1.4
 ================================================================
 Covers: gap detection, stale data, NaN audit, outlier detection,
 OHLC integrity checks, validate_data().

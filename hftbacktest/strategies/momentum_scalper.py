@@ -1,5 +1,4 @@
-"""
-HFTMomentumScalper — Tick-level momentum detection
+"""HFTMomentumScalper — Tick-level momentum detection
 ====================================================
 Tracks EMA of price deltas over recent N ticks and enters when
 momentum exceeds a configurable threshold.
@@ -11,25 +10,24 @@ Logic:
     - Sell when momentum < -``entry_threshold`` (negative momentum)
     - Exit: opposite signal OR ``max_hold_ticks`` exceeded
 
-Parameters:
+Parameters
+----------
     - lookback: EMA lookback period for momentum (default 20)
     - entry_threshold: min momentum to trigger entry (5 bps/tick, 0.0005)
     - exit_threshold: momentum magnitude to trigger exit (2 bps, 0.0002)
     - order_size: size per order (default 0.01)
     - max_hold_ticks: forced exit after N ticks (default 50)
     - drawdown_halt_pct: halt at this drawdown level (default 0.03)
-"""
 
-from typing import Optional
+"""
 
 from hftbacktest.strategies.base import HFTBaseStrategy
 
 
 class HFTMomentumScalper(HFTBaseStrategy):
-
     name = "MomentumScalper"
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         super().__init__(config)
         self.lookback: int = self.config.get("lookback", 20)
         self.entry_threshold: float = self.config.get("entry_threshold", 0.0005)
@@ -39,7 +37,7 @@ class HFTMomentumScalper(HFTBaseStrategy):
         self.drawdown_halt_pct: float = self.config.get("drawdown_halt_pct", 0.03)
 
         # Internal state
-        self._prev_price: Optional[float] = None
+        self._prev_price: float | None = None
         self._ema_momentum: float = 0.0
         self._alpha: float = 2.0 / (self.lookback + 1)
         self._hold_counter: int = 0
@@ -87,8 +85,7 @@ class HFTMomentumScalper(HFTBaseStrategy):
             if self._ema_momentum < -self.exit_threshold:
                 self.submit_order("sell", price, self.position, tick)
                 self._hold_counter = 0
-        else:
-            # Short — exit on positive momentum
-            if self._ema_momentum > self.exit_threshold:
-                self.submit_order("buy", price, abs(self.position), tick)
-                self._hold_counter = 0
+        # Short — exit on positive momentum
+        elif self._ema_momentum > self.exit_threshold:
+            self.submit_order("buy", price, abs(self.position), tick)
+            self._hold_counter = 0

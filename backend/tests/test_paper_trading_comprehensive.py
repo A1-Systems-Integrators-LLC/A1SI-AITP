@@ -14,14 +14,10 @@ from django.utils import timezone
 from market.models import MarketOpportunity, OpportunityType
 from trading.models import Order, OrderFillEvent, OrderStatus, TradingMode
 from trading.services.forex_paper_trading import (
-    EXIT_SCORE_THRESHOLD,
-    MAX_HOLD_HOURS,
-    MAX_OPEN_POSITIONS,
     MIN_ENTRY_SCORE,
     POSITION_SIZE_USD,
     ForexPaperTradingService,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -143,7 +139,7 @@ class TestForexSignalToOrder:
         svc.run_cycle()
 
         order = Order.objects.filter(
-            symbol="USDJPY=X", asset_class="forex", mode=TradingMode.PAPER
+            symbol="USDJPY=X", asset_class="forex", mode=TradingMode.PAPER,
         ).first()
         assert order is not None
         assert order.side == "sell"
@@ -186,7 +182,7 @@ class TestForexExitConditions:
         """Position held > 24h should trigger a time_limit exit."""
         mock_a2s.return_value = lambda order: None
         _create_filled_forex_order(
-            symbol="EURUSD=X", side="buy", filled_at_offset_hours=25
+            symbol="EURUSD=X", side="buy", filled_at_offset_hours=25,
         )
 
         svc = ForexPaperTradingService()
@@ -194,7 +190,7 @@ class TestForexExitConditions:
 
         assert result["exits_created"] == 1
         exit_order = Order.objects.filter(
-            symbol="EURUSD=X", side="sell", mode=TradingMode.PAPER
+            symbol="EURUSD=X", side="sell", mode=TradingMode.PAPER,
         ).first()
         assert exit_order is not None
 
@@ -204,7 +200,7 @@ class TestForexExitConditions:
         """Score below EXIT_SCORE_THRESHOLD should trigger exit."""
         mock_a2s.return_value = lambda order: None
         _create_filled_forex_order(
-            symbol="GBPUSD=X", side="buy", filled_at_offset_hours=2
+            symbol="GBPUSD=X", side="buy", filled_at_offset_hours=2,
         )
         # Create a recent low-score opportunity for the same symbol
         _create_forex_opportunity(symbol="GBPUSD=X", score=30)
@@ -220,11 +216,11 @@ class TestForexExitConditions:
         """Bearish signal on a buy position should trigger exit."""
         mock_a2s.return_value = lambda order: None
         _create_filled_forex_order(
-            symbol="AUDUSD=X", side="buy", filled_at_offset_hours=2
+            symbol="AUDUSD=X", side="buy", filled_at_offset_hours=2,
         )
         # Create an opposing (bearish) signal above EXIT_SCORE_THRESHOLD
         _create_forex_opportunity(
-            symbol="AUDUSD=X", score=60, direction="bearish"
+            symbol="AUDUSD=X", score=60, direction="bearish",
         )
 
         svc = ForexPaperTradingService()
@@ -236,11 +232,11 @@ class TestForexExitConditions:
     def test_no_exit_when_score_above_threshold(self, mock_price):
         """Position with high recent score and same direction should not exit."""
         _create_filled_forex_order(
-            symbol="NZDUSD=X", side="buy", filled_at_offset_hours=2
+            symbol="NZDUSD=X", side="buy", filled_at_offset_hours=2,
         )
         # Recent high-score bullish signal -- no exit condition met
         _create_forex_opportunity(
-            symbol="NZDUSD=X", score=75, direction="bullish"
+            symbol="NZDUSD=X", score=75, direction="bullish",
         )
 
         svc = ForexPaperTradingService()
@@ -314,7 +310,7 @@ class TestForexPositionSizing:
         svc.run_cycle()
 
         order = Order.objects.filter(
-            symbol="EURUSD=X", asset_class="forex", mode=TradingMode.PAPER
+            symbol="EURUSD=X", asset_class="forex", mode=TradingMode.PAPER,
         ).first()
         assert order is not None
         expected_amount = POSITION_SIZE_USD / 1.1
@@ -463,13 +459,13 @@ class TestCryptoMultiInstanceAggregation:
         mock_svc_1.get_open_trades = AsyncMock(
             return_value=[
                 {"pair": "BTC/USDT", "amount": 0.01, "is_open": True},
-            ]
+            ],
         )
         mock_svc_2 = MagicMock()
         mock_svc_2.get_open_trades = AsyncMock(
             return_value=[
                 {"pair": "ETH/USDT", "amount": 0.1, "is_open": True},
-            ]
+            ],
         )
 
         services = {"CIV1": mock_svc_1, "BMR": mock_svc_2}
@@ -522,7 +518,7 @@ class TestPaperTradingPnL:
     def test_fill_event_tracks_pnl_data(self):
         """OrderFillEvent records are created for paper fills."""
         order = _create_filled_forex_order(
-            symbol="EURUSD=X", side="buy", amount=909.09, price=1.1
+            symbol="EURUSD=X", side="buy", amount=909.09, price=1.1,
         )
         # Manually create a fill event as the service would
         fill = OrderFillEvent.objects.create(
@@ -564,7 +560,7 @@ class TestPaperTradingErrorHandling:
         mock_a2s.return_value = lambda order: None
         # Create a position that should be exited (held > 24h)
         _create_filled_forex_order(
-            symbol="EURUSD=X", side="buy", filled_at_offset_hours=25
+            symbol="EURUSD=X", side="buy", filled_at_offset_hours=25,
         )
 
         svc = ForexPaperTradingService()

@@ -19,12 +19,11 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone as dj_tz
 
-from analysis.models import BackgroundJob, BacktestResult
+from analysis.models import BackgroundJob
 from core.services.dashboard import DashboardService
 from portfolio.models import Holding, Portfolio
-from risk.models import RiskLimits, RiskState
+from risk.models import RiskState
 from trading.models import Order, OrderStatus, TradingMode
-
 
 # ── Fixtures ──────────────────────────────────────────────────
 
@@ -43,13 +42,22 @@ def portfolio(db):
 def holdings(portfolio):
     return [
         Holding.objects.create(
-            portfolio=portfolio, symbol="BTC/USDT", amount=0.5, avg_buy_price=60000,
+            portfolio=portfolio,
+            symbol="BTC/USDT",
+            amount=0.5,
+            avg_buy_price=60000,
         ),
         Holding.objects.create(
-            portfolio=portfolio, symbol="ETH/USDT", amount=5.0, avg_buy_price=3000,
+            portfolio=portfolio,
+            symbol="ETH/USDT",
+            amount=5.0,
+            avg_buy_price=3000,
         ),
         Holding.objects.create(
-            portfolio=portfolio, symbol="SOL/USDT", amount=50.0, avg_buy_price=120,
+            portfolio=portfolio,
+            symbol="SOL/USDT",
+            amount=50.0,
+            avg_buy_price=120,
         ),
     ]
 
@@ -59,16 +67,28 @@ def open_orders(portfolio):
     now = dj_tz.now()
     return [
         Order.objects.create(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="limit", amount=0.1, price=55000,
-            status=OrderStatus.OPEN, mode=TradingMode.PAPER,
-            portfolio_id=portfolio.id, timestamp=now,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="limit",
+            amount=0.1,
+            price=55000,
+            status=OrderStatus.OPEN,
+            mode=TradingMode.PAPER,
+            portfolio_id=portfolio.id,
+            timestamp=now,
         ),
         Order.objects.create(
-            exchange_id="kraken", symbol="ETH/USDT", side="buy",
-            order_type="limit", amount=1.0, price=2800,
-            status=OrderStatus.SUBMITTED, mode=TradingMode.PAPER,
-            portfolio_id=portfolio.id, timestamp=now,
+            exchange_id="kraken",
+            symbol="ETH/USDT",
+            side="buy",
+            order_type="limit",
+            amount=1.0,
+            price=2800,
+            status=OrderStatus.SUBMITTED,
+            mode=TradingMode.PAPER,
+            portfolio_id=portfolio.id,
+            timestamp=now,
         ),
     ]
 
@@ -78,22 +98,43 @@ def filled_orders(portfolio):
     now = dj_tz.now()
     return [
         Order.objects.create(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="market", amount=1.0, filled=1.0,
-            avg_fill_price=50000, status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER, portfolio_id=portfolio.id, timestamp=now,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="market",
+            amount=1.0,
+            filled=1.0,
+            avg_fill_price=50000,
+            status=OrderStatus.FILLED,
+            mode=TradingMode.PAPER,
+            portfolio_id=portfolio.id,
+            timestamp=now,
         ),
         Order.objects.create(
-            exchange_id="kraken", symbol="BTC/USDT", side="sell",
-            order_type="market", amount=1.0, filled=1.0,
-            avg_fill_price=55000, status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER, portfolio_id=portfolio.id, timestamp=now,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="sell",
+            order_type="market",
+            amount=1.0,
+            filled=1.0,
+            avg_fill_price=55000,
+            status=OrderStatus.FILLED,
+            mode=TradingMode.PAPER,
+            portfolio_id=portfolio.id,
+            timestamp=now,
         ),
         Order.objects.create(
-            exchange_id="kraken", symbol="ETH/USDT", side="buy",
-            order_type="market", amount=10.0, filled=10.0,
-            avg_fill_price=3000, status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER, portfolio_id=portfolio.id, timestamp=now,
+            exchange_id="kraken",
+            symbol="ETH/USDT",
+            side="buy",
+            order_type="market",
+            amount=10.0,
+            filled=10.0,
+            avg_fill_price=3000,
+            status=OrderStatus.FILLED,
+            mode=TradingMode.PAPER,
+            portfolio_id=portfolio.id,
+            timestamp=now,
         ),
     ]
 
@@ -102,8 +143,10 @@ def filled_orders(portfolio):
 def risk_state(portfolio):
     return RiskState.objects.create(
         portfolio_id=portfolio.id,
-        total_equity=9500, peak_equity=10000,
-        daily_pnl=-200, is_halted=False,
+        total_equity=9500,
+        peak_equity=10000,
+        daily_pnl=-200,
+        is_halted=False,
     )
 
 
@@ -111,8 +154,10 @@ def risk_state(portfolio):
 def risk_state_halted(portfolio):
     return RiskState.objects.create(
         portfolio_id=portfolio.id,
-        total_equity=7500, peak_equity=10000,
-        daily_pnl=-500, is_halted=True,
+        total_equity=7500,
+        peak_equity=10000,
+        daily_pnl=-500,
+        is_halted=True,
         halt_reason="Max drawdown exceeded",
     )
 
@@ -152,7 +197,7 @@ class TestKPIAggregationAllSections:
             assert key in p, f"Missing portfolio key: {key}"
 
     def test_trading_section_keys(self, portfolio, filled_orders):
-        """Trading section includes total_trades, win_rate, total_pnl, profit_factor, open_orders."""
+        """Trading section has required keys."""
         kpis = DashboardService.get_kpis()
         t = kpis["trading"]
         for key in ("total_trades", "win_rate", "total_pnl", "profit_factor", "open_orders"):
@@ -176,8 +221,15 @@ class TestKPIAggregationAllSections:
         """Paper trading section includes all expected keys."""
         kpis = DashboardService.get_kpis()
         pt = kpis["paper_trading"]
-        for key in ("instances_running", "total_pnl", "total_pnl_pct",
-                     "open_trades", "closed_trades", "win_rate", "instances"):
+        for key in (
+            "instances_running",
+            "total_pnl",
+            "total_pnl_pct",
+            "open_trades",
+            "closed_trades",
+            "win_rate",
+            "instances",
+        ):
             assert key in pt, f"Missing paper_trading key: {key}"
 
 
@@ -353,9 +405,12 @@ class TestPaperTradingWidget:
 
         async def mock_profit():
             return {
-                "profit_all_coin": 0, "profit_all_percent": 0,
-                "trade_count": 0, "closed_trade_count": 0,
-                "winning_trades": 0, "losing_trades": 0,
+                "profit_all_coin": 0,
+                "profit_all_percent": 0,
+                "trade_count": 0,
+                "closed_trade_count": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
             }
 
         mock_svc.get_profit = mock_profit
@@ -479,8 +534,16 @@ class TestHealthCheck:
         """All 7 subsystem keys are present in detailed health."""
         resp = client.get("/api/health/?detailed=true")
         checks = resp.json()["checks"]
-        expected = {"database", "disk", "memory", "scheduler", "circuit_breakers",
-                    "channel_layer", "job_queue", "wal"}
+        expected = {
+            "database",
+            "disk",
+            "memory",
+            "scheduler",
+            "circuit_breakers",
+            "channel_layer",
+            "job_queue",
+            "wal",
+        }
         assert expected.issubset(set(checks.keys()))
 
 

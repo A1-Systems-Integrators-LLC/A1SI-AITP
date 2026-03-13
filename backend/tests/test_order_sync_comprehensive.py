@@ -95,7 +95,7 @@ class TestStuckOrderTimeout:
 
     def test_recent_submitted_not_timed_out(self):
         """SUBMITTED orders less than 24h old should be synced normally."""
-        order = _create_live_order(status=OrderStatus.SUBMITTED)
+        _create_live_order(status=OrderStatus.SUBMITTED)
 
         mock_sync = AsyncMock()
         with patch(
@@ -240,11 +240,11 @@ class TestPartialFillHandling:
 class TestExchangeErrorDuringSync:
     def test_single_failure_does_not_stop_batch(self):
         """If one order sync fails, others should still be synced."""
-        order1 = _create_live_order(
-            status=OrderStatus.OPEN, exchange_order_id="exch-1"
+        _create_live_order(
+            status=OrderStatus.OPEN, exchange_order_id="exch-1",
         )
-        order2 = _create_live_order(
-            status=OrderStatus.OPEN, exchange_order_id="exch-2"
+        _create_live_order(
+            status=OrderStatus.OPEN, exchange_order_id="exch-2",
         )
 
         call_count = 0
@@ -342,12 +342,14 @@ class TestAutoStartOnFirstLiveOrder:
 
         from core.apps import _maybe_start_order_sync
 
-        with patch("asyncio.get_running_loop", side_effect=RuntimeError):
-            with patch("threading.Thread") as mock_thread:
-                mock_thread.return_value = MagicMock()
-                _maybe_start_order_sync()
-                mock_thread.assert_called_once()
-                mock_thread.return_value.start.assert_called_once()
+        with (
+            patch("asyncio.get_running_loop", side_effect=RuntimeError),
+            patch("threading.Thread") as mock_thread,
+        ):
+            mock_thread.return_value = MagicMock()
+            _maybe_start_order_sync()
+            mock_thread.assert_called_once()
+            mock_thread.return_value.start.assert_called_once()
 
     @patch("core.apps.logger")
     def test_autostart_triggered_by_partial_fill_order(self, mock_logger):
@@ -355,11 +357,13 @@ class TestAutoStartOnFirstLiveOrder:
 
         from core.apps import _maybe_start_order_sync
 
-        with patch("asyncio.get_running_loop", side_effect=RuntimeError):
-            with patch("threading.Thread") as mock_thread:
-                mock_thread.return_value = MagicMock()
-                _maybe_start_order_sync()
-                mock_thread.assert_called_once()
+        with (
+            patch("asyncio.get_running_loop", side_effect=RuntimeError),
+            patch("threading.Thread") as mock_thread,
+        ):
+            mock_thread.return_value = MagicMock()
+            _maybe_start_order_sync()
+            mock_thread.assert_called_once()
 
     @patch("core.apps.logger")
     def test_no_autostart_for_terminal_orders(self, mock_logger):
@@ -412,14 +416,16 @@ class TestRiskCheckFailure:
         ) as mock_qs:
             mock_qs.filter.return_value.first.return_value = None
 
-            with patch(
-                "risk.services.risk.RiskManagementService.check_trade",
-                side_effect=Exception("Risk service unavailable"),
-            ):
+            with (
+                patch(
+                    "risk.services.risk.RiskManagementService.check_trade",
+                    side_effect=Exception("Risk service unavailable"),
+                ),
                 # The exception propagates through submit_order's risk check
                 # and the order submission fails gracefully
-                with pytest.raises(Exception, match="Risk service unavailable"):
-                    async_to_sync(LiveTradingService.submit_order)(order)
+                pytest.raises(Exception, match="Risk service unavailable"),
+            ):
+                async_to_sync(LiveTradingService.submit_order)(order)
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +512,7 @@ class TestEmptyOrderQueue:
     def test_sync_with_only_paper_orders(self):
         """Paper orders should not appear in the sync queue."""
         _create_live_order(
-            status=OrderStatus.SUBMITTED, mode=TradingMode.PAPER
+            status=OrderStatus.SUBMITTED, mode=TradingMode.PAPER,
         )
 
         result = TASK_REGISTRY["order_sync"]({}, _progress_noop)
@@ -524,7 +530,7 @@ class TestExchangeDownDuringSync:
 
         mock_exchange = AsyncMock()
         mock_exchange.fetch_order = AsyncMock(
-            side_effect=Exception("Connection refused")
+            side_effect=Exception("Connection refused"),
         )
 
         mock_service = MagicMock()
@@ -548,7 +554,7 @@ class TestExchangeDownDuringSync:
 
         mock_exchange = AsyncMock()
         mock_exchange.fetch_order = AsyncMock(
-            side_effect=Exception("Timeout")
+            side_effect=Exception("Timeout"),
         )
 
         mock_service = MagicMock()
@@ -615,7 +621,7 @@ class TestCancelOrder:
 
         assert result.status == OrderStatus.CANCELLED
         mock_exchange.cancel_order.assert_awaited_once_with(
-            order.exchange_order_id, order.symbol
+            order.exchange_order_id, order.symbol,
         )
 
     def test_cancel_terminal_order_is_noop(self):
@@ -632,7 +638,7 @@ class TestCancelOrder:
 
         mock_exchange = AsyncMock()
         mock_exchange.cancel_order = AsyncMock(
-            side_effect=Exception("Exchange unavailable")
+            side_effect=Exception("Exchange unavailable"),
         )
 
         mock_service = MagicMock()
@@ -660,7 +666,7 @@ class TestAssetClassGating:
     def test_equity_live_order_rejected(self):
         """Equity live orders should be auto-rejected."""
         order = _create_live_order(
-            status=OrderStatus.PENDING, asset_class="equity"
+            status=OrderStatus.PENDING, asset_class="equity",
         )
 
         with patch(
@@ -676,7 +682,7 @@ class TestAssetClassGating:
     def test_forex_live_order_rejected(self):
         """Forex live orders should be auto-rejected."""
         order = _create_live_order(
-            status=OrderStatus.PENDING, asset_class="forex"
+            status=OrderStatus.PENDING, asset_class="forex",
         )
 
         with patch(
@@ -724,7 +730,7 @@ class TestSyncNoExchangeOrderId:
     def test_returns_early_without_fetching(self):
         """If exchange_order_id is empty, sync should return immediately."""
         order = _create_live_order(
-            status=OrderStatus.SUBMITTED, exchange_order_id=""
+            status=OrderStatus.SUBMITTED, exchange_order_id="",
         )
 
         with patch(
@@ -744,10 +750,10 @@ class TestCancelAllOrders:
     def test_cancels_all_active_orders(self):
         """cancel_all_open_orders should cancel all active live orders."""
         o1 = _create_live_order(
-            status=OrderStatus.OPEN, exchange_order_id="e1"
+            status=OrderStatus.OPEN, exchange_order_id="e1",
         )
         o2 = _create_live_order(
-            status=OrderStatus.SUBMITTED, exchange_order_id="e2"
+            status=OrderStatus.SUBMITTED, exchange_order_id="e2",
         )
         # FILLED order should not be touched
         _create_live_order(status=OrderStatus.FILLED, exchange_order_id="e3")
@@ -767,7 +773,7 @@ class TestCancelAllOrders:
             return_value=None,
         ):
             count = async_to_sync(LiveTradingService.cancel_all_open_orders)(
-                portfolio_id=1
+                portfolio_id=1,
             )
 
         assert count == 2
@@ -805,7 +811,7 @@ class TestSyncSameStatus:
             "trading.services.live_trading.ExchangeService",
             return_value=mock_service,
         ):
-            result = async_to_sync(LiveTradingService.sync_order)(order)
+            async_to_sync(LiveTradingService.sync_order)(order)
 
         order.refresh_from_db()
         assert order.status == OrderStatus.OPEN
@@ -856,11 +862,11 @@ class TestMixedBatch:
             created_at=old_time,
             exchange_order_id="stuck-1",
         )
-        good = _create_live_order(
-            status=OrderStatus.OPEN, exchange_order_id="good-1"
+        _create_live_order(
+            status=OrderStatus.OPEN, exchange_order_id="good-1",
         )
-        bad = _create_live_order(
-            status=OrderStatus.OPEN, exchange_order_id="bad-1"
+        _create_live_order(
+            status=OrderStatus.OPEN, exchange_order_id="bad-1",
         )
 
         async def _selective_sync(order):

@@ -1,5 +1,4 @@
-"""
-ML Training & Prediction Pipeline
+"""ML Training & Prediction Pipeline
 ==================================
 LightGBM classifier with time-series aware train/test split.
 Graceful fallback when lightgbm is not installed.
@@ -82,10 +81,11 @@ def train_model(
 
     Raises:
         ImportError: If lightgbm is not installed.
+
     """
     if not HAS_LIGHTGBM:
         raise ImportError(
-            "lightgbm is required for ML training. Install with: pip install lightgbm"
+            "lightgbm is required for ML training. Install with: pip install lightgbm",
         )
 
     model_params = {**DEFAULT_TRAIN_PARAMS, **(params or {})}
@@ -95,13 +95,16 @@ def train_model(
 
     logger.info(
         "Training: %d train rows, %d test rows, %d features",
-        len(x_train), len(x_test), len(feature_names),
+        len(x_train),
+        len(x_test),
+        len(feature_names),
     )
 
     # Train
     model = lgb.LGBMClassifier(**model_params)
     model.fit(
-        x_train, y_train,
+        x_train,
+        y_train,
         eval_set=[(x_test, y_test)],
     )
 
@@ -116,7 +119,7 @@ def train_model(
     logloss = float(model.best_score_.get("valid_0", {}).get("binary_logloss", 0.0))
 
     # Feature importance
-    importance = dict(zip(feature_names, map(float, model.feature_importances_)))
+    importance = dict(zip(feature_names, map(float, model.feature_importances_), strict=False))
     top_features = sorted(importance.items(), key=lambda x: x[1], reverse=True)[:10]
 
     metrics = {
@@ -152,7 +155,9 @@ def train_model(
 
     logger.info(
         "Training complete: accuracy=%.4f, precision=%.4f, f1=%.4f",
-        accuracy, precision, f1,
+        accuracy,
+        precision,
+        f1,
     )
     logger.info("Top features: %s", [f[0] for f in top_features[:5]])
 
@@ -164,7 +169,7 @@ def train_model(
     }
 
 
-def predict(model: object, X: pd.DataFrame) -> dict:
+def predict(model: object, X: pd.DataFrame) -> dict:  # noqa: N803
     """Generate predictions from a trained model.
 
     Args:
@@ -173,6 +178,7 @@ def predict(model: object, X: pd.DataFrame) -> dict:
 
     Returns:
         dict with probability, predicted_class, and bar count.
+
     """
     if not HAS_LIGHTGBM:
         raise ImportError("lightgbm is required for prediction.")
@@ -190,6 +196,7 @@ def predict(model: object, X: pd.DataFrame) -> dict:
 
 
 # --- Internal helpers ---
+
 
 def _safe_precision(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     tp = int(np.sum((y_pred == 1) & (y_true == 1)))

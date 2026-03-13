@@ -3,7 +3,7 @@
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest  # noqa: I001
+import pytest
 
 # ── DataQualityListView: ImportError → 503, OSError/ValueError → 500 ──
 

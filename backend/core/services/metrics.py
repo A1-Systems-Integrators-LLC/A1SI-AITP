@@ -1,5 +1,4 @@
-"""
-Lightweight Prometheus-compatible metrics collector.
+"""Lightweight Prometheus-compatible metrics collector.
 No external dependencies — memory-bounded, thread-safe.
 """
 
@@ -22,7 +21,7 @@ class MetricsCollector:
                     cls._instance._gauges: dict[str, float] = {}
                     cls._instance._counters: dict[str, float] = defaultdict(float)
                     cls._instance._histograms: dict[str, deque] = defaultdict(
-                        lambda: deque(maxlen=1000)
+                        lambda: deque(maxlen=1000),
                     )
                     cls._instance._data_lock = threading.Lock()
         return cls._instance
@@ -50,7 +49,10 @@ class MetricsCollector:
         "active_orders": ("gauge", "Number of active orders by mode"),
         "job_queue_pending": ("gauge", "Number of pending background jobs"),
         "job_queue_running": ("gauge", "Number of running background jobs"),
-        "circuit_breaker_state": ("gauge", "Circuit breaker state (0=closed, 0.5=half_open, 1=open)"),
+        "circuit_breaker_state": (
+            "gauge",
+            "Circuit breaker state (0=closed, 0.5=half_open, 1=open)",
+        ),
         "scheduler_running": ("gauge", "1 if scheduler is running, 0 otherwise"),
         "ml_models_total": ("gauge", "Total number of ML models in registry"),
         "orchestrator_strategies_paused": ("gauge", "Number of strategies currently paused"),
@@ -65,7 +67,7 @@ class MetricsCollector:
 
         def _emit_annotation(key: str) -> None:
             # Extract base metric name (before { or label)
-            base = key.split("{")[0] if "{" in key else key
+            base = key.split("{", maxsplit=1)[0] if "{" in key else key
             if base not in seen_bases:
                 seen_bases.add(base)
                 info = self._METRIC_TYPES.get(base)

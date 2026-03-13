@@ -43,18 +43,13 @@ def _run_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, 
     )
     progress_cb(0.9, "Data refresh complete")
 
-    succeeded = sum(
-        1 for v in results.values()
-        if isinstance(v, dict) and v.get("status") == "ok"
-    )
-    failed = sum(
-        1 for v in results.values()
-        if isinstance(v, dict) and v.get("status") == "error"
-    )
+    succeeded = sum(1 for v in results.values() if isinstance(v, dict) and v.get("status") == "ok")
+    failed = sum(1 for v in results.values() if isinstance(v, dict) and v.get("status") == "error")
     if failed:
         logger.error(
             "Data refresh: %d/%d symbols failed to download",
-            failed, len(results),
+            failed,
+            len(results),
         )
     return {
         "status": "completed" if succeeded > 0 else "error",
@@ -179,7 +174,7 @@ def _run_data_quality(params: dict, progress_cb: ProgressCallback) -> dict[str, 
         for r in reports:
             if not r.passed:
                 summary["issues"].append(
-                    f"{r.symbol}/{r.timeframe}: {', '.join(r.issues_summary)}"
+                    f"{r.symbol}/{r.timeframe}: {', '.join(r.issues_summary)}",
                 )
 
         progress_cb(0.9, f"Validated {len(reports)} files")
@@ -548,7 +543,10 @@ def _run_nautilus_backtest(params: dict, progress_cb: ProgressCallback) -> dict[
     if not symbols:
         return {"status": "skipped", "reason": f"No {asset_class} watchlist configured"}
 
-    progress_cb(0.1, f"Running {len(strategies)} Nautilus strategies on {len(symbols)} {asset_class} symbols")
+    progress_cb(
+        0.1,
+        f"Running {len(strategies)} Nautilus strategies on {len(symbols)} {asset_class} symbols",
+    )
     results = []
     total_steps = len(strategies) * len(symbols)
     step = 0
@@ -558,19 +556,31 @@ def _run_nautilus_backtest(params: dict, progress_cb: ProgressCallback) -> dict[
             step += 1
             try:
                 result = run_nautilus_backtest(
-                    strategy, symbol, timeframe, exchange, initial_balance,
+                    strategy,
+                    symbol,
+                    timeframe,
+                    exchange,
+                    initial_balance,
                     asset_class=asset_class,
                 )
-                results.append({
-                    "strategy": strategy, "symbol": symbol,
-                    "status": "completed", "result": result,
-                })
+                results.append(
+                    {
+                        "strategy": strategy,
+                        "symbol": symbol,
+                        "status": "completed",
+                        "result": result,
+                    }
+                )
             except Exception as e:
                 logger.warning("Nautilus backtest failed %s/%s: %s", strategy, symbol, e)
-                results.append({
-                    "strategy": strategy, "symbol": symbol,
-                    "status": "error", "error": str(e),
-                })
+                results.append(
+                    {
+                        "strategy": strategy,
+                        "symbol": symbol,
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
             progress_cb(0.1 + 0.8 * step / total_steps, f"{strategy} on {symbol}")
 
     completed = sum(1 for r in results if r["status"] == "completed")
@@ -623,18 +633,31 @@ def _run_hft_backtest(params: dict, progress_cb: ProgressCallback) -> dict[str, 
             step += 1
             try:
                 result = run_hft_backtest(
-                    strategy, symbol, timeframe, exchange, latency_ns, initial_balance,
+                    strategy,
+                    symbol,
+                    timeframe,
+                    exchange,
+                    latency_ns,
+                    initial_balance,
                 )
-                results.append({
-                    "strategy": strategy, "symbol": symbol,
-                    "status": "completed", "result": result,
-                })
+                results.append(
+                    {
+                        "strategy": strategy,
+                        "symbol": symbol,
+                        "status": "completed",
+                        "result": result,
+                    }
+                )
             except Exception as e:
                 logger.warning("HFT backtest failed %s/%s: %s", strategy, symbol, e)
-                results.append({
-                    "strategy": strategy, "symbol": symbol,
-                    "status": "error", "error": str(e),
-                })
+                results.append(
+                    {
+                        "strategy": strategy,
+                        "symbol": symbol,
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
             progress_cb(0.1 + 0.8 * step / total_steps, f"{strategy} on {symbol}")
 
     completed = sum(1 for r in results if r["status"] == "completed")
@@ -661,7 +684,9 @@ def _run_ml_predict(params: dict, progress_cb: ProgressCallback) -> dict[str, An
     config = get_platform_config()
     data_cfg = config.get("data", {})
     watchlist_key = {
-        "crypto": "watchlist", "equity": "equity_watchlist", "forex": "forex_watchlist",
+        "crypto": "watchlist",
+        "equity": "equity_watchlist",
+        "forex": "forex_watchlist",
     }.get(asset_class, "watchlist")
     symbols = data_cfg.get(watchlist_key, [])[:20]
 
@@ -700,8 +725,10 @@ def _run_ml_predict(params: dict, progress_cb: ProgressCallback) -> dict[str, An
 
     predicted = sum(1 for r in results if r["status"] == "predicted")
     return {
-        "status": "completed", "predicted": predicted,
-        "total": len(results), "results": results,
+        "status": "completed",
+        "predicted": predicted,
+        "total": len(results),
+        "results": results,
     }
 
 
@@ -718,7 +745,8 @@ def _run_ml_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, A
 
     cutoff = tz.now() - timedelta(hours=24)
     unresolved = MLPrediction.objects.filter(
-        correct__isnull=True, predicted_at__gte=cutoff,
+        correct__isnull=True,
+        predicted_at__gte=cutoff,
     )[:200]
 
     filled = 0
@@ -744,9 +772,13 @@ def _run_ml_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, A
     progress_cb(0.5, f"Backfilled {filled} outcomes")
 
     # Update model performance aggregates
-    model_ids = MLPrediction.objects.filter(
-        correct__isnull=False,
-    ).values_list("model_id", flat=True).distinct()[:50]
+    model_ids = (
+        MLPrediction.objects.filter(
+            correct__isnull=False,
+        )
+        .values_list("model_id", flat=True)
+        .distinct()[:50]
+    )
 
     updated = 0
     for model_id in model_ids:
@@ -789,7 +821,7 @@ def _run_ml_retrain(params: dict, progress_cb: ProgressCallback) -> dict[str, An
     flagged = list(
         MLModelPerformance.objects.filter(
             retrain_recommended=True,
-        ).values_list("model_id", flat=True)
+        ).values_list("model_id", flat=True),
     )
 
     if not flagged:
@@ -815,7 +847,8 @@ def _run_ml_retrain(params: dict, progress_cb: ProgressCallback) -> dict[str, An
             MLService.train(
                 train_params,
                 lambda p, m, _i=i: progress_cb(
-                    0.1 + 0.8 * (_i + p) / len(flagged), m,
+                    0.1 + 0.8 * (_i + p) / len(flagged),
+                    m,
                 ),
             )
             # Clear retrain flag
@@ -841,7 +874,9 @@ def _run_conviction_audit(params: dict, progress_cb: ProgressCallback) -> dict[s
     config = get_platform_config()
     data_cfg = config.get("data", {})
     watchlist_key = {
-        "crypto": "watchlist", "equity": "equity_watchlist", "forex": "forex_watchlist",
+        "crypto": "watchlist",
+        "equity": "equity_watchlist",
+        "forex": "forex_watchlist",
     }.get(asset_class, "watchlist")
     symbols = data_cfg.get(watchlist_key, [])[:10]
 
@@ -854,13 +889,15 @@ def _run_conviction_audit(params: dict, progress_cb: ProgressCallback) -> dict[s
             from analysis.services.signal_service import SignalService
 
             signal = SignalService.get_signal(symbol, asset_class)
-            audit_results.append({
-                "symbol": symbol,
-                "score": signal["composite_score"],
-                "label": signal["signal_label"],
-                "approved": signal["entry_approved"],
-                "sources": signal["sources_available"],
-            })
+            audit_results.append(
+                {
+                    "symbol": symbol,
+                    "score": signal["composite_score"],
+                    "label": signal["signal_label"],
+                    "approved": signal["entry_approved"],
+                    "sources": signal["sources_available"],
+                }
+            )
         except Exception as e:
             logger.warning("Conviction audit failed for %s: %s", symbol, e)
             audit_results.append({"symbol": symbol, "error": str(e)})

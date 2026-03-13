@@ -1,5 +1,4 @@
-"""
-Notification service — Telegram + webhook delivery for risk alerts.
+"""Notification service — Telegram + webhook delivery for risk alerts.
 Includes formatted message templates and preference-aware delivery.
 """
 

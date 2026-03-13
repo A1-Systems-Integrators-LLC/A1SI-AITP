@@ -1,5 +1,4 @@
-"""
-Tests for sample data generation
+"""Tests for sample data generation
 =================================
 Verifies that synthetic OHLCV data can be generated, saved, and loaded
 correctly for all framework tiers.

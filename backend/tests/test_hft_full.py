@@ -7,7 +7,7 @@ config loading, tick conversion, result persistence.
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -309,7 +309,7 @@ class TestMomentumScalperEdgeCases:
         sides = np.ones(n)
         ticks = np.column_stack([timestamps, prices, volumes, sides])
         s = HFTMomentumScalper(config={
-            "entry_threshold": 0.0001, "max_hold_ticks": 10, "lookback": 5
+            "entry_threshold": 0.0001, "max_hold_ticks": 10, "lookback": 5,
         })
         s.run(ticks)
         # Max hold should have forced exit
@@ -410,7 +410,7 @@ class TestMeanReversionEdgeCases:
         sides = np.ones(n)
         ticks = np.column_stack([timestamps, prices, volumes, sides])
         s = HFTMeanReversionScalper(config={
-            "lookback": 50, "deviation_threshold": 0.005, "max_position": 1.0
+            "lookback": 50, "deviation_threshold": 0.005, "max_position": 1.0,
         })
         s.run(ticks)
         # Price drops 1% below VWAP of 100 → should trigger buy
@@ -427,7 +427,7 @@ class TestMeanReversionEdgeCases:
         ticks = np.column_stack([timestamps, prices, volumes, sides])
         s = HFTMeanReversionScalper(config={
             "lookback": 50, "deviation_threshold": 0.005,
-            "max_hold_ticks": 20, "max_position": 1.0
+            "max_hold_ticks": 20, "max_position": 1.0,
         })
         s.run(ticks)
         # Should have forced exit after max_hold_ticks
@@ -489,10 +489,10 @@ class TestTickConversion:
         assert result is None
 
     def test_convert_with_data(self):
+        import numpy as np
+        import pandas as pd
         from common.data_pipeline.pipeline import save_ohlcv
         from hftbacktest.hft_runner import convert_ohlcv_to_hft_ticks
-        import pandas as pd
-        import numpy as np
 
         np.random.seed(42)
         n = 50
@@ -520,8 +520,7 @@ class TestTickConversion:
 
 class TestRunnerBacktest:
     def test_full_backtest_with_saved_data(self):
-        from common.data_pipeline.pipeline import save_ohlcv
-        from hftbacktest.hft_runner import run_hft_backtest, TICKS_DIR
+        from hftbacktest.hft_runner import TICKS_DIR, run_hft_backtest
 
         # Save tick data first
         ticks = _make_ticks(200)
@@ -542,7 +541,7 @@ class TestRunnerBacktest:
         tick_path.unlink(missing_ok=True)
 
     def test_backtest_result_keys(self):
-        from hftbacktest.hft_runner import run_hft_backtest, TICKS_DIR
+        from hftbacktest.hft_runner import TICKS_DIR, run_hft_backtest
 
         ticks = _make_ticks(50)
         tick_path = TICKS_DIR / "testexch_HFTKEYSUSDT_1h_ticks.npy"

@@ -95,7 +95,7 @@ class ExchangeService:
                     "countries": getattr(ex, "countries", []) or [],
                     "has_fetch_tickers": ex.has.get("fetchTickers", False),
                     "has_fetch_ohlcv": ex.has.get("fetchOHLCV", False),
-                }
+                },
             )
         return result
 
@@ -126,7 +126,7 @@ class ExchangeService:
             "high_24h": ticker.get("high") or 0.0,
             "low_24h": ticker.get("low") or 0.0,
             "timestamp": datetime.fromtimestamp(
-                (ticker["timestamp"] or 0) / 1000, tz=timezone.utc
+                (ticker["timestamp"] or 0) / 1000, tz=timezone.utc,
             ).isoformat(),
         }
 
@@ -160,9 +160,9 @@ class ExchangeService:
                     "high_24h": ticker.get("high") or 0.0,
                     "low_24h": ticker.get("low") or 0.0,
                     "timestamp": datetime.fromtimestamp(
-                        (ticker["timestamp"] or 0) / 1000, tz=timezone.utc
+                        (ticker["timestamp"] or 0) / 1000, tz=timezone.utc,
                     ).isoformat(),
-                }
+                },
             )
         return result
 

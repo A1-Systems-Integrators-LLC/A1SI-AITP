@@ -1,5 +1,4 @@
-"""
-NautilusMeanReversion — ports BollingerMeanReversion logic
+"""NautilusMeanReversion — ports BollingerMeanReversion logic
 ===========================================================
 Bollinger Band lower touch + RSI oversold + low ADX (ranging market).
 
@@ -38,10 +37,7 @@ class NautilusMeanReversion(NautilusStrategyBase):
             return False
 
         # Ranging market (low ADX)
-        if ind.get("adx_14", 50) >= self.adx_ceiling:
-            return False
-
-        return True
+        return bool(not ind.get("adx_14", 50) >= self.adx_ceiling)
 
     def should_exit(self, ind: pd.Series) -> bool:
         # Price reaches middle band (mean reversion target)
@@ -49,7 +45,4 @@ class NautilusMeanReversion(NautilusStrategyBase):
             return True
 
         # RSI shows strength
-        if ind.get("rsi_14", 50) > self.sell_rsi_threshold:
-            return True
-
-        return False
+        return bool(ind.get("rsi_14", 50) > self.sell_rsi_threshold)

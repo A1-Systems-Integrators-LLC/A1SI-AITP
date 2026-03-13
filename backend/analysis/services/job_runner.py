@@ -1,9 +1,7 @@
-"""
-Job runner — dispatches sync functions to a thread pool, tracks progress in-memory,
+"""Job runner — dispatches sync functions to a thread pool, tracks progress in-memory,
 and persists job state to DB via Django ORM.
 """
 
-import json
 import logging
 import math
 import uuid
@@ -80,6 +78,7 @@ def recover_stale_workflow_runs() -> int:
         logger.info("Recovered %d stale WorkflowRun(s) on startup", count)
     return count
 
+
 # In-memory progress store for live polling
 _job_progress: dict[str, dict[str, Any]] = {}
 
@@ -95,14 +94,16 @@ def get_job_runner() -> "JobRunner":
 
 
 # Critical tasks that must never be starved by long-running batch compute
-CRITICAL_TASK_TYPES = frozenset({
-    "risk_monitoring",
-    "order_sync",
-    "strategy_orchestration",
-    "regime_detection",
-    "market_scan",
-    "forex_paper_trading",
-})
+CRITICAL_TASK_TYPES = frozenset(
+    {
+        "risk_monitoring",
+        "order_sync",
+        "strategy_orchestration",
+        "regime_detection",
+        "market_scan",
+        "forex_paper_trading",
+    }
+)
 
 
 class JobRunner:
@@ -111,7 +112,8 @@ class JobRunner:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="job")
         # Critical pool for safety-sensitive tasks (risk, order sync, orchestration)
         self._critical_executor = ThreadPoolExecutor(
-            max_workers=max(2, max_workers), thread_name_prefix="critical",
+            max_workers=max(2, max_workers),
+            thread_name_prefix="critical",
         )
 
     def submit(
@@ -232,12 +234,12 @@ class JobRunner:
                 pass
 
             # Persist structured result for backtest jobs
-            _BACKTEST_JOB_TYPES = {
+            backtest_job_types = {
                 "backtest",
                 "scheduled_nautilus_backtest",
                 "scheduled_hft_backtest",
             }
-            if job.job_type in _BACKTEST_JOB_TYPES and isinstance(result, dict):
+            if job.job_type in backtest_job_types and isinstance(result, dict):
                 from analysis.models import BacktestResult
 
                 if result.get("results") and result.get("status") == "completed":
@@ -270,8 +272,8 @@ class JobRunner:
                         config=params,
                     )
             # Persist ScreenResult for VBT screen jobs
-            _SCREEN_JOB_TYPES = {"scheduled_vbt_screen"}
-            if job.job_type in _SCREEN_JOB_TYPES and isinstance(result, dict):
+            screen_job_types = {"scheduled_vbt_screen"}
+            if job.job_type in screen_job_types and isinstance(result, dict):
                 from analysis.models import ScreenResult
 
                 if result.get("results") and result.get("status") == "completed":
@@ -281,7 +283,8 @@ class JobRunner:
                             sub_result = sub["result"]
                             symbol = sub.get("symbol", sub_result.get("symbol", ""))
                             timeframe = sub_result.get("timeframe", params.get("timeframe", ""))
-                            for strategy_name, strat_data in sub_result.get("strategies", {}).items():
+                            strategies = sub_result.get("strategies", {})
+                            for strategy_name, strat_data in strategies.items():
                                 if "error" in strat_data:
                                     continue
                                 try:
@@ -291,14 +294,18 @@ class JobRunner:
                                         asset_class=asset_class,
                                         timeframe=timeframe,
                                         strategy_name=strategy_name,
-                                        top_results=_sanitize_for_json(strat_data.get("top_results")),
+                                        top_results=_sanitize_for_json(
+                                            strat_data.get("top_results")
+                                        ),
                                         summary=_sanitize_for_json(strat_data.get("summary")),
                                         total_combinations=strat_data.get("total_combinations", 0),
                                     )
                                 except Exception:
                                     logger.warning(
                                         "Failed to persist ScreenResult for %s/%s",
-                                        symbol, strategy_name, exc_info=True,
+                                        symbol,
+                                        strategy_name,
+                                        exc_info=True,
                                     )
 
         except Exception as e:

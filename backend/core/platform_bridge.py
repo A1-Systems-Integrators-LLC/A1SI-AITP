@@ -1,5 +1,4 @@
-"""
-Platform bridge — resolves sys.path so backend can import common.*, research.*, nautilus.*.
+"""Platform bridge — resolves sys.path so backend can import common.*, research.*, nautilus.*.
 """
 
 import logging

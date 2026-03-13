@@ -1,5 +1,4 @@
-"""
-BollingerMeanReversion — Freqtrade Strategy
+"""BollingerMeanReversion — Freqtrade Strategy
 =============================================
 Mean-reversion strategy using Bollinger Bands with volume and RSI confirmation.
 
@@ -21,20 +20,10 @@ bounces in downtrends with tighter risk management.
 """
 
 import logging
-from functools import reduce
-from typing import Optional
 from datetime import datetime
+from functools import reduce
 
-import numpy as np
 import talib.abstract as ta
-from pandas import DataFrame
-
-from freqtrade.strategy import (
-    DecimalParameter,
-    IntParameter,
-    IStrategy,
-)
-
 from _conviction_helpers import (
     check_conviction,
     check_exit_advice,
@@ -43,6 +32,12 @@ from _conviction_helpers import (
     record_entry_regime,
     refresh_signals,
 )
+from freqtrade.strategy import (
+    DecimalParameter,
+    IntParameter,
+    IStrategy,
+)
+from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +122,6 @@ class BollingerMeanReversion(IStrategy):
 
         Volume factor defaults to 0.0 (disabled) for maximum trade frequency.
         """
-
         bb_suffix = f"_{self.buy_bb_period.value}_{str(float(self.buy_bb_std.value)).replace('.', '')}"
 
         conditions = [
@@ -210,7 +204,7 @@ class BollingerMeanReversion(IStrategy):
         rate: float,
         time_in_force: str,
         current_time: datetime,
-        entry_tag: Optional[str],
+        entry_tag: str | None,
         side: str,
         **kwargs,
     ) -> bool:
@@ -269,7 +263,7 @@ class BollingerMeanReversion(IStrategy):
         current_profit: float,
         after_fill: bool,
         **kwargs,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Conviction-based exit: regime deterioration, time limits."""
         return check_exit_advice(self, pair, trade, current_time, current_profit)
 

@@ -1,5 +1,4 @@
-"""
-HFTGridTrader — Fixed-level grid trading
+"""HFTGridTrader — Fixed-level grid trading
 ==========================================
 Places buy and sell orders at fixed grid levels around a reference price.
 
@@ -9,24 +8,23 @@ Logic:
     - Buy at unfilled lower levels, sell at unfilled upper levels
     - Reset grid when all levels are filled or price escapes the grid range
 
-Parameters:
+Parameters
+----------
     - grid_spacing: distance between grid levels as fraction (default 0.002 = 20 bps)
     - num_levels: number of grid levels on each side (default 3)
     - order_size: size per grid order (default 0.01)
     - max_position: max absolute position (default 1.0)
     - drawdown_halt_pct: halt at this drawdown level (default 0.05)
-"""
 
-from typing import Optional
+"""
 
 from hftbacktest.strategies.base import HFTBaseStrategy
 
 
 class HFTGridTrader(HFTBaseStrategy):
-
     name = "GridTrader"
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         super().__init__(config)
         self.grid_spacing: float = self.config.get("grid_spacing", 0.002)
         self.num_levels: int = self.config.get("num_levels", 3)
@@ -34,8 +32,8 @@ class HFTGridTrader(HFTBaseStrategy):
         self.drawdown_halt_pct: float = self.config.get("drawdown_halt_pct", 0.05)
 
         # Grid state
-        self._reference_price: Optional[float] = None
-        self._buy_levels_filled: set[int] = set()   # filled level indices (1..num_levels)
+        self._reference_price: float | None = None
+        self._buy_levels_filled: set[int] = set()  # filled level indices (1..num_levels)
         self._sell_levels_filled: set[int] = set()
 
     def _reset_grid(self, reference: float) -> None:

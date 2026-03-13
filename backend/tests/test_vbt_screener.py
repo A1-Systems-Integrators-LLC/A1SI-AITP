@@ -1,5 +1,4 @@
-"""
-Comprehensive tests for the VectorBT screening module.
+"""Comprehensive tests for the VectorBT screening module.
 =======================================================
 Tests all 6 screening strategies, edge cases (insufficient data,
 NaN data, flat data), asset class handling, per-class fees,
@@ -18,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from research.scripts.vbt_screener import (  # noqa: E402
+from research.scripts.vbt_screener import (
     _ASSET_CLASS_FEES,
     SCREEN_FUNCTIONS,
     screen_bollinger_breakout,
@@ -29,7 +28,6 @@ from research.scripts.vbt_screener import (  # noqa: E402
     screen_volatility_breakout,
     walk_forward_validate,
 )
-
 
 # ── Helpers ─────────────────────────────────────────────────────
 
@@ -114,13 +112,23 @@ class TestSMACrossoverScreen:
 
     def test_returns_dataframe(self):
         df = _make_ohlcv(n=500)
-        result = screen_sma_crossover(df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.001)
+        result = screen_sma_crossover(
+            df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.001
+        )
         assert isinstance(result, pd.DataFrame)
 
     def test_expected_columns(self):
         df = _make_ohlcv(n=500)
         result = screen_sma_crossover(df["close"], fast_windows=[5, 10], slow_windows=[30, 50])
-        expected_cols = {"total_return", "sharpe_ratio", "max_drawdown", "win_rate", "profit_factor", "num_trades", "avg_trade_pnl"}
+        expected_cols = {
+            "total_return",
+            "sharpe_ratio",
+            "max_drawdown",
+            "win_rate",
+            "profit_factor",
+            "num_trades",
+            "avg_trade_pnl",
+        }
         assert expected_cols.issubset(set(result.columns))
 
     def test_sorted_by_sharpe(self):
@@ -133,14 +141,20 @@ class TestSMACrossoverScreen:
 
     def test_multiple_param_combos(self):
         df = _make_ohlcv(n=500)
-        result = screen_sma_crossover(df["close"], fast_windows=[5, 10, 15], slow_windows=[30, 50, 100])
+        result = screen_sma_crossover(
+            df["close"], fast_windows=[5, 10, 15], slow_windows=[30, 50, 100]
+        )
         # VBT MA.run_combs generates combinations from the merged window list
         assert len(result) >= 1
 
     def test_custom_fees(self):
         df = _make_ohlcv(n=500)
-        r_low = screen_sma_crossover(df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.0)
-        r_high = screen_sma_crossover(df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.01)
+        r_low = screen_sma_crossover(
+            df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.0
+        )
+        r_high = screen_sma_crossover(
+            df["close"], fast_windows=[5, 10], slow_windows=[30, 50], fees=0.01
+        )
         # Higher fees should reduce (or at worst equal) total return for the best combo
         if len(r_low) > 0 and len(r_high) > 0:
             # Compare max total return across all combos
@@ -153,21 +167,35 @@ class TestSMACrossoverScreen:
 class TestRSIMeanReversionScreen:
     def test_returns_dataframe(self):
         df = _make_ohlcv(n=500)
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         assert isinstance(result, pd.DataFrame)
 
     def test_expected_columns(self):
         df = _make_ohlcv(n=500)
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         if not result.empty:
-            expected = {"rsi_period", "oversold", "overbought", "total_return", "sharpe_ratio", "max_drawdown"}
+            expected = {
+                "rsi_period",
+                "oversold",
+                "overbought",
+                "total_return",
+                "sharpe_ratio",
+                "max_drawdown",
+            }
             assert expected.issubset(set(result.columns))
 
     def test_skips_invalid_level_combos(self):
         """When oversold >= overbought, that combo should be skipped."""
         df = _make_ohlcv(n=500)
         result = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[70], overbought_levels=[30],
+            df,
+            rsi_periods=[14],
+            oversold_levels=[70],
+            overbought_levels=[30],
         )
         # 70 >= 30 so all combos should be skipped
         assert len(result) == 0
@@ -175,7 +203,10 @@ class TestRSIMeanReversionScreen:
     def test_multiple_periods(self):
         df = _make_ohlcv(n=500)
         result = screen_rsi_mean_reversion(
-            df, rsi_periods=[7, 14], oversold_levels=[30], overbought_levels=[70],
+            df,
+            rsi_periods=[7, 14],
+            oversold_levels=[30],
+            overbought_levels=[70],
         )
         if not result.empty:
             assert set(result["rsi_period"].unique()).issubset({7, 14})
@@ -237,23 +268,39 @@ class TestVolatilityBreakoutScreen:
     def test_returns_dataframe(self):
         df = _make_volatile_ohlcv(n=500)
         result = screen_volatility_breakout(
-            df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(10, 30)],
+            df,
+            breakout_periods=[20],
+            volume_factors=[1.5],
+            adx_ranges=[(10, 30)],
         )
         assert isinstance(result, pd.DataFrame)
 
     def test_expected_columns(self):
         df = _make_volatile_ohlcv(n=500)
         result = screen_volatility_breakout(
-            df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(10, 30)],
+            df,
+            breakout_periods=[20],
+            volume_factors=[1.5],
+            adx_ranges=[(10, 30)],
         )
         if not result.empty:
-            expected = {"breakout_period", "volume_factor", "adx_low", "adx_high", "total_return", "sharpe_ratio"}
+            expected = {
+                "breakout_period",
+                "volume_factor",
+                "adx_low",
+                "adx_high",
+                "total_return",
+                "sharpe_ratio",
+            }
             assert expected.issubset(set(result.columns))
 
     def test_single_combo(self):
         df = _make_volatile_ohlcv(n=500)
         result = screen_volatility_breakout(
-            df, breakout_periods=[15], volume_factors=[1.2], adx_ranges=[(10, 30)],
+            df,
+            breakout_periods=[15],
+            volume_factors=[1.2],
+            adx_ranges=[(10, 30)],
         )
         # Exactly 1 parameter combo
         assert len(result) == 1
@@ -310,13 +357,17 @@ class TestRelativeStrengthScreen:
     def test_zero_fees_by_default(self):
         """Relative strength default fees should be 0.0."""
         import inspect
+
         sig = inspect.signature(screen_relative_strength)
         assert sig.parameters["fees"].default == 0.0
 
     def test_grid_combos(self):
         df, bench = self._make_pair(n=400)
         result = screen_relative_strength(
-            df, bench, lookback_periods=[20, 50], rs_thresholds=[1.02, 1.05],
+            df,
+            bench,
+            lookback_periods=[20, 50],
+            rs_thresholds=[1.02, 1.05],
         )
         # 2 x 2 = 4 combos max
         assert len(result) <= 4
@@ -335,7 +386,9 @@ class TestInsufficientData:
 
     def test_rsi_short_data(self):
         df = _make_ohlcv(n=30)
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         assert isinstance(result, pd.DataFrame)
 
     def test_bollinger_short_data(self):
@@ -346,7 +399,10 @@ class TestInsufficientData:
     def test_volatility_breakout_short_data(self):
         df = _make_ohlcv(n=50)
         result = screen_volatility_breakout(
-            df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(10, 30)],
+            df,
+            breakout_periods=[20],
+            volume_factors=[1.5],
+            adx_ranges=[(10, 30)],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -363,7 +419,9 @@ class TestNaNData:
     def test_rsi_with_nans_does_not_crash(self):
         df = _make_nan_ohlcv(n=500, nan_fraction=0.05)
         # RSI and other indicators handle NaN via pandas rolling
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         assert isinstance(result, pd.DataFrame)
 
     def test_bollinger_with_nans(self):
@@ -374,7 +432,10 @@ class TestNaNData:
     def test_volatility_breakout_with_nans(self):
         df = _make_nan_ohlcv(n=500, nan_fraction=0.05)
         result = screen_volatility_breakout(
-            df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(10, 30)],
+            df,
+            breakout_periods=[20],
+            volume_factors=[1.5],
+            adx_ranges=[(10, 30)],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -393,7 +454,9 @@ class TestFlatData:
 
     def test_rsi_flat(self):
         df = _make_flat_ohlcv(n=500)
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         assert isinstance(result, pd.DataFrame)
 
     def test_bollinger_flat(self):
@@ -424,11 +487,17 @@ class TestAssetClassFees:
         """Crypto fees (0.1%) vs equity fees (0%) should yield lower returns."""
         df = _make_trending_ohlcv(n=500)
         r_equity = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70],
+            df,
+            rsi_periods=[14],
+            oversold_levels=[30],
+            overbought_levels=[70],
             fees=_ASSET_CLASS_FEES["equity"],
         )
         r_crypto = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70],
+            df,
+            rsi_periods=[14],
+            oversold_levels=[30],
+            overbought_levels=[70],
             fees=_ASSET_CLASS_FEES["crypto"],
         )
         if not r_equity.empty and not r_crypto.empty:
@@ -449,7 +518,9 @@ class TestResultFormat:
 
     def test_rsi_result_num_trades_integer(self):
         df = _make_ohlcv(n=500)
-        result = screen_rsi_mean_reversion(df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70])
+        result = screen_rsi_mean_reversion(
+            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+        )
         if not result.empty and "num_trades" in result.columns:
             # num_trades should be integer-valued (though possibly stored as float)
             for v in result["num_trades"]:
@@ -469,7 +540,13 @@ class TestResultFormat:
 
 class TestScreenFunctionsRegistry:
     def test_all_five_strategies_registered(self):
-        expected = {"sma_crossover", "rsi_mean_reversion", "bollinger_breakout", "ema_rsi_combo", "volatility_breakout"}
+        expected = {
+            "sma_crossover",
+            "rsi_mean_reversion",
+            "bollinger_breakout",
+            "ema_rsi_combo",
+            "volatility_breakout",
+        }
         assert expected == set(SCREEN_FUNCTIONS.keys())
 
     def test_screen_functions_are_callable(self):
@@ -527,7 +604,7 @@ class TestWalkForwardValidation:
 
     def test_wf_is_screen_fails(self):
         """When IS screen raises exception, split should be skipped."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         df = _make_ohlcv(n=1000)
 
@@ -555,8 +632,11 @@ class TestWalkForwardValidation:
             if call_count["n"] % 2 == 0:  # Fail on even calls (OOS)
                 raise RuntimeError("OOS failed")
             return screen_rsi_mean_reversion(
-                df_arg, rsi_periods=[14], oversold_levels=[30],
-                overbought_levels=[70], fees=fees,
+                df_arg,
+                rsi_periods=[14],
+                oversold_levels=[30],
+                overbought_levels=[70],
+                fees=fees,
             )
 
         with patch.dict(
@@ -572,7 +652,11 @@ class TestWalkForwardValidation:
         df = _make_ohlcv(n=150)
         # With 150 rows / 3 splits = 50 per window, train_ratio 0.7 → 35 train, 15 test
         result = walk_forward_validate(
-            df, "rsi_mean_reversion", n_splits=3, train_ratio=0.7, fees=0.001,
+            df,
+            "rsi_mean_reversion",
+            n_splits=3,
+            train_ratio=0.7,
+            fees=0.001,
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -600,7 +684,11 @@ class TestWalkForwardValidation:
         # train < 50 so split is skipped via lines 497-498
         df = _make_ohlcv(n=300)
         result = walk_forward_validate(
-            df, "rsi_mean_reversion", n_splits=3, train_ratio=0.1, fees=0.001,
+            df,
+            "rsi_mean_reversion",
+            n_splits=3,
+            train_ratio=0.1,
+            fees=0.001,
         )
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
@@ -619,8 +707,11 @@ class TestWalkForwardValidation:
                 return pd.DataFrame()
             # IS returns valid results
             return screen_rsi_mean_reversion(
-                df_arg, rsi_periods=[14], oversold_levels=[30],
-                overbought_levels=[70], fees=fees,
+                df_arg,
+                rsi_periods=[14],
+                oversold_levels=[30],
+                overbought_levels=[70],
+                fees=fees,
             )
 
         with patch.dict(
@@ -628,7 +719,10 @@ class TestWalkForwardValidation:
             {"alternating_test": alternating_screen},
         ):
             result = walk_forward_validate(
-                df, "alternating_test", n_splits=2, fees=0.001,
+                df,
+                "alternating_test",
+                n_splits=2,
+                fees=0.001,
             )
 
         assert isinstance(result, pd.DataFrame)
@@ -646,6 +740,7 @@ class TestRunFullScreen:
     def test_run_full_screen_basic(self, tmp_path):
         """Test run_full_screen with mocked load_ohlcv."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_trending_ohlcv(n=500)
@@ -658,13 +753,19 @@ class TestRunFullScreen:
 
         assert isinstance(results, dict)
         # Should have at least some screens
-        possible_screens = {"sma_crossover", "rsi_mean_reversion", "bollinger_breakout",
-                           "ema_rsi_combo", "volatility_breakout"}
+        possible_screens = {
+            "sma_crossover",
+            "rsi_mean_reversion",
+            "bollinger_breakout",
+            "ema_rsi_combo",
+            "volatility_breakout",
+        }
         assert len(set(results.keys()) & possible_screens) > 0
 
     def test_run_full_screen_empty_data(self):
         """Empty data should return empty dict."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         with patch("research.scripts.vbt_screener.load_ohlcv", return_value=pd.DataFrame()):
@@ -675,12 +776,14 @@ class TestRunFullScreen:
     def test_run_full_screen_equity_with_relative_strength(self, tmp_path):
         """Equity asset class should run relative_strength screen."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_trending_ohlcv(n=500)
         spy_df = _make_ohlcv(n=500, seed=99)
 
         call_count = {"n": 0}
+
         def mock_load(symbol, tf, source):
             call_count["n"] += 1
             if "SPY" in symbol:
@@ -700,6 +803,7 @@ class TestRunFullScreen:
     def test_run_full_screen_equity_no_spy_data(self, tmp_path):
         """When SPY data unavailable, should skip relative strength."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_trending_ohlcv(n=500)
@@ -720,6 +824,7 @@ class TestRunFullScreen:
     def test_run_full_screen_saves_results(self, tmp_path):
         """Should save CSV and summary.json to output dir."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_trending_ohlcv(n=500)
@@ -728,12 +833,13 @@ class TestRunFullScreen:
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
-            results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
+            run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
 
         # Should have created output directory with summary.json
         output_dirs = [d for d in tmp_path.iterdir() if d.is_dir()]
         if output_dirs:
             import json
+
             summary_path = output_dirs[0] / "summary.json"
             assert summary_path.exists()
             with open(summary_path) as f:
@@ -743,6 +849,7 @@ class TestRunFullScreen:
     def test_run_full_screen_forex_fees(self, tmp_path):
         """Forex asset class should use forex fees."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
@@ -758,13 +865,17 @@ class TestRunFullScreen:
     def test_run_full_screen_screen_exception_handled(self, tmp_path):
         """If a screen raises, it should be caught and other screens continue."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.screen_sma_crossover", side_effect=RuntimeError("boom")),
+            patch(
+                "research.scripts.vbt_screener.screen_sma_crossover",
+                side_effect=RuntimeError("boom"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -775,13 +886,17 @@ class TestRunFullScreen:
     def test_run_full_screen_walk_forward_exception(self, tmp_path):
         """Walk-forward failure for a screen should be caught."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.walk_forward_validate", side_effect=RuntimeError("wf error")),
+            patch(
+                "research.scripts.vbt_screener.walk_forward_validate",
+                side_effect=RuntimeError("wf error"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -791,6 +906,7 @@ class TestRunFullScreen:
     def test_run_full_screen_relative_strength_exception(self, tmp_path):
         """Relative strength exception should be caught for equity."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
@@ -812,13 +928,17 @@ class TestRunFullScreen:
     def test_run_full_screen_rsi_exception(self, tmp_path):
         """RSI screen exception should be caught."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.screen_rsi_mean_reversion", side_effect=RuntimeError("rsi boom")),
+            patch(
+                "research.scripts.vbt_screener.screen_rsi_mean_reversion",
+                side_effect=RuntimeError("rsi boom"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -828,13 +948,17 @@ class TestRunFullScreen:
     def test_run_full_screen_bollinger_exception(self, tmp_path):
         """Bollinger screen exception should be caught."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.screen_bollinger_breakout", side_effect=RuntimeError("bb boom")),
+            patch(
+                "research.scripts.vbt_screener.screen_bollinger_breakout",
+                side_effect=RuntimeError("bb boom"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -844,13 +968,17 @@ class TestRunFullScreen:
     def test_run_full_screen_ema_rsi_exception(self, tmp_path):
         """EMA+RSI screen exception should be caught."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.screen_ema_rsi_combo", side_effect=RuntimeError("ema boom")),
+            patch(
+                "research.scripts.vbt_screener.screen_ema_rsi_combo",
+                side_effect=RuntimeError("ema boom"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -860,13 +988,17 @@ class TestRunFullScreen:
     def test_run_full_screen_vb_exception(self, tmp_path):
         """Volatility breakout screen exception should be caught."""
         from unittest.mock import patch
+
         from research.scripts.vbt_screener import run_full_screen
 
         df = _make_ohlcv(n=500)
 
         with (
             patch("research.scripts.vbt_screener.load_ohlcv", return_value=df),
-            patch("research.scripts.vbt_screener.screen_volatility_breakout", side_effect=RuntimeError("vb boom")),
+            patch(
+                "research.scripts.vbt_screener.screen_volatility_breakout",
+                side_effect=RuntimeError("vb boom"),
+            ),
             patch("research.scripts.vbt_screener.RESULTS_DIR", tmp_path),
         ):
             results = run_full_screen("BTC/USDT", "1h", "kraken", fees=0.001)
@@ -878,18 +1010,22 @@ class TestRunFullScreen:
 
 
 class TestScreenExceptionBranches:
-    """Cover vbt_screener.py except branches in individual screens (lines 153-154, 211-212, etc.)."""
+    """Cover vbt_screener.py except branches in individual screens."""
 
     def test_rsi_screen_internal_exception(self):
         """Force exception inside RSI screen to cover except branch."""
         from unittest.mock import patch
+
         import vectorbt as vbt
 
         df = _make_ohlcv(n=500)
         # Mock Portfolio.from_signals to raise
         with patch.object(vbt.Portfolio, "from_signals", side_effect=RuntimeError("vbt error")):
             result = screen_rsi_mean_reversion(
-                df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70],
+                df,
+                rsi_periods=[14],
+                oversold_levels=[30],
+                overbought_levels=[70],
             )
 
         assert isinstance(result, pd.DataFrame)
@@ -898,6 +1034,7 @@ class TestScreenExceptionBranches:
     def test_bollinger_screen_internal_exception(self):
         """Force exception inside Bollinger screen to cover except branch."""
         from unittest.mock import patch
+
         import vectorbt as vbt
 
         df = _make_ohlcv(n=500)
@@ -910,12 +1047,16 @@ class TestScreenExceptionBranches:
     def test_volatility_breakout_screen_internal_exception(self):
         """Force exception inside VB screen to cover except branch."""
         from unittest.mock import patch
+
         import vectorbt as vbt
 
         df = _make_volatile_ohlcv(n=500)
         with patch.object(vbt.Portfolio, "from_signals", side_effect=RuntimeError("vbt error")):
             result = screen_volatility_breakout(
-                df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(10, 30)],
+                df,
+                breakout_periods=[20],
+                volume_factors=[1.5],
+                adx_ranges=[(10, 30)],
             )
 
         assert isinstance(result, pd.DataFrame)
@@ -924,6 +1065,7 @@ class TestScreenExceptionBranches:
     def test_ema_rsi_screen_internal_exception(self):
         """Force exception inside EMA+RSI screen to cover except branch (lines 263-264)."""
         from unittest.mock import patch
+
         import vectorbt as vbt
 
         df = _make_ohlcv(n=500)
@@ -936,16 +1078,24 @@ class TestScreenExceptionBranches:
     def test_relative_strength_screen_internal_exception(self):
         """Force exception inside relative strength screen to cover except branch."""
         from unittest.mock import patch
+
         import vectorbt as vbt
 
         idx = pd.date_range("2024-01-01", periods=300, freq="1d", tz="UTC")
         rng = np.random.RandomState(42)
-        df = pd.DataFrame({"close": 100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, 300)))}, index=idx)
-        bench = pd.DataFrame({"close": 100 * np.exp(np.cumsum(rng.normal(0.0005, 0.01, 300)))}, index=idx)
+        df = pd.DataFrame(
+            {"close": 100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, 300)))}, index=idx
+        )
+        bench = pd.DataFrame(
+            {"close": 100 * np.exp(np.cumsum(rng.normal(0.0005, 0.01, 300)))}, index=idx
+        )
 
         with patch.object(vbt.Portfolio, "from_signals", side_effect=RuntimeError("vbt error")):
             result = screen_relative_strength(
-                df, bench, lookback_periods=[20], rs_thresholds=[1.02],
+                df,
+                bench,
+                lookback_periods=[20],
+                rs_thresholds=[1.02],
             )
 
         assert isinstance(result, pd.DataFrame)

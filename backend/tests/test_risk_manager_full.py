@@ -9,11 +9,9 @@ import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import numpy as np
-import pandas as pd
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -26,7 +24,6 @@ from common.risk.risk_manager import (
     RiskManager,
     VaRResult,
 )
-
 
 # ══════════════════════════════════════════════
 # Dataclass Defaults
@@ -119,7 +116,7 @@ class TestReturnTracker:
     def test_correlation_matrix_sufficient_data(self):
         tracker = ReturnTracker()
         rng = np.random.RandomState(42)
-        for i in range(25):
+        for _i in range(25):
             tracker.record_price("BTC", 100 + rng.randn() * 5)
             tracker.record_price("ETH", 200 + rng.randn() * 10)
         corr = tracker.get_correlation_matrix()
@@ -132,7 +129,7 @@ class TestReturnTracker:
     def test_correlation_matrix_specific_symbols(self):
         tracker = ReturnTracker()
         rng = np.random.RandomState(42)
-        for i in range(25):
+        for _i in range(25):
             tracker.record_price("BTC", 100 + rng.randn() * 5)
             tracker.record_price("ETH", 200 + rng.randn() * 10)
             tracker.record_price("SOL", 50 + rng.randn() * 3)
@@ -150,7 +147,7 @@ class TestReturnTracker:
     def test_compute_var_parametric(self):
         tracker = ReturnTracker()
         rng = np.random.RandomState(42)
-        for i in range(30):
+        for _i in range(30):
             tracker.record_price("BTC", 50000 + rng.randn() * 1000)
         result = tracker.compute_var({"BTC": 0.5}, 10000, method="parametric")
         assert result.method == "parametric"
@@ -161,7 +158,7 @@ class TestReturnTracker:
     def test_compute_var_historical(self):
         tracker = ReturnTracker()
         rng = np.random.RandomState(42)
-        for i in range(30):
+        for _i in range(30):
             tracker.record_price("BTC", 50000 + rng.randn() * 1000)
         result = tracker.compute_var({"BTC": 0.5}, 10000, method="historical")
         assert result.method == "historical"
@@ -176,7 +173,7 @@ class TestReturnTracker:
     def test_compute_var_zero_sigma(self):
         """Constant prices should yield zero sigma → zero VaR."""
         tracker = ReturnTracker()
-        for i in range(25):
+        for _i in range(25):
             tracker.record_price("FLAT", 100)
             tracker.record_price("FLAT", 100)  # Extra to get returns
         result = tracker.compute_var({"FLAT": 1.0}, 10000, method="parametric")
@@ -187,7 +184,7 @@ class TestReturnTracker:
         """CVaR should generally be >= VaR at the same confidence level."""
         tracker = ReturnTracker()
         rng = np.random.RandomState(42)
-        for i in range(100):
+        for _i in range(100):
             tracker.record_price("BTC", 50000 + rng.randn() * 2000)
         result = tracker.compute_var({"BTC": 1.0}, 10000, method="parametric")
         if result.var_95 > 0:
@@ -283,7 +280,7 @@ class TestTradeGating:
         rm = RiskManager()
         # Stop loss at 50% of entry
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=25000
+            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=25000,
         )
         assert not approved
         assert "Stop loss too wide" in reason
@@ -295,7 +292,7 @@ class TestTradeGating:
         ))
         # Stop at ~8% from entry, R:R check requires 16% profit (>15% threshold)
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=46000
+            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=46000,
         )
         assert not approved
         assert "Risk/reward" in reason
@@ -303,7 +300,7 @@ class TestTradeGating:
     def test_small_trade_approved(self):
         rm = RiskManager()
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=49000
+            "BTC/USDT", "buy", 0.001, 50000, stop_loss_price=49000,
         )
         assert approved
         assert reason == "approved"
@@ -327,7 +324,7 @@ class TestTradeGating:
             mock_mhs.is_market_open.return_value = False
             mock_mhs.get_session_info.return_value = {"next_open": "Mon 09:30"}
             approved, reason = rm.check_new_trade(
-                "AAPL/USD", "buy", 1.0, 150, asset_class="equity"
+                "AAPL/USD", "buy", 1.0, 150, asset_class="equity",
             )
         assert not approved
         assert "Market closed" in reason
@@ -335,25 +332,27 @@ class TestTradeGating:
     def test_market_hours_crypto_always_open(self):
         rm = RiskManager()
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.001, 50000, asset_class="crypto"
+            "BTC/USDT", "buy", 0.001, 50000, asset_class="crypto",
         )
         assert approved
 
     def test_market_hours_import_error_allows(self):
         """If MarketHoursService not available, trade should be allowed."""
         rm = RiskManager()
-        with patch(
-            "common.risk.risk_manager.RiskManager.check_new_trade",
-            wraps=rm.check_new_trade,
-        ):
+        with (
+            patch(
+                "common.risk.risk_manager.RiskManager.check_new_trade",
+                wraps=rm.check_new_trade,
+            ),
             # Simulate ImportError by patching the import inside check_new_trade
-            with patch.dict("sys.modules", {"common.market_hours.sessions": None}):
-                # Direct call to the actual method won't trigger real import
-                # Test the actual code path with a mock
-                pass
+            patch.dict("sys.modules", {"common.market_hours.sessions": None}),
+        ):
+            # Direct call to the actual method won't trigger real import
+            # Test the actual code path with a mock
+            pass
         # Just verify crypto works without market hours
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.001, 50000, asset_class="crypto"
+            "BTC/USDT", "buy", 0.001, 50000, asset_class="crypto",
         )
         assert approved
 
@@ -502,7 +501,7 @@ class TestCorrelationCheck:
         rm.state.open_positions = {"ETH/USDT": {}}
         # Feed highly correlated data
         rng = np.random.RandomState(42)
-        for i in range(25):
+        for _i in range(25):
             base = rng.randn() * 100
             rm.return_tracker.record_price("BTC/USDT", 50000 + base)
             rm.return_tracker.record_price("ETH/USDT", 3000 + base * 0.06)  # Same direction
@@ -568,7 +567,7 @@ class TestStatusAndHeatCheck:
         rm = RiskManager(limits=RiskLimits(max_position_size_pct=0.20))
         rm.state.total_equity = 10000
         rm.state.open_positions = {
-            "BTC/USDT": {"value": 1900}  # 19%, > 90% of 20% limit
+            "BTC/USDT": {"value": 1900},  # 19%, > 90% of 20% limit
         }
         heat = rm.portfolio_heat_check()
         assert any("Concentration" in i for i in heat["issues"])
@@ -603,7 +602,7 @@ class TestGetVar:
         rm = RiskManager()
         rm.state.open_positions = {"BTC": {"value": 5000}}
         rng = np.random.RandomState(42)
-        for i in range(30):
+        for _i in range(30):
             rm.return_tracker.record_price("BTC", 50000 + rng.randn() * 1000)
         var = rm.get_var(method="parametric")
         assert var.var_95 != 0
@@ -612,7 +611,7 @@ class TestGetVar:
         rm = RiskManager()
         rm.state.open_positions = {"BTC": {"value": 5000}}
         rng = np.random.RandomState(42)
-        for i in range(50):
+        for _i in range(50):
             rm.return_tracker.record_price("BTC", 50000 + rng.randn() * 1000)
         var = rm.get_var(method="historical")
         assert var.method == "historical"

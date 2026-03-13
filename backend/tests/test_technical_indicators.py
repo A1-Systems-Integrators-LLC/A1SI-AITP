@@ -47,7 +47,7 @@ def ohlcv_df():
             "low": low,
             "close": close,
             "volume": volume,
-        }
+        },
     )
 
 

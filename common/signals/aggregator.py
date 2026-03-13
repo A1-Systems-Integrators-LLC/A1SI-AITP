@@ -123,7 +123,7 @@ class SignalAggregator:
             result.entry_approved = False
             result.position_modifier = 0.0
             result.reasoning = [
-                f"Hard-disabled: {strategy_name} blocked in {regime.value}"
+                f"Hard-disabled: {strategy_name} blocked in {regime.value}",
             ]
             logger.info(
                 "Signal HARD-DISABLED: %s %s in %s",
@@ -144,11 +144,16 @@ class SignalAggregator:
         # Regime alignment
         if regime_state is not None:
             regime_raw = self._get_regime_alignment(
-                regime_state, strategy_name, asset_class
+                regime_state,
+                strategy_name,
+                asset_class,
             )
             # Apply cooldown penalty if regime just changed
             regime_raw = self._apply_cooldown(
-                symbol, regime_state.regime, regime_raw, config.regime_cooldown_bars
+                symbol,
+                regime_state.regime,
+                regime_raw,
+                config.regime_cooldown_bars,
             )
             sources["regime"] = regime_raw
             available.append("regime")
@@ -199,7 +204,11 @@ class SignalAggregator:
         result.entry_approved = composite >= effective_threshold
         result.position_modifier = self._position_modifier(composite, effective_threshold)
         result.reasoning = self._build_reasoning(
-            sources, available, composite, strategy_name, regime,
+            sources,
+            available,
+            composite,
+            strategy_name,
+            regime,
             effective_threshold,
         )
 
@@ -232,7 +241,10 @@ class SignalAggregator:
         return raw * state.confidence + FALLBACK_NEUTRAL * (1 - state.confidence)
 
     def _apply_cooldown(
-        self, symbol: str, current_regime: Regime, score: float,
+        self,
+        symbol: str,
+        current_regime: Regime,
+        score: float,
         cooldown_bars: int,
     ) -> float:
         """Penalise regime sub-score during the cooldown period after a transition."""
@@ -253,13 +265,13 @@ class SignalAggregator:
         return score
 
     def _weighted_score(
-        self, sources: dict[str, float], available: list[str]
+        self,
+        sources: dict[str, float],
+        available: list[str],
     ) -> float:
         """Weighted average with proportional redistribution of missing weights."""
         # Total weight of available sources
-        total_available_weight = sum(
-            self._weights.get(k, 0) for k in available
-        )
+        total_available_weight = sum(self._weights.get(k, 0) for k in available)
         if total_available_weight <= 0:
             return FALLBACK_NEUTRAL
 

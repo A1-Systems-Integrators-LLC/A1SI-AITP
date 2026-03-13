@@ -53,14 +53,14 @@ class AuditLogListView(APIView):
         parameters=[
             OpenApiParameter("user", str, description="Filter by username"),
             OpenApiParameter(
-                "action", str, description="Filter by action (case-insensitive contains)"
+                "action", str, description="Filter by action (case-insensitive contains)",
             ),
             OpenApiParameter("status_code", int, description="Filter by HTTP status code"),
             OpenApiParameter(
-                "created_after", str, description="Filter entries after this ISO datetime"
+                "created_after", str, description="Filter entries after this ISO datetime",
             ),
             OpenApiParameter(
-                "created_before", str, description="Filter entries before this ISO datetime"
+                "created_before", str, description="Filter entries before this ISO datetime",
             ),
             OpenApiParameter("limit", int, description="Max results (default 50, max 200)"),
             OpenApiParameter("offset", int, description="Pagination offset (default 0)"),
@@ -106,7 +106,7 @@ class AuditLogListView(APIView):
             {
                 "results": AuditLogSerializer(entries, many=True).data,
                 "total": total,
-            }
+            },
         )
 
 
@@ -286,7 +286,7 @@ class PlatformStatusView(APIView):
                 "frameworks": frameworks,
                 "data_files": data_files,
                 "active_jobs": active_jobs,
-            }
+            },
         )
 
 
@@ -384,7 +384,7 @@ class MetricsView(APIView):
 
             for breaker_info in get_all_breakers():
                 state_val = {"open": 1, "half_open": 0.5, "closed": 0}.get(
-                    breaker_info["state"], 0
+                    breaker_info["state"], 0,
                 )
                 metrics.gauge(
                     "circuit_breaker_state",
@@ -497,7 +497,7 @@ class ScheduledTaskTriggerView(APIView):
                     "job_id": job_id,
                     "task_id": task_id,
                     "message": f"Task {task_id} triggered",
-                }
+                },
             )
         return Response({"error": "Task not found or no executor"}, status=404)
 

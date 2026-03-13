@@ -20,7 +20,9 @@ class AssetClassConfig:
     max_hold_multiplier: float  # Multiplier on strategy's base max_hold_hours
     volume_weight_bonus: float  # Multiplier on scanner/volume-related sub-scores
     spread_max_pct: float  # Max acceptable spread (future gating)
-    session_bonus: dict[str, int] = field(default_factory=dict)  # Session-time conviction adjustments
+    session_bonus: dict[str, int] = field(
+        default_factory=dict
+    )  # Session-time conviction adjustments
 
 
 ASSET_CONFIGS: dict[str, AssetClassConfig] = {

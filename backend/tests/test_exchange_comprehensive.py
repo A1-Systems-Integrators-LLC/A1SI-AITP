@@ -5,7 +5,6 @@ recovery timing, state-change logging, exchange config loading, key rotation,
 exchange health endpoint, and ccxt error mapping.
 """
 
-import logging
 import threading
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,7 +21,6 @@ from market.services.circuit_breaker import (
 )
 from market.services.exchange import ExchangeService, _load_db_config
 
-
 # ── Cache TTL expiry ─────────────────────────────────────────
 
 
@@ -32,7 +30,7 @@ class TestCacheTTLExpiry:
     @pytest.mark.django_db
     def test_cached_exchange_status_reuses_within_ttl(self):
         """Within TTL window, cached result is returned without re-checking."""
-        from trading.views import _exchange_check_cache, _exchange_check_lock
+        from trading.views import _exchange_check_cache
 
         # Save original state
         orig = dict(_exchange_check_cache)
@@ -66,13 +64,16 @@ class TestCacheTTLExpiry:
             mock_exchange.load_markets = AsyncMock()
             mock_exchange.close = AsyncMock()
 
-            with patch(
-                "market.services.exchange.ExchangeService._get_exchange",
-                new_callable=AsyncMock,
-                return_value=mock_exchange,
-            ), patch(
-                "market.services.exchange.ExchangeService.close",
-                new_callable=AsyncMock,
+            with (
+                patch(
+                    "market.services.exchange.ExchangeService._get_exchange",
+                    new_callable=AsyncMock,
+                    return_value=mock_exchange,
+                ),
+                patch(
+                    "market.services.exchange.ExchangeService.close",
+                    new_callable=AsyncMock,
+                ),
             ):
                 from trading.views import _get_cached_exchange_status
 
@@ -92,17 +93,20 @@ class TestCacheTTLExpiry:
 
             mock_exchange = AsyncMock()
             mock_exchange.load_markets = AsyncMock(
-                side_effect=Exception("Connection refused")
+                side_effect=Exception("Connection refused"),
             )
             mock_exchange.close = AsyncMock()
 
-            with patch(
-                "market.services.exchange.ExchangeService._get_exchange",
-                new_callable=AsyncMock,
-                return_value=mock_exchange,
-            ), patch(
-                "market.services.exchange.ExchangeService.close",
-                new_callable=AsyncMock,
+            with (
+                patch(
+                    "market.services.exchange.ExchangeService._get_exchange",
+                    new_callable=AsyncMock,
+                    return_value=mock_exchange,
+                ),
+                patch(
+                    "market.services.exchange.ExchangeService.close",
+                    new_callable=AsyncMock,
+                ),
             ):
                 from trading.views import _get_cached_exchange_status
 
@@ -355,7 +359,10 @@ class TestExchangeConfigLoading:
         from market.models import ExchangeConfig
 
         config = ExchangeConfig.objects.create(
-            name="Default", exchange_id="kraken", is_default=True, is_active=True
+            name="Default",
+            exchange_id="kraken",
+            is_default=True,
+            is_active=True,
         )
         result = _load_db_config()
         assert result is not None
@@ -366,7 +373,10 @@ class TestExchangeConfigLoading:
         from market.models import ExchangeConfig
 
         ExchangeConfig.objects.create(
-            name="Inactive", exchange_id="kraken", is_default=True, is_active=False
+            name="Inactive",
+            exchange_id="kraken",
+            is_default=True,
+            is_active=False,
         )
         result = _load_db_config()
         assert result is None
@@ -376,7 +386,9 @@ class TestExchangeConfigLoading:
         from market.models import ExchangeConfig
 
         config = ExchangeConfig.objects.create(
-            name="Specific", exchange_id="binance", is_active=True
+            name="Specific",
+            exchange_id="binance",
+            is_active=True,
         )
         result = _load_db_config(config_id=config.pk)
         assert result is not None
@@ -389,7 +401,9 @@ class TestExchangeConfigLoading:
 
     def test_returns_none_on_import_error(self):
         """When market.models cannot be imported, returns None gracefully."""
-        original_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+        original_import = (
+            __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+        )
 
         def failing_import(name, *args, **kwargs):
             if name == "market.models":
@@ -405,7 +419,10 @@ class TestExchangeConfigLoading:
         from market.models import ExchangeConfig
 
         ExchangeConfig.objects.create(
-            name="Primary", exchange_id="coinbase", is_default=True, is_active=True
+            name="Primary",
+            exchange_id="coinbase",
+            is_default=True,
+            is_active=True,
         )
         service = ExchangeService()
         assert service._exchange_id == "coinbase"
@@ -501,13 +518,16 @@ class TestExchangeHealthEndpoint:
         mock_exchange.load_markets = AsyncMock()
         mock_exchange.close = AsyncMock()
 
-        with patch(
-            "market.services.exchange.ExchangeService._get_exchange",
-            new_callable=AsyncMock,
-            return_value=mock_exchange,
-        ), patch(
-            "market.services.exchange.ExchangeService.close",
-            new_callable=AsyncMock,
+        with (
+            patch(
+                "market.services.exchange.ExchangeService._get_exchange",
+                new_callable=AsyncMock,
+                return_value=mock_exchange,
+            ),
+            patch(
+                "market.services.exchange.ExchangeService.close",
+                new_callable=AsyncMock,
+            ),
         ):
             resp = authenticated_client.get("/api/trading/exchange-health/?exchange_id=kraken")
 
@@ -525,13 +545,16 @@ class TestExchangeHealthEndpoint:
         mock_exchange.load_markets = AsyncMock(side_effect=Exception("Timeout connecting"))
         mock_exchange.close = AsyncMock()
 
-        with patch(
-            "market.services.exchange.ExchangeService._get_exchange",
-            new_callable=AsyncMock,
-            return_value=mock_exchange,
-        ), patch(
-            "market.services.exchange.ExchangeService.close",
-            new_callable=AsyncMock,
+        with (
+            patch(
+                "market.services.exchange.ExchangeService._get_exchange",
+                new_callable=AsyncMock,
+                return_value=mock_exchange,
+            ),
+            patch(
+                "market.services.exchange.ExchangeService.close",
+                new_callable=AsyncMock,
+            ),
         ):
             resp = authenticated_client.get("/api/trading/exchange-health/")
 
@@ -551,13 +574,16 @@ class TestExchangeHealthEndpoint:
         mock_exchange.load_markets = AsyncMock()
         mock_exchange.close = AsyncMock()
 
-        with patch(
-            "market.services.exchange.ExchangeService._get_exchange",
-            new_callable=AsyncMock,
-            return_value=mock_exchange,
-        ), patch(
-            "market.services.exchange.ExchangeService.close",
-            new_callable=AsyncMock,
+        with (
+            patch(
+                "market.services.exchange.ExchangeService._get_exchange",
+                new_callable=AsyncMock,
+                return_value=mock_exchange,
+            ),
+            patch(
+                "market.services.exchange.ExchangeService.close",
+                new_callable=AsyncMock,
+            ),
         ):
             resp = authenticated_client.get("/api/trading/exchange-health/")
 
@@ -648,9 +674,11 @@ class TestCircuitBreakerWithExchangeService:
     async def test_fetch_ohlcv_records_success(self):
         """Successful fetch_ohlcv records success on the breaker."""
         mock_exchange = AsyncMock()
-        mock_exchange.fetch_ohlcv = AsyncMock(return_value=[
-            [1700000000000, 50000.0, 51000.0, 49000.0, 50500.0, 100.0],
-        ])
+        mock_exchange.fetch_ohlcv = AsyncMock(
+            return_value=[
+                [1700000000000, 50000.0, 51000.0, 49000.0, 50500.0, 100.0],
+            ]
+        )
 
         service = ExchangeService(exchange_id="test-ohlcv-svc")
         service._exchange = mock_exchange

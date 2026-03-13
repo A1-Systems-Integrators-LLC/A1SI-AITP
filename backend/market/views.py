@@ -116,7 +116,7 @@ class NewsFetchView(APIView):
                 "asset_class": asset_class,
                 "articles_fetched": count,
                 "message": f"Fetched {count} new articles for {asset_class}",
-            }
+            },
         )
 
 
@@ -253,7 +253,7 @@ class ExchangeConfigTestView(APIView):
                     "message": (
                         f"Connected to {config.exchange_id} — {markets_count} markets loaded"
                     ),
-                }
+                },
             )
         return Response(
             {"success": False, "message": error_msg},
@@ -483,7 +483,7 @@ class TickerListView(APIView):
                     async_to_sync(router.fetch_tickers)(
                         symbol_list,
                         asset_class,
-                    )
+                    ),
                 )
 
             async def _fetch():
@@ -542,7 +542,7 @@ class OHLCVView(APIView):
                     timeframe,
                     limit,
                     asset_class,
-                )
+                ),
             )
         except (RequestTimeout, asyncio.TimeoutError) as exc:
             logger.warning("OHLCV timeout for %s: %s", symbol, exc)
@@ -579,7 +579,7 @@ class IndicatorComputeView(APIView):
 
         # Run in thread pool since this is CPU-bound
         future = _thread_pool.submit(
-            IndicatorService.compute, real_symbol, timeframe, exchange, ind_list, limit
+            IndicatorService.compute, real_symbol, timeframe, exchange, ind_list, limit,
         )
         try:
             return Response(future.result(timeout=30))
@@ -647,7 +647,7 @@ class RegimeCurrentView(APIView):
                     "ema_slope": 0.0,
                     "trend_alignment": 0.0,
                     "price_structure_score": 0.0,
-                }
+                },
             )
         return Response(result)
 
@@ -675,7 +675,7 @@ class RegimeRecommendationView(APIView):
                     "weights": [],
                     "position_size_modifier": 0.0,
                     "reasoning": "No data available",
-                }
+                },
             )
         return Response(result)
 
@@ -724,7 +724,7 @@ class RegimePositionSizeView(APIView):
                     "entry_price": entry_price,
                     "stop_loss_price": stop_loss_price,
                     "primary_strategy": "none",
-                }
+                },
             )
         return Response(result)
 
@@ -834,7 +834,7 @@ class OpportunitySummaryView(APIView):
         by_type = dict(
             active.values_list("opportunity_type")
             .annotate(count=Count("id"))
-            .values_list("opportunity_type", "count")
+            .values_list("opportunity_type", "count"),
         )
         avg_score = active.aggregate(avg=Avg("score"))["avg"] or 0.0
         top_5 = active.order_by("-score")[:5]

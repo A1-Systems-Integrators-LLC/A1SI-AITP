@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-A1SI-AITP Platform Orchestrator
+"""A1SI-AITP Platform Orchestrator
 =================================
 Master CLI that coordinates all framework tiers:
     - Data Pipeline (shared OHLCV acquisition)
@@ -29,13 +28,13 @@ Usage:
     python run.py validate                   # Validate all framework installs
 """
 
+import json
+import logging
 import os
 import subprocess
 import sys
-import json
-import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -183,7 +182,9 @@ def cmd_validate():
 def cmd_data(args):
     """Data pipeline commands."""
     from common.data_pipeline.pipeline import (
-        download_watchlist, list_available_data, load_ohlcv
+        download_watchlist,
+        list_available_data,
+        load_ohlcv,
     )
 
     if args.data_command == "download":
@@ -230,6 +231,7 @@ def _generate_sample_data():
     """Generate synthetic OHLCV data for testing without exchange access."""
     import numpy as np
     import pandas as pd
+
     from common.data_pipeline.pipeline import save_ohlcv
 
     print("Generating synthetic sample data for testing...")
@@ -243,7 +245,7 @@ def _generate_sample_data():
         ("BNB/USDT", 310), ("XRP/USDT", 0.55),
     ]:
         timestamps = pd.date_range(
-            end=datetime.now(), periods=periods, freq="1h", tz="UTC"
+            end=datetime.now(), periods=periods, freq="1h", tz="UTC",
         )
 
         # Generate realistic price movement with drift and volatility
@@ -296,7 +298,7 @@ def cmd_research(args):
         if results:
             print("\n=== SCREENING SUMMARY ===")
             for name, df in results.items():
-                if hasattr(df, '__len__') and len(df) > 0:
+                if hasattr(df, "__len__") and len(df) > 0:
                     top = df.head(1)
                     sr = top["sharpe_ratio"].iloc[0] if "sharpe_ratio" in top.columns else "N/A"
                     ret = top["total_return"].iloc[0] if "total_return" in top.columns else "N/A"
@@ -327,7 +329,7 @@ def cmd_freqtrade(args):
         result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
         return result.returncode
 
-    elif args.ft_command == "dry-run":
+    if args.ft_command == "dry-run":
         cmd = [
             sys.executable, "-m", "freqtrade", "trade",
             "--config", str(ft_config),
@@ -340,7 +342,7 @@ def cmd_freqtrade(args):
         result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
         return result.returncode
 
-    elif args.ft_command == "hyperopt":
+    if args.ft_command == "hyperopt":
         strategy = args.strategy or "CryptoInvestorV1"
         epochs = args.epochs or 100
         cmd = [
@@ -356,7 +358,7 @@ def cmd_freqtrade(args):
         result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
         return result.returncode
 
-    elif args.ft_command == "list-strategies":
+    if args.ft_command == "list-strategies":
         strat_dir = PROJECT_ROOT / "freqtrade" / "user_data" / "strategies"
         for f in strat_dir.glob("*.py"):
             if not f.name.startswith("__"):
@@ -403,10 +405,10 @@ def cmd_nautilus(args):
 def cmd_ml(args):
     """ML pipeline commands."""
     if args.ml_command == "train":
+        from common.data_pipeline.pipeline import load_ohlcv
         from common.ml.features import build_feature_matrix
         from common.ml.registry import ModelRegistry
         from common.ml.trainer import train_model
-        from common.data_pipeline.pipeline import load_ohlcv
 
         symbol = args.symbol
         timeframe = args.timeframe
@@ -467,14 +469,14 @@ def cmd_ml(args):
             print(
                 f"{m['model_id']:<40} {m.get('symbol', ''):<12} {m.get('timeframe', ''):<6} "
                 f"{metrics.get('accuracy', 0):<8.4f} {metrics.get('f1', 0):<8.4f} "
-                f"{m.get('created_at', '')[:19]}"
+                f"{m.get('created_at', '')[:19]}",
             )
 
     elif args.ml_command == "predict":
+        from common.data_pipeline.pipeline import load_ohlcv
         from common.ml.features import build_feature_matrix
         from common.ml.registry import ModelRegistry
         from common.ml.trainer import predict
-        from common.data_pipeline.pipeline import load_ohlcv
 
         model_id = args.model_id
         if not model_id:
@@ -518,7 +520,7 @@ def cmd_ml(args):
 
 
 def cmd_hft(args):
-    """hftbacktest commands."""
+    """Hftbacktest commands."""
     if args.hft_command == "backtest":
         from hftbacktest.hft_runner import run_hft_backtest
         result = run_hft_backtest(

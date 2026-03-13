@@ -208,7 +208,7 @@ class TestNautilusDetails:
         )
         # Backdate to 2 days ago
         BacktestResult.objects.filter(pk=bt.pk).update(
-            created_at=timezone.now() - timedelta(days=2)
+            created_at=timezone.now() - timedelta(days=2),
         )
 
         result = _get_nautilus_details()
@@ -291,7 +291,7 @@ class TestHFTDetails:
             timeframe="1h",
         )
         BacktestResult.objects.filter(pk=bt.pk).update(
-            created_at=timezone.now() - timedelta(days=2)
+            created_at=timezone.now() - timedelta(days=2),
         )
 
         result = _get_hft_details()

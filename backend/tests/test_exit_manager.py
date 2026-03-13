@@ -462,7 +462,8 @@ class TestTimeBasedExit:
 
     def test_unknown_strategy_default_max_hours(self):
         """Unknown strategy uses DEFAULT_MAX_HOLD_HOURS (96h).
-        Equity multiplier is 2.0, so effective max = 96 * 2.0 = 192h."""
+        Equity multiplier is 2.0, so effective max = 96 * 2.0 = 192h.
+        """
         advice = advise_exit(
             symbol="AAPL",
             strategy_name="SomeUnknownStrategy",

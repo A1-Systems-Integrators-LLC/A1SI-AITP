@@ -1,5 +1,4 @@
-"""
-Cross-service URL contract tests.
+"""Cross-service URL contract tests.
 
 Validates that every URL constructed by Python HTTP clients (Freqtrade strategies,
 NautilusTrader strategies, frontend API modules) resolves to a valid Django URL pattern.
@@ -12,7 +11,6 @@ If a new endpoint is added, add a contract test. If a URL changes, update BOTH
 the client code AND these tests.
 """
 
-import re
 
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
@@ -56,7 +54,8 @@ class NautilusStrategyURLContractTest(SimpleTestCase):
 
     def test_risk_check_trade_trailing_slash(self):
         """Ensure /check-trade/ has trailing slash (Django APPEND_SLASH may not
-        apply to POST requests, causing 500 errors)."""
+        apply to POST requests, causing 500 errors).
+        """
         url = "/api/risk/1/check-trade/"
         self.assertTrue(url.endswith("/"))
         resolved = resolve(url)

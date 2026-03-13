@@ -1,5 +1,4 @@
-"""
-Comprehensive Risk Manager and Risk Service tests — S13.
+"""Comprehensive Risk Manager and Risk Service tests — S13.
 
 Covers:
   1. Trade check with halted state
@@ -31,7 +30,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.risk.risk_manager import PortfolioState, RiskLimits as RMLimits, RiskManager
+from common.risk.risk_manager import RiskLimits as RMLimits
+from common.risk.risk_manager import RiskManager
+
 from risk.models import (
     AlertLog,
     RiskLimitChange,
@@ -41,7 +42,6 @@ from risk.models import (
     TradeCheckLog,
 )
 from risk.services.risk import RiskManagementService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,7 +94,7 @@ class TestTradeCheckHaltedState:
     def test_halted_rejects_buy(self):
         _setup(is_halted=True, halt_reason="Manual halt")
         approved, reason = RiskManagementService.check_trade(
-            1, "BTC/USDT", "buy", 0.1, 50000.0
+            1, "BTC/USDT", "buy", 0.1, 50000.0,
         )
         assert approved is False
         assert "halted" in reason.lower()
@@ -102,7 +102,7 @@ class TestTradeCheckHaltedState:
     def test_halted_rejects_sell(self):
         _setup(is_halted=True, halt_reason="Drawdown breach")
         approved, reason = RiskManagementService.check_trade(
-            1, "ETH/USDT", "sell", 1.0, 3000.0
+            1, "ETH/USDT", "sell", 1.0, 3000.0,
         )
         assert approved is False
 
@@ -205,7 +205,7 @@ class TestRiskLimitAuditTrail:
     def test_audit_captures_old_and_new_values(self):
         _setup(portfolio_id=52, max_drawdown=0.15)
         RiskManagementService.update_limits(
-            52, {"max_portfolio_drawdown": 0.25}
+            52, {"max_portfolio_drawdown": 0.25},
         )
         change = RiskLimitChange.objects.get(portfolio_id=52)
         assert change.old_value == "0.15"
@@ -238,14 +238,13 @@ class TestMarketHoursEnforcement:
         with patch(
             "common.market_hours.sessions.MarketHoursService.is_market_open",
             return_value=False,
+        ), patch(
+            "common.market_hours.sessions.MarketHoursService.get_session_info",
+            return_value={"next_open": "2026-03-09 09:30 ET"},
         ):
-            with patch(
-                "common.market_hours.sessions.MarketHoursService.get_session_info",
-                return_value={"next_open": "2026-03-09 09:30 ET"},
-            ):
-                approved, reason = rm.check_new_trade(
-                    "AAPL", "buy", 10, 150.0, asset_class="equity"
-                )
+            approved, reason = rm.check_new_trade(
+                "AAPL", "buy", 10, 150.0, asset_class="equity",
+            )
         assert approved is False
         assert "market closed" in reason.lower()
 
@@ -254,14 +253,13 @@ class TestMarketHoursEnforcement:
         with patch(
             "common.market_hours.sessions.MarketHoursService.is_market_open",
             return_value=False,
+        ), patch(
+            "common.market_hours.sessions.MarketHoursService.get_session_info",
+            return_value={"next_open": "Sunday 5PM ET"},
         ):
-            with patch(
-                "common.market_hours.sessions.MarketHoursService.get_session_info",
-                return_value={"next_open": "Sunday 5PM ET"},
-            ):
-                approved, reason = rm.check_new_trade(
-                    "EUR/USD", "buy", 1000, 1.10, asset_class="forex"
-                )
+            approved, reason = rm.check_new_trade(
+                "EUR/USD", "buy", 1000, 1.10, asset_class="forex",
+            )
         assert approved is False
         assert "market closed" in reason.lower()
 
@@ -269,7 +267,7 @@ class TestMarketHoursEnforcement:
         rm = RiskManager(limits=RMLimits())
         # Crypto does not check market hours at all
         approved, reason = rm.check_new_trade(
-            "BTC/USDT", "buy", 0.01, 50000.0, asset_class="crypto"
+            "BTC/USDT", "buy", 0.01, 50000.0, asset_class="crypto",
         )
         assert approved is True
 
@@ -280,7 +278,7 @@ class TestMarketHoursEnforcement:
             return_value=True,
         ):
             approved, reason = rm.check_new_trade(
-                "AAPL", "buy", 10, 150.0, asset_class="equity"
+                "AAPL", "buy", 10, 150.0, asset_class="equity",
             )
         assert approved is True
 
@@ -347,7 +345,7 @@ class TestConcurrentTradeChecks:
         results = []
         for i in range(10):
             approved, reason = RiskManagementService.check_trade(
-                70, f"SY{i}/USDT", "buy", 0.01, 100.0
+                70, f"SY{i}/USDT", "buy", 0.01, 100.0,
             )
             results.append((approved, reason))
 
@@ -432,7 +430,7 @@ class TestRiskStateTransitions:
         _setup(portfolio_id=12)
         RiskManagementService.halt_trading(12, "Manual halt")
         alerts = AlertLog.objects.filter(
-            portfolio_id=12, event_type="kill_switch_halt"
+            portfolio_id=12, event_type="kill_switch_halt",
         )
         assert alerts.count() == 1
         assert "HALT" in alerts.first().message
@@ -441,7 +439,7 @@ class TestRiskStateTransitions:
         _setup(portfolio_id=13, is_halted=True, halt_reason="Halted")
         RiskManagementService.resume_trading(13)
         alerts = AlertLog.objects.filter(
-            portfolio_id=13, event_type="kill_switch_resume"
+            portfolio_id=13, event_type="kill_switch_resume",
         )
         assert alerts.count() == 1
         assert "RESUME" in alerts.first().message
@@ -520,7 +518,7 @@ class TestEmptyPortfolio:
 
     def test_check_trade_with_no_prior_state(self):
         approved, reason = RiskManagementService.check_trade(
-            998, "BTC/USDT", "buy", 0.01, 50000.0
+            998, "BTC/USDT", "buy", 0.01, 50000.0,
         )
         # Should auto-create state and approve (small trade)
         assert approved is True
@@ -533,7 +531,7 @@ class TestEmptyPortfolio:
 
     def test_position_size_empty_portfolio(self):
         result = RiskManagementService.calculate_position_size(
-            996, entry_price=50000.0, stop_loss_price=48000.0
+            996, entry_price=50000.0, stop_loss_price=48000.0,
         )
         assert result["size"] > 0
         assert result["risk_amount"] > 0
@@ -622,7 +620,7 @@ class TestPositionSizing:
     def test_basic_position_size(self):
         _setup(portfolio_id=30, equity=10000.0)
         result = RiskManagementService.calculate_position_size(
-            30, entry_price=100.0, stop_loss_price=95.0
+            30, entry_price=100.0, stop_loss_price=95.0,
         )
         # risk_amount = 10000 * 0.03 = 300, price_risk = 5 -> size = 60
         # but capped at max_position_size_pct (20%) = 2000/100 = 20
@@ -632,7 +630,7 @@ class TestPositionSizing:
     def test_position_size_with_custom_risk(self):
         _setup(portfolio_id=31, equity=10000.0)
         result = RiskManagementService.calculate_position_size(
-            31, entry_price=100.0, stop_loss_price=95.0, risk_per_trade=0.01
+            31, entry_price=100.0, stop_loss_price=95.0, risk_per_trade=0.01,
         )
         # risk_amount = 10000 * 0.01 = 100, price_risk = 5 -> size = 20
         assert result["size"] == 20.0

@@ -1,5 +1,4 @@
-"""
-Tests for common.metrics.performance module.
+"""Tests for common.metrics.performance module.
 Covers serialize_trades_df() and compute_performance_metrics().
 """
 
@@ -12,7 +11,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.metrics.performance import compute_performance_metrics, serialize_trades_df  # noqa: E402, I001
+from common.metrics.performance import compute_performance_metrics, serialize_trades_df  # noqa: I001
 
 
 # ── serialize_trades_df ────────────────────────────────────────────
@@ -31,7 +30,7 @@ class TestSerializeTradesDf:
                 "pnl": [100.0, -50.0],
                 "pnl_pct": [0.01, -0.005],
                 "side": ["long", "short"],
-            }
+            },
         )
         result = serialize_trades_df(df)
         assert len(result) == 2
@@ -55,7 +54,7 @@ class TestSerializeTradesDf:
                 "exit_time": pd.to_datetime(["2025-01-02"]),
                 "pnl": [123.456],
                 "pnl_pct": [0.0123],
-            }
+            },
         )
         result = serialize_trades_df(df)
         assert result[0]["pnl"] == 123.456
@@ -67,7 +66,7 @@ class TestSerializeTradesDf:
                 "entry_time": pd.to_datetime(["2025-01-01"]),
                 "exit_time": pd.to_datetime(["2025-01-02"]),
                 "pnl": [100.0],
-            }
+            },
         )
         original_dtype = df["entry_time"].dtype
         serialize_trades_df(df)
@@ -79,7 +78,7 @@ class TestSerializeTradesDf:
             {
                 "entry_time": pd.to_datetime(["2025-03-01"]),
                 "pnl": [50.0],
-            }
+            },
         )
         result = serialize_trades_df(df)
         assert isinstance(result[0]["entry_time"], str)
@@ -99,12 +98,12 @@ class TestComputePerformanceMetrics:
             {
                 "entry_time": pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
                 "exit_time": pd.to_datetime(
-                    ["2025-01-01 12:00", "2025-01-02 12:00", "2025-01-03 12:00"]
+                    ["2025-01-01 12:00", "2025-01-02 12:00", "2025-01-03 12:00"],
                 ),
                 "pnl": [100.0, 200.0, 50.0],
                 "pnl_pct": [0.01, 0.02, 0.005],
                 "side": ["long", "long", "long"],
-            }
+            },
         )
         result = compute_performance_metrics(df)
         assert result["total_trades"] == 3
@@ -122,7 +121,7 @@ class TestComputePerformanceMetrics:
                 "pnl": [100.0, -50.0],
                 "pnl_pct": [0.01, -0.005],
                 "side": ["long", "short"],
-            }
+            },
         )
         result = compute_performance_metrics(df)
         assert result["total_trades"] == 2
@@ -136,15 +135,20 @@ class TestComputePerformanceMetrics:
         df = pd.DataFrame(
             {
                 "entry_time": pd.to_datetime(
-                    ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]
+                    ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"],
                 ),
                 "exit_time": pd.to_datetime(
-                    ["2025-01-01 12:00", "2025-01-02 12:00", "2025-01-03 12:00", "2025-01-04 12:00"]
+                    [
+                        "2025-01-01 12:00",
+                        "2025-01-02 12:00",
+                        "2025-01-03 12:00",
+                        "2025-01-04 12:00",
+                    ],
                 ),
                 "pnl": [100.0, -200.0, -50.0, 300.0],
                 "pnl_pct": [0.01, -0.02, -0.005, 0.03],
                 "side": ["long", "long", "long", "long"],
-            }
+            },
         )
         result = compute_performance_metrics(df)
         # cumulative: 100, -100, -150, 150
@@ -162,7 +166,7 @@ class TestComputePerformanceMetrics:
                 "pnl": np.random.normal(10, 5, n),
                 "pnl_pct": np.random.normal(0.01, 0.005, n),
                 "side": ["long"] * n,
-            }
+            },
         )
         result = compute_performance_metrics(df)
         # Sharpe should be a finite number for this distribution
@@ -176,7 +180,7 @@ class TestComputePerformanceMetrics:
                 "exit_time": pd.to_datetime(["2025-01-02"]),
                 "pnl": [100.0],
                 "side": ["long"],
-            }
+            },
         )
         result = compute_performance_metrics(df)
         assert result["sharpe_ratio"] == 0
@@ -190,7 +194,7 @@ class TestComputePerformanceMetrics:
                 "pnl": [10.0, 20.0],
                 "pnl_pct": [0.001, 0.002],
                 "side": ["long", "long"],
-            }
+            },
         )
         result = compute_performance_metrics(df)
         assert result["avg_trade_duration"] != "N/A"

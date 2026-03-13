@@ -5,8 +5,6 @@ concurrent write safety, yfinance adapter, data validation, and incremental
 fetch edge cases.
 """
 
-import fcntl
-import struct
 import sys
 import threading
 from datetime import datetime, timedelta, timezone
@@ -22,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.data_pipeline.pipeline import (
+    audit_nans,
     check_ohlc_integrity,
     detect_gaps,
     detect_outliers,
@@ -33,14 +32,12 @@ from common.data_pipeline.pipeline import (
     load_ohlcv,
     save_ohlcv,
     validate_data,
-    audit_nans,
 )
 from common.data_pipeline.yfinance_adapter import (
+    _fetch_ohlcv_sync,
     normalize_symbol,
     yfinance_to_platform_symbol,
-    _fetch_ohlcv_sync,
 )
-
 
 # ──────────────────────────────────────────────
 # Helpers
@@ -83,7 +80,7 @@ class TestExchangeDownEmptyData:
 
     @patch("common.data_pipeline.pipeline.get_exchange")
     def test_fetch_ohlcv_empty_candles_returns_empty_df(self, mock_get_exchange):
-        """ccxt returning empty list should yield an empty DataFrame."""
+        """Ccxt returning empty list should yield an empty DataFrame."""
         mock_exchange = MagicMock()
         mock_exchange.markets = {"BTC/USDT": {}}
         mock_exchange.rateLimit = 100
@@ -149,7 +146,7 @@ class TestPartialWatchlistDownload:
     @patch("common.data_pipeline.pipeline.get_last_timestamp", return_value=None)
     @patch("common.data_pipeline.pipeline.save_ohlcv")
     def test_partial_success_records_both_ok_and_error(
-        self, mock_save, mock_last_ts, mock_fetch
+        self, mock_save, mock_last_ts, mock_fetch,
     ):
         good_df = _make_ohlcv(periods=10)
 
@@ -224,7 +221,7 @@ class TestParquetCorruptionRecovery:
 
         new_df = _make_ohlcv(periods=5)
         # save_ohlcv tries to read existing then merge — corrupt existing raises
-        with pytest.raises(Exception):
+        with pytest.raises((OSError, ValueError)):
             save_ohlcv(new_df, "BTC/USDT", "1h", "kraken", directory=tmp_path)
 
     def test_validate_data_on_corrupt_file(self, tmp_path):
@@ -233,7 +230,7 @@ class TestParquetCorruptionRecovery:
         corrupt_path.write_bytes(b"NOT PARQUET")
 
         report = validate_data(
-            "BTC/USDT", "1h", "kraken", directory=tmp_path
+            "BTC/USDT", "1h", "kraken", directory=tmp_path,
         )
         assert report.passed is False
         assert report.rows == 0
@@ -519,7 +516,7 @@ class TestStaleDataDetection:
     def test_recent_data_not_stale(self):
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=10)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=10,
             freq="1h",
@@ -649,7 +646,7 @@ class TestValidateDataIntegration:
         """Clean, recent data should pass validation."""
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=50)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=48,
             freq="1h",

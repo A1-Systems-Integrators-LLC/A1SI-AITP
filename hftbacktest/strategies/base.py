@@ -1,5 +1,4 @@
-"""
-HFT Strategy Base Class
+"""HFT Strategy Base Class
 ========================
 Shared functionality for all hftbacktest strategies:
 - Inventory tracking (position, avg cost)
@@ -11,7 +10,7 @@ Shared functionality for all hftbacktest strategies:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -34,7 +33,7 @@ class HFTBaseStrategy:
     max_position: float = 1.0  # Max absolute position size
     initial_balance: float = 10000.0
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
         self.initial_balance = self.config.get("initial_balance", 10000.0)
         self.max_position = self.config.get("max_position", self.max_position)
@@ -71,7 +70,7 @@ class HFTBaseStrategy:
         """Override in subclass: process a single tick."""
         raise NotImplementedError
 
-    def submit_order(self, side: str, price: float, size: float, tick: dict) -> Optional[dict]:
+    def submit_order(self, side: str, price: float, size: float, tick: dict) -> dict | None:
         """Submit a simulated order. Returns fill dict or None if rejected."""
         if self.halted:
             return None
@@ -187,17 +186,19 @@ class HFTBaseStrategy:
                     exit_fee = fill["price"] * close_size * self.fee_rate
                     total_fee = entry_fee + exit_fee
 
-                    trades.append({
-                        "entry_time": pd.Timestamp(entry[0], unit="ns", tz="UTC"),
-                        "exit_time": pd.Timestamp(fill["timestamp"], unit="ns", tz="UTC"),
-                        "side": entry[3],
-                        "entry_price": entry[1],
-                        "exit_price": fill["price"],
-                        "size": close_size,
-                        "pnl": pnl - total_fee,
-                        "pnl_pct": pnl_pct - (2 * self.fee_rate),
-                        "fee": total_fee,
-                    })
+                    trades.append(
+                        {
+                            "entry_time": pd.Timestamp(entry[0], unit="ns", tz="UTC"),
+                            "exit_time": pd.Timestamp(fill["timestamp"], unit="ns", tz="UTC"),
+                            "side": entry[3],
+                            "entry_price": entry[1],
+                            "exit_price": fill["price"],
+                            "size": close_size,
+                            "pnl": pnl - total_fee,
+                            "pnl_pct": pnl_pct - (2 * self.fee_rate),
+                            "fee": total_fee,
+                        }
+                    )
 
                     entry[2] -= close_size
                     remaining -= close_size

@@ -228,7 +228,8 @@ class TestAggregatorAssetClassThresholds:
 
     def test_forex_threshold_between_crypto_and_equity(self):
         """Forex threshold is 60 (minus session adjustment).
-        Score of 62 approved; score well below effective threshold rejected."""
+        Score of 62 approved; score well below effective threshold rejected.
+        """
         agg = SignalAggregator()
         sig_pass = agg.compute(
             "EUR/USD", "forex", "ForexTrend",
@@ -351,7 +352,6 @@ NOW = datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc)
 class TestExitManagerMaxHoldMultiplier:
     def test_equity_doubles_hold_time(self):
         """Equity max_hold_multiplier=2.0 doubles the base hold hours."""
-
         # Equity: 168 * 2.0 = 336h. At 200h in, should not exit yet.
         entry_time = NOW - timedelta(hours=200)
         advice = advise_exit(
@@ -369,7 +369,6 @@ class TestExitManagerMaxHoldMultiplier:
 
     def test_equity_eventually_triggers_time_exit(self):
         """Equity holds longer, but still triggers after max_hold * multiplier."""
-
         # Equity: 168 * 2.0 = 336h + regime 1.0 = 336h. At 340h should exit.
         entry_time = NOW - timedelta(hours=340)
         advice = advise_exit(
@@ -387,7 +386,6 @@ class TestExitManagerMaxHoldMultiplier:
 
     def test_forex_shortens_hold_time(self):
         """Forex max_hold_multiplier=0.7 shortens hold time."""
-
         # Forex: 48 * 0.7 = 33.6h * 1.0 regime = 33.6h. At 35h should exit.
         entry_time = NOW - timedelta(hours=35)
         advice = advise_exit(
@@ -419,7 +417,6 @@ class TestExitManagerMaxHoldMultiplier:
 
     def test_crypto_multiplier_unchanged(self):
         """Crypto max_hold_multiplier=1.0 preserves original behaviour."""
-
         # Crypto: 168 * 1.0 * 1.0 = 168h. At 170h should exit.
         entry_time = NOW - timedelta(hours=170)
         advice = advise_exit(

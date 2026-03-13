@@ -1,5 +1,4 @@
-"""
-Shared Performance Metrics
+"""Shared Performance Metrics
 ===========================
 Computes standard trading performance metrics from a trades DataFrame.
 Used by NautilusTrader, hftbacktest, and any future framework tier.
@@ -25,8 +24,7 @@ def serialize_trades_df(trades_df: pd.DataFrame) -> list[dict]:
 
 
 def compute_performance_metrics(trades_df: pd.DataFrame) -> dict:
-    """
-    Compute standard performance metrics from a trades DataFrame.
+    """Compute standard performance metrics from a trades DataFrame.
     Works with output from any framework (Nautilus, Freqtrade, hftbacktest, or VectorBT).
 
     Expected columns: entry_time, exit_time, pnl, pnl_pct, side
@@ -64,9 +62,9 @@ def compute_performance_metrics(trades_df: pd.DataFrame) -> dict:
             if span > 0:
                 seconds_per_year = 365.25 * 24 * 3600
                 trades_per_year = total_trades * (seconds_per_year / span)
-        sharpe = (
-            trades_df["pnl_pct"].mean() / trades_df["pnl_pct"].std()
-        ) * np.sqrt(trades_per_year)
+        sharpe = (trades_df["pnl_pct"].mean() / trades_df["pnl_pct"].std()) * np.sqrt(
+            trades_per_year
+        )
 
     # Max drawdown from cumulative PnL
     cum_pnl = trades_df["pnl"].cumsum()

@@ -131,7 +131,7 @@ def _check_scheduler() -> CheckResult:
     existing = set(
         ScheduledTask.objects.filter(
             id__in=key_tasks, status=ScheduledTask.ACTIVE,
-        ).values_list("id", flat=True)
+        ).values_list("id", flat=True),
     )
     missing = [t for t in key_tasks if t not in existing]
 

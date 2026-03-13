@@ -97,7 +97,7 @@ class TaskScheduler:
 
         # Validate watchlist symbols against exchange in background
         threading.Thread(
-            target=self._validate_watchlist, daemon=True, name="watchlist-validator"
+            target=self._validate_watchlist, daemon=True, name="watchlist-validator",
         ).start()
 
     def shutdown(self) -> None:

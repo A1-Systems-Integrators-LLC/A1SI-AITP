@@ -1,5 +1,4 @@
-"""
-Market Hours & Session Awareness
+"""Market Hours & Session Awareness
 =================================
 Tracks market open/close times for equities and forex.
 Crypto is 24/7 and always returns open.
@@ -18,12 +17,28 @@ ET = ZoneInfo("America/New_York")
 # New Year's, MLK Day, Presidents' Day, Good Friday, Memorial Day,
 # Juneteenth, Independence Day, Labor Day, Thanksgiving, Christmas
 _US_HOLIDAYS_2025 = {
-    (1, 1), (1, 20), (2, 17), (4, 18), (5, 26),
-    (6, 19), (7, 4), (9, 1), (11, 27), (12, 25),
+    (1, 1),
+    (1, 20),
+    (2, 17),
+    (4, 18),
+    (5, 26),
+    (6, 19),
+    (7, 4),
+    (9, 1),
+    (11, 27),
+    (12, 25),
 }
 _US_HOLIDAYS_2026 = {
-    (1, 1), (1, 19), (2, 16), (4, 3), (5, 25),
-    (6, 19), (7, 3), (9, 7), (11, 26), (12, 25),
+    (1, 1),
+    (1, 19),
+    (2, 16),
+    (4, 3),
+    (5, 25),
+    (6, 19),
+    (7, 3),
+    (9, 7),
+    (11, 26),
+    (12, 25),
 }
 _US_HOLIDAYS = {
     2025: _US_HOLIDAYS_2025,
@@ -42,7 +57,7 @@ _EQUITY_OPEN = time(9, 30)
 _EQUITY_CLOSE = time(16, 0)
 
 # Forex: Sun 5:00 PM ET - Fri 5:00 PM ET (continuous)
-_FOREX_OPEN_DOW = 6   # Sunday
+_FOREX_OPEN_DOW = 6  # Sunday
 _FOREX_OPEN_TIME = time(17, 0)
 _FOREX_CLOSE_DOW = 4  # Friday
 _FOREX_CLOSE_TIME = time(17, 0)
@@ -153,7 +168,10 @@ class MarketHoursService:
         if days_until_sunday == 0 and now_et.time() >= _FOREX_OPEN_TIME:  # pragma: no cover
             days_until_sunday = 7
         candidate = now_et.replace(
-            hour=17, minute=0, second=0, microsecond=0,
+            hour=17,
+            minute=0,
+            second=0,
+            microsecond=0,
         ) + timedelta(days=days_until_sunday)
         return candidate.astimezone(timezone.utc)
 
@@ -179,7 +197,10 @@ class MarketHoursService:
             # Forex closes Friday 5PM ET
             days_until_friday = (4 - now_et.weekday()) % 7
             close = now_et.replace(
-                hour=17, minute=0, second=0, microsecond=0,
+                hour=17,
+                minute=0,
+                second=0,
+                microsecond=0,
             ) + timedelta(days=days_until_friday)
             return close.astimezone(timezone.utc)
 

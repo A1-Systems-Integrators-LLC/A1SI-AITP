@@ -45,8 +45,8 @@ class Command(BaseCommand):
             self.stderr.write(
                 self.style.ERROR(
                     f"\n{len(missing_required)} required variable(s) missing. "
-                    "Set them in .env or environment before running in production."
-                )
+                    "Set them in .env or environment before running in production.",
+                ),
             )
             sys.exit(1)
 
@@ -54,8 +54,8 @@ class Command(BaseCommand):
             self.stderr.write(
                 self.style.WARNING(
                     f"\n{len(missing_recommended)} recommended variable(s) not set. "
-                    "Some features may be unavailable."
-                )
+                    "Some features may be unavailable.",
+                ),
             )
         else:
             self.stdout.write(self.style.SUCCESS("\nAll environment variables OK."))

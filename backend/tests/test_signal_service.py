@@ -53,7 +53,10 @@ class TestMLPredictionModel:
 
     def test_str_representation(self):
         pred = MLPrediction(
-            model_id="m1", symbol="ETH/USDT", probability=0.65, direction="down",
+            model_id="m1",
+            symbol="ETH/USDT",
+            probability=0.65,
+            direction="down",
         )
         assert "ETH/USDT" in str(pred)
         assert "down" in str(pred)
@@ -61,7 +64,11 @@ class TestMLPredictionModel:
 
     def test_clean_valid(self):
         pred = MLPrediction(
-            model_id="m1", symbol="BTC/USDT", probability=0.5, confidence=0.5, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.5,
+            confidence=0.5,
+            direction="up",
         )
         pred.clean()  # Should not raise
 
@@ -69,7 +76,11 @@ class TestMLPredictionModel:
         from django.core.exceptions import ValidationError
 
         pred = MLPrediction(
-            model_id="m1", symbol="BTC/USDT", probability=1.5, confidence=0.5, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=1.5,
+            confidence=0.5,
+            direction="up",
         )
         with pytest.raises(ValidationError) as exc_info:
             pred.clean()
@@ -79,7 +90,11 @@ class TestMLPredictionModel:
         from django.core.exceptions import ValidationError
 
         pred = MLPrediction(
-            model_id="m1", symbol="BTC/USDT", probability=0.5, confidence=-0.1, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.5,
+            confidence=-0.1,
+            direction="up",
         )
         with pytest.raises(ValidationError) as exc_info:
             pred.clean()
@@ -87,17 +102,29 @@ class TestMLPredictionModel:
 
     def test_ordering(self):
         MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.5, confidence=0.5, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.5,
+            confidence=0.5,
+            direction="up",
         )
         MLPrediction.objects.create(
-            model_id="m1", symbol="ETH/USDT", probability=0.6, confidence=0.5, direction="up",
+            model_id="m1",
+            symbol="ETH/USDT",
+            probability=0.6,
+            confidence=0.5,
+            direction="up",
         )
         preds = list(MLPrediction.objects.all())
         assert preds[0].predicted_at >= preds[1].predicted_at
 
     def test_fill_outcome(self):
         pred = MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.5, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.5,
+            direction="up",
         )
         pred.actual_direction = "up"
         pred.correct = True
@@ -133,7 +160,9 @@ class TestMLModelPerformanceModel:
 
     def test_clean_valid(self):
         perf = MLModelPerformance(
-            model_id="m1", total_predictions=10, rolling_accuracy=0.5,
+            model_id="m1",
+            total_predictions=10,
+            rolling_accuracy=0.5,
         )
         perf.clean()
 
@@ -155,7 +184,10 @@ class TestMLModelPerformanceModel:
 
     def test_update_or_create(self):
         MLModelPerformance.objects.create(
-            model_id="m1", total_predictions=50, correct_predictions=25, rolling_accuracy=0.5,
+            model_id="m1",
+            total_predictions=50,
+            correct_predictions=25,
+            rolling_accuracy=0.5,
         )
         perf, created = MLModelPerformance.objects.update_or_create(
             model_id="m1",
@@ -175,14 +207,21 @@ class TestSignalService:
     @pytest.fixture(autouse=True)
     def _clear_signal_cache(self):
         from analysis.services.signal_service import clear_signal_cache
+
         clear_signal_cache()
         yield
         clear_signal_cache()
 
     @patch("analysis.services.signal_service.ensure_platform_imports")
     @patch("analysis.services.signal_service.SignalService._get_regime_state", return_value=None)
-    @patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(None, None))
-    @patch("analysis.services.signal_service.SignalService._get_sentiment_signal", return_value=(None, None))
+    @patch(
+        "analysis.services.signal_service.SignalService._get_ml_prediction",
+        return_value=(None, None),
+    )
+    @patch(
+        "analysis.services.signal_service.SignalService._get_sentiment_signal",
+        return_value=(None, None),
+    )
     @patch("analysis.services.signal_service.SignalService._get_scanner_score", return_value=None)
     @patch("analysis.services.signal_service.SignalService._get_win_rate", return_value=None)
     def test_get_signal_no_sources(self, _wr, _scan, _sent, _ml, _regime, _imports):
@@ -200,8 +239,13 @@ class TestSignalService:
 
     @patch("analysis.services.signal_service.ensure_platform_imports")
     @patch("analysis.services.signal_service.SignalService._get_regime_state")
-    @patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(0.8, 0.9))
-    @patch("analysis.services.signal_service.SignalService._get_sentiment_signal", return_value=(0.3, 0.7))
+    @patch(
+        "analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(0.8, 0.9)
+    )
+    @patch(
+        "analysis.services.signal_service.SignalService._get_sentiment_signal",
+        return_value=(0.3, 0.7),
+    )
     @patch("analysis.services.signal_service.SignalService._get_scanner_score", return_value=80.0)
     @patch("analysis.services.signal_service.SignalService._get_win_rate", return_value=65.0)
     def test_get_signal_all_sources(self, _wr, _scan, _sent, _ml, _regime, _imports):
@@ -218,15 +262,23 @@ class TestSignalService:
 
     @patch("analysis.services.signal_service.ensure_platform_imports")
     @patch("analysis.services.signal_service.SignalService._get_regime_state", return_value=None)
-    @patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(None, None))
-    @patch("analysis.services.signal_service.SignalService._get_sentiment_signal", return_value=(None, None))
+    @patch(
+        "analysis.services.signal_service.SignalService._get_ml_prediction",
+        return_value=(None, None),
+    )
+    @patch(
+        "analysis.services.signal_service.SignalService._get_sentiment_signal",
+        return_value=(None, None),
+    )
     @patch("analysis.services.signal_service.SignalService._get_scanner_score", return_value=None)
     @patch("analysis.services.signal_service.SignalService._get_win_rate", return_value=None)
     def test_get_signals_batch(self, _wr, _scan, _sent, _ml, _regime, _imports):
         from analysis.services.signal_service import SignalService
 
         results = SignalService.get_signals_batch(
-            ["BTC/USDT", "ETH/USDT"], "crypto", "CryptoInvestorV1",
+            ["BTC/USDT", "ETH/USDT"],
+            "crypto",
+            "CryptoInvestorV1",
         )
         assert len(results) == 2
         assert results[0]["symbol"] == "BTC/USDT"
@@ -234,8 +286,14 @@ class TestSignalService:
 
     @patch("analysis.services.signal_service.ensure_platform_imports")
     @patch("analysis.services.signal_service.SignalService._get_regime_state", return_value=None)
-    @patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(None, None))
-    @patch("analysis.services.signal_service.SignalService._get_sentiment_signal", return_value=(None, None))
+    @patch(
+        "analysis.services.signal_service.SignalService._get_ml_prediction",
+        return_value=(None, None),
+    )
+    @patch(
+        "analysis.services.signal_service.SignalService._get_sentiment_signal",
+        return_value=(None, None),
+    )
     @patch("analysis.services.signal_service.SignalService._get_scanner_score", return_value=None)
     @patch("analysis.services.signal_service.SignalService._get_win_rate", return_value=None)
     def test_get_entry_recommendation(self, _wr, _scan, _sent, _ml, _regime, _imports):
@@ -250,8 +308,14 @@ class TestSignalService:
 
     @patch("analysis.services.signal_service.ensure_platform_imports")
     @patch("analysis.services.signal_service.SignalService._get_regime_state", return_value=None)
-    @patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(None, None))
-    @patch("analysis.services.signal_service.SignalService._get_sentiment_signal", return_value=(None, None))
+    @patch(
+        "analysis.services.signal_service.SignalService._get_ml_prediction",
+        return_value=(None, None),
+    )
+    @patch(
+        "analysis.services.signal_service.SignalService._get_sentiment_signal",
+        return_value=(None, None),
+    )
     @patch("analysis.services.signal_service.SignalService._get_scanner_score", return_value=None)
     @patch("analysis.services.signal_service.SignalService._get_win_rate", return_value=None)
     def test_batch_caps_at_50(self, _wr, _scan, _sent, _ml, _regime, _imports):
@@ -270,7 +334,9 @@ class TestSignalService:
         assert result is None
 
     def test_get_ml_prediction_exception_returns_nones(self):
-        with patch("analysis.services.signal_service.ensure_platform_imports", side_effect=ImportError):
+        with patch(
+            "analysis.services.signal_service.ensure_platform_imports", side_effect=ImportError
+        ):
             from analysis.services.signal_service import SignalService
 
             prob, conf = SignalService._get_ml_prediction("BTC/USDT", "crypto")
@@ -278,7 +344,9 @@ class TestSignalService:
             assert conf is None
 
     def test_get_sentiment_signal_exception_returns_nones(self):
-        with patch("analysis.services.signal_service.ensure_platform_imports", side_effect=ImportError):
+        with patch(
+            "analysis.services.signal_service.ensure_platform_imports", side_effect=ImportError
+        ):
             from analysis.services.signal_service import SignalService
 
             score, conv = SignalService._get_sentiment_signal("BTC/USDT", "crypto")
@@ -342,17 +410,28 @@ class TestSignalAPIViews:
             "entry_approved": True,
             "position_modifier": 0.7,
             "hard_disabled": False,
-            "components": {"technical": 80, "regime": 70, "ml": 65, "sentiment": 60, "scanner": 0, "win_rate": 50},
+            "components": {
+                "technical": 80,
+                "regime": 70,
+                "ml": 65,
+                "sentiment": 60,
+                "scanner": 0,
+                "win_rate": 50,
+            },
             "confidences": {"ml": 0.8, "sentiment": 0.6, "regime": 0.9},
             "sources_available": ["regime", "ml"],
             "reasoning": ["Score: 72.5"],
         }
-        resp = self.client.get("/api/signals/BTC-USDT/", {"asset_class": "crypto", "strategy": "CryptoInvestorV1"})
+        resp = self.client.get(
+            "/api/signals/BTC-USDT/", {"asset_class": "crypto", "strategy": "CryptoInvestorV1"}
+        )
         assert resp.status_code == 200
         assert resp.data["composite_score"] == 72.5
         mock_get.assert_called_once_with("BTC/USDT", "crypto", "CryptoInvestorV1")
 
-    @patch("analysis.services.signal_service.SignalService.get_signal", side_effect=Exception("fail"))
+    @patch(
+        "analysis.services.signal_service.SignalService.get_signal", side_effect=Exception("fail")
+    )
     def test_signal_detail_view_error(self, mock_get):
         resp = self.client.get("/api/signals/BTC-USDT/")
         assert resp.status_code == 500
@@ -401,7 +480,10 @@ class TestSignalAPIViews:
         assert resp.data["approved"] is True
         assert resp.data["score"] == 72.5
 
-    @patch("analysis.services.signal_service.SignalService.get_entry_recommendation", side_effect=Exception("boom"))
+    @patch(
+        "analysis.services.signal_service.SignalService.get_entry_recommendation",
+        side_effect=Exception("boom"),
+    )
     def test_entry_check_fail_open(self, mock_rec):
         client = APIClient()
         resp = client.post(
@@ -419,18 +501,29 @@ class TestSignalAPIViews:
         mock_detector_cls = MagicMock()
         mock_detector_cls.return_value.detect.return_value = mock_state
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.regime.regime_detector": MagicMock(RegimeDetector=mock_detector_cls),
-                "common.signals.constants": MagicMock(ALIGNMENT_TABLES={
-                    "crypto": {mock_state.regime: {
-                        "CryptoInvestorV1": 95, "BollingerMeanReversion": 30, "VolatilityBreakout": 60,
-                    }},
-                }),
-            }):
-                resp = self.client.get("/api/signals/strategy-status/", {"asset_class": "crypto"})
-                assert resp.status_code == 200
-                assert len(resp.data) == 3
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.regime.regime_detector": MagicMock(RegimeDetector=mock_detector_cls),
+                    "common.signals.constants": MagicMock(
+                        ALIGNMENT_TABLES={
+                            "crypto": {
+                                mock_state.regime: {
+                                    "CryptoInvestorV1": 95,
+                                    "BollingerMeanReversion": 30,
+                                    "VolatilityBreakout": 60,
+                                }
+                            },
+                        }
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/signals/strategy-status/", {"asset_class": "crypto"})
+            assert resp.status_code == 200
+            assert len(resp.data) == 3
 
     def test_strategy_status_view_fallback(self, tmp_path):
         from trading.services.strategy_orchestrator import StrategyOrchestrator
@@ -439,7 +532,9 @@ class TestSignalAPIViews:
         orig = StrategyOrchestrator._STATE_FILE
         StrategyOrchestrator._STATE_FILE = tmp_path / "orch_state.json"
         try:
-            with patch("core.platform_bridge.ensure_platform_imports", side_effect=ImportError("no module")):
+            with patch(
+                "core.platform_bridge.ensure_platform_imports", side_effect=ImportError("no module")
+            ):
                 resp = self.client.get("/api/signals/strategy-status/", {"asset_class": "crypto"})
                 assert resp.status_code == 200
                 for strat in resp.data:
@@ -450,19 +545,31 @@ class TestSignalAPIViews:
 
     def test_ml_prediction_list_view(self):
         MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.8, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.8,
+            direction="up",
         )
         MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.4, confidence=0.6, direction="down",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.4,
+            confidence=0.6,
+            direction="down",
         )
         resp = self.client.get("/api/ml/predictions/BTC-USDT/")
         assert resp.status_code == 200
         assert len(resp.data) == 2
 
     def test_ml_prediction_list_view_limit(self):
-        for i in range(5):
+        for _i in range(5):
             MLPrediction.objects.create(
-                model_id="m1", symbol="ETH/USDT", probability=0.5, confidence=0.5, direction="up",
+                model_id="m1",
+                symbol="ETH/USDT",
+                probability=0.5,
+                confidence=0.5,
+                direction="up",
             )
         resp = self.client.get("/api/ml/predictions/ETH-USDT/", {"limit": 2})
         assert resp.status_code == 200
@@ -493,11 +600,13 @@ class TestSignalSerializers:
     def test_signal_batch_request_serializer_valid(self):
         from analysis.serializers import SignalBatchRequestSerializer
 
-        ser = SignalBatchRequestSerializer(data={
-            "symbols": ["BTC/USDT", "ETH/USDT"],
-            "asset_class": "crypto",
-            "strategy_name": "CryptoInvestorV1",
-        })
+        ser = SignalBatchRequestSerializer(
+            data={
+                "symbols": ["BTC/USDT", "ETH/USDT"],
+                "asset_class": "crypto",
+                "strategy_name": "CryptoInvestorV1",
+            }
+        )
         assert ser.is_valid()
 
     def test_signal_batch_request_serializer_empty_symbols(self):
@@ -515,7 +624,9 @@ class TestSignalSerializers:
     def test_entry_check_request_serializer(self):
         from analysis.serializers import EntryCheckRequestSerializer
 
-        ser = EntryCheckRequestSerializer(data={"strategy": "CryptoInvestorV1", "asset_class": "crypto"})
+        ser = EntryCheckRequestSerializer(
+            data={"strategy": "CryptoInvestorV1", "asset_class": "crypto"}
+        )
         assert ser.is_valid()
 
     def test_entry_check_request_serializer_invalid_asset(self):
@@ -529,7 +640,11 @@ class TestSignalSerializers:
         from analysis.serializers import MLPredictionSerializer
 
         pred = MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.8, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.8,
+            direction="up",
         )
         data = MLPredictionSerializer(pred).data
         assert data["symbol"] == "BTC/USDT"
@@ -541,7 +656,10 @@ class TestSignalSerializers:
         from analysis.serializers import MLModelPerformanceSerializer
 
         perf = MLModelPerformance.objects.create(
-            model_id="m1", total_predictions=100, correct_predictions=65, rolling_accuracy=0.65,
+            model_id="m1",
+            total_predictions=100,
+            correct_predictions=65,
+            rolling_accuracy=0.65,
         )
         data = MLModelPerformanceSerializer(perf).data
         assert data["model_id"] == "m1"
@@ -559,7 +677,14 @@ class TestSignalSerializers:
             "entry_approved": True,
             "position_modifier": 0.7,
             "hard_disabled": False,
-            "components": {"technical": 80, "regime": 70, "ml": 65, "sentiment": 60, "scanner": 0, "win_rate": 50},
+            "components": {
+                "technical": 80,
+                "regime": 70,
+                "ml": 65,
+                "sentiment": 60,
+                "scanner": 0,
+                "win_rate": 50,
+            },
             "confidences": {"ml": 0.8, "sentiment": 0.6, "regime": 0.9},
             "sources_available": ["regime", "ml"],
             "reasoning": ["Score: 72.5"],
@@ -577,41 +702,61 @@ class TestSignalSerializers:
 class TestTaskExecutors:
     def _progress_cb(self, progress, message):
         """Dummy progress callback."""
-        pass
 
     def test_ml_predict_executor_no_watchlist(self):
         from core.services.task_registry import _run_ml_predict
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("core.platform_bridge.get_platform_config", return_value={"data": {}}):
-                result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
-                assert result["status"] == "skipped"
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("core.platform_bridge.get_platform_config", return_value={"data": {}}),
+        ):
+            result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
+            assert result["status"] == "skipped"
 
     def test_ml_predict_executor_with_symbols(self):
         from core.services.task_registry import _run_ml_predict
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("core.platform_bridge.get_platform_config", return_value={
-                "data": {"watchlist": ["BTC/USDT"]},
-            }):
-                with patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(0.7, 0.8)):
-                    with patch("analysis.services.signal_service.SignalService._get_regime_state", return_value=None):
-                        result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
-                        assert result["status"] == "completed"
-                        assert result["predicted"] == 1
-                        assert MLPrediction.objects.count() == 1
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch(
+                "analysis.services.signal_service.SignalService._get_ml_prediction",
+                return_value=(0.7, 0.8),
+            ),
+            patch(
+                "analysis.services.signal_service.SignalService._get_regime_state",
+                return_value=None,
+            ),
+        ):
+            result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
+            assert result["status"] == "completed"
+            assert result["predicted"] == 1
+            assert MLPrediction.objects.count() == 1
 
     def test_ml_predict_executor_no_model(self):
         from core.services.task_registry import _run_ml_predict
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("core.platform_bridge.get_platform_config", return_value={
-                "data": {"watchlist": ["BTC/USDT"]},
-            }):
-                with patch("analysis.services.signal_service.SignalService._get_ml_prediction", return_value=(None, None)):
-                    result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
-                    assert result["status"] == "completed"
-                    assert result["predicted"] == 0
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch(
+                "analysis.services.signal_service.SignalService._get_ml_prediction",
+                return_value=(None, None),
+            ),
+        ):
+            result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
+            assert result["status"] == "completed"
+            assert result["predicted"] == 0
 
     def test_ml_feedback_executor_no_predictions(self):
         from core.services.task_registry import _run_ml_feedback
@@ -625,48 +770,70 @@ class TestTaskExecutors:
         from core.services.task_registry import _run_ml_feedback
 
         pred = MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.8, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.8,
+            direction="up",
         )
 
         import pandas as pd
 
         mock_df = pd.DataFrame({"close": [100.0, 105.0]})
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df):
-                result = _run_ml_feedback({}, self._progress_cb)
-                assert result["outcomes_filled"] == 1
-                pred.refresh_from_db()
-                assert pred.correct is True
-                assert pred.actual_direction == "up"
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df),
+        ):
+            result = _run_ml_feedback({}, self._progress_cb)
+            assert result["outcomes_filled"] == 1
+            pred.refresh_from_db()
+            assert pred.correct is True
+            assert pred.actual_direction == "up"
 
     def test_ml_feedback_executor_down_actual(self):
         from core.services.task_registry import _run_ml_feedback
 
         pred = MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.8, direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.8,
+            direction="up",
         )
 
         import pandas as pd
 
         mock_df = pd.DataFrame({"close": [105.0, 100.0]})
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df):
-                result = _run_ml_feedback({}, self._progress_cb)
-                pred.refresh_from_db()
-                assert pred.correct is False
-                assert pred.actual_direction == "down"
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df),
+        ):
+            _run_ml_feedback({}, self._progress_cb)
+            pred.refresh_from_db()
+            assert pred.correct is False
+            assert pred.actual_direction == "down"
 
     def test_ml_feedback_updates_model_performance(self):
         from core.services.task_registry import _run_ml_feedback
 
         # Create predictions with known outcomes
         MLPrediction.objects.create(
-            model_id="m1", symbol="BTC/USDT", probability=0.7, confidence=0.8,
-            direction="up", correct=True, actual_direction="up",
+            model_id="m1",
+            symbol="BTC/USDT",
+            probability=0.7,
+            confidence=0.8,
+            direction="up",
+            correct=True,
+            actual_direction="up",
         )
         MLPrediction.objects.create(
-            model_id="m1", symbol="ETH/USDT", probability=0.6, confidence=0.7,
-            direction="up", correct=False, actual_direction="down",
+            model_id="m1",
+            symbol="ETH/USDT",
+            probability=0.6,
+            confidence=0.7,
+            direction="up",
+            correct=False,
+            actual_direction="down",
         )
 
         result = _run_ml_feedback({}, self._progress_cb)
@@ -704,28 +871,38 @@ class TestTaskExecutors:
     def test_conviction_audit_executor_no_watchlist(self):
         from core.services.task_registry import _run_conviction_audit
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("core.platform_bridge.get_platform_config", return_value={"data": {}}):
-                result = _run_conviction_audit({"asset_class": "crypto"}, self._progress_cb)
-                assert result["status"] == "skipped"
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("core.platform_bridge.get_platform_config", return_value={"data": {}}),
+        ):
+            result = _run_conviction_audit({"asset_class": "crypto"}, self._progress_cb)
+            assert result["status"] == "skipped"
 
     def test_conviction_audit_executor_with_symbols(self):
         from core.services.task_registry import _run_conviction_audit
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch("core.platform_bridge.get_platform_config", return_value={
-                "data": {"watchlist": ["BTC/USDT"]},
-            }):
-                with patch("analysis.services.signal_service.SignalService.get_signal", return_value={
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch(
+                "analysis.services.signal_service.SignalService.get_signal",
+                return_value={
                     "composite_score": 72.5,
                     "signal_label": "buy",
                     "entry_approved": True,
                     "sources_available": ["regime", "ml"],
-                }):
-                    result = _run_conviction_audit({"asset_class": "crypto"}, self._progress_cb)
-                    assert result["status"] == "completed"
-                    assert result["symbols_audited"] == 1
-                    assert result["average_score"] == 72.5
+                },
+            ),
+        ):
+            result = _run_conviction_audit({"asset_class": "crypto"}, self._progress_cb)
+            assert result["status"] == "completed"
+            assert result["symbols_audited"] == 1
+            assert result["average_score"] == 72.5
 
     def test_strategy_orchestration_executor(self):
         from core.services.task_registry import _run_strategy_orchestration
@@ -736,28 +913,44 @@ class TestTaskExecutors:
         mock_detector_cls = MagicMock()
         mock_detector_cls.return_value.detect.return_value = mock_state
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.regime.regime_detector": MagicMock(RegimeDetector=mock_detector_cls),
-                "common.signals.constants": MagicMock(ALIGNMENT_TABLES={
-                    "crypto": {mock_state.regime: {
-                        "CryptoInvestorV1": 0, "BollingerMeanReversion": 40, "VolatilityBreakout": 15,
-                    }},
-                    "equity": {mock_state.regime: {"EquityMomentum": 5, "EquityMeanReversion": 35}},
-                    "forex": {mock_state.regime: {"ForexTrend": 10, "ForexRange": 25}},
-                }),
-            }):
-                with patch("core.services.notification.NotificationService.send_telegram_sync"):
-                    result = _run_strategy_orchestration({}, self._progress_cb)
-                    assert result["status"] == "completed"
-                    assert result["paused"] >= 1
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.regime.regime_detector": MagicMock(RegimeDetector=mock_detector_cls),
+                    "common.signals.constants": MagicMock(
+                        ALIGNMENT_TABLES={
+                            "crypto": {
+                                mock_state.regime: {
+                                    "CryptoInvestorV1": 0,
+                                    "BollingerMeanReversion": 40,
+                                    "VolatilityBreakout": 15,
+                                }
+                            },
+                            "equity": {
+                                mock_state.regime: {"EquityMomentum": 5, "EquityMeanReversion": 35}
+                            },
+                            "forex": {mock_state.regime: {"ForexTrend": 10, "ForexRange": 25}},
+                        }
+                    ),
+                },
+            ),
+            patch("core.services.notification.NotificationService.send_telegram_sync"),
+        ):
+            result = _run_strategy_orchestration({}, self._progress_cb)
+            assert result["status"] == "completed"
+            assert result["paused"] >= 1
 
     def test_strategy_orchestration_fallback_on_error(self):
         from core.services.task_registry import _run_strategy_orchestration
 
-        with patch("core.platform_bridge.ensure_platform_imports", side_effect=ImportError("no module")):
+        with patch(
+            "core.platform_bridge.ensure_platform_imports", side_effect=ImportError("no module")
+        ):
             result = _run_strategy_orchestration(
-                {"asset_classes": ["crypto"]}, self._progress_cb,
+                {"asset_classes": ["crypto"]},
+                self._progress_cb,
             )
             assert result["status"] == "completed"
             for r in result["results"]:
@@ -766,7 +959,13 @@ class TestTaskExecutors:
     def test_registry_has_new_executors(self):
         from core.services.task_registry import TASK_REGISTRY
 
-        new_executors = ["ml_predict", "ml_feedback", "ml_retrain", "conviction_audit", "strategy_orchestration"]
+        new_executors = [
+            "ml_predict",
+            "ml_feedback",
+            "ml_retrain",
+            "conviction_audit",
+            "strategy_orchestration",
+        ]
         for name in new_executors:
             assert name in TASK_REGISTRY, f"{name} not in TASK_REGISTRY"
             assert callable(TASK_REGISTRY[name])

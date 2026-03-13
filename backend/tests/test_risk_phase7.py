@@ -1,5 +1,4 @@
-"""
-Tests for IEB Phase 7 — Risk Manager Enhancement
+"""Tests for IEB Phase 7 — Risk Manager Enhancement
 ==================================================
 Covers:
 - signal_modifier param in calculate_position_size (common/risk/risk_manager.py)
@@ -12,7 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from rest_framework.test import APIClient
 
 # Ensure project root is on sys.path for common.* imports
@@ -21,7 +20,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.risk.risk_manager import RiskLimits, RiskManager
-
 
 # ── signal_modifier Tests ──────────────────────────────────────────
 
@@ -200,7 +198,9 @@ class TestAdaptiveRiskTightening(TestCase):
         """If regime detection fails, multiplier defaults to 1.0."""
         from risk.services.risk import RiskManagementService
 
-        with patch("risk.services.risk.ensure_platform_imports", side_effect=ImportError("no module")):
+        with patch(
+            "risk.services.risk.ensure_platform_imports", side_effect=ImportError("no module")
+        ):
             mult, name = RiskManagementService._get_regime_risk_multiplier()
             assert mult == 1.0
             assert name == "UNKNOWN"
@@ -212,7 +212,10 @@ class TestAdaptiveRiskTightening(TestCase):
         with patch("risk.services.risk.ensure_platform_imports"):
             mock_detector = MagicMock()
             mock_detector.detect.return_value = {"regime": "WEAK_TREND_DOWN"}
-            with patch.dict("sys.modules", {"common.regime.regime_detector": MagicMock(RegimeDetector=lambda: mock_detector)}):
+            with patch.dict(
+                "sys.modules",
+                {"common.regime.regime_detector": MagicMock(RegimeDetector=lambda: mock_detector)},
+            ):
                 mult, name = RiskManagementService._get_regime_risk_multiplier()
                 assert mult == 0.85
                 assert name == "WEAK_TREND_DOWN"
@@ -230,8 +233,8 @@ class TestCompositeScoreTradeCheck(TestCase):
         from risk.models import RiskLimits as RLModel
         from risk.models import RiskState
 
-        User = get_user_model()
-        self.user = User.objects.create_user(username="testuser", password="testpass")
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(username="testuser", password="testpass")
         self.client = APIClient()
 
         RiskState.objects.create(

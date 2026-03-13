@@ -60,28 +60,31 @@ class SignalService:
         try:
             ensure_platform_imports()
             from common.data_pipeline.pipeline import load_ohlcv
-            from common.ml.features import build_feature_matrix
             from common.ml.ensemble import ModelEnsemble
+            from common.ml.features import build_feature_matrix
 
             df = load_ohlcv(symbol, "1h")
             if df is None or df.empty:
                 logger.debug("No OHLCV data for ML prediction: %s", symbol)
                 return None, None
 
-            X, _y, _feature_names = build_feature_matrix(
-                df, include_temporal=True, include_volatility_regime=True,
+            X, _y, _feature_names = build_feature_matrix(  # noqa: N806
+                df,
+                include_temporal=True,
+                include_volatility_regime=True,
             )
             if X is None or X.empty:
                 logger.debug("Empty feature matrix for ML prediction: %s", symbol)
                 return None, None
 
             # Use only the latest row for prediction
-            X_latest = X.tail(1)
+            X_latest = X.tail(1)  # noqa: N806
 
             # Try ensemble first (accuracy-weighted, up to 5 models)
             ensemble = ModelEnsemble(mode="accuracy_weighted")
             n_models = ensemble.build_from_registry(
-                asset_class=asset_class, symbol=symbol,
+                asset_class=asset_class,
+                symbol=symbol,
             )
             if n_models >= 2:
                 result = ensemble.predict(X_latest)
@@ -123,7 +126,9 @@ class SignalService:
 
             opp = (
                 MarketOpportunity.objects.filter(
-                    symbol=symbol, asset_class=asset_class, is_active=True,
+                    symbol=symbol,
+                    asset_class=asset_class,
+                    is_active=True,
                 )
                 .order_by("-detected_at")
                 .first()
@@ -142,12 +147,18 @@ class SignalService:
             from common.data_pipeline.pipeline import load_ohlcv
             from common.indicators.technical import (
                 adx as compute_adx,
+            )
+            from common.indicators.technical import (
                 bollinger_bands,
                 ema,
                 macd,
-                mfi as compute_mfi,
-                rsi as compute_rsi,
                 stochastic,
+            )
+            from common.indicators.technical import (
+                mfi as compute_mfi,
+            )
+            from common.indicators.technical import (
+                rsi as compute_rsi,
             )
             from common.signals.technical_scorers import (
                 SCORER_MAP,
@@ -172,7 +183,9 @@ class SignalService:
             ema_100 = float(ema(close, 100).iloc[-1])
             macd_df = macd(close)
             macd_hist_val = float(macd_df["macd_hist"].iloc[-1])
-            vol_avg = float(volume.rolling(20).mean().iloc[-1]) if float(volume.iloc[-1]) > 0 else 1.0
+            vol_avg = (
+                float(volume.rolling(20).mean().iloc[-1]) if float(volume.iloc[-1]) > 0 else 1.0
+            )
             volume_ratio = float(volume.iloc[-1]) / vol_avg if vol_avg > 0 else 1.0
             close_val = float(close.iloc[-1])
 
@@ -180,50 +193,71 @@ class SignalService:
 
             if scorer_type == "civ1":
                 return civ1_technical_score(
-                    rsi=rsi_val, ema_short=ema_21, ema_long=ema_100,
-                    close=close_val, macd_hist=macd_hist_val,
-                    volume_ratio=volume_ratio, adx_value=adx_val,
+                    rsi=rsi_val,
+                    ema_short=ema_21,
+                    ema_long=ema_100,
+                    close=close_val,
+                    macd_hist=macd_hist_val,
+                    volume_ratio=volume_ratio,
+                    adx_value=adx_val,
                 )
-            elif scorer_type == "bmr":
+            if scorer_type == "bmr":
                 bb_df = bollinger_bands(close)
                 bb_mid_val = float(bb_df["bb_mid"].iloc[-1])
                 bb_w = float(bb_df["bb_width"].iloc[-1]) if "bb_width" in bb_df.columns else 0.0
                 stoch_df = stochastic(df)
                 mfi_val = float(compute_mfi(df).iloc[-1]) if float(volume.iloc[-1]) > 0 else 50.0
                 return bmr_technical_score(
-                    close=close_val, bb_lower=float(bb_df["bb_lower"].iloc[-1]),
-                    bb_mid=bb_mid_val, bb_width=bb_w,
-                    rsi=rsi_val, stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
-                    mfi=mfi_val, volume_ratio=volume_ratio,
+                    close=close_val,
+                    bb_lower=float(bb_df["bb_lower"].iloc[-1]),
+                    bb_mid=bb_mid_val,
+                    bb_width=bb_w,
+                    rsi=rsi_val,
+                    stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
+                    mfi=mfi_val,
+                    volume_ratio=volume_ratio,
                 )
-            elif scorer_type == "vb":
+            if scorer_type == "vb":
                 bb_df = bollinger_bands(close)
                 bb_w = float(bb_df["bb_width"].iloc[-1]) if "bb_width" in bb_df.columns else 0.0
-                bb_w_prev = float(bb_df["bb_width"].iloc[-2]) if "bb_width" in bb_df.columns else 0.0
+                bb_w_prev = (
+                    float(bb_df["bb_width"].iloc[-2]) if "bb_width" in bb_df.columns else 0.0
+                )
                 high_20 = float(df["high"].rolling(20).max().iloc[-1])
                 return vb_technical_score(
-                    close=close_val, high_n=high_20,
-                    volume_ratio=volume_ratio, bb_width=bb_w,
-                    bb_width_prev=bb_w_prev, adx_value=adx_val,
+                    close=close_val,
+                    high_n=high_20,
+                    volume_ratio=volume_ratio,
+                    bb_width=bb_w,
+                    bb_width_prev=bb_w_prev,
+                    adx_value=adx_val,
                     rsi=rsi_val,
                 )
-            elif scorer_type == "momentum":
+            if scorer_type == "momentum":
                 return momentum_technical_score(
-                    rsi=rsi_val, ema_short=ema_21, ema_long=ema_100,
-                    close=close_val, macd_hist=macd_hist_val,
-                    adx_value=adx_val, volume_ratio=volume_ratio,
+                    rsi=rsi_val,
+                    ema_short=ema_21,
+                    ema_long=ema_100,
+                    close=close_val,
+                    macd_hist=macd_hist_val,
+                    adx_value=adx_val,
+                    volume_ratio=volume_ratio,
                 )
-            elif scorer_type == "mean_reversion":
+            if scorer_type == "mean_reversion":
                 bb_df = bollinger_bands(close)
                 bb_mid_val = float(bb_df["bb_mid"].iloc[-1])
                 bb_w = float(bb_df["bb_width"].iloc[-1]) if "bb_width" in bb_df.columns else 0.0
                 stoch_df = stochastic(df)
                 mfi_val = float(compute_mfi(df).iloc[-1]) if float(volume.iloc[-1]) > 0 else 50.0
                 return mean_reversion_technical_score(
-                    close=close_val, bb_lower=float(bb_df["bb_lower"].iloc[-1]),
-                    bb_mid=bb_mid_val, bb_width=bb_w,
-                    rsi=rsi_val, stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
-                    mfi=mfi_val, volume_ratio=volume_ratio,
+                    close=close_val,
+                    bb_lower=float(bb_df["bb_lower"].iloc[-1]),
+                    bb_mid=bb_mid_val,
+                    bb_width=bb_w,
+                    rsi=rsi_val,
+                    stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
+                    mfi=mfi_val,
+                    volume_ratio=volume_ratio,
                 )
         except Exception as e:
             logger.warning("Technical score unavailable for %s/%s: %s", symbol, strategy_name, e)
@@ -334,11 +368,13 @@ class SignalService:
                 results.append(sig)
             except Exception as e:
                 logger.warning("Signal computation failed for %s: %s", symbol, e)
-                results.append({
-                    "symbol": symbol,
-                    "asset_class": asset_class,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "asset_class": asset_class,
+                        "error": str(e),
+                    }
+                )
         return results
 
     @classmethod
@@ -353,6 +389,7 @@ class SignalService:
         Returns:
             dict with: approved (bool), score (float), position_modifier (float),
             reasoning (list[str])
+
         """
         signal = cls.get_signal(symbol, asset_class, strategy_name)
         return {

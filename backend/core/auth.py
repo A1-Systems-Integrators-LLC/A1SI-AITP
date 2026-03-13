@@ -1,5 +1,4 @@
-"""
-Authentication views — login, logout, status, lockout logic.
+"""Authentication views — login, logout, status, lockout logic.
 """
 
 import logging
@@ -100,7 +99,7 @@ class LoginView(APIView):
             remaining = settings.LOGIN_MAX_ATTEMPTS - failures
             logger.warning(
                 f"Login failed: user={ser.validated_data['username']} ip={ip} "
-                f"remaining={max(remaining, 0)}"
+                f"remaining={max(remaining, 0)}",
             )
             return Response(
                 {"error": "Invalid credentials"},
@@ -131,6 +130,6 @@ class AuthStatusView(APIView):
                 {
                     "authenticated": True,
                     "username": request.user.username,
-                }
+                },
             )
         return Response({"authenticated": False})

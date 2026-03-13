@@ -13,7 +13,7 @@ def _et(year: int, month: int, day: int, hour: int = 12, minute: int = 0) -> dat
     return datetime(year, month, day, hour, minute, tzinfo=ET)
 
 
-@pytest.fixture()
+@pytest.fixture
 def auth_client(db, client):
     from django.contrib.auth.models import User
 

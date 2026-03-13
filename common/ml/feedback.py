@@ -1,5 +1,4 @@
-"""
-ML Feedback Tracker
+"""ML Feedback Tracker
 ===================
 Tracks prediction outcomes, computes model accuracy, and triggers retraining.
 Storage: JSONL files in models/_feedback/ to avoid SQLite write contention.
@@ -53,6 +52,7 @@ class FeedbackTracker:
 
         Returns:
             The recorded prediction dict.
+
         """
         ts = timestamp or datetime.now(timezone.utc).isoformat()
         record = {
@@ -87,6 +87,7 @@ class FeedbackTracker:
 
         Returns:
             Number of records updated.
+
         """
         date_str = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         filepath = self._feedback_dir / f"{date_str}.jsonl"
@@ -131,12 +132,12 @@ class FeedbackTracker:
         Returns:
             Dict with accuracy, total_predictions, correct_predictions,
             accuracy_by_regime, accuracy_by_asset_class.
+
         """
         records = self._load_recent_records(lookback_days)
 
         model_records = [
-            r for r in records
-            if r.get("model_id") == model_id and r.get("correct") is not None
+            r for r in records if r.get("model_id") == model_id and r.get("correct") is not None
         ]
 
         if not model_records:
@@ -159,8 +160,7 @@ class FeedbackTracker:
             by_regime.setdefault(regime, []).append(r["correct"])
 
         accuracy_by_regime = {
-            k: round(sum(v) / len(v), 4) if v else 0.0
-            for k, v in by_regime.items()
+            k: round(sum(v) / len(v), 4) if v else 0.0 for k, v in by_regime.items()
         }
 
         # Accuracy by asset class
@@ -169,10 +169,7 @@ class FeedbackTracker:
             ac = r.get("asset_class", "unknown")
             by_ac.setdefault(ac, []).append(r["correct"])
 
-        accuracy_by_ac = {
-            k: round(sum(v) / len(v), 4) if v else 0.0
-            for k, v in by_ac.items()
-        }
+        accuracy_by_ac = {k: round(sum(v) / len(v), 4) if v else 0.0 for k, v in by_ac.items()}
 
         return {
             "model_id": model_id,
@@ -205,6 +202,7 @@ class FeedbackTracker:
 
         Returns:
             True if retraining is recommended.
+
         """
         stats = self.get_model_accuracy(model_id, lookback_days=30)
 
@@ -219,11 +217,15 @@ class FeedbackTracker:
             return True
 
         # Accuracy check (only with enough samples)
-        if stats["total_predictions"] >= min_predictions:
-            if stats["accuracy"] < accuracy_threshold:
+        if (
+            stats["total_predictions"] >= min_predictions
+            and stats["accuracy"] < accuracy_threshold
+        ):
                 logger.info(
                     "Model %s below accuracy threshold: %.4f < %.4f",
-                    model_id, stats["accuracy"], accuracy_threshold,
+                    model_id,
+                    stats["accuracy"],
+                    accuracy_threshold,
                 )
                 return True
 
@@ -234,7 +236,8 @@ class FeedbackTracker:
             if regime_spread > 0.15:
                 logger.info(
                     "Model %s has high regime variance: %.4f spread",
-                    model_id, regime_spread,
+                    model_id,
+                    regime_spread,
                 )
                 return True
 
@@ -245,6 +248,7 @@ class FeedbackTracker:
 
         Returns:
             List of accuracy dicts, one per model.
+
         """
         records = self._load_recent_records(lookback_days)
         model_ids = set(r.get("model_id", "") for r in records if r.get("model_id"))
@@ -269,8 +273,7 @@ class FeedbackTracker:
     def _save_records(self, filepath: Path, records: list[dict]) -> None:
         """Rewrite a JSONL file with updated records."""
         with open(filepath, "w") as f:
-            for record in records:
-                f.write(json.dumps(record) + "\n")
+            f.writelines(json.dumps(record) + "\n" for record in records)
 
     def _load_recent_records(self, lookback_days: int) -> list[dict]:
         """Load records from the last N days."""

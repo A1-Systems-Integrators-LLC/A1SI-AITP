@@ -113,6 +113,7 @@ class PerformanceTracker:
 
         Returns:
             Updated record, or None if order_id not found.
+
         """
         with self._lock:
             rec = self._records.get(order_id)
@@ -142,6 +143,7 @@ class PerformanceTracker:
 
         Returns:
             Dict mapping source name to SourceAccuracy.
+
         """
         cutoff = datetime.now(timezone.utc).timestamp() - window_days * 86400
         source_wins: dict[str, list[float]] = defaultdict(list)

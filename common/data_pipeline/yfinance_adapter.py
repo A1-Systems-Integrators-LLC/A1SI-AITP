@@ -1,5 +1,4 @@
-"""
-yfinance Data Adapter
+"""yfinance Data Adapter
 =====================
 Fetches equities and forex OHLCV data via Yahoo Finance.
 Normalizes symbols between platform format and yfinance format.
@@ -37,7 +36,7 @@ def normalize_symbol(symbol: str, asset_class: str) -> str:
         if symbol in _INDEX_SYMBOLS:
             return symbol
         if "/" in symbol:
-            return symbol.split("/")[0]
+            return symbol.split("/", maxsplit=1)[0]
         return symbol
 
     if asset_class == "forex":
@@ -133,7 +132,7 @@ def _fetch_ohlcv_sync(
     if since_days > max_days:
         logger.warning(
             f"yfinance {timeframe} limited to {max_days} days, "
-            f"requested {since_days} — clamping"
+            f"requested {since_days} — clamping",
         )
         since_days = max_days
 
@@ -141,13 +140,13 @@ def _fetch_ohlcv_sync(
         start = since_timestamp
         logger.info(
             f"Incremental update {yf_symbol} ({asset_class}) {yf_interval} "
-            f"from {since_timestamp}"
+            f"from {since_timestamp}",
         )
     else:
         start = datetime.now(timezone.utc) - timedelta(days=since_days)
         logger.info(
             f"Fetching {yf_symbol} ({asset_class}) {yf_interval} "
-            f"from yfinance ({since_days} days)..."
+            f"from yfinance ({since_days} days)...",
         )
     end = datetime.now(timezone.utc)
 

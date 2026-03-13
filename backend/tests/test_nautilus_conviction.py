@@ -1,5 +1,4 @@
-"""
-Tests for NautilusTrader conviction integration (IEB Phase 6)
+"""Tests for NautilusTrader conviction integration (IEB Phase 6)
 ==============================================================
 Covers: conviction gate, position modifier, exit advisor, stop multiplier,
 fail-open behavior, backtest mode bypass, asset class mapping.
@@ -62,13 +61,13 @@ def _bars_from_df(df: pd.DataFrame) -> list[dict]:
                 "low": float(row["low"]),
                 "close": float(row["close"]),
                 "volume": float(row["volume"]),
-            }
+            },
         )
     return bars
 
 
 def _make_strategy(
-    cls_name: str = "NautilusTrendFollowing", mode: str = "live", **kwargs
+    cls_name: str = "NautilusTrendFollowing", mode: str = "live", **kwargs,
 ):
     """Create a strategy instance with the given config."""
     from nautilus.strategies.base import NautilusStrategyBase

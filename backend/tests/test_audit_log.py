@@ -8,12 +8,12 @@ from django.utils import timezone
 from core.models import AuditLog
 
 
-@pytest.fixture()
+@pytest.fixture
 def user(django_user_model):
     return django_user_model.objects.create_user(username="auditor", password="pass")
 
 
-@pytest.fixture()
+@pytest.fixture
 def auth_client(client, user):
     client.force_login(user)
     return client

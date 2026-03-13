@@ -11,17 +11,17 @@ import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 
 @contextmanager
 def _noop_timed(*args, **kwargs):
     yield
 
+
 import pandas as pd
 import pytest
 from django.core.exceptions import ValidationError
-from django.test import TestCase
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -83,8 +83,12 @@ class TestMarketDataModel:
     def test_str(self):
         from market.models import MarketData
 
-        md = MarketData(symbol="BTC/USDT", price=50000.0, exchange_id="kraken",
-                        timestamp=datetime.now(timezone.utc))
+        md = MarketData(
+            symbol="BTC/USDT",
+            price=50000.0,
+            exchange_id="kraken",
+            timestamp=datetime.now(timezone.utc),
+        )
         assert str(md) == "BTC/USDT @ 50000.0"
 
 
@@ -100,10 +104,14 @@ class TestExchangeConfigModel:
         from market.models import ExchangeConfig
 
         ec1 = ExchangeConfig.objects.create(
-            name="First", exchange_id="kraken", is_default=True
+            name="First",
+            exchange_id="kraken",
+            is_default=True,
         )
         ec2 = ExchangeConfig.objects.create(
-            name="Second", exchange_id="binance", is_default=True
+            name="Second",
+            exchange_id="binance",
+            is_default=True,
         )
         ec1.refresh_from_db()
         assert ec1.is_default is False
@@ -385,7 +393,9 @@ class TestLoadDbConfig:
         from market.services.exchange import _load_db_config
 
         ec = ExchangeConfig.objects.create(
-            name="Test", exchange_id="kraken", is_active=True
+            name="Test",
+            exchange_id="kraken",
+            is_active=True,
         )
         result = _load_db_config(ec.pk)
         assert result is not None
@@ -397,7 +407,10 @@ class TestLoadDbConfig:
         from market.services.exchange import _load_db_config
 
         ExchangeConfig.objects.create(
-            name="Default", exchange_id="kraken", is_default=True, is_active=True
+            name="Default",
+            exchange_id="kraken",
+            is_default=True,
+            is_active=True,
         )
         result = _load_db_config()
         assert result is not None
@@ -411,13 +424,16 @@ class TestLoadDbConfig:
         assert result is None
 
     def test_load_import_error(self):
-        with patch("market.services.exchange._load_db_config.__module__", "market.services.exchange"):
+        with (
+            patch(
+                "market.services.exchange._load_db_config.__module__", "market.services.exchange"
+            ),
             # Simulate ImportError by patching the import
-            from market.services.exchange import _load_db_config
-            with patch.dict("sys.modules", {"market.models": None}):
-                # The function catches ImportError internally
-                # We need to test the actual import failure path
-                pass  # Covered by the import guard in exchange.py
+            patch.dict("sys.modules", {"market.models": None}),
+        ):
+            # The function catches ImportError internally
+            # We need to test the actual import failure path
+            pass  # Covered by the import guard in exchange.py
 
     @pytest.mark.django_db
     def test_load_async_exception(self):
@@ -439,7 +455,10 @@ class TestExchangeService:
         from market.services.exchange import ExchangeService
 
         ExchangeConfig.objects.create(
-            name="Test", exchange_id="kraken", is_active=True, is_default=True
+            name="Test",
+            exchange_id="kraken",
+            is_active=True,
+            is_default=True,
         )
         svc = ExchangeService()
         assert svc._exchange_id == "kraken"
@@ -459,8 +478,10 @@ class TestExchangeService:
 
         mock_exchange = MagicMock()
         mock_exchange.close = AsyncMock()
-        with patch("ccxt.async_support.kraken", return_value=mock_exchange), \
-             patch("market.services.exchange._load_db_config", return_value=None):
+        with (
+            patch("ccxt.async_support.kraken", return_value=mock_exchange),
+            patch("market.services.exchange._load_db_config", return_value=None),
+        ):
             exchange = await svc._get_exchange()
             assert exchange is mock_exchange
         await svc.close()
@@ -484,7 +505,7 @@ class TestExchangeService:
         mock_exchange = MagicMock()
         mock_exchange.close = AsyncMock()
         with patch("ccxt.async_support.kraken", return_value=mock_exchange):
-            exchange = await svc._get_exchange()
+            await svc._get_exchange()
             mock_exchange.set_sandbox_mode.assert_called_once_with(True)
         await svc.close()
 
@@ -497,9 +518,11 @@ class TestExchangeService:
 
         mock_exchange = MagicMock()
         mock_exchange.close = AsyncMock()
-        with patch("ccxt.async_support.kraken", return_value=mock_exchange), \
-             patch("market.services.exchange._load_db_config", return_value=None), \
-             patch("market.services.exchange.settings") as mock_settings:
+        with (
+            patch("ccxt.async_support.kraken", return_value=mock_exchange),
+            patch("market.services.exchange._load_db_config", return_value=None),
+            patch("market.services.exchange.settings") as mock_settings,
+        ):
             mock_settings.EXCHANGE_API_KEY = "env_key"
             mock_settings.EXCHANGE_API_SECRET = "env_secret"
             mock_settings.EXCHANGE_ID = "kraken"
@@ -543,15 +566,17 @@ class TestExchangeService:
         _breakers.clear()
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
-        mock_exchange.fetch_ticker = AsyncMock(return_value={
-            "symbol": "BTC/USDT",
-            "last": 50000.0,
-            "quoteVolume": 1000000.0,
-            "percentage": 2.5,
-            "high": 51000.0,
-            "low": 49000.0,
-            "timestamp": 1700000000000,
-        })
+        mock_exchange.fetch_ticker = AsyncMock(
+            return_value={
+                "symbol": "BTC/USDT",
+                "last": 50000.0,
+                "quoteVolume": 1000000.0,
+                "percentage": 2.5,
+                "high": 51000.0,
+                "low": 49000.0,
+                "timestamp": 1700000000000,
+            }
+        )
         svc._exchange = mock_exchange
 
         with patch("core.services.metrics.timed", side_effect=_noop_timed):
@@ -587,9 +612,11 @@ class TestExchangeService:
         mock_exchange.fetch_ticker = AsyncMock(side_effect=Exception("Network error"))
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(Exception, match="Network error"):
-                await svc.fetch_ticker("BTC/USDT")
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(Exception, match="Network error"),
+        ):
+            await svc.fetch_ticker("BTC/USDT")
 
         breaker = get_breaker("kraken")
         assert breaker.get_state()["failure_count"] >= 1
@@ -603,14 +630,19 @@ class TestExchangeService:
         _breakers.clear()
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
-        mock_exchange.fetch_tickers = AsyncMock(return_value={
-            "BTC/USDT": {
-                "symbol": "BTC/USDT", "last": 50000.0,
-                "quoteVolume": 1000000.0, "percentage": 2.5,
-                "high": 51000.0, "low": 49000.0,
-                "timestamp": 1700000000000,
+        mock_exchange.fetch_tickers = AsyncMock(
+            return_value={
+                "BTC/USDT": {
+                    "symbol": "BTC/USDT",
+                    "last": 50000.0,
+                    "quoteVolume": 1000000.0,
+                    "percentage": 2.5,
+                    "high": 51000.0,
+                    "low": 49000.0,
+                    "timestamp": 1700000000000,
+                },
             }
-        })
+        )
         svc._exchange = mock_exchange
 
         with patch("core.services.metrics.timed", side_effect=_noop_timed):
@@ -642,12 +674,14 @@ class TestExchangeService:
         _breakers.clear()
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
-        mock_exchange.fetch_tickers = AsyncMock(side_effect=Exception("fail"))
+        mock_exchange.fetch_tickers = AsyncMock(side_effect=RuntimeError("fail"))
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(Exception):
-                await svc.fetch_tickers(["BTC/USDT"])
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(RuntimeError),
+        ):
+            await svc.fetch_tickers(["BTC/USDT"])
         _breakers.clear()
 
     @pytest.mark.asyncio
@@ -658,9 +692,11 @@ class TestExchangeService:
         _breakers.clear()
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
-        mock_exchange.fetch_ohlcv = AsyncMock(return_value=[
-            [1700000000000, 50000, 51000, 49000, 50500, 100],
-        ])
+        mock_exchange.fetch_ohlcv = AsyncMock(
+            return_value=[
+                [1700000000000, 50000, 51000, 49000, 50500, 100],
+            ]
+        )
         svc._exchange = mock_exchange
 
         with patch("core.services.metrics.timed", side_effect=_noop_timed):
@@ -692,12 +728,14 @@ class TestExchangeService:
         _breakers.clear()
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
-        mock_exchange.fetch_ohlcv = AsyncMock(side_effect=Exception("fail"))
+        mock_exchange.fetch_ohlcv = AsyncMock(side_effect=RuntimeError("fail"))
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(Exception):
-                await svc.fetch_ohlcv("BTC/USDT")
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(RuntimeError),
+        ):
+            await svc.fetch_ohlcv("BTC/USDT")
         _breakers.clear()
 
 
@@ -761,7 +799,11 @@ class TestIndicatorService:
         )
         with patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df):
             result = IndicatorService.compute(
-                "BTC/USDT", "1h", "kraken", indicators=["rsi_14", "sma_20"], limit=50
+                "BTC/USDT",
+                "1h",
+                "kraken",
+                indicators=["rsi_14", "sma_20"],
+                limit=50,
             )
             assert "data" in result
 
@@ -922,7 +964,7 @@ class TestNewsServiceCap:
                     published_at=now - timedelta(hours=i),
                     sentiment_score=0.0,
                     sentiment_label="neutral",
-                )
+                ),
             )
         NewsArticle.objects.bulk_create(articles_to_create)
 
@@ -935,11 +977,13 @@ class TestNewsServiceCap:
                 "source": "Test",
                 "summary": "",
                 "published_at": now,
-            }
+            },
         ]
         svc = NewsService()
-        with patch("common.data_pipeline.news_adapter.fetch_all_news", return_value=new_articles), \
-             patch("common.sentiment.scorer.score_article", return_value=(0.0, "neutral")):
+        with (
+            patch("common.data_pipeline.news_adapter.fetch_all_news", return_value=new_articles),
+            patch("common.sentiment.scorer.score_article", return_value=(0.0, "neutral")),
+        ):
             svc.fetch_and_store("crypto")
 
         # Should have pruned down to <= 1000
@@ -959,7 +1003,7 @@ class TestNewsServiceSymbolFilter:
         mock_qs.values.return_value = mock_qs
         mock_qs.__getitem__ = MagicMock(return_value=[])
         with patch("market.models.NewsArticle.objects.all", return_value=mock_qs):
-            result = svc.get_articles(symbol="BTC/USDT")
+            svc.get_articles(symbol="BTC/USDT")
             # Should have called filter twice: once for nothing (no asset_class), once for symbol
             mock_qs.filter.assert_called_once()
 
@@ -1024,10 +1068,19 @@ class TestDailyReportErrorPaths:
     def test_data_coverage_empty_available(self):
         from market.services.daily_report import DailyReportService
 
-        with patch("common.data_pipeline.pipeline.list_available_data", return_value=pd.DataFrame()), \
-             patch("core.platform_bridge.get_platform_config", return_value={
-                 "data": {"watchlist": ["BTC/USDT"], "equity_watchlist": [], "forex_watchlist": []}
-             }):
+        with (
+            patch("common.data_pipeline.pipeline.list_available_data", return_value=pd.DataFrame()),
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {
+                        "watchlist": ["BTC/USDT"],
+                        "equity_watchlist": [],
+                        "forex_watchlist": [],
+                    },
+                },
+            ),
+        ):
             result = DailyReportService._get_data_coverage()
             assert result["pairs_with_data"] == 0
             assert result["coverage_pct"] == 0
@@ -1043,10 +1096,10 @@ class TestDailyReportErrorPaths:
             assert "error" in result
 
     def test_strategy_performance_with_orders(self):
+        from django.utils import timezone as tz
+
         from market.services.daily_report import DailyReportService
         from trading.models import Order, OrderStatus, TradingMode
-
-        from django.utils import timezone as tz
 
         now = tz.now()
         # Create paper orders (no realized_pnl field — uses getattr fallback)
@@ -1078,7 +1131,9 @@ class TestDailyReportErrorPaths:
     def test_strategy_performance_exception(self):
         from market.services.daily_report import DailyReportService
 
-        with patch("trading.models.Order.objects", new_callable=PropertyMock, side_effect=Exception("db")):
+        with patch(
+            "trading.models.Order.objects", new_callable=PropertyMock, side_effect=Exception("db")
+        ):
             result = DailyReportService._get_strategy_performance()
             assert "error" in result
 
@@ -1103,7 +1158,9 @@ class TestDailyReportErrorPaths:
     def test_system_status_exception(self):
         from market.services.daily_report import DailyReportService
 
-        with patch("trading.models.Order.objects", new_callable=PropertyMock, side_effect=Exception("db")):
+        with patch(
+            "trading.models.Order.objects", new_callable=PropertyMock, side_effect=Exception("db")
+        ):
             result = DailyReportService._get_system_status()
             assert "error" in result
 
@@ -1149,7 +1206,7 @@ class TestDailyReportErrorPaths:
             )
 
         result = DailyReportService._get_recommendations(
-            {"dominant_regime": "strong_trend_up", "status": "ok"}
+            {"dominant_regime": "strong_trend_up", "status": "ok"},
         )
         assert "bullish" in result["sentiment"].lower()
 
@@ -1171,7 +1228,7 @@ class TestDailyReportErrorPaths:
             )
 
         result = DailyReportService._get_recommendations(
-            {"dominant_regime": "strong_trend_down", "status": "ok"}
+            {"dominant_regime": "strong_trend_down", "status": "ok"},
         )
         assert "bearish" in result["sentiment"].lower()
 
@@ -1192,7 +1249,7 @@ class TestDailyReportErrorPaths:
         )
 
         result = DailyReportService._get_recommendations(
-            {"dominant_regime": "ranging", "status": "ok"}
+            {"dominant_regime": "ranging", "status": "ok"},
         )
         assert "neutral" in result["sentiment"].lower()
 
@@ -1201,7 +1258,7 @@ class TestDailyReportErrorPaths:
 
         with patch("market.models.NewsArticle.objects.filter", side_effect=Exception("db")):
             result = DailyReportService._get_recommendations(
-                {"dominant_regime": "unknown", "status": "ok"}
+                {"dominant_regime": "unknown", "status": "ok"},
             )
             assert "sentiment" in result
 
@@ -1213,8 +1270,15 @@ class TestDailyReportErrorPaths:
 
 @pytest.mark.django_db
 class TestMarketScannerFullScan:
-    def _make_df(self, length=200, volume_surge=False, rsi_bounce=False,
-                 breakout=False, pullback=False, momentum=False):
+    def _make_df(
+        self,
+        length=200,
+        volume_surge=False,
+        rsi_bounce=False,
+        breakout=False,
+        pullback=False,
+        momentum=False,
+    ):
         """Create a DataFrame that triggers specific detectors."""
         import numpy as np
 
@@ -1261,7 +1325,9 @@ class TestMarketScannerFullScan:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={"data": {"watchlist": []}}):
+        with patch(
+            "core.platform_bridge.get_platform_config", return_value={"data": {"watchlist": []}}
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["status"] == "skipped"
 
@@ -1271,9 +1337,15 @@ class TestMarketScannerFullScan:
         svc = MarketScannerService()
         df = self._make_df(200)
 
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["status"] == "completed"
             assert result["symbols_scanned"] == 1
@@ -1282,9 +1354,15 @@ class TestMarketScannerFullScan:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=pd.DataFrame()):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=pd.DataFrame()),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["symbols_scanned"] == 0
 
@@ -1293,9 +1371,15 @@ class TestMarketScannerFullScan:
 
         svc = MarketScannerService()
         df = self._make_df(10)  # Too short (< 50)
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["symbols_scanned"] == 0
 
@@ -1303,9 +1387,15 @@ class TestMarketScannerFullScan:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", side_effect=Exception("fail")):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", side_effect=Exception("fail")),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["errors"] == 1
 
@@ -1314,9 +1404,15 @@ class TestMarketScannerFullScan:
 
         svc = MarketScannerService()
         df = self._make_df(200)
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"forex_watchlist": ["EUR/USD"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"forex_watchlist": ["EUR/USD"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df),
+        ):
             result = svc.scan_all(asset_class="forex")
             assert result["status"] == "completed"
 
@@ -1325,9 +1421,15 @@ class TestMarketScannerFullScan:
 
         svc = MarketScannerService()
         df = self._make_df(200)
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"equity_watchlist": ["AAPL"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"equity_watchlist": ["AAPL"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df),
+        ):
             result = svc.scan_all(asset_class="equity")
             assert result["status"] == "completed"
 
@@ -1348,8 +1450,10 @@ class TestMarketScannerAlerts:
 
         svc = MarketScannerService()
         opp = {"type": "volume_surge", "score": 85, "details": {"reason": "test"}}
-        with patch("core.services.ws_broadcast.broadcast_opportunity"), \
-             patch("core.services.notification.send_telegram_rate_limited") as mock_tg:
+        with (
+            patch("core.services.ws_broadcast.broadcast_opportunity"),
+            patch("core.services.notification.send_telegram_rate_limited") as mock_tg,
+        ):
             svc._maybe_alert("BTC/USDT", opp, "crypto")
             mock_tg.assert_called_once()
 
@@ -1367,7 +1471,9 @@ class TestMarketScannerAlerts:
 
         svc = MarketScannerService()
         opp = {"type": "volume_surge", "score": 80, "details": {"reason": "test"}}
-        with patch("core.services.ws_broadcast.broadcast_opportunity", side_effect=Exception("ws fail")):
+        with patch(
+            "core.services.ws_broadcast.broadcast_opportunity", side_effect=Exception("ws fail")
+        ):
             svc._maybe_alert("BTC/USDT", opp, "crypto")  # Should not raise
 
     def test_maybe_alert_telegram_exception(self):
@@ -1375,8 +1481,13 @@ class TestMarketScannerAlerts:
 
         svc = MarketScannerService()
         opp = {"type": "volume_surge", "score": 85, "details": {"reason": "test"}}
-        with patch("core.services.ws_broadcast.broadcast_opportunity"), \
-             patch("core.services.notification.send_telegram_rate_limited", side_effect=Exception("tg fail")):
+        with (
+            patch("core.services.ws_broadcast.broadcast_opportunity"),
+            patch(
+                "core.services.notification.send_telegram_rate_limited",
+                side_effect=Exception("tg fail"),
+            ),
+        ):
             svc._maybe_alert("BTC/USDT", opp, "crypto")  # Should not raise
 
 
@@ -1421,7 +1532,13 @@ class TestMarketScannerDetectors:
         volume = pd.Series([100.0] * 10 + [50.0] * 5 + [200.0] * 5)
         sma_20 = pd.Series([99.0] * 20)
         result = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 100.5, "1h", distance_pct=2.0
+            "BTC/USDT",
+            close,
+            volume,
+            sma_20,
+            100.5,
+            "1h",
+            distance_pct=2.0,
         )
         assert result is not None
         assert result["type"] == "breakout"
@@ -1434,7 +1551,12 @@ class TestMarketScannerDetectors:
         volume = pd.Series([100.0] * 20)
         sma_20 = pd.Series([99.0] * 20)
         result = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 90.0, "1h"
+            "BTC/USDT",
+            close,
+            volume,
+            sma_20,
+            90.0,
+            "1h",
         )
         assert result is None
 
@@ -1445,7 +1567,12 @@ class TestMarketScannerDetectors:
         volume = pd.Series([200.0] * 5 + [100.0] * 5 + [50.0] * 10)  # Decreasing
         sma_20 = pd.Series([99.0] * 20)
         result = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            volume,
+            sma_20,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1456,7 +1583,12 @@ class TestMarketScannerDetectors:
         volume = pd.Series([100.0] * 5)
         sma_20 = pd.Series([99.0] * 5)
         result = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            volume,
+            sma_20,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1467,7 +1599,12 @@ class TestMarketScannerDetectors:
         volume = pd.Series([100.0] * 8)  # Less than 10
         sma_20 = pd.Series([99.0] * 20)
         result = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            volume,
+            sma_20,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1479,7 +1616,12 @@ class TestMarketScannerDetectors:
         adx = pd.Series([30.0] * 10)
         ema_50 = pd.Series([90.0] * 10)  # Price above EMA50
         result = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx, ema_50, 96.0, "1h"
+            "BTC/USDT",
+            close,
+            adx,
+            ema_50,
+            96.0,
+            "1h",
         )
         assert result is not None
         assert result["type"] == "trend_pullback"
@@ -1491,7 +1633,12 @@ class TestMarketScannerDetectors:
         adx = pd.Series([15.0] * 10)  # ADX too low
         ema_50 = pd.Series([90.0] * 10)
         result = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx, ema_50, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            adx,
+            ema_50,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1502,7 +1649,12 @@ class TestMarketScannerDetectors:
         adx = pd.Series([30.0] * 10)
         ema_50 = pd.Series([110.0] * 10)  # Price below EMA50
         result = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx, ema_50, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            adx,
+            ema_50,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1514,7 +1666,12 @@ class TestMarketScannerDetectors:
         adx = pd.Series([30.0] * 10)
         ema_50 = pd.Series([90.0] * 10)
         result = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx, ema_50, 99.5, "1h"
+            "BTC/USDT",
+            close,
+            adx,
+            ema_50,
+            99.5,
+            "1h",
         )
         assert result is None
 
@@ -1525,7 +1682,12 @@ class TestMarketScannerDetectors:
         adx = pd.Series(dtype=float)
         ema_50 = pd.Series(dtype=float)
         result = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx, ema_50, 100.0, "1h"
+            "BTC/USDT",
+            close,
+            adx,
+            ema_50,
+            100.0,
+            "1h",
         )
         assert result is None
 
@@ -1534,7 +1696,10 @@ class TestMarketScannerDetectors:
 
         macd_df = pd.DataFrame({"histogram": [-0.5, -0.1, 0.3]})
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", macd_df, 50000.0, "1h"
+            "BTC/USDT",
+            macd_df,
+            50000.0,
+            "1h",
         )
         assert result is not None
         assert result["details"]["direction"] == "bullish"
@@ -1544,7 +1709,10 @@ class TestMarketScannerDetectors:
 
         macd_df = pd.DataFrame({"histogram": [0.5, 0.1, -0.3]})
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", macd_df, 50000.0, "1h"
+            "BTC/USDT",
+            macd_df,
+            50000.0,
+            "1h",
         )
         assert result is not None
         assert result["details"]["direction"] == "bearish"
@@ -1554,7 +1722,10 @@ class TestMarketScannerDetectors:
 
         macd_df = pd.DataFrame({"histogram": [0.1, 0.2, 0.3]})
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", macd_df, 50000.0, "1h"
+            "BTC/USDT",
+            macd_df,
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1562,7 +1733,10 @@ class TestMarketScannerDetectors:
         from market.services.market_scanner import MarketScannerService
 
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", pd.DataFrame(), 50000.0, "1h"
+            "BTC/USDT",
+            pd.DataFrame(),
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1571,7 +1745,10 @@ class TestMarketScannerDetectors:
 
         macd_df = pd.DataFrame({"histogram": [0.1, 0.2]})
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", macd_df, 50000.0, "1h"
+            "BTC/USDT",
+            macd_df,
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1580,7 +1757,10 @@ class TestMarketScannerDetectors:
 
         macd_df = pd.DataFrame({"macd": [0.1, 0.2, 0.3], "signal": [0.1, 0.15, 0.2]})
         result = MarketScannerService._check_momentum_shift(
-            "BTC/USDT", macd_df, 50000.0, "1h"
+            "BTC/USDT",
+            macd_df,
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1619,8 +1799,12 @@ class TestMarketScannerDetectors:
         volume = pd.Series([100.0] * 168)
         volume.iloc[-24:] = 500.0  # 5x surge
         result = MarketScannerService._check_volume_surge(
-            "EUR/USD", volume, 1.10, "1h",
-            surge_ratio=1.5, is_tick_volume=True,
+            "EUR/USD",
+            volume,
+            1.10,
+            "1h",
+            surge_ratio=1.5,
+            is_tick_volume=True,
         )
         assert result is not None
         assert result["details"]["note"] == "tick volume"
@@ -1630,7 +1814,10 @@ class TestMarketScannerDetectors:
 
         volume = pd.Series([0.0] * 168)
         result = MarketScannerService._check_volume_surge(
-            "BTC/USDT", volume, 50000.0, "1h"
+            "BTC/USDT",
+            volume,
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1639,7 +1826,10 @@ class TestMarketScannerDetectors:
 
         volume = pd.Series([100.0] * 100)  # Less than 168
         result = MarketScannerService._check_volume_surge(
-            "BTC/USDT", volume, 50000.0, "1h"
+            "BTC/USDT",
+            volume,
+            50000.0,
+            "1h",
         )
         assert result is None
 
@@ -1648,7 +1838,10 @@ class TestMarketScannerDetectors:
 
         volume = pd.Series([100.0] * 168)
         result = MarketScannerService._check_volume_surge(
-            "BTC/USDT", volume, 50000.0, "1h"
+            "BTC/USDT",
+            volume,
+            50000.0,
+            "1h",
         )
         assert result is None  # Ratio ~1.0
 
@@ -1698,7 +1891,9 @@ class TestNewsViews:
 
     def test_news_fetch(self):
         with patch("market.services.news.NewsService.fetch_and_store", return_value=5):
-            resp = self.client.post("/api/market/news/fetch/", {"asset_class": "crypto"}, format="json")
+            resp = self.client.post(
+                "/api/market/news/fetch/", {"asset_class": "crypto"}, format="json"
+            )
             assert resp.status_code == 200
             assert resp.data["articles_fetched"] == 5
 
@@ -1708,7 +1903,9 @@ class TestNewsViews:
             assert resp.status_code == 200
 
     def test_news_fetch_invalid_asset_class(self):
-        resp = self.client.post("/api/market/news/fetch/", {"asset_class": "invalid"}, format="json")
+        resp = self.client.post(
+            "/api/market/news/fetch/", {"asset_class": "invalid"}, format="json"
+        )
         assert resp.status_code == 400
 
 
@@ -1726,7 +1923,9 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Test", exchange_id="kraken", is_sandbox=True
+            name="Test",
+            exchange_id="kraken",
+            is_sandbox=True,
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1744,7 +1943,8 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Test", exchange_id="kraken"
+            name="Test",
+            exchange_id="kraken",
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1763,9 +1963,13 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Test", exchange_id="kraken",
-            api_key="key", api_secret="secret", passphrase="pass",
-            options={"test": True}, is_sandbox=True,
+            name="Test",
+            exchange_id="kraken",
+            api_key="key",
+            api_secret="secret",
+            passphrase="pass",
+            options={"test": True},
+            is_sandbox=True,
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1783,7 +1987,8 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Rotate", exchange_id="kraken"
+            name="Rotate",
+            exchange_id="kraken",
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1813,7 +2018,8 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Rotate", exchange_id="kraken"
+            name="Rotate",
+            exchange_id="kraken",
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1832,8 +2038,10 @@ class TestExchangeConfigViews:
         from market.models import ExchangeConfig
 
         ec = ExchangeConfig.objects.create(
-            name="Rotate", exchange_id="kraken",
-            options={"opt": True}, is_sandbox=True,
+            name="Rotate",
+            exchange_id="kraken",
+            options={"opt": True},
+            is_sandbox=True,
         )
         with patch("ccxt.async_support.kraken") as mock_cls:
             mock_exchange = MagicMock()
@@ -1866,7 +2074,9 @@ class TestDataSourceConfigViews:
 
         ec = ExchangeConfig.objects.create(name="E", exchange_id="kraken")
         dsc = DataSourceConfig.objects.create(
-            exchange_config=ec, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=ec,
+            symbols=["BTC/USDT"],
+            timeframes=["1h"],
         )
         resp = self.client.get(f"/api/data-sources/{dsc.pk}/")
         assert resp.status_code == 200
@@ -1880,7 +2090,9 @@ class TestDataSourceConfigViews:
 
         ec = ExchangeConfig.objects.create(name="E", exchange_id="kraken")
         dsc = DataSourceConfig.objects.create(
-            exchange_config=ec, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=ec,
+            symbols=["BTC/USDT"],
+            timeframes=["1h"],
         )
         resp = self.client.put(
             f"/api/data-sources/{dsc.pk}/",
@@ -1902,7 +2114,9 @@ class TestDataSourceConfigViews:
 
         ec = ExchangeConfig.objects.create(name="E", exchange_id="kraken")
         dsc = DataSourceConfig.objects.create(
-            exchange_config=ec, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=ec,
+            symbols=["BTC/USDT"],
+            timeframes=["1h"],
         )
         resp = self.client.delete(f"/api/data-sources/{dsc.pk}/")
         assert resp.status_code == 204
@@ -2114,18 +2328,30 @@ class TestRegimeViews:
         self.client.force_authenticate(user=self.user)
 
     def test_regime_current_all_forex(self):
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"forex_watchlist": ["EUR/USD"]}
-        }), patch("market.services.regime.RegimeService.get_all_current_regimes", return_value=[
-            {"symbol": "EUR/USD", "regime": "ranging"}
-        ]):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"forex_watchlist": ["EUR/USD"]},
+                },
+            ),
+            patch(
+                "market.services.regime.RegimeService.get_all_current_regimes",
+                return_value=[
+                    {"symbol": "EUR/USD", "regime": "ranging"},
+                ],
+            ),
+        ):
             resp = self.client.get("/api/regime/current/?asset_class=forex")
             assert resp.status_code == 200
 
     def test_regime_current_all_forex_empty(self):
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"forex_watchlist": []}
-        }):
+        with patch(
+            "core.platform_bridge.get_platform_config",
+            return_value={
+                "data": {"forex_watchlist": []},
+            },
+        ):
             resp = self.client.get("/api/regime/current/?asset_class=forex")
             assert resp.status_code == 200
             assert resp.data == []
@@ -2137,15 +2363,22 @@ class TestRegimeViews:
             assert resp.data == []
 
     def test_regime_current_all_equity(self):
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"equity_watchlist": ["AAPL"]}
-        }), patch("market.services.regime.RegimeService.get_all_current_regimes", return_value=[]):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"equity_watchlist": ["AAPL"]},
+                },
+            ),
+            patch("market.services.regime.RegimeService.get_all_current_regimes", return_value=[]),
+        ):
             resp = self.client.get("/api/regime/current/?asset_class=equity")
             assert resp.status_code == 200
 
     def test_regime_current_none(self):
         # Reset the singleton
         import market.views
+
         market.views._regime_service = None
 
         with patch("market.services.regime.RegimeService.get_current_regime", return_value=None):
@@ -2155,6 +2388,7 @@ class TestRegimeViews:
 
     def test_regime_recommendation_none(self):
         import market.views
+
         market.views._regime_service = None
 
         with patch("market.services.regime.RegimeService.get_recommendation", return_value=None):
@@ -2164,6 +2398,7 @@ class TestRegimeViews:
 
     def test_position_size_none(self):
         import market.views
+
         market.views._regime_service = None
 
         with patch("market.services.regime.RegimeService.get_position_size", return_value=None):
@@ -2256,7 +2491,7 @@ class TestOpportunityViews:
             expires_at=now + timedelta(hours=24),
         )
         resp = self.client.get(
-            "/api/market/opportunities/?type=volume_surge&asset_class=crypto&min_score=80&limit=10"
+            "/api/market/opportunities/?type=volume_surge&asset_class=crypto&min_score=80&limit=10",
         )
         assert resp.status_code == 200
         assert len(resp.data) >= 1
@@ -2290,16 +2525,23 @@ class TestDailyReportViews:
         self.client.force_authenticate(user=self.user)
 
     def test_daily_report_latest(self):
-        with patch("market.services.daily_report.DailyReportService.get_latest", return_value={
-            "generated_at": "2024-01-01T00:00:00", "date": "2024-01-01"
-        }):
+        with patch(
+            "market.services.daily_report.DailyReportService.get_latest",
+            return_value={
+                "generated_at": "2024-01-01T00:00:00",
+                "date": "2024-01-01",
+            },
+        ):
             resp = self.client.get("/api/market/daily-report/")
             assert resp.status_code == 200
 
     def test_daily_report_history(self):
-        with patch("market.services.daily_report.DailyReportService.get_history", return_value=[
-            {"generated_at": "2024-01-01T00:00:00", "date": "2024-01-01"}
-        ]):
+        with patch(
+            "market.services.daily_report.DailyReportService.get_history",
+            return_value=[
+                {"generated_at": "2024-01-01T00:00:00", "date": "2024-01-01"},
+            ],
+        ):
             resp = self.client.get("/api/market/daily-report/history/")
             assert resp.status_code == 200
 
@@ -2409,7 +2651,9 @@ class TestMarketTickerConsumer:
         consumer.channel_layer = MagicMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=False):
+        with patch.object(
+            consumer, "_is_authenticated", new_callable=AsyncMock, return_value=False
+        ):
             await consumer.connect()
             consumer.close.assert_called_once_with(code=4001)
 
@@ -2424,8 +2668,12 @@ class TestMarketTickerConsumer:
         consumer.channel_layer = MagicMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True), \
-             patch.object(consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=False):
+        with (
+            patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True),
+            patch.object(
+                consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=False
+            ),
+        ):
             await consumer.connect()
             consumer.close.assert_called_once_with(code=4029)
         _connection_counts.clear()
@@ -2443,9 +2691,13 @@ class TestMarketTickerConsumer:
         consumer.channel_layer.group_add = AsyncMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True), \
-             patch.object(consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=True), \
-             patch("market.services.ticker_poller.start_poller", new_callable=AsyncMock):
+        with (
+            patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True),
+            patch.object(
+                consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=True
+            ),
+            patch("market.services.ticker_poller.start_poller", new_callable=AsyncMock),
+        ):
             await consumer.connect()
             consumer.accept.assert_called_once()
         _connection_counts.clear()
@@ -2483,7 +2735,9 @@ class TestSystemEventsConsumer:
         consumer.channel_layer = MagicMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=False):
+        with patch.object(
+            consumer, "_is_authenticated", new_callable=AsyncMock, return_value=False
+        ):
             await consumer.connect()
             consumer.close.assert_called_once_with(code=4001)
 
@@ -2498,8 +2752,12 @@ class TestSystemEventsConsumer:
         consumer.channel_layer.group_add = AsyncMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True), \
-             patch.object(consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=True):
+        with (
+            patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True),
+            patch.object(
+                consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=True
+            ),
+        ):
             await consumer.connect()
             consumer.accept.assert_called_once()
 
@@ -2522,9 +2780,14 @@ class TestSystemEventsConsumer:
         consumer.send_json = AsyncMock()
 
         handlers = [
-            "halt_status", "order_update", "risk_alert",
-            "news_update", "sentiment_update", "scheduler_event",
-            "regime_change", "opportunity_alert",
+            "halt_status",
+            "order_update",
+            "risk_alert",
+            "news_update",
+            "sentiment_update",
+            "scheduler_event",
+            "regime_change",
+            "opportunity_alert",
         ]
         for handler_name in handlers:
             handler = getattr(consumer, handler_name)
@@ -2609,9 +2872,11 @@ class TestTickerPoller:
         # Patch where the import resolves at call time
         with patch.dict("sys.modules", {}):
             pass  # Ensure fresh import
-        with patch("market.services.exchange.ExchangeService", return_value=mock_svc), \
-             patch.object(tp, "get_channel_layer", return_value=mock_channel), \
-             patch("asyncio.sleep", side_effect=counting_sleep):
+        with (
+            patch("market.services.exchange.ExchangeService", return_value=mock_svc),
+            patch.object(tp, "get_channel_layer", return_value=mock_channel),
+            patch("asyncio.sleep", side_effect=counting_sleep),
+        ):
             with pytest.raises(asyncio.CancelledError):
                 await tp._poll_loop()
             mock_channel.group_send.assert_called_once()
@@ -2629,11 +2894,13 @@ class TestTickerPoller:
         async def immediate_cancel(seconds):
             raise asyncio.CancelledError()
 
-        with patch("market.services.exchange.ExchangeService", return_value=mock_svc), \
-             patch.object(tp, "get_channel_layer", return_value=mock_channel), \
-             patch("asyncio.sleep", side_effect=immediate_cancel):
-            with pytest.raises(asyncio.CancelledError):
-                await tp._poll_loop()
+        with (
+            patch("market.services.exchange.ExchangeService", return_value=mock_svc),
+            patch.object(tp, "get_channel_layer", return_value=mock_channel),
+            patch("asyncio.sleep", side_effect=immediate_cancel),
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await tp._poll_loop()
 
 
 # ══════════════════════════════════════════════════════
@@ -2651,7 +2918,10 @@ class TestMigrateEnvCredentials:
         out = StringIO()
         with patch("django.conf.settings.EXCHANGE_API_KEY", ""):
             call_command("migrate_env_credentials", stdout=out)
-        assert "nothing to migrate" in out.getvalue().lower() or "No EXCHANGE_API_KEY" in out.getvalue()
+        assert (
+            "nothing to migrate" in out.getvalue().lower()
+            or "No EXCHANGE_API_KEY" in out.getvalue()
+        )
 
     def test_existing_config(self):
         from io import StringIO
@@ -2667,9 +2937,11 @@ class TestMigrateEnvCredentials:
             api_secret="existing_secret",
         )
         out = StringIO()
-        with patch("django.conf.settings.EXCHANGE_ID", "kraken"), \
-             patch("django.conf.settings.EXCHANGE_API_KEY", "test_key"), \
-             patch("django.conf.settings.EXCHANGE_API_SECRET", "test_secret"):
+        with (
+            patch("django.conf.settings.EXCHANGE_ID", "kraken"),
+            patch("django.conf.settings.EXCHANGE_API_KEY", "test_key"),
+            patch("django.conf.settings.EXCHANGE_API_SECRET", "test_secret"),
+        ):
             call_command("migrate_env_credentials", stdout=out)
         assert "already exists" in out.getvalue().lower() or "Skipping" in out.getvalue()
 
@@ -2681,9 +2953,11 @@ class TestMigrateEnvCredentials:
         from market.models import ExchangeConfig
 
         out = StringIO()
-        with patch("django.conf.settings.EXCHANGE_ID", "kraken"), \
-             patch("django.conf.settings.EXCHANGE_API_KEY", "new_key"), \
-             patch("django.conf.settings.EXCHANGE_API_SECRET", "new_secret"):
+        with (
+            patch("django.conf.settings.EXCHANGE_ID", "kraken"),
+            patch("django.conf.settings.EXCHANGE_API_KEY", "new_key"),
+            patch("django.conf.settings.EXCHANGE_API_SECRET", "new_secret"),
+        ):
             call_command("migrate_env_credentials", stdout=out)
         assert ExchangeConfig.objects.filter(exchange_id="kraken", is_default=True).exists()
 
@@ -2869,8 +3143,12 @@ class TestConsumerAuthDirect:
         consumer.channel_layer.group_add = AsyncMock()
         consumer.channel_name = "test"
 
-        with patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True), \
-             patch.object(consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=False):
+        with (
+            patch.object(consumer, "_is_authenticated", new_callable=AsyncMock, return_value=True),
+            patch.object(
+                consumer, "_check_connection_limit", new_callable=AsyncMock, return_value=False
+            ),
+        ):
             await consumer.connect()
             consumer.close.assert_called_once_with(code=4029)
         _connection_counts.clear()
@@ -2887,11 +3165,13 @@ class TestExchangeServiceGaps:
         """Cover lines 23-24: ImportError in _load_db_config."""
         from market.services.exchange import _load_db_config
 
-        with patch.dict("sys.modules", {"market.models": None}):
+        with (
+            patch.dict("sys.modules", {"market.models": None}),
             # When market.models import fails, should return None
-            with patch("builtins.__import__", side_effect=ImportError("no module")):
-                result = _load_db_config()
-                assert result is None
+            patch("builtins.__import__", side_effect=ImportError("no module")),
+        ):
+            result = _load_db_config()
+            assert result is None
 
 
 @pytest.mark.django_db
@@ -2913,8 +3193,10 @@ class TestExchangeServiceDeferredLoad:
         mock_exchange = MagicMock()
         mock_exchange.close = AsyncMock()
 
-        with patch("market.services.exchange._load_db_config", return_value=mock_config), \
-             patch("ccxt.async_support.binance", return_value=mock_exchange):
+        with (
+            patch("market.services.exchange._load_db_config", return_value=mock_config),
+            patch("ccxt.async_support.binance", return_value=mock_exchange),
+        ):
             exchange = await svc._get_exchange()
             assert svc._exchange_id == "binance"
             assert exchange is mock_exchange
@@ -2929,13 +3211,15 @@ class TestExchangeServiceDeferredLoad:
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
         mock_exchange.fetch_ticker = AsyncMock(
-            side_effect=CircuitBreakerOpenError("kraken", 60)
+            side_effect=CircuitBreakerOpenError("kraken", 60),
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(CircuitBreakerOpenError):
-                await svc.fetch_ticker("BTC/USDT")
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(CircuitBreakerOpenError),
+        ):
+            await svc.fetch_ticker("BTC/USDT")
         _breakers.clear()
 
     async def test_fetch_tickers_cb_open_reraise(self):
@@ -2947,13 +3231,15 @@ class TestExchangeServiceDeferredLoad:
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
         mock_exchange.fetch_tickers = AsyncMock(
-            side_effect=CircuitBreakerOpenError("kraken", 60)
+            side_effect=CircuitBreakerOpenError("kraken", 60),
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(CircuitBreakerOpenError):
-                await svc.fetch_tickers(["BTC/USDT"])
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(CircuitBreakerOpenError),
+        ):
+            await svc.fetch_tickers(["BTC/USDT"])
         _breakers.clear()
 
     async def test_fetch_ohlcv_cb_open_reraise(self):
@@ -2965,13 +3251,15 @@ class TestExchangeServiceDeferredLoad:
         svc = ExchangeService(exchange_id="kraken")
         mock_exchange = MagicMock()
         mock_exchange.fetch_ohlcv = AsyncMock(
-            side_effect=CircuitBreakerOpenError("kraken", 60)
+            side_effect=CircuitBreakerOpenError("kraken", 60),
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            with pytest.raises(CircuitBreakerOpenError):
-                await svc.fetch_ohlcv("BTC/USDT")
+        with (
+            patch("core.services.metrics.timed", side_effect=_noop_timed),
+            pytest.raises(CircuitBreakerOpenError),
+        ):
+            await svc.fetch_ohlcv("BTC/USDT")
         _breakers.clear()
 
 
@@ -2984,21 +3272,32 @@ class TestExchangeServiceDeferredLoad:
 class TestDailyReportWinsLosses:
     def test_strategy_performance_with_pnl(self):
         """Cover lines 199, 201: wins/losses incremented when pnl > 0 / < 0."""
+        from django.utils import timezone as tz
+
         from market.services.daily_report import DailyReportService
         from trading.models import Order, OrderStatus, TradingMode
-        from django.utils import timezone as tz
 
         now = tz.now()
         # Create orders and mock realized_pnl via getattr
         o1 = Order.objects.create(
-            symbol="BTC/USDT", side="buy", order_type="limit",
-            price=50000.0, amount=0.01, status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER, timestamp=now,
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="limit",
+            price=50000.0,
+            amount=0.01,
+            status=OrderStatus.FILLED,
+            mode=TradingMode.PAPER,
+            timestamp=now,
         )
         o2 = Order.objects.create(
-            symbol="ETH/USDT", side="buy", order_type="limit",
-            price=3000.0, amount=0.1, status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER, timestamp=now,
+            symbol="ETH/USDT",
+            side="buy",
+            order_type="limit",
+            price=3000.0,
+            amount=0.1,
+            status=OrderStatus.FILLED,
+            mode=TradingMode.PAPER,
+            timestamp=now,
         )
 
         # Monkey-patch realized_pnl to trigger wins/losses branches
@@ -3008,19 +3307,21 @@ class TestDailyReportWinsLosses:
         o2.save = MagicMock()
 
         # Patch the queryset to return our modified objects
-        with patch("trading.models.Order.objects") as mock_manager:
+        with patch("trading.models.Order.objects"):
             mock_qs = MagicMock()
             mock_qs.filter.return_value = mock_qs
             mock_qs.count.return_value = 2  # total_orders
             mock_qs_recent = MagicMock()
             mock_qs_recent.count.return_value = 2  # recent_orders
-            mock_qs.filter.side_effect = [mock_qs, mock_qs_recent, MagicMock(count=MagicMock(return_value=2))]
+            mock_qs.filter.side_effect = [
+                mock_qs,
+                mock_qs_recent,
+                MagicMock(count=MagicMock(return_value=2)),
+            ]
 
             # Simpler approach: just patch the whole method
-            pass
 
         # Direct approach: patch getattr behavior by mocking filled_orders iteration
-        from unittest.mock import PropertyMock
 
         mock_order1 = MagicMock()
         mock_order1.realized_pnl = 100.0
@@ -3047,9 +3348,11 @@ class TestDailyReportWinsLosses:
 
     def test_system_status_ready(self):
         """Cover line 235: readiness = 'Ready' when days >= 14."""
-        from market.services.daily_report import DailyReportService
-        from django.utils import timezone as tz
         from datetime import timedelta
+
+        from django.utils import timezone as tz
+
+        from market.services.daily_report import DailyReportService
 
         # Mock the queryset to return a timestamp from 20 days ago
         old_time = tz.now() - timedelta(days=20)
@@ -3126,19 +3429,23 @@ class TestRegimeViewGaps:
     def test_regime_current_with_result(self):
         """Cover line 652: return Response(result) when regime is found."""
         import market.views
+
         market.views._regime_service = None
 
-        with patch("market.services.regime.RegimeService.get_current_regime", return_value={
-            "symbol": "BTC/USDT",
-            "regime": "trending_up",
-            "confidence": 0.8,
-            "components": {},
-            "adx_value": 40.0,
-            "bb_width_percentile": 0.5,
-            "ema_slope": 0.001,
-            "trend_alignment": 0.9,
-            "price_structure_score": 0.7,
-        }):
+        with patch(
+            "market.services.regime.RegimeService.get_current_regime",
+            return_value={
+                "symbol": "BTC/USDT",
+                "regime": "trending_up",
+                "confidence": 0.8,
+                "components": {},
+                "adx_value": 40.0,
+                "bb_width_percentile": 0.5,
+                "ema_slope": 0.001,
+                "trend_alignment": 0.9,
+                "price_structure_score": 0.7,
+            },
+        ):
             resp = self.client.get("/api/regime/current/BTC_USDT/")
             assert resp.status_code == 200
             assert resp.data["regime"] == "trending_up"
@@ -3146,17 +3453,21 @@ class TestRegimeViewGaps:
     def test_regime_recommendation_with_result(self):
         """Cover line 680: return Response(result) when recommendation exists."""
         import market.views
+
         market.views._regime_service = None
 
-        with patch("market.services.regime.RegimeService.get_recommendation", return_value={
-            "symbol": "BTC/USDT",
-            "regime": "trending_up",
-            "confidence": 0.8,
-            "primary_strategy": "CryptoInvestorV1",
-            "weights": [{"strategy": "CryptoInvestorV1", "weight": 1.0}],
-            "position_size_modifier": 1.0,
-            "reasoning": "Strong uptrend",
-        }):
+        with patch(
+            "market.services.regime.RegimeService.get_recommendation",
+            return_value={
+                "symbol": "BTC/USDT",
+                "regime": "trending_up",
+                "confidence": 0.8,
+                "primary_strategy": "CryptoInvestorV1",
+                "weights": [{"strategy": "CryptoInvestorV1", "weight": 1.0}],
+                "position_size_modifier": 1.0,
+                "reasoning": "Strong uptrend",
+            },
+        ):
             resp = self.client.get("/api/regime/recommendation/BTC_USDT/")
             assert resp.status_code == 200
             assert resp.data["primary_strategy"] == "CryptoInvestorV1"
@@ -3170,7 +3481,8 @@ class TestRegimeViewGaps:
 @pytest.mark.django_db
 class TestMarketScannerOpportunityCreation:
     """Cover lines 121-130, 135-144, 170-179, 186-195:
-    opportunity objects created for each detector type."""
+    opportunity objects created for each detector type.
+    """
 
     def _make_scan_data(self, length=200):
         import numpy as np
@@ -3178,13 +3490,16 @@ class TestMarketScannerOpportunityCreation:
         dates = pd.date_range("2024-01-01", periods=length, freq="h")
         close = np.full(length, 50000.0)
         volume = np.full(length, 1000.0)
-        df = pd.DataFrame({
-            "open": close * 0.999,
-            "high": close * 1.02,
-            "low": close * 0.98,
-            "close": close,
-            "volume": volume,
-        }, index=dates)
+        df = pd.DataFrame(
+            {
+                "open": close * 0.999,
+                "high": close * 1.02,
+                "low": close * 0.98,
+                "close": close,
+                "volume": volume,
+            },
+            index=dates,
+        )
         return df
 
     def test_scan_all_volume_surge_creates_opportunity(self):
@@ -3193,15 +3508,28 @@ class TestMarketScannerOpportunityCreation:
 
         svc = MarketScannerService()
         # Mock the individual detector to return an opportunity
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()), \
-             patch.object(svc, "_check_volume_surge", return_value={
-                 "type": "volume_surge", "score": 75, "details": {"reason": "2x volume"}
-             }), patch.object(svc, "_check_rsi_bounce", return_value=None), \
-             patch.object(svc, "_check_breakout", return_value=None), \
-             patch.object(svc, "_check_trend_pullback", return_value=None), \
-             patch.object(svc, "_check_momentum_shift", return_value=None):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()),
+            patch.object(
+                svc,
+                "_check_volume_surge",
+                return_value={
+                    "type": "volume_surge",
+                    "score": 75,
+                    "details": {"reason": "2x volume"},
+                },
+            ),
+            patch.object(svc, "_check_rsi_bounce", return_value=None),
+            patch.object(svc, "_check_breakout", return_value=None),
+            patch.object(svc, "_check_trend_pullback", return_value=None),
+            patch.object(svc, "_check_momentum_shift", return_value=None),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["opportunities_created"] >= 1
 
@@ -3210,15 +3538,28 @@ class TestMarketScannerOpportunityCreation:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()), \
-             patch.object(svc, "_check_volume_surge", return_value=None), \
-             patch.object(svc, "_check_rsi_bounce", return_value={
-                 "type": "rsi_bounce", "score": 70, "details": {"rsi": 28}
-             }), patch.object(svc, "_check_breakout", return_value=None), \
-             patch.object(svc, "_check_trend_pullback", return_value=None), \
-             patch.object(svc, "_check_momentum_shift", return_value=None):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()),
+            patch.object(svc, "_check_volume_surge", return_value=None),
+            patch.object(
+                svc,
+                "_check_rsi_bounce",
+                return_value={
+                    "type": "rsi_bounce",
+                    "score": 70,
+                    "details": {"rsi": 28},
+                },
+            ),
+            patch.object(svc, "_check_breakout", return_value=None),
+            patch.object(svc, "_check_trend_pullback", return_value=None),
+            patch.object(svc, "_check_momentum_shift", return_value=None),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["opportunities_created"] >= 1
 
@@ -3227,15 +3568,28 @@ class TestMarketScannerOpportunityCreation:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()), \
-             patch.object(svc, "_check_volume_surge", return_value=None), \
-             patch.object(svc, "_check_rsi_bounce", return_value=None), \
-             patch.object(svc, "_check_breakout", return_value=None), \
-             patch.object(svc, "_check_trend_pullback", return_value={
-                 "type": "trend_pullback", "score": 72, "details": {"pullback": "3.5%"}
-             }), patch.object(svc, "_check_momentum_shift", return_value=None):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()),
+            patch.object(svc, "_check_volume_surge", return_value=None),
+            patch.object(svc, "_check_rsi_bounce", return_value=None),
+            patch.object(svc, "_check_breakout", return_value=None),
+            patch.object(
+                svc,
+                "_check_trend_pullback",
+                return_value={
+                    "type": "trend_pullback",
+                    "score": 72,
+                    "details": {"pullback": "3.5%"},
+                },
+            ),
+            patch.object(svc, "_check_momentum_shift", return_value=None),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["opportunities_created"] >= 1
 
@@ -3244,16 +3598,28 @@ class TestMarketScannerOpportunityCreation:
         from market.services.market_scanner import MarketScannerService
 
         svc = MarketScannerService()
-        with patch("core.platform_bridge.get_platform_config", return_value={
-            "data": {"watchlist": ["BTC/USDT"]}
-        }), patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()), \
-             patch.object(svc, "_check_volume_surge", return_value=None), \
-             patch.object(svc, "_check_rsi_bounce", return_value=None), \
-             patch.object(svc, "_check_breakout", return_value=None), \
-             patch.object(svc, "_check_trend_pullback", return_value=None), \
-             patch.object(svc, "_check_momentum_shift", return_value={
-                 "type": "momentum_shift", "score": 68, "details": {"macd": "bullish cross"}
-             }):
+        with (
+            patch(
+                "core.platform_bridge.get_platform_config",
+                return_value={
+                    "data": {"watchlist": ["BTC/USDT"]},
+                },
+            ),
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=self._make_scan_data()),
+            patch.object(svc, "_check_volume_surge", return_value=None),
+            patch.object(svc, "_check_rsi_bounce", return_value=None),
+            patch.object(svc, "_check_breakout", return_value=None),
+            patch.object(svc, "_check_trend_pullback", return_value=None),
+            patch.object(
+                svc,
+                "_check_momentum_shift",
+                return_value={
+                    "type": "momentum_shift",
+                    "score": 68,
+                    "details": {"macd": "bullish cross"},
+                },
+            ),
+        ):
             result = svc.scan_all(asset_class="crypto")
             assert result["opportunities_created"] >= 1
 

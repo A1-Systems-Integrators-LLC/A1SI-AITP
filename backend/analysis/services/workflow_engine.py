@@ -14,7 +14,7 @@ logger = logging.getLogger("workflow")
 
 # Safe condition pattern: result.field op value
 _CONDITION_RE = re.compile(
-    r'^result\.(\w+)\s*(==|!=|>|<|>=|<=)\s*["\']?([^"\']*)["\']?$'
+    r'^result\.(\w+)\s*(==|!=|>|<|>=|<=)\s*["\']?([^"\']*)["\']?$',
 )
 
 

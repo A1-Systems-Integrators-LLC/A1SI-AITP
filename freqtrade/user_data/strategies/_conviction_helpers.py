@@ -1,5 +1,4 @@
-"""
-Shared conviction system integration for Freqtrade strategies.
+"""Shared conviction system integration for Freqtrade strategies.
 
 Provides:
 - Signal fetching from the entry-check API
@@ -24,15 +23,19 @@ logger = logging.getLogger(__name__)
 
 # ── Ensure PROJECT_ROOT is on sys.path for common/ imports ──
 _project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
 )
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 # ── Try to import conviction system modules ──
 try:
+    from common.regime.regime_detector import (  # noqa: F401
+        Regime,
+        RegimeDetector,
+        RegimeState,
+    )
     from common.signals.exit_manager import advise_exit, get_stop_multiplier
-    from common.regime.regime_detector import Regime, RegimeDetector, RegimeState  # noqa: F401
 
     HAS_CONVICTION = True
 except ImportError:
@@ -152,7 +155,7 @@ def check_strategy_paused(strategy: Any) -> bool:
                         logger.warning(
                             f"Strategy {strategy_name} PAUSED by orchestrator "
                             f"(regime={entry.get('regime')}, "
-                            f"alignment={entry.get('alignment_score')})"
+                            f"alignment={entry.get('alignment_score')})",
                         )
                     return paused
     except Exception as e:
@@ -183,7 +186,7 @@ def check_conviction(strategy: Any, pair: str) -> bool:
     # Try fresh fetch if not cached or stale
     if signal is None:
         signal = fetch_signal(
-            strategy.risk_api_url, pair, strategy.__class__.__name__
+            strategy.risk_api_url, pair, strategy.__class__.__name__,
         )
         if signal:
             signal["_fetched_at"] = time.monotonic()
@@ -199,14 +202,14 @@ def check_conviction(strategy: Any, pair: str) -> bool:
         logger.warning(
             f"Conviction gate REJECTED {pair}: "
             f"score={signal.get('score', 0):.1f}, "
-            f"label={signal.get('signal_label', 'unknown')}"
+            f"label={signal.get('signal_label', 'unknown')}",
         )
         return False
 
     logger.info(
         f"Conviction gate approved {pair}: "
         f"score={signal.get('score', 0):.1f}, "
-        f"label={signal.get('signal_label', 'unknown')}"
+        f"label={signal.get('signal_label', 'unknown')}",
     )
     return True
 
@@ -292,7 +295,7 @@ def check_exit_advice(
             tag = f"conviction_{advice.reason.replace(' ', '_')[:30]}"
             logger.info(
                 f"Exit advisor: {pair} — {advice.reason} "
-                f"(urgency={advice.urgency}, partial={advice.partial_pct})"
+                f"(urgency={advice.urgency}, partial={advice.partial_pct})",
             )
             return tag
     except Exception as e:

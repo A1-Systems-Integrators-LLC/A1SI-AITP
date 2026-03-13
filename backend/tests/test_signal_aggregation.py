@@ -243,7 +243,7 @@ class TestSignalCache:
             try:
                 for _i in range(100):
                     cache.set(
-                        name, CompositeSignal(symbol=name, asset_class="crypto")
+                        name, CompositeSignal(symbol=name, asset_class="crypto"),
                     )
             except Exception as e:
                 errors.append(e)
@@ -1019,7 +1019,7 @@ class TestSignalAggregatorIntegration:
         assert sig.asset_class == "crypto"
         assert 0 <= sig.composite_score <= 100
         assert sig.signal_label in {
-            LABEL_STRONG_BUY, LABEL_BUY, LABEL_CAUTIOUS_BUY, LABEL_NEUTRAL, LABEL_AVOID
+            LABEL_STRONG_BUY, LABEL_BUY, LABEL_CAUTIOUS_BUY, LABEL_NEUTRAL, LABEL_AVOID,
         }
         assert 0 <= sig.position_modifier <= 1.0
         assert len(sig.reasoning) > 0

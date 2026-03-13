@@ -1,5 +1,4 @@
-"""
-Comprehensive tests for Common Indicators, Risk Manager, and Sentiment modules.
+"""Comprehensive tests for Common Indicators, Risk Manager, and Sentiment modules.
 ================================================================================
 Covers edge cases, thread safety, stale state, daily reset boundaries,
 unknown regimes, asset-class routing, sentiment modifier scaling,
@@ -21,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.indicators.technical import (
+    add_all_indicators,
     adx,
     atr_indicator,
     bollinger_bands,
@@ -37,48 +37,35 @@ from common.indicators.technical import (
     vwap,
     williams_r,
     wma,
-    add_all_indicators,
 )
 from common.regime.regime_detector import (
     Regime,
-    RegimeConfig,
     RegimeDetector,
     config_for_asset_class,
 )
 from common.regime.strategy_router import (
     BMR,
-    CIV1,
-    VB,
     EQ_MOM,
     EQ_MR,
-    FX_TREND,
     FX_RANGE,
+    FX_TREND,
     RoutingDecision,
     StrategyRouter,
-    StrategyWeight,
-    EQUITY_ROUTING,
-    FOREX_ROUTING,
 )
 from common.risk.risk_manager import (
-    PortfolioState,
     ReturnTracker,
     RiskLimits,
     RiskManager,
-    VaRResult,
 )
 from common.sentiment.scorer import (
-    score_text,
-    score_article,
-    POSITIVE_WORDS,
     NEGATIVE_WORDS,
+    POSITIVE_WORDS,
+    score_article,
+    score_text,
 )
 from common.sentiment.signal import (
-    SentimentSignal,
     compute_signal,
-    _compute_decay_weight,
-    _compute_term_multiplier,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────
 
@@ -86,10 +73,7 @@ from common.sentiment.signal import (
 def _make_ohlcv(n: int = 100, seed: int = 42, flat: bool = False) -> pd.DataFrame:
     """Build a synthetic OHLCV DataFrame."""
     np.random.seed(seed)
-    if flat:
-        close = np.full(n, 100.0)
-    else:
-        close = 100 + np.cumsum(np.random.randn(n) * 0.5)
+    close = np.full(n, 100.0) if flat else 100 + np.cumsum(np.random.randn(n) * 0.5)
     high = close + np.abs(np.random.randn(n) * 0.3)
     low = close - np.abs(np.random.randn(n) * 0.3)
     volume = np.random.uniform(1000, 5000, n)
@@ -632,7 +616,7 @@ class TestCorrelationMatrixInsufficientData:
     def test_exactly_20_returns_non_empty(self):
         tracker = ReturnTracker()
         np.random.seed(42)
-        for i in range(21):  # 21 prices = 20 returns
+        for _i in range(21):  # 21 prices = 20 returns
             tracker.record_price("A", 100.0 + np.random.randn())
             tracker.record_price("B", 200.0 + np.random.randn())
         corr = tracker.get_correlation_matrix()
@@ -645,9 +629,9 @@ class TestCorrelationMatrixInsufficientData:
         tracker = ReturnTracker()
         np.random.seed(42)
         # A gets 25 prices (24 returns), B gets 30 prices (29 returns)
-        for i in range(25):
+        for _i in range(25):
             tracker.record_price("A", 100.0 + np.random.randn())
-        for i in range(30):
+        for _i in range(30):
             tracker.record_price("B", 200.0 + np.random.randn())
         corr = tracker.get_correlation_matrix(["A", "B"])
         assert not corr.empty
@@ -656,9 +640,9 @@ class TestCorrelationMatrixInsufficientData:
         """If only one of the requested symbols has < 20 returns, it is excluded."""
         tracker = ReturnTracker()
         np.random.seed(42)
-        for i in range(25):
+        for _i in range(25):
             tracker.record_price("A", 100.0 + np.random.randn())
-        for i in range(10):  # only 9 returns
+        for _i in range(10):  # only 9 returns
             tracker.record_price("B", 200.0 + np.random.randn())
         corr = tracker.get_correlation_matrix(["A", "B"])
         # B filtered out, only A remains → need 2 symbols → empty
@@ -861,7 +845,7 @@ class TestSentimentSignalEdgeCases:
     def test_negative_age_clamped_to_zero(self):
         """Negative age_hours should be clamped to 0 (treated as fresh)."""
         articles = [
-            {"sentiment_score": 0.5, "age_hours": -5.0, "title": "Test", "summary": ""}
+            {"sentiment_score": 0.5, "age_hours": -5.0, "title": "Test", "summary": ""},
         ]
         result = compute_signal(articles, "crypto")
         # Should not crash, treat as age=0

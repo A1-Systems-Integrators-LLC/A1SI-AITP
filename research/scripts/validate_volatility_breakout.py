@@ -1,5 +1,4 @@
-"""
-Gate 2+3 Validation: VolatilityBreakout
+"""Gate 2+3 Validation: VolatilityBreakout
 ========================================
 Sprint 2, Item 2.3
 
@@ -24,8 +23,8 @@ Usage:
     python validate_volatility_breakout.py --synthetic
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -38,18 +37,19 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(SCRIPTS_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+from validation_engine import (  # noqa: E402
+    DEFAULT_FEES,
+    generate_synthetic_ohlcv,
+    run_validation,
+    save_report,
+)
+
 from common.indicators.technical import (  # noqa: E402
     adx,
     bollinger_bands,
     ema,
     rsi,
     sma,
-)
-from validation_engine import (  # noqa: E402
-    run_validation,
-    save_report,
-    generate_synthetic_ohlcv,
-    DEFAULT_FEES,
 )
 
 logger = logging.getLogger("validate_vb")
@@ -71,18 +71,19 @@ STOPLOSS = 0.03  # -3% hard stop (matches Freqtrade strategy)
 
 
 def volatility_breakout_signals(
-    df: pd.DataFrame, params: dict
+    df: pd.DataFrame, params: dict,
 ) -> tuple[pd.Series, pd.Series]:
-    """
-    Replicate VolatilityBreakout entry/exit logic using pure pandas indicators.
+    """Replicate VolatilityBreakout entry/exit logic using pure pandas indicators.
 
-    Parameters:
+    Parameters
+    ----------
         breakout_period: N-period high lookback (10-30)
         volume_factor: Volume spike multiplier (1.2-3.0)
         adx_low: ADX lower bound (10-20)
         adx_high: ADX upper bound (20-35)
         rsi_low: RSI entry lower bound (35-50)
         sell_rsi_threshold: RSI exit threshold (80-95)
+
     """
     close = df["close"]
     high = df["high"]
@@ -129,7 +130,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Gate 2+3 Validation: VolatilityBreakout"
+        description="Gate 2+3 Validation: VolatilityBreakout",
     )
     parser.add_argument("--symbol", default="BTC/USDT", help="Trading pair")
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
@@ -170,7 +171,7 @@ def main():
         if df.empty:
             logger.error(
                 f"No data for {args.symbol} {args.timeframe}. "
-                "Run data pipeline first or use --synthetic."
+                "Run data pipeline first or use --synthetic.",
             )
             return
         symbol = args.symbol

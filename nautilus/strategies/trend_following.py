@@ -1,5 +1,4 @@
-"""
-NautilusTrendFollowing — ports CryptoInvestorV1 logic
+"""NautilusTrendFollowing — ports CryptoInvestorV1 logic
 ======================================================
 EMA alignment + RSI pullback + MACD confirmation.
 
@@ -13,7 +12,6 @@ from nautilus.strategies.base import NautilusStrategyBase
 
 
 class NautilusTrendFollowing(NautilusStrategyBase):
-
     name = "NautilusTrendFollowing"
     stoploss = -0.05
     atr_multiplier = 2.0
@@ -46,10 +44,7 @@ class NautilusTrendFollowing(NautilusStrategyBase):
             return False
 
         # Not near BB upper band (avoid chasing)
-        if ind.get("close", 0) >= ind.get("bb_upper", float("inf")) * 0.98:
-            return False
-
-        return True
+        return bool(not ind.get("close", 0) >= ind.get("bb_upper", float("inf")) * 0.98)
 
     def should_exit(self, ind: pd.Series) -> bool:
         # RSI overbought
@@ -57,7 +52,4 @@ class NautilusTrendFollowing(NautilusStrategyBase):
             return True
 
         # Price closed below fast EMA (trend weakening)
-        if ind.get("close", 0) < ind.get(f"ema_{self.ema_fast}", 0):
-            return True
-
-        return False
+        return bool(ind.get("close", 0) < ind.get(f"ema_{self.ema_fast}", 0))

@@ -1,5 +1,4 @@
-"""
-ML Feature Engineering
+"""ML Feature Engineering
 ======================
 Transforms OHLCV DataFrames into feature matrices for ML models.
 Uses shared indicators from common.indicators.technical.
@@ -46,6 +45,7 @@ def compute_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         DataFrame with indicator columns added (NaN rows from warmup preserved).
+
     """
     feat = pd.DataFrame(index=df.index)
 
@@ -101,6 +101,7 @@ def add_lag_features(feat: pd.DataFrame, lag_periods: list[int] | None = None) -
 
     Returns:
         DataFrame with lag columns appended.
+
     """
     if lag_periods is None:
         lag_periods = DEFAULT_FEATURE_CONFIG["lag_periods"]
@@ -125,6 +126,7 @@ def add_return_features(df: pd.DataFrame, periods: list[int] | None = None) -> p
 
     Returns:
         DataFrame with return columns.
+
     """
     if periods is None:
         periods = DEFAULT_FEATURE_CONFIG["return_periods"]
@@ -156,6 +158,7 @@ def compute_target(
 
     Returns:
         Series of 0/1/NaN values. Last `horizon` rows will be NaN.
+
     """
     future_return = df["close"].shift(-horizon) / df["close"] - 1
     target = (future_return > 0).astype(float).where(future_return.notna())
@@ -184,6 +187,7 @@ def add_regime_features(
 
     Returns:
         DataFrame with regime feature columns.
+
     """
     feat = pd.DataFrame(index=df.index)
     feat["regime_ordinal"] = regime_ordinal if regime_ordinal is not None else -1
@@ -213,6 +217,7 @@ def add_sentiment_features(
 
     Returns:
         DataFrame with sentiment feature columns.
+
     """
     feat = pd.DataFrame(index=range(n_rows))
     feat["sentiment_score"] = sentiment_score if sentiment_score is not None else 0.0
@@ -233,6 +238,7 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         DataFrame with temporal feature columns.
+
     """
     feat = pd.DataFrame(index=df.index)
 
@@ -265,6 +271,7 @@ def add_volatility_regime_features(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         DataFrame with volatility regime feature columns.
+
     """
     feat = pd.DataFrame(index=df.index)
 
@@ -326,6 +333,7 @@ def build_feature_matrix(
     Returns:
         Tuple of (X features, y target, feature_names).
         Rows with any NaN are dropped.
+
     """
     cfg = {**DEFAULT_FEATURE_CONFIG, **(config or {})}
 
@@ -340,7 +348,10 @@ def build_feature_matrix(
 
     if include_sentiment:
         sent_feat = add_sentiment_features(
-            sentiment_score, sentiment_conviction, sentiment_position_modifier, n_rows=len(df),
+            sentiment_score,
+            sentiment_conviction,
+            sentiment_position_modifier,
+            n_rows=len(df),
         )
         sent_feat.index = df.index
         parts.append(sent_feat)
@@ -413,7 +424,9 @@ def _reduce_features(
     upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
     to_drop = [col for col in upper.columns if any(upper[col] > corr_threshold)]
     if to_drop:
-        logger.info("Dropping %d correlated features (>%.2f): %s", len(to_drop), corr_threshold, to_drop[:5])
+        logger.info(
+            "Dropping %d correlated features (>%.2f): %s", len(to_drop), corr_threshold, to_drop[:5]
+        )
         x_feat = x_feat.drop(columns=to_drop)
 
     # Step 2: Variance filter if still over budget

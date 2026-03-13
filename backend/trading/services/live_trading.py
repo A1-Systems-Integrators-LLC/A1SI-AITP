@@ -52,7 +52,7 @@ class LiveTradingService:
 
         # Kill switch check
         state = await sync_to_async(
-            lambda: RiskState.objects.filter(portfolio_id=order.portfolio_id).first()
+            lambda: RiskState.objects.filter(portfolio_id=order.portfolio_id).first(),
         )()
         if state and state.is_halted:
             await sync_to_async(order.transition_to)(
@@ -165,7 +165,7 @@ class LiveTradingService:
                 await LiveTradingService._broadcast_order_update(order)
             except ValueError:
                 logger.warning(
-                    f"Invalid transition for order {order.id}: {order.status} -> {new_status}"
+                    f"Invalid transition for order {order.id}: {order.status} -> {new_status}",
                 )
 
         except Exception as e:
@@ -218,7 +218,7 @@ class LiveTradingService:
                 portfolio_id=portfolio_id,
                 mode=TradingMode.LIVE,
                 status__in=live_statuses,
-            )
+            ),
         )
 
         cancelled = 0

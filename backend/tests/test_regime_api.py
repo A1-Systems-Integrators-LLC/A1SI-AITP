@@ -1,5 +1,4 @@
-"""
-Tests for Regime Dashboard API — Django version.
+"""Tests for Regime Dashboard API — Django version.
 Covers: RegimeService (with mocked data), API endpoints.
 """
 

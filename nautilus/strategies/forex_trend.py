@@ -1,5 +1,4 @@
-"""
-ForexTrend — Forex Trend Following Strategy
+"""ForexTrend — Forex Trend Following Strategy
 =============================================
 EMA 20/50 crossover, ADX>25, RSI confirm.
 Exit: opposite crossover. Stop: -2%
@@ -33,14 +32,8 @@ class ForexTrend(NautilusStrategyBase):
 
         # RSI not overbought
         rsi_val = ind.get("rsi_14", 50)
-        if rsi_val < self.buy_rsi_low or rsi_val > self.buy_rsi_high:
-            return False
-
-        return True
+        return bool(not (rsi_val < self.buy_rsi_low or rsi_val > self.buy_rsi_high))
 
     def should_exit(self, ind: pd.Series) -> bool:
         # Opposite crossover: fast < slow
-        if ind.get(f"ema_{self.ema_fast}", 0) < ind.get(f"ema_{self.ema_slow}", 0):
-            return True
-
-        return False
+        return bool(ind.get(f"ema_{self.ema_fast}", 0) < ind.get(f"ema_{self.ema_slow}", 0))

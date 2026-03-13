@@ -5,7 +5,6 @@ import sys
 
 from django.core.management.base import BaseCommand
 
-
 REQUIRED_DEPS = {
     "core": [
         ("django", "Django"),
@@ -63,7 +62,7 @@ class Command(BaseCommand):
         self.stdout.write("")
         if missing:
             self.stdout.write(
-                self.style.ERROR(f"MISSING {len(missing)} dependencies: {', '.join(missing)}")
+                self.style.ERROR(f"MISSING {len(missing)} dependencies: {', '.join(missing)}"),
             )
             if options["strict"]:
                 sys.exit(1)

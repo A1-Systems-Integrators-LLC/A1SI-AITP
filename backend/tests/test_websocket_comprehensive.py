@@ -6,7 +6,8 @@ rapid broadcast handling, system_events group routing, and opportunity alert sco
 """
 
 import asyncio
-from datetime import datetime, timezone
+import contextlib
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -59,8 +60,19 @@ ALL_EVENT_TYPES = [
     ("news_update", {"asset_class": "crypto", "articles_fetched": 7}),
     ("sentiment_update", {"asset_class": "forex", "avg_score": 0.4, "overall_label": "neutral"}),
     ("scheduler_event", {"task_id": "t1", "task_name": "Refresh", "status": "completed"}),
-    ("regime_change", {"symbol": "ETH/USDT", "previous_regime": "ranging", "new_regime": "high_volatility", "confidence": 0.9}),
-    ("opportunity_alert", {"symbol": "SOL/USDT", "opportunity_type": "breakout", "score": 88, "details": {}}),
+    (
+        "regime_change",
+        {
+            "symbol": "ETH/USDT",
+            "previous_regime": "ranging",
+            "new_regime": "high_volatility",
+            "confidence": 0.9,
+        },
+    ),
+    (
+        "opportunity_alert",
+        {"symbol": "SOL/USDT", "opportunity_type": "breakout", "score": 88, "details": {}},
+    ),
 ]
 
 
@@ -69,7 +81,9 @@ ALL_EVENT_TYPES = [
 class TestAllEightEventTypes:
     """Verify each of the 8 event types is correctly relayed by SystemEventsConsumer."""
 
-    @pytest.mark.parametrize("event_type,payload", ALL_EVENT_TYPES, ids=[e[0] for e in ALL_EVENT_TYPES])
+    @pytest.mark.parametrize(
+        "event_type,payload", ALL_EVENT_TYPES, ids=[e[0] for e in ALL_EVENT_TYPES]
+    )
     async def test_event_type_relayed(self, event_type, payload):
         user = await _create_user()
         await _clean_conn(user)
@@ -91,6 +105,7 @@ class TestAllEightEventTypes:
 
 
 # ── Unhandled event types ──────────────────────────────────────
+
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
@@ -121,10 +136,8 @@ class TestUnhandledEventTypes:
             await comm.receive_json_from(timeout=2)
 
         # Consumer future is dead after ValueError; disconnect also raises
-        try:
+        with contextlib.suppress(ValueError):
             await comm.disconnect()
-        except ValueError:
-            pass  # Expected: consumer already crashed
         await _clean_conn(user)
 
     async def test_all_8_handlers_exist(self):
@@ -166,6 +179,7 @@ class TestUnhandledEventTypes:
 
 
 # ── Connection limiter edge cases ──────────────────────────────
+
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
@@ -252,6 +266,7 @@ class TestConnectionLimiterComprehensive:
 
 
 # ── Broadcast helper functions ─────────────────────────────────
+
 
 class TestBroadcastHelpersComprehensive:
     """Comprehensive tests for all broadcast helpers in ws_broadcast.py."""
@@ -379,6 +394,7 @@ class TestBroadcastHelpersComprehensive:
 
 # ── Broadcast failure isolation ────────────────────────────────
 
+
 class TestBroadcastFailureIsolation:
     """Exceptions in broadcast must not propagate to callers."""
 
@@ -415,7 +431,6 @@ class TestBroadcastFailureIsolation:
             call_count += 1
             if call_count == 1:
                 raise RuntimeError("first call fails")
-            return None
 
         mock_layer.group_send.side_effect = fail_first
         mock_get_layer.return_value = mock_layer
@@ -452,6 +467,7 @@ class TestBroadcastFailureIsolation:
 
 # ── System events group routing ────────────────────────────────
 
+
 class TestSystemEventsGroupRouting:
     """All broadcast helpers must target the 'system_events' group."""
 
@@ -484,6 +500,7 @@ class TestSystemEventsGroupRouting:
 
 
 # ── Opportunity alert score threshold ──────────────────────────
+
 
 class TestOpportunityAlertBroadcast:
     """broadcast_opportunity sends regardless of score (filtering is caller's job)."""
@@ -518,6 +535,7 @@ class TestOpportunityAlertBroadcast:
 
 
 # ── Rapid broadcasts ──────────────────────────────────────────
+
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
@@ -587,6 +605,7 @@ class TestRapidBroadcasts:
 
 
 # ── Event payload structure validation ─────────────────────────
+
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio

@@ -59,13 +59,14 @@ def collect_gate_validation() -> dict:
             "gate2_best_drawdown": data.get("gate2", {}).get("best_drawdown"),
             "gate3_wf_passed": data.get("gate3_walkforward", {}).get("passed", False),
             "gate3_wf_oos_ratio": data.get("gate3_walkforward", {}).get(
-                "oos_vs_is_ratio"
+                "oos_vs_is_ratio",
             ),
             "gate3_perturb_passed": data.get("gate3_perturbation", {}).get(
-                "passed", False
+                "passed",
+                False,
             ),
             "gate3_perturb_min_sharpe": data.get("gate3_perturbation", {}).get(
-                "min_sharpe"
+                "min_sharpe",
             ),
             "overall_passed": data.get("overall", {}).get("passed", False),
         }
@@ -92,31 +93,35 @@ def collect_freqtrade_backtests() -> dict:
                         "file": zf_path.name,
                         "total_trades": details.get("total_trades", 0),
                         "profit_total_pct": round(
-                            details.get("profit_total", 0) * 100, 2
+                            details.get("profit_total", 0) * 100,
+                            2,
                         ),
                         "profit_total_abs": round(
-                            details.get("profit_total_abs", 0), 2
+                            details.get("profit_total_abs", 0),
+                            2,
                         ),
                         "max_drawdown_abs": round(
-                            details.get("max_drawdown_abs", 0), 2
+                            details.get("max_drawdown_abs", 0),
+                            2,
                         ),
                         "max_drawdown_pct": round(
-                            details.get("max_drawdown", 0) * 100, 2
+                            details.get("max_drawdown", 0) * 100,
+                            2,
                         ),
                         "wins": details.get("wins", 0),
                         "losses": details.get("losses", 0),
                         "win_rate_pct": round(
-                            details.get("wins", 0)
-                            / max(details.get("total_trades", 1), 1)
-                            * 100,
+                            details.get("wins", 0) / max(details.get("total_trades", 1), 1) * 100,
                             1,
                         ),
                         "backtest_start": details.get(
-                            "backtest_start", ""
+                            "backtest_start",
+                            "",
                         ),
                         "backtest_end": details.get("backtest_end", ""),
                         "market_change_pct": round(
-                            details.get("market_change", 0) * 100, 2
+                            details.get("market_change", 0) * 100,
+                            2,
                         ),
                     }
         except Exception as e:
@@ -145,13 +150,9 @@ def build_report() -> dict:
     report["summary"] = {
         "data_files": report["phase1_data"]["total_files"],
         "strategies_validated": len(gate_results),
-        "strategies_gate2_passed": sum(
-            1 for v in gate_results.values() if v.get("gate2_passed")
-        ),
+        "strategies_gate2_passed": sum(1 for v in gate_results.values() if v.get("gate2_passed")),
         "strategies_gate3_wf_passed": sum(
-            1
-            for v in gate_results.values()
-            if str(v.get("gate3_wf_passed")).lower() == "true"
+            1 for v in gate_results.values() if str(v.get("gate3_wf_passed")).lower() == "true"
         ),
         "strategies_gate3_perturb_passed": sum(
             1 for v in gate_results.values() if v.get("gate3_perturb_passed")
@@ -160,11 +161,10 @@ def build_report() -> dict:
             1 for v in gate_results.values() if v.get("overall_passed")
         ),
         "freqtrade_strategies_tested": len(ft_results),
-        "freqtrade_total_trades": sum(
-            v.get("total_trades", 0) for v in ft_results.values()
-        ),
+        "freqtrade_total_trades": sum(v.get("total_trades", 0) for v in ft_results.values()),
         "freqtrade_total_profit": round(
-            sum(v.get("profit_total_abs", 0) for v in ft_results.values()), 2
+            sum(v.get("profit_total_abs", 0) for v in ft_results.values()),
+            2,
         ),
     }
 
@@ -207,7 +207,9 @@ def main():
         overall = "PASS" if g.get("overall_passed") else "FAIL"
         sharpe = g.get("gate2_best_sharpe")
         sharpe_str = f"{sharpe:.3f}" if sharpe is not None else "N/A"
-        print(f"  {name:30s} Gate2={g2} G3-WF={g3w} G3-Pert={g3p} => {overall}  (Sharpe={sharpe_str})")
+        print(
+            f"  {name:30s} Gate2={g2} G3-WF={g3w} G3-Pert={g3p} => {overall}  (Sharpe={sharpe_str})"
+        )
 
     # Per-strategy FT results
     print("\n  --- Freqtrade Backtest Per Strategy ---")
@@ -217,7 +219,10 @@ def main():
         wr = ft.get("win_rate_pct", 0)
         dd = ft.get("max_drawdown_abs", 0)
         mkt = ft.get("market_change_pct", 0)
-        print(f"  {name:30s} trades={trades:3d}  profit={profit:+8.2f} USDT  WR={wr:.1f}%  DD={dd:.2f}  mkt={mkt:.1f}%")
+        print(
+            f"  {name:30s} trades={trades:3d}  profit={profit:+8.2f} USDT"
+            f"  WR={wr:.1f}%  DD={dd:.2f}  mkt={mkt:.1f}%"
+        )
 
     # VBT screening highlights
     print("\n  --- VBT Screening Highlights ---")
@@ -231,7 +236,10 @@ def main():
                 best_screen = screen_name
         if best_screen:
             ret = screens[best_screen].get("top_return", 0)
-            print(f"  {symbol_dir:40s} best={best_screen} Sharpe={best_sharpe:.3f} Return={ret*100:.1f}%")
+            print(
+                f"  {symbol_dir:40s} best={best_screen}"
+                f" Sharpe={best_sharpe:.3f} Return={ret * 100:.1f}%"
+            )
         else:
             print(f"  {symbol_dir:40s} no valid screens (all inf/0-trade)")
 

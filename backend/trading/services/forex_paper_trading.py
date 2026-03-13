@@ -96,7 +96,7 @@ class ForexPaperTradingService:
                 async_to_sync(GenericPaperTradingService.submit_order)(order)
             except Exception:
                 logger.warning(
-                    "Failed to submit forex paper order for %s", opp.symbol, exc_info=True
+                    "Failed to submit forex paper order for %s", opp.symbol, exc_info=True,
                 )
 
             opp.acted_on = True
@@ -183,10 +183,10 @@ class ForexPaperTradingService:
                 if latest_opp and isinstance(latest_opp.details, dict):
                     opp_direction = latest_opp.details.get("direction", "")
                     if (
-                        entry_order.side == "buy"
-                        and opp_direction == "bearish"
-                        or entry_order.side == "sell"
-                        and opp_direction == "bullish"
+                        (entry_order.side == "buy"
+                        and opp_direction == "bearish")
+                        or (entry_order.side == "sell"
+                        and opp_direction == "bullish")
                     ):
                         should_exit = True
                         reason = "opposing_signal"
@@ -263,13 +263,13 @@ class ForexPaperTradingService:
             filled_forex.filter(side="buy")
             .values_list("symbol")
             .annotate(cnt=Count("id"))
-            .values_list("symbol", "cnt")
+            .values_list("symbol", "cnt"),
         )
         sell_counts = dict(
             filled_forex.filter(side="sell")
             .values_list("symbol")
             .annotate(cnt=Count("id"))
-            .values_list("symbol", "cnt")
+            .values_list("symbol", "cnt"),
         )
 
         open_syms = set()

@@ -10,10 +10,9 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 
 from common.signals.constants import DEFAULT_WEIGHTS
-from common.signals.performance_tracker import PerformanceTracker, SourceAccuracy
+from common.signals.performance_tracker import PerformanceTracker
 
 logger = logging.getLogger("signal_feedback")
 
@@ -91,6 +90,7 @@ class PerformanceFeedback:
 
         Returns:
             WeightAdjustment with current, recommended, and delta weights.
+
         """
         source_acc = self._tracker.get_source_accuracy(
             asset_class=asset_class,
@@ -113,12 +113,12 @@ class PerformanceFeedback:
         if total < MIN_TRADES_FOR_ADJUSTMENT:
             reasoning.append(
                 f"Only {total} resolved trades (need {MIN_TRADES_FOR_ADJUSTMENT}). "
-                "Keeping current weights."
+                "Keeping current weights.",
             )
             return WeightAdjustment(
                 current_weights=current,
                 recommended_weights=dict(current),
-                adjustments={k: 0.0 for k in current},
+                adjustments=dict.fromkeys(current, 0.0),
                 source_accuracy={s: a.win_rate for s, a in source_acc.items()},
                 total_trades=total,
                 win_rate=win_rate,
@@ -144,12 +144,12 @@ class PerformanceFeedback:
             if acc.win_rate > 0.60:
                 delta = WEIGHT_ADJUSTMENT_RATE
                 reasoning.append(
-                    f"{source}: {acc.win_rate:.0%} win rate → increase by {delta:.2f}"
+                    f"{source}: {acc.win_rate:.0%} win rate → increase by {delta:.2f}",
                 )
             elif acc.win_rate < 0.45:
                 delta = -WEIGHT_ADJUSTMENT_RATE
                 reasoning.append(
-                    f"{source}: {acc.win_rate:.0%} win rate → decrease by {delta:.2f}"
+                    f"{source}: {acc.win_rate:.0%} win rate → decrease by {delta:.2f}",
                 )
             else:
                 reasoning.append(f"{source}: {acc.win_rate:.0%} win rate → keep")
@@ -168,12 +168,12 @@ class PerformanceFeedback:
         if win_rate < 0.50:
             threshold_adj = THRESHOLD_ADJUSTMENT_UP
             reasoning.append(
-                f"Win rate {win_rate:.0%} < 50% → raise threshold by {threshold_adj}"
+                f"Win rate {win_rate:.0%} < 50% → raise threshold by {threshold_adj}",
             )
         elif win_rate > 0.65:
             threshold_adj = -THRESHOLD_ADJUSTMENT_DOWN
             reasoning.append(
-                f"Win rate {win_rate:.0%} > 65% → lower threshold by {threshold_adj}"
+                f"Win rate {win_rate:.0%} > 65% → lower threshold by {threshold_adj}",
             )
         else:
             reasoning.append(f"Win rate {win_rate:.0%} — threshold unchanged")

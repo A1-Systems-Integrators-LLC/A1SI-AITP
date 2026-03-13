@@ -1,5 +1,4 @@
-"""
-Gate 2+3 Validation: CryptoInvestorV1
+"""Gate 2+3 Validation: CryptoInvestorV1
 =======================================
 Sprint 1, Item 1.2
 
@@ -24,8 +23,8 @@ Usage:
     python validate_crypto_investor_v1.py --synthetic
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -38,12 +37,19 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(SCRIPTS_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from common.indicators.technical import ema, rsi, macd, bollinger_bands, sma  # noqa: E402
 from validation_engine import (  # noqa: E402
+    DEFAULT_FEES,
+    generate_synthetic_ohlcv,
     run_validation,
     save_report,
-    generate_synthetic_ohlcv,
-    DEFAULT_FEES,
+)
+
+from common.indicators.technical import (  # noqa: E402
+    bollinger_bands,
+    ema,
+    macd,
+    rsi,
+    sma,
 )
 
 logger = logging.getLogger("validate_civ1")
@@ -61,16 +67,17 @@ STOPLOSS = 0.05  # -5% hard stop (matches Freqtrade strategy)
 
 
 def crypto_investor_v1_signals(
-    df: pd.DataFrame, params: dict
+    df: pd.DataFrame, params: dict,
 ) -> tuple[pd.Series, pd.Series]:
-    """
-    Replicate CryptoInvestorV1 entry/exit logic using pure pandas indicators.
+    """Replicate CryptoInvestorV1 entry/exit logic using pure pandas indicators.
 
-    Parameters:
+    Parameters
+    ----------
         ema_fast: Fast EMA period (20-80)
         ema_slow: Slow EMA period (100-300)
         rsi_threshold: RSI entry threshold (25-45)
         sell_rsi_threshold: RSI exit threshold (70-90)
+
     """
     close = df["close"]
     volume = df["volume"]
@@ -107,7 +114,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Gate 2+3 Validation: CryptoInvestorV1"
+        description="Gate 2+3 Validation: CryptoInvestorV1",
     )
     parser.add_argument("--symbol", default="BTC/USDT", help="Trading pair")
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
@@ -148,7 +155,7 @@ def main():
         if df.empty:
             logger.error(
                 f"No data for {args.symbol} {args.timeframe}. "
-                "Run data pipeline first or use --synthetic."
+                "Run data pipeline first or use --synthetic.",
             )
             return
         symbol = args.symbol

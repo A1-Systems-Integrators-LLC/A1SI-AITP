@@ -1,11 +1,9 @@
-"""
-Comprehensive ML Pipeline Tests
+"""Comprehensive ML Pipeline Tests
 ================================
 Edge cases, LightGBM 4.x compatibility, registry operations,
 and integration-level scenarios beyond the base test_ml.py coverage.
 """
 
-import json
 import sys
 import threading
 import time
@@ -18,15 +16,15 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.ml.features import (  # noqa: E402
+from common.ml.features import (
     add_lag_features,
     add_return_features,
     build_feature_matrix,
     compute_indicator_features,
     compute_target,
 )
-from common.ml.registry import ModelRegistry  # noqa: E402
-from common.ml.trainer import (  # noqa: E402
+from common.ml.registry import ModelRegistry
+from common.ml.trainer import (
     predict,
     time_series_split,
     train_model,
@@ -57,7 +55,7 @@ def _make_ohlcv(n: int = 500, seed: int = 42) -> pd.DataFrame:
 def _train_and_get_result(n: int = 500):
     """Train a model on synthetic data and return the result dict."""
     df = _make_ohlcv(n)
-    X, y, names = build_feature_matrix(df)
+    X, y, names = build_feature_matrix(df)  # noqa: N806
     return train_model(X, y, names)
 
 
@@ -103,7 +101,7 @@ class TestFeatureEngineeringEdgeCases:
     def test_short_dataframe_build_feature_matrix_drops_all(self):
         """With very short data, build_feature_matrix may drop all rows (all NaN)."""
         df = _make_ohlcv(10)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         # 10 rows is too short for 50-period SMA warmup; expect 0 clean rows
         assert len(X) == 0
         assert len(y) == 0
@@ -180,9 +178,9 @@ class TestLightGBM4xCompat:
     def test_save_load_roundtrip_produces_same_predictions(self, trained_result, tmp_registry):
         """Save via registry, reload as Booster, predictions should match."""
         model = trained_result["model"]
-        X = _make_ohlcv(500)
-        X_feat, _, names = build_feature_matrix(X)
-        X_sample = X_feat.tail(20)
+        X = _make_ohlcv(500)  # noqa: N806
+        X_feat, _, names = build_feature_matrix(X)  # noqa: N806
+        X_sample = X_feat.tail(20)  # noqa: N806
 
         # Predictions from original sklearn model
         orig_proba = model.predict_proba(X_sample)[:, 1]
@@ -227,16 +225,16 @@ class TestPredictionEdgeCases:
 
     def test_predict_single_row(self, trained_result):
         """Prediction on a single row should work."""
-        X = _make_ohlcv(500)
-        X_feat, _, _ = build_feature_matrix(X)
+        X = _make_ohlcv(500)  # noqa: N806
+        X_feat, _, _ = build_feature_matrix(X)  # noqa: N806
         result = predict(trained_result["model"], X_feat.tail(1))
         assert len(result["probabilities"]) == 1
         assert 0 <= result["probabilities"][0] <= 1
 
     def test_predict_returns_correct_structure(self, trained_result):
         """All expected keys should be present in prediction output."""
-        X = _make_ohlcv(500)
-        X_feat, _, _ = build_feature_matrix(X)
+        X = _make_ohlcv(500)  # noqa: N806
+        X_feat, _, _ = build_feature_matrix(X)  # noqa: N806
         result = predict(trained_result["model"], X_feat.tail(5))
         assert "probabilities" in result
         assert "predictions" in result
@@ -247,8 +245,8 @@ class TestPredictionEdgeCases:
 
     def test_predict_classes_are_binary(self, trained_result):
         """Predicted classes should be 0 or 1."""
-        X = _make_ohlcv(500)
-        X_feat, _, _ = build_feature_matrix(X)
+        X = _make_ohlcv(500)  # noqa: N806
+        X_feat, _, _ = build_feature_matrix(X)  # noqa: N806
         result = predict(trained_result["model"], X_feat.tail(30))
         assert all(p in (0, 1) for p in result["predictions"])
 
@@ -258,8 +256,8 @@ class TestPredictionEdgeCases:
         LightGBM handles NaN natively (treats as missing), so it should not crash
         but we verify the function completes.
         """
-        X = _make_ohlcv(500)
-        X_feat, _, _ = build_feature_matrix(X)
+        X = _make_ohlcv(500)  # noqa: N806
+        X_feat, _, _ = build_feature_matrix(X)  # noqa: N806
         sample = X_feat.tail(10).copy()
         sample.iloc[0, 0] = np.nan
         sample.iloc[3, 5] = np.nan
@@ -280,7 +278,7 @@ class TestTrainingDataSizes:
         """Just enough data after feature warmup to do a train/test split."""
         # 120 rows: ~50 lost to warmup, ~70 remain, split 80/20 = 56 train / 14 test
         df = _make_ohlcv(120)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         assert len(X) > 0, "No rows survived feature warmup with 120-row input"
         result = train_model(X, y, names, test_ratio=0.2)
         assert result["metrics"]["accuracy"] >= 0  # Just verify it trained
@@ -292,7 +290,7 @@ class TestTrainingDataSizes:
         so 1500 raw → ~1100 feature rows → ~880 train.
         """
         df = _make_ohlcv(1500)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         result = train_model(X, y, names)
         assert result["metrics"]["train_rows"] > 700
         assert result["metrics"]["test_rows"] > 150
@@ -301,7 +299,7 @@ class TestTrainingDataSizes:
     def test_custom_train_params(self):
         """Override LightGBM params (fewer estimators for speed)."""
         df = _make_ohlcv(300)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         result = train_model(X, y, names, params={"n_estimators": 10, "verbose": -1})
         assert "model" in result
 
@@ -430,28 +428,28 @@ class TestTimeSeriesSplitEdgeCases:
 
     def test_split_with_test_ratio_zero(self, ohlcv_500):
         """test_ratio=0.0 should put all data in train, none in test."""
-        X, y, _ = build_feature_matrix(ohlcv_500)
+        X, y, _ = build_feature_matrix(ohlcv_500)  # noqa: N806
         x_train, x_test, y_train, y_test = time_series_split(X, y, test_ratio=0.0)
         assert len(x_train) == len(X)
         assert len(x_test) == 0
 
     def test_split_with_test_ratio_one(self, ohlcv_500):
         """test_ratio=1.0 should put all data in test, none in train."""
-        X, y, _ = build_feature_matrix(ohlcv_500)
+        X, y, _ = build_feature_matrix(ohlcv_500)  # noqa: N806
         x_train, x_test, y_train, y_test = time_series_split(X, y, test_ratio=1.0)
         assert len(x_train) == 0
         assert len(x_test) == len(X)
 
     def test_split_preserves_time_order(self, ohlcv_500):
         """Train set timestamps should all precede test set timestamps."""
-        X, y, _ = build_feature_matrix(ohlcv_500)
+        X, y, _ = build_feature_matrix(ohlcv_500)  # noqa: N806
         x_train, x_test, _, _ = time_series_split(X, y, test_ratio=0.3)
         if len(x_train) > 0 and len(x_test) > 0:
             assert x_train.index.max() < x_test.index.min()
 
     def test_split_x_y_alignment(self, ohlcv_500):
         """X and y splits should share the same indices."""
-        X, y, _ = build_feature_matrix(ohlcv_500)
+        X, y, _ = build_feature_matrix(ohlcv_500)  # noqa: N806
         x_train, x_test, y_train, y_test = time_series_split(X, y, test_ratio=0.25)
         pd.testing.assert_index_equal(x_train.index, y_train.index)
         pd.testing.assert_index_equal(x_test.index, y_test.index)
@@ -467,14 +465,14 @@ class TestFeatureImportance:
 
     def test_all_features_have_importance_scores(self):
         df = _make_ohlcv(500)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         result = train_model(X, y, names)
         importance = result["feature_importance"]
         assert set(importance.keys()) == set(names)
 
     def test_importance_values_are_non_negative(self):
         df = _make_ohlcv(500)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         result = train_model(X, y, names)
         for feat_name, score in result["feature_importance"].items():
             assert score >= 0, f"Negative importance for {feat_name}: {score}"
@@ -482,7 +480,7 @@ class TestFeatureImportance:
     def test_at_least_one_nonzero_importance(self):
         """At least one feature should have non-zero importance."""
         df = _make_ohlcv(500)
-        X, y, names = build_feature_matrix(df)
+        X, y, names = build_feature_matrix(df)  # noqa: N806
         result = train_model(X, y, names)
         total = sum(result["feature_importance"].values())
         assert total > 0

@@ -21,7 +21,7 @@ class CircuitBreakerOpenError(Exception):
         self.exchange_id = exchange_id
         self.retry_after = retry_after
         super().__init__(
-            f"Circuit breaker OPEN for {exchange_id} — retry after {retry_after:.0f}s"
+            f"Circuit breaker OPEN for {exchange_id} — retry after {retry_after:.0f}s",
         )
 
 

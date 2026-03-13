@@ -90,7 +90,7 @@ class TestOrderFilters:
         _create_order(timestamp=datetime(2026, 2, 1, tzinfo=timezone.utc))
         _create_order(timestamp=datetime(2026, 3, 1, tzinfo=timezone.utc))
         resp = client.get(
-            "/api/trading/orders/?date_from=2026-01-15T00:00:00Z&date_to=2026-02-15T00:00:00Z"
+            "/api/trading/orders/?date_from=2026-01-15T00:00:00Z&date_to=2026-02-15T00:00:00Z",
         )
         assert resp.status_code == 200
         assert len(resp.json()) == 1

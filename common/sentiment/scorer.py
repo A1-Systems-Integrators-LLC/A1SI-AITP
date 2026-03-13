@@ -84,13 +84,12 @@ def score_text(text: str) -> tuple[float, str]:
             val = -1.0 * intensifier
             score += -val if negated else val
             negated = False
+        # Reset negation after one non-sentiment word gap
+        elif negated and i > 0:
+            # Allow negation to carry over one word
+            pass
         else:
-            # Reset negation after one non-sentiment word gap
-            if negated and i > 0:
-                # Allow negation to carry over one word
-                pass
-            else:
-                negated = False
+            negated = False
 
     # Normalize: divide by word count to get density, then clamp
     density = score / len(words)

@@ -13,11 +13,11 @@ Covers all uncovered lines across:
 """
 
 import asyncio
+import contextlib
 import json
 import os
 import subprocess
-import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,10 +27,9 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 from django.utils import timezone as dj_tz
 
-from trading.models import Order, OrderFillEvent, OrderStatus, TradingMode, VALID_TRANSITIONS
+from trading.models import Order, OrderFillEvent, OrderStatus, TradingMode
 from trading.serializers import OrderCreateSerializer
 from trading.services.paper_trading import PaperTradingService
-
 
 # ── Helper ──────────────────────────────────────────────────
 
@@ -61,8 +60,12 @@ def _make_order(**kwargs):
 class TestOrderModel:
     def test_clean_negative_amount(self):
         order = Order(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="market", amount=-1, price=50000,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="market",
+            amount=-1,
+            price=50000,
             timestamp=dj_tz.now(),
         )
         with pytest.raises(ValidationError) as exc:
@@ -71,8 +74,12 @@ class TestOrderModel:
 
     def test_clean_negative_price(self):
         order = Order(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="market", amount=1, price=-100,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="market",
+            amount=1,
+            price=-100,
             timestamp=dj_tz.now(),
         )
         with pytest.raises(ValidationError) as exc:
@@ -81,8 +88,12 @@ class TestOrderModel:
 
     def test_clean_limit_order_no_price(self):
         order = Order(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="limit", amount=1, price=0,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="limit",
+            amount=1,
+            price=0,
             timestamp=dj_tz.now(),
         )
         with pytest.raises(ValidationError) as exc:
@@ -91,8 +102,12 @@ class TestOrderModel:
 
     def test_clean_invalid_side(self):
         order = Order(
-            exchange_id="kraken", symbol="BTC/USDT", side="hold",
-            order_type="market", amount=1, price=50000,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="hold",
+            order_type="market",
+            amount=1,
+            price=50000,
             timestamp=dj_tz.now(),
         )
         with pytest.raises(ValidationError) as exc:
@@ -101,17 +116,26 @@ class TestOrderModel:
 
     def test_clean_valid_passes(self):
         order = Order(
-            exchange_id="kraken", symbol="BTC/USDT", side="buy",
-            order_type="market", amount=1, price=50000,
+            exchange_id="kraken",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="market",
+            amount=1,
+            price=50000,
             timestamp=dj_tz.now(),
         )
         order.clean()  # Should not raise
 
     def test_str_representation(self):
         order = Order(
-            symbol="ETH/USDT", side="sell", amount=2.5,
-            status=OrderStatus.FILLED, order_type="market",
-            exchange_id="kraken", price=3000, timestamp=dj_tz.now(),
+            symbol="ETH/USDT",
+            side="sell",
+            amount=2.5,
+            status=OrderStatus.FILLED,
+            order_type="market",
+            exchange_id="kraken",
+            price=3000,
+            timestamp=dj_tz.now(),
         )
         assert str(order) == "sell ETH/USDT x2.5 [filled]"
 
@@ -166,14 +190,16 @@ class TestOrderFillEventModel:
 @pytest.mark.django_db
 class TestOrderCreateSerializer:
     def test_validate_exchange_id_invalid(self):
-        ser = OrderCreateSerializer(data={
-            "symbol": "BTC/USDT",
-            "side": "buy",
-            "order_type": "market",
-            "amount": 0.1,
-            "price": 50000,
-            "exchange_id": "nonexistent_exchange",
-        })
+        ser = OrderCreateSerializer(
+            data={
+                "symbol": "BTC/USDT",
+                "side": "buy",
+                "order_type": "market",
+                "amount": 0.1,
+                "price": 50000,
+                "exchange_id": "nonexistent_exchange",
+            }
+        )
         assert not ser.is_valid()
         assert "exchange_id" in ser.errors
 
@@ -189,7 +215,10 @@ class TestPerformanceZeroPrice:
         from trading.services.performance import TradingPerformanceService
 
         order = _make_order(
-            status=OrderStatus.FILLED, price=0, avg_fill_price=0, filled=1.0,
+            status=OrderStatus.FILLED,
+            price=0,
+            avg_fill_price=0,
+            filled=1.0,
         )
         # Transition to filled
         order.status = OrderStatus.FILLED
@@ -365,8 +394,8 @@ class TestPaperTradingFindPid:
         non_digit_entry = MagicMock()
         non_digit_entry.name = "abc"
 
-        with patch("trading.services.paper_trading.Path") as MockPath:
-            MockPath.return_value.iterdir.return_value = [digit_entry, non_digit_entry]
+        with patch("trading.services.paper_trading.Path") as mock_path:
+            mock_path.return_value.iterdir.return_value = [digit_entry, non_digit_entry]
             result = svc._find_freqtrade_pid()
         assert result is None
 
@@ -539,11 +568,11 @@ class TestPaperTradingAsync:
 
         import httpx
 
-        with patch("trading.services.paper_trading.httpx.AsyncClient") as MockClient:
+        with patch("trading.services.paper_trading.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.side_effect = httpx.ConnectError("refused")
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
             result = async_to_sync(svc._ft_get)("ping")
         assert result is None
 
@@ -559,11 +588,11 @@ class TestPaperTradingAsync:
         ):
             svc = PaperTradingService(api_url="http://127.0.0.1:99999")
 
-        with patch("trading.services.paper_trading.httpx.AsyncClient") as MockClient:
+        with patch("trading.services.paper_trading.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.side_effect = RuntimeError("unexpected")
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
             result = async_to_sync(svc._ft_get)("status")
         assert result is None
 
@@ -579,8 +608,11 @@ class TestPaperTradingAsync:
         ):
             svc = PaperTradingService(api_url="http://127.0.0.1:99999")
 
-        with patch.object(svc, "_ft_get", new_callable=lambda: lambda self=None: AsyncMock(return_value=None)):
+        with patch.object(
+            svc, "_ft_get", new_callable=lambda: lambda self=None: AsyncMock(return_value=None)
+        ):
             pass
+
         # Simpler approach
         async def _run():
             with patch.object(svc, "_ft_get", AsyncMock(return_value={"error": "not a list"})):
@@ -754,16 +786,19 @@ class TestOrderSyncLoop:
         """Lines 36-40: Sync loop iterates orders and calls sync_order."""
         from trading.services.order_sync import _sync_loop
 
-        order = _make_order(mode=TradingMode.LIVE, status=OrderStatus.SUBMITTED)
+        _make_order(mode=TradingMode.LIVE, status=OrderStatus.SUBMITTED)
 
-        with patch("trading.services.live_trading.LiveTradingService.sync_order", new_callable=AsyncMock) as mock_sync:
+        with patch(
+            "trading.services.live_trading.LiveTradingService.sync_order", new_callable=AsyncMock
+        ) as mock_sync:
+
             async def _run():
                 # Run one iteration by breaking after first sleep
-                with patch("asyncio.sleep", side_effect=asyncio.CancelledError):
-                    try:
-                        await _sync_loop()
-                    except asyncio.CancelledError:
-                        pass
+                with (
+                    patch("asyncio.sleep", side_effect=asyncio.CancelledError),
+                    contextlib.suppress(asyncio.CancelledError),
+                ):
+                    await _sync_loop()
 
             async_to_sync(_run)()
             mock_sync.assert_called_once()
@@ -774,14 +809,18 @@ class TestOrderSyncLoop:
 
         _make_order(mode=TradingMode.LIVE, status=OrderStatus.OPEN)
 
-        with patch("trading.services.live_trading.LiveTradingService.sync_order",
-                    new_callable=AsyncMock, side_effect=RuntimeError("sync error")):
+        with patch(
+            "trading.services.live_trading.LiveTradingService.sync_order",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("sync error"),
+        ):
+
             async def _run():
-                with patch("asyncio.sleep", side_effect=asyncio.CancelledError):
-                    try:
-                        await _sync_loop()
-                    except asyncio.CancelledError:
-                        pass
+                with (
+                    patch("asyncio.sleep", side_effect=asyncio.CancelledError),
+                    contextlib.suppress(asyncio.CancelledError),
+                ):
+                    await _sync_loop()
 
             async_to_sync(_run)()  # Should not raise
 
@@ -789,13 +828,16 @@ class TestOrderSyncLoop:
         """Lines 42-44: Top-level exception in sync loop is caught."""
         from trading.services.order_sync import _sync_loop
 
-        with patch("trading.services.order_sync.sync_to_async", side_effect=RuntimeError("db error")):
+        with patch(
+            "trading.services.order_sync.sync_to_async", side_effect=RuntimeError("db error")
+        ):
+
             async def _run():
-                with patch("asyncio.sleep", side_effect=asyncio.CancelledError):
-                    try:
-                        await _sync_loop()
-                    except asyncio.CancelledError:
-                        pass
+                with (
+                    patch("asyncio.sleep", side_effect=asyncio.CancelledError),
+                    contextlib.suppress(asyncio.CancelledError),
+                ):
+                    await _sync_loop()
 
             async_to_sync(_run)()  # Should not raise
 
@@ -811,8 +853,6 @@ class TestLiveTradingPartialFill:
         """Line 160-161: open status with filled > 0 and filled < amount → partial_fill.
         Order must be in OPEN state for PARTIAL_FILL transition to be valid.
         """
-        from trading.services.live_trading import LiveTradingService
-
         order = _make_order(
             mode=TradingMode.LIVE,
             status=OrderStatus.PENDING,
@@ -830,13 +870,14 @@ class TestLiveTradingPartialFill:
         # Actually, line 160-161 overrides new_status AFTER line 130.
         # For order in OPEN, ccxt "open" → line 130 returns early, never reaching 160.
         # For order in SUBMITTED, ccxt "open" → new_status=OPEN != SUBMITTED → passes 130.
-        # Line 160 overrides to PARTIAL_FILL, but SUBMITTED→PARTIAL_FILL is invalid → ValueError on 166.
+        # Line 160 overrides to PARTIAL_FILL, but SUBMITTED→PARTIAL_FILL
+        # is invalid → ValueError on 166.
         # So we test that the ValueError path is hit (line 166-168).
-        pass
 
     def test_partial_fill_from_submitted_invalid_transition(self):
         """Lines 160-161, 166-168: ccxt says 'open' with partial fill from SUBMITTED
-        triggers PARTIAL_FILL override, but transition is invalid → ValueError caught."""
+        triggers PARTIAL_FILL override, but transition is invalid → ValueError caught.
+        """
         from trading.services.live_trading import LiveTradingService
 
         order = _make_order(
@@ -863,7 +904,10 @@ class TestLiveTradingPartialFill:
 
         with (
             patch("trading.services.live_trading.ExchangeService", return_value=mock_service),
-            patch("trading.services.live_trading.LiveTradingService._broadcast_order_update", new_callable=AsyncMock),
+            patch(
+                "trading.services.live_trading.LiveTradingService._broadcast_order_update",
+                new_callable=AsyncMock,
+            ),
         ):
             # Should not raise — ValueError is caught internally
             async_to_sync(LiveTradingService.sync_order)(order)
@@ -876,14 +920,15 @@ class TestLiveTradingPartialFill:
         """Lines 229-230: cancel_all_open_orders logs per-order exception."""
         from trading.services.live_trading import LiveTradingService
 
-        order = _make_order(
+        _make_order(
             mode=TradingMode.LIVE,
             status=OrderStatus.SUBMITTED,
             portfolio_id=1,
         )
 
         with patch.object(
-            LiveTradingService, "cancel_order",
+            LiveTradingService,
+            "cancel_order",
             new_callable=AsyncMock,
             side_effect=RuntimeError("cancel failed"),
         ):
@@ -908,8 +953,11 @@ class TestGenericPaperTrading:
         with (
             patch.dict("sys.modules", {"common.market_hours.sessions": None}),
             patch("risk.services.risk.RiskManagementService.check_trade", return_value=(True, "")),
-            patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                  new_callable=AsyncMock, return_value={"last": 150.0}),
+            patch(
+                "market.services.data_router.DataServiceRouter.fetch_ticker",
+                new_callable=AsyncMock,
+                return_value={"last": 150.0},
+            ),
         ):
             result = async_to_sync(GenericPaperTradingService.submit_order)(order)
         assert result.status == OrderStatus.FILLED
@@ -920,8 +968,10 @@ class TestGenericPaperTrading:
 
         order = _make_order(asset_class="crypto")
 
-        with patch("risk.services.risk.RiskManagementService.check_trade",
-                    return_value=(False, "Exceeds position limit")):
+        with patch(
+            "risk.services.risk.RiskManagementService.check_trade",
+            return_value=(False, "Exceeds position limit"),
+        ):
             result = async_to_sync(GenericPaperTradingService.submit_order)(order)
         assert result.status == OrderStatus.REJECTED
         assert "position limit" in result.reject_reason
@@ -934,8 +984,11 @@ class TestGenericPaperTrading:
 
         with (
             patch("risk.services.risk.RiskManagementService.check_trade", return_value=(True, "")),
-            patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                  new_callable=AsyncMock, return_value={"last": 0}),
+            patch(
+                "market.services.data_router.DataServiceRouter.fetch_ticker",
+                new_callable=AsyncMock,
+                return_value={"last": 0},
+            ),
         ):
             result = async_to_sync(GenericPaperTradingService.submit_order)(order)
         assert result.status == OrderStatus.ERROR
@@ -946,13 +999,18 @@ class TestGenericPaperTrading:
         from trading.services.generic_paper_trading import GenericPaperTradingService
 
         order = _make_order(
-            asset_class="crypto", order_type="limit", price=100.0,
+            asset_class="crypto",
+            order_type="limit",
+            price=100.0,
         )
 
         with (
             patch("risk.services.risk.RiskManagementService.check_trade", return_value=(True, "")),
-            patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                  new_callable=AsyncMock, return_value={"last": 200.0}),
+            patch(
+                "market.services.data_router.DataServiceRouter.fetch_ticker",
+                new_callable=AsyncMock,
+                return_value={"last": 200.0},
+            ),
         ):
             result = async_to_sync(GenericPaperTradingService.submit_order)(order)
         assert result.status == OrderStatus.SUBMITTED  # Not filled
@@ -962,13 +1020,19 @@ class TestGenericPaperTrading:
         from trading.services.generic_paper_trading import GenericPaperTradingService
 
         order = _make_order(
-            asset_class="crypto", order_type="limit", price=200.0, side="sell",
+            asset_class="crypto",
+            order_type="limit",
+            price=200.0,
+            side="sell",
         )
 
         with (
             patch("risk.services.risk.RiskManagementService.check_trade", return_value=(True, "")),
-            patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                  new_callable=AsyncMock, return_value={"last": 100.0}),
+            patch(
+                "market.services.data_router.DataServiceRouter.fetch_ticker",
+                new_callable=AsyncMock,
+                return_value={"last": 100.0},
+            ),
         ):
             result = async_to_sync(GenericPaperTradingService.submit_order)(order)
         assert result.status == OrderStatus.SUBMITTED  # Not filled
@@ -1005,8 +1069,11 @@ class TestForexPaperTrading:
 
         # Create a sell entry order (filled)
         order = _make_order(
-            symbol="EUR/USD", side="sell", asset_class="forex",
-            mode=TradingMode.PAPER, status=OrderStatus.PENDING,
+            symbol="EUR/USD",
+            side="sell",
+            asset_class="forex",
+            mode=TradingMode.PAPER,
+            status=OrderStatus.PENDING,
         )
         order.status = OrderStatus.SUBMITTED
         order.save()
@@ -1019,8 +1086,11 @@ class TestForexPaperTrading:
         with (
             patch.object(svc, "_get_open_symbols", return_value={"EUR/USD"}),
             patch.object(svc, "_get_price", return_value=1.085),
-            patch("trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
-                  new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             exits = svc._check_exits()
         assert exits == 1
@@ -1040,8 +1110,11 @@ class TestForexPaperTrading:
 
         # Create a buy entry order (filled, past hold limit)
         order = _make_order(
-            symbol="GBP/USD", side="buy", asset_class="forex",
-            mode=TradingMode.PAPER, status=OrderStatus.PENDING,
+            symbol="GBP/USD",
+            side="buy",
+            asset_class="forex",
+            mode=TradingMode.PAPER,
+            status=OrderStatus.PENDING,
         )
         order.status = OrderStatus.SUBMITTED
         order.save()
@@ -1054,8 +1127,11 @@ class TestForexPaperTrading:
         with (
             patch.object(svc, "_get_open_symbols", return_value={"GBP/USD"}),
             patch.object(svc, "_get_price", return_value=1.25),
-            patch("trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
-                  new_callable=AsyncMock, side_effect=RuntimeError("submit error")),
+            patch(
+                "trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("submit error"),
+            ),
         ):
             exits = svc._check_exits()
         assert exits == 1  # Still counted as exit despite submit failure
@@ -1064,8 +1140,11 @@ class TestForexPaperTrading:
         """Lines 285-293: _get_price exception returns 0.0."""
         from trading.services.forex_paper_trading import ForexPaperTradingService
 
-        with patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                    new_callable=AsyncMock, side_effect=RuntimeError("price error")):
+        with patch(
+            "market.services.data_router.DataServiceRouter.fetch_ticker",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("price error"),
+        ):
             result = ForexPaperTradingService._get_price("INVALID/PAIR")
         assert result == 0.0
 
@@ -1101,7 +1180,7 @@ class TestOrderListViewFilters:
         assert all("BTC" in o["symbol"] for o in resp.json())
 
     def test_filter_by_status(self, authenticated_client):
-        o1 = _make_order(status=OrderStatus.PENDING)
+        _make_order(status=OrderStatus.PENDING)
         resp = authenticated_client.get("/api/trading/orders/?status=pending")
         assert resp.status_code == 200
         assert len(resp.json()) >= 1
@@ -1113,7 +1192,7 @@ class TestOrderListViewFilters:
         date_from = (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
         date_to = now.strftime("%Y-%m-%d %H:%M:%S")
         resp = authenticated_client.get(
-            f"/api/trading/orders/?date_from={date_from}&date_to={date_to}"
+            f"/api/trading/orders/?date_from={date_from}&date_to={date_to}",
         )
         assert resp.status_code == 200
 
@@ -1156,7 +1235,9 @@ class TestOrderCancelView:
 
         def patched_async_to_sync(fn):
             # Only intercept cancel_order
-            if hasattr(fn, '__self__') or (hasattr(fn, '__qualname__') and 'cancel_order' in fn.__qualname__):
+            if hasattr(fn, "__self__") or (
+                hasattr(fn, "__qualname__") and "cancel_order" in fn.__qualname__
+            ):
                 return mock_cancel_sync
             return original_async_to_sync(fn)
 
@@ -1261,7 +1342,7 @@ class TestOrderExportView:
         date_from = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
         date_to = now.strftime("%Y-%m-%d %H:%M:%S")
         resp = authenticated_client.get(
-            f"/api/trading/orders/export/?date_from={date_from}&date_to={date_to}"
+            f"/api/trading/orders/export/?date_from={date_from}&date_to={date_to}",
         )
         assert resp.status_code == 200
 
@@ -1287,11 +1368,17 @@ class TestPaperTradingViews:
         """Lines 374-375: ForexPaperTradingService exception caught."""
         with (
             patch("trading.views._get_paper_trading_services") as mock_svcs,
-            patch("trading.services.forex_paper_trading.ForexPaperTradingService.get_status",
-                  side_effect=RuntimeError("forex error")),
+            patch(
+                "trading.services.forex_paper_trading.ForexPaperTradingService.get_status",
+                side_effect=RuntimeError("forex error"),
+            ),
         ):
             mock_svc = MagicMock()
-            mock_svc.get_status.return_value = {"running": False, "strategy": None, "uptime_seconds": 0}
+            mock_svc.get_status.return_value = {
+                "running": False,
+                "strategy": None,
+                "uptime_seconds": 0,
+            }
             mock_svcs.return_value = {"default": mock_svc}
 
             resp = authenticated_client.get("/api/paper-trading/status/")
@@ -1303,8 +1390,10 @@ class TestPaperTradingViews:
         """Lines 414-424: Forex paper trades appended."""
         # Create a filled forex paper order
         order = _make_order(
-            symbol="EUR/USD", asset_class="forex",
-            mode=TradingMode.PAPER, status=OrderStatus.PENDING,
+            symbol="EUR/USD",
+            asset_class="forex",
+            mode=TradingMode.PAPER,
+            status=OrderStatus.PENDING,
         )
         order.status = OrderStatus.SUBMITTED
         order.save()
@@ -1441,9 +1530,9 @@ class TestPaperTradingServicesFactory:
 
         with (
             override_settings(FREQTRADE_INSTANCES=instances),
-            patch("trading.services.paper_trading.PaperTradingService") as MockPTS,
+            patch("trading.services.paper_trading.PaperTradingService") as mock_pts,
         ):
-            MockPTS.return_value = MagicMock()
+            mock_pts.return_value = MagicMock()
             services = tv._get_paper_trading_services()
 
         assert "inst1" in services
@@ -1527,7 +1616,7 @@ class TestExchangeStatusDoubleCheck:
             if call_count[0] == 1:
                 # First call at line 219 — returns current time
                 return fresh_time
-            elif call_count[0] == 2:
+            if call_count[0] == 2:
                 # Before entering lock, update cache to fresh
                 tv._exchange_check_cache["checked_at"] = fresh_time
                 # Second call at line 225 — same time, cache is now fresh
@@ -1572,11 +1661,11 @@ class TestPaperTradingFtGetSuccess:
         mock_response.status_code = 200
         mock_response.json.return_value = [{"id": 1, "pair": "BTC/USDT"}]
 
-        with patch("trading.services.paper_trading.httpx.AsyncClient") as MockClient:
+        with patch("trading.services.paper_trading.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
             result = async_to_sync(svc._ft_get)("status")
 
         assert result == [{"id": 1, "pair": "BTC/USDT"}]
@@ -1629,8 +1718,11 @@ class TestForexMaxPositionsBreak:
         with (
             patch.object(svc, "_get_open_symbols", return_value={"EXISTING/USD", "EXISTING2/USD"}),
             patch.object(svc, "_get_price", return_value=1.1),
-            patch("trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
-                  new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "trading.services.generic_paper_trading.GenericPaperTradingService.submit_order",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             entries = svc._check_entries()
         # Only 1 entry (3 - 2 = 1 remaining slot), then break
@@ -1644,16 +1736,22 @@ class TestForexGetPriceSuccess:
     def test_get_price_success(self):
         from trading.services.forex_paper_trading import ForexPaperTradingService
 
-        with patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                    new_callable=AsyncMock, return_value={"last": 1.085}):
+        with patch(
+            "market.services.data_router.DataServiceRouter.fetch_ticker",
+            new_callable=AsyncMock,
+            return_value={"last": 1.085},
+        ):
             result = ForexPaperTradingService._get_price("EUR/USD")
         assert result == 1.085
 
     def test_get_price_close_fallback(self):
         from trading.services.forex_paper_trading import ForexPaperTradingService
 
-        with patch("market.services.data_router.DataServiceRouter.fetch_ticker",
-                    new_callable=AsyncMock, return_value={"close": 1.075}):
+        with patch(
+            "market.services.data_router.DataServiceRouter.fetch_ticker",
+            new_callable=AsyncMock,
+            return_value={"close": 1.075},
+        ):
             result = ForexPaperTradingService._get_price("EUR/USD")
         assert result == 1.075
 
@@ -1686,11 +1784,12 @@ class TestPaperTradingDefaultInstance:
         # No FREQTRADE_INSTANCES setting → fallback to single "default" instance
         with (
             override_settings(),  # No FREQTRADE_INSTANCES attr
-            patch("trading.services.paper_trading.PaperTradingService") as MockPTS,
+            patch("trading.services.paper_trading.PaperTradingService") as mock_pts,
         ):
-            MockPTS.return_value = MagicMock()
+            mock_pts.return_value = MagicMock()
             # Remove the attribute entirely
             from django.conf import settings as ds
+
             if hasattr(ds, "FREQTRADE_INSTANCES"):
                 delattr(ds, "FREQTRADE_INSTANCES")
 

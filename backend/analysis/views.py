@@ -21,6 +21,7 @@ from analysis.models import (
     WorkflowRun,
 )
 from analysis.serializers import (
+    BackfillOutcomeRequestSerializer,
     BacktestComparisonSerializer,
     BacktestRequestSerializer,
     BacktestResultSerializer,
@@ -41,11 +42,15 @@ from analysis.serializers import (
     MLPredictionSerializer,
     MLPredictRequestSerializer,
     MLTrainRequestSerializer,
+    RecordAttributionRequestSerializer,
     ScreenRequestSerializer,
     ScreenResultSerializer,
+    SignalAttributionSerializer,
     SignalBatchRequestSerializer,
+    SourceAccuracyResponseSerializer,
     StrategyInfoSerializer,
     StrategyStatusSerializer,
+    WeightRecommendationResponseSerializer,
     WorkflowCreateSerializer,
     WorkflowDetailSerializer,
     WorkflowListSerializer,
@@ -53,11 +58,6 @@ from analysis.serializers import (
     WorkflowRunListSerializer,
     WorkflowScheduleResponseSerializer,
     WorkflowTriggerResponseSerializer,
-    BackfillOutcomeRequestSerializer,
-    RecordAttributionRequestSerializer,
-    SignalAttributionSerializer,
-    SourceAccuracyResponseSerializer,
-    WeightRecommendationResponseSerializer,
 )
 from core.utils import safe_int as _safe_int
 
@@ -233,7 +233,7 @@ class BacktestCompareView(APIView):
                     "values": values,
                     "best": best,
                     "rankings": rank_map,
-                }
+                },
             )
             rankings[metric_name] = rank_map
             best_per_metric[metric_name] = best
@@ -256,7 +256,7 @@ class BacktestCompareView(APIView):
             {
                 "results": BacktestResultSerializer(results, many=True).data,
                 "comparison": comparison,
-            }
+            },
         )
 
 
@@ -318,7 +318,7 @@ class BacktestExportView(APIView):
                     metrics.get("profit_factor", ""),
                     metrics.get("total_trades", ""),
                     r.created_at.isoformat() if r.created_at else "",
-                ]
+                ],
             )
 
         return response
@@ -531,7 +531,7 @@ class DataQualityListView(APIView):
                     "passed": passed,
                     "failed": len(reports) - passed,
                     "reports": report_dicts,
-                }
+                },
             )
         except ImportError as e:
             return Response(

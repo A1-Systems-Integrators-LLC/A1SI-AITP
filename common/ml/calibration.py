@@ -1,5 +1,4 @@
-"""
-ML Prediction Calibration
+"""ML Prediction Calibration
 =========================
 Platt scaling for probability calibration plus rolling accuracy tracking.
 Calibration parameters stored as calibration.json alongside model files.
@@ -46,6 +45,7 @@ class PredictionCalibrator:
 
         Returns:
             Calibrated probability (0.0-1.0).
+
         """
         logit = self.a * raw_probability + self.b
         # Clamp to avoid overflow
@@ -60,6 +60,7 @@ class PredictionCalibrator:
 
         Returns:
             Array of calibrated probabilities.
+
         """
         logits = self.a * raw_probabilities + self.b
         logits = np.clip(logits, -50.0, 50.0)
@@ -86,6 +87,7 @@ class PredictionCalibrator:
 
         Returns:
             Tuple of (a, b) fitted parameters.
+
         """
         a, b = self.a, self.b
         n = len(raw_probabilities)
@@ -123,6 +125,7 @@ class PredictionCalibrator:
         Args:
             predicted_up: Whether the model predicted up.
             actual_up: Whether the actual outcome was up.
+
         """
         with self._lock:
             self._outcomes.append(predicted_up == actual_up)
@@ -132,6 +135,7 @@ class PredictionCalibrator:
 
         Returns:
             Accuracy (0.0-1.0), or 0.5 if no outcomes recorded.
+
         """
         with self._lock:
             if not self._outcomes:
@@ -148,6 +152,7 @@ class PredictionCalibrator:
 
         Returns:
             Confidence score (0.0-1.0).
+
         """
         deviation = abs(calibrated_probability - 0.5) * 2
         return min(deviation * self.rolling_accuracy(), 1.0)
@@ -174,6 +179,7 @@ class PredictionCalibrator:
 
         Args:
             path: Path to calibration.json file.
+
         """
         data = {
             "a": self.a,
@@ -197,6 +203,7 @@ class PredictionCalibrator:
 
         Raises:
             FileNotFoundError: If file doesn't exist.
+
         """
         data = json.loads(path.read_text())
         return cls(

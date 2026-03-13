@@ -86,7 +86,7 @@ class ExchangeConfig(models.Model):
         # Enforce at most one default
         if self.is_default:
             ExchangeConfig.objects.filter(is_default=True).exclude(pk=self.pk).update(
-                is_default=False
+                is_default=False,
             )
         super().save(*args, **kwargs)
 
@@ -121,12 +121,12 @@ class NewsArticle(models.Model):
         errors: dict[str, list[str]] = {}
         if self.sentiment_score is not None and not (-1 <= self.sentiment_score <= 1):
             errors.setdefault("sentiment_score", []).append(
-                "Sentiment score must be between -1 and 1."
+                "Sentiment score must be between -1 and 1.",
             )
         if self.sentiment_label and self.sentiment_label not in self.VALID_SENTIMENT_LABELS:
             valid = ", ".join(sorted(self.VALID_SENTIMENT_LABELS))
             errors.setdefault("sentiment_label", []).append(
-                f"Invalid label '{self.sentiment_label}'. Must be one of: {valid}."
+                f"Invalid label '{self.sentiment_label}'. Must be one of: {valid}.",
             )
         if errors:
             raise ValidationError(errors)
@@ -202,7 +202,7 @@ class DataSourceConfig(models.Model):
             errors.setdefault("symbols", []).append("Symbols list must not be empty.")
         if self.fetch_interval_minutes is not None and self.fetch_interval_minutes <= 0:
             errors.setdefault("fetch_interval_minutes", []).append(
-                "Fetch interval must be > 0."
+                "Fetch interval must be > 0.",
             )
         if errors:
             raise ValidationError(errors)

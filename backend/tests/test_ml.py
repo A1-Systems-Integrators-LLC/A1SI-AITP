@@ -1,5 +1,4 @@
-"""
-Tests for the ML pipeline: features, trainer, registry, and backend service.
+"""Tests for the ML pipeline: features, trainer, registry, and backend service.
 All framework dependencies (lightgbm, etc.) are required — tests FAIL if missing.
 """
 
@@ -13,15 +12,15 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.ml.features import (  # noqa: E402, I001
+from common.ml.features import (
     add_lag_features,
     add_return_features,
     build_feature_matrix,
     compute_indicator_features,
     compute_target,
 )
-from common.ml.registry import ModelRegistry  # noqa: E402
-from common.ml.trainer import time_series_split  # noqa: E402
+from common.ml.registry import ModelRegistry
+from common.ml.trainer import time_series_split
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

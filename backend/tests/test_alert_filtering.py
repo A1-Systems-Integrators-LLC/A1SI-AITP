@@ -8,12 +8,12 @@ from risk.models import AlertLog
 from trading.models import Order, OrderStatus
 
 
-@pytest.fixture()
+@pytest.fixture
 def user(django_user_model):
     return django_user_model.objects.create_user(username="alert_user", password="pass")
 
 
-@pytest.fixture()
+@pytest.fixture
 def auth_client(client, user):
     client.force_login(user)
     return client

@@ -16,7 +16,7 @@ class TestLoadDbConfig:
             # Temporarily break the import
             original_import = (
                 __builtins__.__import__
-                if hasattr(__builtins__, '__import__')
+                if hasattr(__builtins__, "__import__")
                 else __import__
             )
             def failing_import(name, *args, **kwargs):

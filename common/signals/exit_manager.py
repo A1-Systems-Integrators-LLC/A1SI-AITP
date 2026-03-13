@@ -66,6 +66,7 @@ def advise_exit(
 
     Returns:
         ExitAdvice with recommendation.
+
     """
     if current_time is None:
         current_time = datetime.now(timezone.utc)
@@ -142,7 +143,9 @@ def get_stop_multiplier(current_regime: Regime) -> float:
 
 
 def _get_alignment_score(
-    regime: Regime, strategy_name: str, asset_class: str
+    regime: Regime,
+    strategy_name: str,
+    asset_class: str,
 ) -> float:
     """Look up alignment score from the matrix, defaulting to 50."""
     table = ALIGNMENT_TABLES.get(asset_class, ALIGNMENT_TABLES.get("crypto", {}))
@@ -164,7 +167,9 @@ def _check_regime_deterioration(
 
     entry_alignment = _get_alignment_score(entry_regime, strategy_name, asset_class)
     current_alignment = _get_alignment_score(
-        current_regime, strategy_name, asset_class
+        current_regime,
+        strategy_name,
+        asset_class,
     )
     alignment_drop = entry_alignment - current_alignment
 

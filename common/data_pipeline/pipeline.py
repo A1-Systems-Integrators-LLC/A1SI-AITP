@@ -1,5 +1,4 @@
-"""
-A1SI-AITP Shared Data Pipeline
+"""A1SI-AITP Shared Data Pipeline
 =====================================
 Unified data acquisition, storage, and retrieval layer that feeds
 all framework tiers: VectorBT (research), Freqtrade (crypto), NautilusTrader (multi-asset).
@@ -8,14 +7,13 @@ Data is stored in Parquet format for fast columnar reads across all frameworks.
 """
 
 import fcntl
+import logging
 import os
 import sys
 import time
-import logging
 from dataclasses import dataclass
-from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from pathlib import Path
 
 import ccxt
 import numpy as np
@@ -49,6 +47,7 @@ logger = logging.getLogger("data_pipeline")
 # Exchange Factory
 # ──────────────────────────────────────────────
 
+
 def get_exchange(exchange_id: str = "kraken", sandbox: bool = True) -> ccxt.Exchange:
     """Create a CCXT exchange instance with optional sandbox mode."""
     exchange_class = getattr(ccxt, exchange_id)
@@ -70,7 +69,9 @@ def get_exchange(exchange_id: str = "kraken", sandbox: bool = True) -> ccxt.Exch
         exchange.set_sandbox_mode(True)
         logger.info(f"Exchange {exchange_id} initialized in SANDBOX mode")
     else:
-        logger.info(f"Exchange {exchange_id} initialized (sandbox={'available' if sandbox else 'off'})")
+        logger.info(
+            f"Exchange {exchange_id} initialized (sandbox={'available' if sandbox else 'off'})"
+        )
 
     return exchange
 
@@ -79,12 +80,13 @@ def get_exchange(exchange_id: str = "kraken", sandbox: bool = True) -> ccxt.Exch
 # OHLCV Data Fetching
 # ──────────────────────────────────────────────
 
+
 def get_last_timestamp(
     symbol: str,
     timeframe: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
-) -> Optional[datetime]:
+    directory: Path | None = None,
+) -> datetime | None:
     """Read existing parquet and return last timestamp, or None if no data."""
     directory = directory or PROCESSED_DIR
     path = _parquet_path(symbol, timeframe, exchange_id, directory)
@@ -109,10 +111,9 @@ def fetch_ohlcv(
     since_days: int = 365,
     exchange_id: str = "kraken",
     limit_per_request: int = 1000,
-    since_timestamp: Optional[datetime] = None,
+    since_timestamp: datetime | None = None,
 ) -> pd.DataFrame:
-    """
-    Fetch OHLCV candlestick data from an exchange.
+    """Fetch OHLCV candlestick data from an exchange.
 
     Parameters
     ----------
@@ -133,6 +134,7 @@ def fetch_ohlcv(
     -------
     pd.DataFrame
         OHLCV data with datetime index
+
     """
     exchange = get_exchange(exchange_id, sandbox=False)
     exchange.load_markets()
@@ -150,8 +152,12 @@ def fetch_ohlcv(
 
     # Map timeframes to milliseconds for pagination
     tf_ms = {
-        "1m": 60_000, "5m": 300_000, "15m": 900_000,
-        "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000,
+        "1m": 60_000,
+        "5m": 300_000,
+        "15m": 900_000,
+        "1h": 3_600_000,
+        "4h": 14_400_000,
+        "1d": 86_400_000,
     }
     candle_ms = tf_ms.get(timeframe, 3_600_000)
 
@@ -163,7 +169,10 @@ def fetch_ohlcv(
     while True:
         try:
             candles = exchange.fetch_ohlcv(
-                symbol, timeframe, since=fetch_since, limit=limit_per_request
+                symbol,
+                timeframe,
+                since=fetch_since,
+                limit=limit_per_request,
             )
         except ccxt.RateLimitExceeded:
             logger.warning("Rate limit hit, sleeping 10s...")
@@ -197,7 +206,8 @@ def fetch_ohlcv(
         return pd.DataFrame()
 
     df = pd.DataFrame(
-        all_candles, columns=["timestamp", "open", "high", "low", "close", "volume"]
+        all_candles,
+        columns=["timestamp", "open", "high", "low", "close", "volume"],
     )
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
     df = df.set_index("timestamp").sort_index()
@@ -210,6 +220,7 @@ def fetch_ohlcv(
 # ──────────────────────────────────────────────
 # Funding Rate Data (crypto only, free via CCXT)
 # ──────────────────────────────────────────────
+
 
 def fetch_funding_rates(
     symbol: str,
@@ -253,7 +264,7 @@ def save_funding_rates(
     df: pd.DataFrame,
     symbol: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
+    directory: Path | None = None,
 ) -> Path:
     """Save funding rates to Parquet, merging with existing data."""
     directory = directory or PROCESSED_DIR
@@ -279,7 +290,7 @@ def save_funding_rates(
 def load_funding_rates(
     symbol: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
+    directory: Path | None = None,
 ) -> pd.DataFrame:
     """Load funding rate data from Parquet."""
     directory = directory or PROCESSED_DIR
@@ -297,8 +308,13 @@ def load_funding_rates(
 # Parquet Storage
 # ──────────────────────────────────────────────
 
+
 def _parquet_path(
-    symbol: str, timeframe: str, exchange_id: str, directory: Path, source: str = "",
+    symbol: str,
+    timeframe: str,
+    exchange_id: str,
+    directory: Path,
+    source: str = "",
 ) -> Path:
     """Generate a standardized Parquet file path.
 
@@ -306,6 +322,7 @@ def _parquet_path(
     ----------
     source : str
         Override the source prefix (e.g., "yfinance"). Defaults to exchange_id.
+
     """
     safe_symbol = symbol.replace("/", "_")
     prefix = source or exchange_id
@@ -317,7 +334,7 @@ def save_ohlcv(
     symbol: str,
     timeframe: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
+    directory: Path | None = None,
 ) -> Path:
     """Save OHLCV DataFrame to Parquet, merging with existing data.
 
@@ -350,9 +367,9 @@ def load_ohlcv(
     symbol: str,
     timeframe: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
+    directory: Path | None = None,
+    start: str | None = None,
+    end: str | None = None,
 ) -> pd.DataFrame:
     """Load OHLCV data from Parquet with optional date filtering."""
     directory = directory or PROCESSED_DIR
@@ -377,7 +394,7 @@ def load_ohlcv(
     return df
 
 
-def list_available_data(directory: Optional[Path] = None) -> pd.DataFrame:
+def list_available_data(directory: Path | None = None) -> pd.DataFrame:
     """List all available Parquet data files with metadata."""
     directory = directory or PROCESSED_DIR
     records = []
@@ -388,15 +405,17 @@ def list_available_data(directory: Optional[Path] = None) -> pd.DataFrame:
             symbol = f"{parts[1]}/{parts[2]}"
             timeframe = parts[3]
             df = pd.read_parquet(f)
-            records.append({
-                "exchange": exchange,
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "rows": len(df),
-                "start": df.index.min() if len(df) > 0 else None,
-                "end": df.index.max() if len(df) > 0 else None,
-                "file": str(f),
-            })
+            records.append(
+                {
+                    "exchange": exchange,
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "rows": len(df),
+                    "start": df.index.min() if len(df) > 0 else None,
+                    "end": df.index.max() if len(df) > 0 else None,
+                    "file": str(f),
+                }
+            )
     return pd.DataFrame(records)
 
 
@@ -404,13 +423,14 @@ def list_available_data(directory: Optional[Path] = None) -> pd.DataFrame:
 # Bulk Download
 # ──────────────────────────────────────────────
 
+
 def fetch_ohlcv_multi(
     symbol: str,
     timeframe: str = "1h",
     since_days: int = 365,
     asset_class: str = "crypto",
     exchange_id: str = "kraken",
-    since_timestamp: Optional[datetime] = None,
+    since_timestamp: datetime | None = None,
 ) -> pd.DataFrame:
     """Fetch OHLCV data routing to the correct data source by asset class.
 
@@ -422,12 +442,19 @@ def fetch_ohlcv_multi(
     """
     if asset_class in ("equity", "forex"):
         from common.data_pipeline.yfinance_adapter import _fetch_ohlcv_sync
+
         return _fetch_ohlcv_sync(
-            symbol, timeframe, since_days, asset_class,
+            symbol,
+            timeframe,
+            since_days,
+            asset_class,
             since_timestamp=since_timestamp,
         )
     return fetch_ohlcv(
-        symbol, timeframe, since_days, exchange_id,
+        symbol,
+        timeframe,
+        since_days,
+        exchange_id,
         since_timestamp=since_timestamp,
     )
 
@@ -435,24 +462,52 @@ def fetch_ohlcv_multi(
 # Default watchlists per asset class
 _DEFAULT_WATCHLISTS: dict[str, list[str]] = {
     "crypto": [
-        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
-        "ADA/USDT", "AVAX/USDT", "DOGE/USDT", "DOT/USDT", "LINK/USDT",
+        "BTC/USDT",
+        "ETH/USDT",
+        "SOL/USDT",
+        "BNB/USDT",
+        "XRP/USDT",
+        "ADA/USDT",
+        "AVAX/USDT",
+        "DOGE/USDT",
+        "DOT/USDT",
+        "LINK/USDT",
     ],
     "equity": [
-        "AAPL/USD", "MSFT/USD", "GOOGL/USD", "AMZN/USD", "NVDA/USD",
-        "SPY/USD", "QQQ/USD", "IWM/USD", "GLD/USD", "TLT/USD",
+        "AAPL/USD",
+        "MSFT/USD",
+        "GOOGL/USD",
+        "AMZN/USD",
+        "NVDA/USD",
+        "SPY/USD",
+        "QQQ/USD",
+        "IWM/USD",
+        "GLD/USD",
+        "TLT/USD",
     ],
     "forex": [
-        "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD",
-        "NZD/USD", "USD/CAD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
-        "AUD/JPY", "EUR/CHF", "EUR/AUD", "GBP/CHF", "NZD/JPY",
+        "EUR/USD",
+        "GBP/USD",
+        "USD/JPY",
+        "USD/CHF",
+        "AUD/USD",
+        "NZD/USD",
+        "USD/CAD",
+        "EUR/GBP",
+        "EUR/JPY",
+        "GBP/JPY",
+        "AUD/JPY",
+        "EUR/CHF",
+        "EUR/AUD",
+        "GBP/CHF",
+        "NZD/JPY",
     ],
 }
 
 
 def download_watchlist(
-    symbols: Optional[list] = None,
-    timeframes: Optional[list] = None,
+    symbols: list | None = None,
+    timeframes: list | None = None,
     exchange_id: str = "kraken",
     since_days: int = 365,
     asset_class: str = "crypto",
@@ -482,13 +537,17 @@ def download_watchlist(
             if last_ts:
                 logger.info(
                     f"[{done}/{total}] Incremental update {symbol} {tf} "
-                    f"({asset_class}) from {last_ts}"
+                    f"({asset_class}) from {last_ts}",
                 )
             else:
                 logger.info(f"[{done}/{total}] Downloading {symbol} {tf} ({asset_class})...")
             try:
                 df = fetch_ohlcv_multi(
-                    symbol, tf, since_days, asset_class, exchange_id,
+                    symbol,
+                    tf,
+                    since_days,
+                    asset_class,
+                    exchange_id,
                     since_timestamp=last_ts,
                 )
                 if not df.empty:
@@ -511,17 +570,19 @@ def download_watchlist(
 # Data Quality Monitoring
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class DataQualityReport:
     """Result of a data quality validation run."""
+
     symbol: str
     timeframe: str
     exchange: str
     rows: int
-    date_range: tuple[Optional[str], Optional[str]]
-    gaps: list[dict]           # [{start, end, missing_candles}]
-    nan_columns: dict          # {column: nan_count}
-    outliers: list[dict]       # [{timestamp, column, value, reason}]
+    date_range: tuple[str | None, str | None]
+    gaps: list[dict]  # [{start, end, missing_candles}]
+    nan_columns: dict  # {column: nan_count}
+    outliers: list[dict]  # [{timestamp, column, value, reason}]
     ohlc_violations: list[dict]  # [{timestamp, reason}]
     is_stale: bool
     stale_hours: float
@@ -534,8 +595,7 @@ def detect_gaps(
     timeframe: str,
     max_allowed_gaps: int = 0,
 ) -> list[dict]:
-    """
-    Detect missing candles in an OHLCV DataFrame.
+    """Detect missing candles in an OHLCV DataFrame.
 
     Parameters
     ----------
@@ -549,6 +609,7 @@ def detect_gaps(
     Returns
     -------
     list of dicts with gap details: {start, end, missing_candles}
+
     """
     if df.empty or len(df) < 2:
         return []
@@ -569,11 +630,13 @@ def detect_gaps(
         actual_delta = index[i] - index[i - 1]
         if actual_delta > expected_delta * (1 + max_allowed_gaps):
             missing = int(actual_delta / expected_delta) - 1
-            gaps.append({
-                "start": str(index[i - 1]),
-                "end": str(index[i]),
-                "missing_candles": missing,
-            })
+            gaps.append(
+                {
+                    "start": str(index[i - 1]),
+                    "end": str(index[i]),
+                    "missing_candles": missing,
+                }
+            )
 
     return gaps
 
@@ -590,8 +653,7 @@ def detect_stale_data(
     max_stale_hours: float = 2.0,
     asset_class: str = "crypto",
 ) -> tuple[bool, float]:
-    """
-    Check if data hasn't been updated recently.
+    """Check if data hasn't been updated recently.
 
     Returns (is_stale, hours_since_last_update).
     Uses per-asset-class thresholds when max_stale_hours is the default.
@@ -621,8 +683,7 @@ def detect_outliers(
     df: pd.DataFrame,
     price_spike_pct: float = 0.20,
 ) -> list[dict]:
-    """
-    Detect price outliers: single-candle spikes > threshold, zero volumes.
+    """Detect price outliers: single-candle spikes > threshold, zero volumes.
 
     Parameters
     ----------
@@ -630,6 +691,7 @@ def detect_outliers(
         OHLCV data
     price_spike_pct : float
         Maximum allowed single-candle price change (default 20%)
+
     """
     outliers = []
 
@@ -640,47 +702,53 @@ def detect_outliers(
     returns = df["close"].pct_change().abs()
     spikes = returns[returns > price_spike_pct]
     for ts, val in spikes.items():
-        outliers.append({
-            "timestamp": str(ts),
-            "column": "close",
-            "value": round(float(df.loc[ts, "close"]), 8),
-            "reason": f"Price spike: {val:.2%} change in single candle",
-        })
+        outliers.append(
+            {
+                "timestamp": str(ts),
+                "column": "close",
+                "value": round(float(df.loc[ts, "close"]), 8),
+                "reason": f"Price spike: {val:.2%} change in single candle",
+            }
+        )
 
     # Zero volume (excluding first row which may be partial)
     zero_vol = df[df["volume"] == 0]
     for ts in zero_vol.index[1:]:  # skip first row
-        outliers.append({
-            "timestamp": str(ts),
-            "column": "volume",
-            "value": 0.0,
-            "reason": "Zero volume candle",
-        })
+        outliers.append(
+            {
+                "timestamp": str(ts),
+                "column": "volume",
+                "value": 0.0,
+                "reason": "Zero volume candle",
+            }
+        )
 
     return outliers
 
 
 def check_ohlc_integrity(df: pd.DataFrame) -> list[dict]:
-    """
-    Verify OHLC constraints: high >= max(open, close), low <= min(open, close).
-    """
+    """Verify OHLC constraints: high >= max(open, close), low <= min(open, close)."""
     violations = []
     if df.empty:
         return violations
 
     high_violation = df[df["high"] < df[["open", "close"]].max(axis=1)]
     for ts in high_violation.index:
-        violations.append({
-            "timestamp": str(ts),
-            "reason": f"High ({df.loc[ts, 'high']}) < max(Open, Close)",
-        })
+        violations.append(
+            {
+                "timestamp": str(ts),
+                "reason": f"High ({df.loc[ts, 'high']}) < max(Open, Close)",
+            }
+        )
 
     low_violation = df[df["low"] > df[["open", "close"]].min(axis=1)]
     for ts in low_violation.index:
-        violations.append({
-            "timestamp": str(ts),
-            "reason": f"Low ({df.loc[ts, 'low']}) > min(Open, Close)",
-        })
+        violations.append(
+            {
+                "timestamp": str(ts),
+                "reason": f"Low ({df.loc[ts, 'low']}) > min(Open, Close)",
+            }
+        )
 
     return violations
 
@@ -689,12 +757,11 @@ def validate_data(
     symbol: str,
     timeframe: str,
     exchange_id: str = "kraken",
-    directory: Optional[Path] = None,
+    directory: Path | None = None,
     max_stale_hours: float = 2.0,
     price_spike_pct: float = 0.20,
 ) -> DataQualityReport:
-    """
-    Run all data quality checks on a Parquet file and return a report.
+    """Run all data quality checks on a Parquet file and return a report.
 
     Parameters
     ----------
@@ -714,16 +781,25 @@ def validate_data(
     Returns
     -------
     DataQualityReport with all check results
+
     """
     df = load_ohlcv(symbol, timeframe, exchange_id, directory)
 
     if df.empty:
         return DataQualityReport(
-            symbol=symbol, timeframe=timeframe, exchange=exchange_id,
-            rows=0, date_range=(None, None),
-            gaps=[], nan_columns={}, outliers=[], ohlc_violations=[],
-            is_stale=True, stale_hours=float("inf"),
-            passed=False, issues_summary=["No data found"],
+            symbol=symbol,
+            timeframe=timeframe,
+            exchange=exchange_id,
+            rows=0,
+            date_range=(None, None),
+            gaps=[],
+            nan_columns={},
+            outliers=[],
+            ohlc_violations=[],
+            is_stale=True,
+            stale_hours=float("inf"),
+            passed=False,
+            issues_summary=["No data found"],
         )
 
     gaps = detect_gaps(df, timeframe)
@@ -748,21 +824,27 @@ def validate_data(
     date_range = (str(df.index.min()), str(df.index.max()))
 
     return DataQualityReport(
-        symbol=symbol, timeframe=timeframe, exchange=exchange_id,
-        rows=len(df), date_range=date_range,
-        gaps=gaps, nan_columns=nan_cols, outliers=outlier_list,
+        symbol=symbol,
+        timeframe=timeframe,
+        exchange=exchange_id,
+        rows=len(df),
+        date_range=date_range,
+        gaps=gaps,
+        nan_columns=nan_cols,
+        outliers=outlier_list,
         ohlc_violations=ohlc_violations,
-        is_stale=is_stale, stale_hours=stale_hours,
-        passed=len(issues) == 0, issues_summary=issues,
+        is_stale=is_stale,
+        stale_hours=stale_hours,
+        passed=len(issues) == 0,
+        issues_summary=issues,
     )
 
 
 def validate_all_data(
-    directory: Optional[Path] = None,
+    directory: Path | None = None,
     max_stale_hours: float = 26.0,
 ) -> list[DataQualityReport]:
-    """
-    Run quality checks on all available Parquet files.
+    """Run quality checks on all available Parquet files.
 
     Uses 26h stale threshold by default (allows for weekday gaps in daily data).
     """
@@ -789,6 +871,7 @@ def validate_all_data(
 # ──────────────────────────────────────────────
 # Format Converters (for framework interop)
 # ──────────────────────────────────────────────
+
 
 def to_freqtrade_format(df: pd.DataFrame) -> pd.DataFrame:
     """Convert standard OHLCV to Freqtrade-compatible format."""
@@ -839,21 +922,24 @@ def to_nautilus_bars(df: pd.DataFrame, symbol: str) -> list:
     """Convert OHLCV DataFrame to a list of dicts for NautilusTrader bar ingestion."""
     bars = []
     for ts, row in df.iterrows():
-        bars.append({
-            "symbol": symbol,
-            "timestamp": ts,
-            "open": float(row["open"]),
-            "high": float(row["high"]),
-            "low": float(row["low"]),
-            "close": float(row["close"]),
-            "volume": float(row["volume"]),
-        })
+        bars.append(
+            {
+                "symbol": symbol,
+                "timestamp": ts,
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row["volume"]),
+            }
+        )
     return bars
 
 
 # ──────────────────────────────────────────────
 # Technical Indicators (shared across frameworks)
 # ──────────────────────────────────────────────
+
 
 def add_indicators(df: pd.DataFrame, periods: list = None) -> pd.DataFrame:
     """Add common technical indicators to an OHLCV DataFrame."""

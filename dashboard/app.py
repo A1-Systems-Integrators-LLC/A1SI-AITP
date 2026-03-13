@@ -96,7 +96,7 @@ if orders:
                 "Mode": o["mode"],
             }
             for o in orders
-        ]
+        ],
     )
 else:
     st.info("No orders")

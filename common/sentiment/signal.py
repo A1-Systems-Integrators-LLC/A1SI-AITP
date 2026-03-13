@@ -127,8 +127,13 @@ def compute_signal(
     Returns a SentimentSignal with trading-relevant metrics.
     """
     hl = half_life if half_life is not None else HALF_LIVES.get(asset_class, 6.0)
-    ct = conviction_threshold if conviction_threshold is not None else CONVICTION_THRESHOLDS.get(
-        asset_class, 20
+    ct = (
+        conviction_threshold
+        if conviction_threshold is not None
+        else CONVICTION_THRESHOLDS.get(
+            asset_class,
+            20,
+        )
     )
 
     if not articles:

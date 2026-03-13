@@ -1,5 +1,4 @@
-"""
-NautilusTrader Engine Adapter
+"""NautilusTrader Engine Adapter
 ==============================
 Configures a real BacktestEngine with proper Venue, Instrument, and
 Bar data when nautilus_trader is installed. Falls back gracefully

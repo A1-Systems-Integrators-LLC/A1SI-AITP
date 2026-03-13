@@ -1,5 +1,4 @@
-"""
-HFT Strategy Registry
+"""HFT Strategy Registry
 ======================
 Maps strategy names to classes for dynamic lookup by the runner and backend.
 """

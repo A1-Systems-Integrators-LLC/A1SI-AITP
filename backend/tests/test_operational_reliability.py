@@ -6,8 +6,6 @@
 - Health check scheduler warning
 """
 
-import logging
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +13,6 @@ from django.conf import settings as settings_mod
 
 from analysis.models import BackgroundJob, ScreenResult
 from analysis.services.job_runner import JobRunner
-
 
 # ── Fix 2: Scheduler resilience ──────────────────────────────
 
@@ -166,7 +163,9 @@ class TestScreenResultPersistence:
                         "strategies": {
                             "sma_crossover": {
                                 "total_combinations": 100,
-                                "top_results": [{"params": {"fast": 10, "slow": 50}, "sharpe": 1.5}],
+                                "top_results": [
+                                    {"params": {"fast": 10, "slow": 50}, "sharpe": 1.5}
+                                ],
                                 "summary": {"best_sharpe": 1.5},
                             },
                             "rsi_divergence": {
@@ -176,7 +175,7 @@ class TestScreenResultPersistence:
                             },
                         },
                     },
-                }
+                },
             ],
         }
 
@@ -191,7 +190,10 @@ class TestScreenResultPersistence:
 
         screens = ScreenResult.objects.filter(job=job)
         assert screens.count() == 2
-        assert set(screens.values_list("strategy_name", flat=True)) == {"sma_crossover", "rsi_divergence"}
+        assert set(screens.values_list("strategy_name", flat=True)) == {
+            "sma_crossover",
+            "rsi_divergence",
+        }
         assert screens.filter(symbol="BTC/USDT").count() == 2
 
     def test_vbt_screen_skips_error_strategies(self):
@@ -219,7 +221,7 @@ class TestScreenResultPersistence:
                             "broken_strat": {"error": "Not enough data"},
                         },
                     },
-                }
+                },
             ],
         }
 
@@ -312,11 +314,13 @@ class TestFreqtradeEquitySync:
             {"name": "BMR", "url": "http://ft2:8083", "dry_run_wallet": 200.0},
             {"name": "VB", "url": "http://ft3:8084", "dry_run_wallet": 100.0},
         ]
-        with patch.object(settings_mod, "FREQTRADE_API_URL", "http://ft1:8080"), \
-             patch.object(settings_mod, "FREQTRADE_BMR_API_URL", "http://ft2:8083"), \
-             patch.object(settings_mod, "FREQTRADE_VB_API_URL", "http://ft3:8084"), \
-             patch.object(settings_mod, "FREQTRADE_INSTANCES", mock_instances), \
-             patch("core.platform_bridge.ensure_platform_imports"):
+        with (
+            patch.object(settings_mod, "FREQTRADE_API_URL", "http://ft1:8080"),
+            patch.object(settings_mod, "FREQTRADE_BMR_API_URL", "http://ft2:8083"),
+            patch.object(settings_mod, "FREQTRADE_VB_API_URL", "http://ft3:8084"),
+            patch.object(settings_mod, "FREQTRADE_INSTANCES", mock_instances),
+            patch("core.platform_bridge.ensure_platform_imports"),
+        ):
             from core.services.task_registry import _sync_freqtrade_equity
 
             result = _sync_freqtrade_equity()
@@ -338,17 +342,21 @@ class TestFreqtradeEquitySync:
         from portfolio.models import Portfolio
 
         Portfolio.objects.create(
-            name="Test", exchange_id="kraken", asset_class="crypto",
+            name="Test",
+            exchange_id="kraken",
+            asset_class="crypto",
         )
 
         mock_get.side_effect = Exception("Connection refused")
 
         mock_config = {"trading": {"initial_capital": 10000.0}}
-        with patch.object(settings_mod, "FREQTRADE_API_URL", "http://ft1:8080"), \
-             patch.object(settings_mod, "FREQTRADE_BMR_API_URL", ""), \
-             patch.object(settings_mod, "FREQTRADE_VB_API_URL", ""), \
-             patch("core.platform_bridge.get_platform_config", return_value=mock_config), \
-             patch("core.platform_bridge.ensure_platform_imports"):
+        with (
+            patch.object(settings_mod, "FREQTRADE_API_URL", "http://ft1:8080"),
+            patch.object(settings_mod, "FREQTRADE_BMR_API_URL", ""),
+            patch.object(settings_mod, "FREQTRADE_VB_API_URL", ""),
+            patch("core.platform_bridge.get_platform_config", return_value=mock_config),
+            patch("core.platform_bridge.ensure_platform_imports"),
+        ):
             from core.services.task_registry import _sync_freqtrade_equity
 
             result = _sync_freqtrade_equity()
@@ -363,7 +371,9 @@ class TestFreqtradeEquitySync:
         from portfolio.models import Portfolio
 
         Portfolio.objects.create(
-            name="Test", exchange_id="kraken", asset_class="crypto",
+            name="Test",
+            exchange_id="kraken",
+            asset_class="crypto",
         )
 
         mock_resp = MagicMock()
@@ -372,11 +382,13 @@ class TestFreqtradeEquitySync:
         mock_get.return_value = mock_resp
 
         mock_config = {"trading": {"initial_capital": 10000.0}}
-        with patch.object(settings_mod, "FREQTRADE_API_URL", ""), \
-             patch.object(settings_mod, "FREQTRADE_BMR_API_URL", ""), \
-             patch.object(settings_mod, "FREQTRADE_VB_API_URL", ""), \
-             patch("core.platform_bridge.get_platform_config", return_value=mock_config), \
-             patch("core.platform_bridge.ensure_platform_imports"):
+        with (
+            patch.object(settings_mod, "FREQTRADE_API_URL", ""),
+            patch.object(settings_mod, "FREQTRADE_BMR_API_URL", ""),
+            patch.object(settings_mod, "FREQTRADE_VB_API_URL", ""),
+            patch("core.platform_bridge.get_platform_config", return_value=mock_config),
+            patch("core.platform_bridge.ensure_platform_imports"),
+        ):
             from core.services.task_registry import _sync_freqtrade_equity
 
             result = _sync_freqtrade_equity()
@@ -396,16 +408,22 @@ class TestRiskMonitoringWithSync:
         from risk.models import RiskLimits, RiskState
 
         portfolio = Portfolio.objects.create(
-            name="Test", exchange_id="kraken", asset_class="crypto",
+            name="Test",
+            exchange_id="kraken",
+            asset_class="crypto",
         )
         RiskState.objects.create(
-            portfolio_id=portfolio.id, total_equity=10000, peak_equity=10000,
+            portfolio_id=portfolio.id,
+            total_equity=10000,
+            peak_equity=10000,
         )
         RiskLimits.objects.create(portfolio_id=portfolio.id)
 
         sync_result = {"total_pnl": -10.0, "equity_updated": True, "instances": []}
 
-        with patch("core.services.task_registry._sync_freqtrade_equity", return_value=sync_result) as mock_sync:
+        with patch(
+            "core.services.task_registry._sync_freqtrade_equity", return_value=sync_result
+        ) as mock_sync:
             from core.services.task_registry import _run_risk_monitoring
 
             result = _run_risk_monitoring({}, lambda p, m: None)
@@ -420,14 +438,20 @@ class TestRiskMonitoringWithSync:
         from risk.models import RiskLimits, RiskState
 
         portfolio = Portfolio.objects.create(
-            name="Test", exchange_id="kraken", asset_class="crypto",
+            name="Test",
+            exchange_id="kraken",
+            asset_class="crypto",
         )
         RiskState.objects.create(
-            portfolio_id=portfolio.id, total_equity=10000, peak_equity=10000,
+            portfolio_id=portfolio.id,
+            total_equity=10000,
+            peak_equity=10000,
         )
         RiskLimits.objects.create(portfolio_id=portfolio.id)
 
-        with patch("core.services.task_registry._sync_freqtrade_equity", side_effect=Exception("boom")):
+        with patch(
+            "core.services.task_registry._sync_freqtrade_equity", side_effect=Exception("boom")
+        ):
             from core.services.task_registry import _run_risk_monitoring
 
             result = _run_risk_monitoring({}, lambda p, m: None)

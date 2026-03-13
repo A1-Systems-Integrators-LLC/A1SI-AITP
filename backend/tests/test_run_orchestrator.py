@@ -4,13 +4,10 @@ Covers: cmd_status, cmd_validate, cmd_data, cmd_research,
 cmd_freqtrade, cmd_nautilus, cmd_ml, cmd_hft, main() argparse routing.
 """
 
-import os
 import sys
 from argparse import Namespace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -18,18 +15,16 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import run.py functions directly
 from run import (
+    cmd_data,
+    cmd_freqtrade,
+    cmd_hft,
+    cmd_ml,
+    cmd_nautilus,
+    cmd_research,
     cmd_status,
     cmd_validate,
-    cmd_data,
-    cmd_research,
-    cmd_freqtrade,
-    cmd_nautilus,
-    cmd_ml,
-    cmd_hft,
     main,
-    _generate_sample_data,
 )
-
 
 # ══════════════════════════════════════════════════════
 # cmd_status
@@ -48,7 +43,7 @@ class TestCmdStatus:
 
     def test_missing_framework_shown(self, capsys):
         """Frameworks that fail to import are shown as NOT INSTALLED."""
-        original = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+        __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
         import builtins
         real_import = builtins.__import__
 
@@ -137,8 +132,8 @@ class TestCmdData:
         assert "No data" in out
 
     def test_info_with_data(self, capsys):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
         idx = pd.date_range("2025-01-01", periods=10, freq="1h")
         df = pd.DataFrame({"open": np.random.rand(10), "close": np.random.rand(10)}, index=idx)
         args = Namespace(data_command="info", symbol="BTC/USDT", timeframe="1h", exchange="kraken")
@@ -313,8 +308,8 @@ class TestCmdMl:
         assert "No data" in out
 
     def test_train_insufficient_data(self, capsys):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
         args = Namespace(
             ml_command="train", symbol="BTC/USDT", timeframe="1h",
             exchange="kraken", test_ratio=0.2,
@@ -333,8 +328,8 @@ class TestCmdMl:
         assert "Insufficient" in out
 
     def test_train_success(self, capsys):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
         args = Namespace(
             ml_command="train", symbol="BTC/USDT", timeframe="1h",
             exchange="kraken", test_ratio=0.2,
@@ -400,8 +395,8 @@ class TestCmdMl:
         assert "Model not found" in out
 
     def test_predict_success(self, capsys):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
         args = Namespace(
             ml_command="predict", model_id="m1", symbol="BTC/USDT",
             timeframe="1h", exchange="kraken", bars=5,

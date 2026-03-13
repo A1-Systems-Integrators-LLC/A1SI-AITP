@@ -5,7 +5,6 @@ job_runner.py, workflow_engine.py, models.py, data_pipeline.py
 """
 
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +22,6 @@ from analysis.models import (
     WorkflowStepRun,
 )
 
-
 # ═══════════════════════════════════════════════════════════════
 # 1. MLService tests  (services/ml.py — 0% → 100%)
 # ═══════════════════════════════════════════════════════════════
@@ -34,16 +32,21 @@ class TestMLServiceTrain(TestCase):
 
     def test_train_import_error_data_pipeline(self):
         """ImportError on data pipeline returns error dict."""
-        from analysis.services.ml import MLService
-
         # Remove cached module so the `from ... import` inside train() re-executes
         import sys
+
+        from analysis.services.ml import MLService
+
         saved = sys.modules.pop("common.data_pipeline.pipeline", None)
         try:
             # Insert a module that raises on attribute access
             broken = MagicMock()
-            broken.load_ohlcv = property(lambda self: (_ for _ in ()).throw(ImportError("no pipeline")))
-            sys.modules["common.data_pipeline.pipeline"] = None  # None → ImportError on `from ... import`
+            broken.load_ohlcv = property(
+                lambda self: (_ for _ in ()).throw(ImportError("no pipeline"))
+            )
+            sys.modules["common.data_pipeline.pipeline"] = (
+                None  # None → ImportError on `from ... import`
+            )
 
             with patch("analysis.services.ml.ensure_platform_imports"):
                 result = MLService.train({}, lambda p, m: None)
@@ -60,6 +63,7 @@ class TestMLServiceTrain(TestCase):
         """Helper to call MLService.train with mocked pipeline."""
         import numpy as np
         import pandas as pd
+
         from analysis.services.ml import MLService
 
         if empty:
@@ -78,11 +82,11 @@ class TestMLServiceTrain(TestCase):
 
         if insufficient:
             mock_features.build_feature_matrix = MagicMock(
-                return_value=(np.array(range(50)), np.array(range(50)), ["f1"])
+                return_value=(np.array(range(50)), np.array(range(50)), ["f1"]),
             )
         else:
             mock_features.build_feature_matrix = MagicMock(
-                return_value=(np.array(range(200)), np.array(range(200)), ["f1", "f2"])
+                return_value=(np.array(range(200)), np.array(range(200)), ["f1", "f2"]),
             )
 
         mock_trainer = MagicMock()
@@ -92,7 +96,7 @@ class TestMLServiceTrain(TestCase):
                 "metrics": {"accuracy": 0.85},
                 "metadata": {"n_features": 2},
                 "feature_importance": {"f1": 0.5, "f2": 0.5},
-            }
+            },
         )
 
         mock_registry_mod = MagicMock()
@@ -112,12 +116,14 @@ class TestMLServiceTrain(TestCase):
         def progress_cb(p, m):
             progress_calls.append((p, m))
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", modules):
-                result = MLService.train(
-                    {"symbol": "BTC/USDT", "timeframe": "1h", "exchange": "kraken"},
-                    progress_cb,
-                )
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", modules),
+        ):
+            result = MLService.train(
+                {"symbol": "BTC/USDT", "timeframe": "1h", "exchange": "kraken"},
+                progress_cb,
+            )
         return result
 
     def test_train_empty_data(self):
@@ -139,7 +145,9 @@ class TestMLServiceTrain(TestCase):
     def test_train_ml_modules_import_error(self):
         """ImportError on ML modules returns error dict."""
         import sys
+
         import pandas as pd
+
         from analysis.services.ml import MLService
 
         mock_df = pd.DataFrame({"close": range(200)})
@@ -155,9 +163,11 @@ class TestMLServiceTrain(TestCase):
             sys.modules["common.ml.trainer"] = None
             sys.modules["common.ml.registry"] = None
 
-            with patch("analysis.services.ml.ensure_platform_imports"):
-                with patch.dict("sys.modules", {"common.data_pipeline.pipeline": mock_pipeline}):
-                    result = MLService.train({}, lambda p, m: None)
+            with (
+                patch("analysis.services.ml.ensure_platform_imports"),
+                patch.dict("sys.modules", {"common.data_pipeline.pipeline": mock_pipeline}),
+            ):
+                result = MLService.train({}, lambda p, m: None)
 
             assert "error" in result
             assert "ML modules not available" in result["error"]
@@ -198,14 +208,17 @@ class TestMLServicePredict(TestCase):
             "common.ml.trainer": MagicMock(),
         }
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", modules):
-                result = MLService.predict({"model_id": "nonexistent"})
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", modules),
+        ):
+            result = MLService.predict({"model_id": "nonexistent"})
         assert "error" in result
         assert "Model not found" in result["error"]
 
     def test_predict_empty_data(self):
         import pandas as pd
+
         from analysis.services.ml import MLService
 
         mock_registry_mod = MagicMock()
@@ -223,15 +236,18 @@ class TestMLServicePredict(TestCase):
             "common.ml.trainer": MagicMock(),
         }
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", modules):
-                result = MLService.predict({"model_id": "m1"})
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", modules),
+        ):
+            result = MLService.predict({"model_id": "m1"})
         assert "error" in result
         assert "No data for" in result["error"]
 
     def test_predict_no_valid_features(self):
         import numpy as np
         import pandas as pd
+
         from analysis.services.ml import MLService
 
         mock_registry_mod = MagicMock()
@@ -246,7 +262,7 @@ class TestMLServicePredict(TestCase):
         mock_features = MagicMock()
         # Return empty feature matrix after NaN removal
         mock_features.build_feature_matrix = MagicMock(
-            return_value=(np.array([]).reshape(0, 2), np.array([]), ["f1", "f2"])
+            return_value=(np.array([]).reshape(0, 2), np.array([]), ["f1", "f2"]),
         )
 
         modules = {
@@ -256,15 +272,18 @@ class TestMLServicePredict(TestCase):
             "common.ml.trainer": MagicMock(),
         }
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", modules):
-                result = MLService.predict({"model_id": "m1"})
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", modules),
+        ):
+            result = MLService.predict({"model_id": "m1"})
         assert "error" in result
         assert "No valid feature rows" in result["error"]
 
     def test_predict_success(self):
         import numpy as np
         import pandas as pd
+
         from analysis.services.ml import MLService
 
         mock_registry_mod = MagicMock()
@@ -279,7 +298,7 @@ class TestMLServicePredict(TestCase):
         x_feat = pd.DataFrame({"f1": range(100), "f2": range(100)})
         mock_features = MagicMock()
         mock_features.build_feature_matrix = MagicMock(
-            return_value=(x_feat, np.array(range(100)), ["f1", "f2"])
+            return_value=(x_feat, np.array(range(100)), ["f1", "f2"]),
         )
 
         mock_trainer = MagicMock()
@@ -292,16 +311,19 @@ class TestMLServicePredict(TestCase):
             "common.ml.trainer": mock_trainer,
         }
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", modules):
-                result = MLService.predict(
-                    {"model_id": "m1", "symbol": "ETH/USDT", "bars": 10}
-                )
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", modules),
+        ):
+            result = MLService.predict(
+                {"model_id": "m1", "symbol": "ETH/USDT", "bars": 10},
+            )
         assert result["model_id"] == "m1"
         assert result["symbol"] == "ETH/USDT"
 
     def test_predict_import_error(self):
         import sys
+
         from analysis.services.ml import MLService
 
         # Set modules to None so `from X import Y` raises ImportError
@@ -339,13 +361,16 @@ class TestMLServiceListAndDetail(TestCase):
         mock_inst.list_models = MagicMock(return_value=[{"id": "m1"}])
         mock_registry_mod.ModelRegistry = MagicMock(return_value=mock_inst)
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"common.ml.registry": mock_registry_mod}):
-                result = MLService.list_models()
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", {"common.ml.registry": mock_registry_mod}),
+        ):
+            result = MLService.list_models()
         assert result == [{"id": "m1"}]
 
     def test_list_models_import_error(self):
         import sys
+
         from analysis.services.ml import MLService
 
         saved = sys.modules.pop("common.ml.registry", None)
@@ -368,13 +393,16 @@ class TestMLServiceListAndDetail(TestCase):
         mock_inst.get_model_detail = MagicMock(return_value={"id": "m1", "metrics": {}})
         mock_registry_mod.ModelRegistry = MagicMock(return_value=mock_inst)
 
-        with patch("analysis.services.ml.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"common.ml.registry": mock_registry_mod}):
-                result = MLService.get_model_detail("m1")
+        with (
+            patch("analysis.services.ml.ensure_platform_imports"),
+            patch.dict("sys.modules", {"common.ml.registry": mock_registry_mod}),
+        ):
+            result = MLService.get_model_detail("m1")
         assert result == {"id": "m1", "metrics": {}}
 
     def test_get_model_detail_import_error(self):
         import sys
+
         from analysis.services.ml import MLService
 
         saved = sys.modules.pop("common.ml.registry", None)
@@ -419,27 +447,37 @@ class TestScreenerServiceFullScreen(TestCase):
 
     def test_all_strategies_succeed(self):
         import pandas as pd
+
         from analysis.services.screening import ScreenerService
 
-        mock_df = pd.DataFrame({"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h"))
+        mock_df = pd.DataFrame(
+            {"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h")
+        )
         mock_vbt = self._make_mock_vbt()
 
         progress_calls = []
 
-        with patch("analysis.services.screening.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(load_ohlcv=MagicMock(return_value=mock_df)),
-                "common.indicators.technical": MagicMock(
-                    sma=MagicMock(return_value=pd.Series(range(200))),
-                    ema=MagicMock(return_value=pd.Series(range(200))),
-                    rsi=MagicMock(return_value=pd.Series([50] * 200)),
-                ),
-                "vectorbt": mock_vbt,
-            }):
-                result = ScreenerService.run_full_screen(
-                    {"symbol": "BTC/USDT", "timeframe": "1h"},
-                    lambda p, m: progress_calls.append((p, m)),
-                )
+        with (
+            patch("analysis.services.screening.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        load_ohlcv=MagicMock(return_value=mock_df)
+                    ),
+                    "common.indicators.technical": MagicMock(
+                        sma=MagicMock(return_value=pd.Series(range(200))),
+                        ema=MagicMock(return_value=pd.Series(range(200))),
+                        rsi=MagicMock(return_value=pd.Series([50] * 200)),
+                    ),
+                    "vectorbt": mock_vbt,
+                },
+            ),
+        ):
+            result = ScreenerService.run_full_screen(
+                {"symbol": "BTC/USDT", "timeframe": "1h"},
+                lambda p, m: progress_calls.append((p, m)),
+            )
 
         assert result["symbol"] == "BTC/USDT"
         assert "strategies" in result
@@ -447,42 +485,66 @@ class TestScreenerServiceFullScreen(TestCase):
 
     def test_empty_data_returns_error(self):
         import pandas as pd
+
         from analysis.services.screening import ScreenerService
 
-        with patch("analysis.services.screening.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    load_ohlcv=MagicMock(return_value=pd.DataFrame())
-                ),
-                "common.indicators.technical": MagicMock(),
-            }):
-                result = ScreenerService.run_full_screen({}, lambda p, m: None)
+        with (
+            patch("analysis.services.screening.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        load_ohlcv=MagicMock(return_value=pd.DataFrame()),
+                    ),
+                    "common.indicators.technical": MagicMock(),
+                },
+            ),
+        ):
+            result = ScreenerService.run_full_screen({}, lambda p, m: None)
 
         assert "error" in result
 
     def test_vbt_import_error_per_strategy(self):
         """When vectorbt import fails, each strategy returns error."""
         import sys
+
         import pandas as pd
+
         from analysis.services.screening import ScreenerService
 
-        mock_df = pd.DataFrame({"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h"))
+        mock_df = pd.DataFrame(
+            {"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h")
+        )
 
         saved_vbt = sys.modules.pop("vectorbt", None)
         try:
             sys.modules["vectorbt"] = None  # `import vectorbt` → ImportError
 
-            with patch("analysis.services.screening.ensure_platform_imports"):
-                with patch.dict("sys.modules", {
-                    "common.data_pipeline.pipeline": MagicMock(load_ohlcv=MagicMock(return_value=mock_df)),
-                    "common.indicators.technical": MagicMock(
-                        sma=MagicMock(), ema=MagicMock(), rsi=MagicMock(),
-                    ),
-                    "vectorbt": None,
-                }):
-                    result = ScreenerService.run_full_screen({}, lambda p, m: None)
+            with (
+                patch("analysis.services.screening.ensure_platform_imports"),
+                patch.dict(
+                    "sys.modules",
+                    {
+                        "common.data_pipeline.pipeline": MagicMock(
+                            load_ohlcv=MagicMock(return_value=mock_df)
+                        ),
+                        "common.indicators.technical": MagicMock(
+                            sma=MagicMock(),
+                            ema=MagicMock(),
+                            rsi=MagicMock(),
+                        ),
+                        "vectorbt": None,
+                    },
+                ),
+            ):
+                result = ScreenerService.run_full_screen({}, lambda p, m: None)
 
-            for strategy_name in ["sma_crossover", "rsi_mean_reversion", "bollinger_breakout", "ema_rsi_combo"]:
+            for strategy_name in [
+                "sma_crossover",
+                "rsi_mean_reversion",
+                "bollinger_breakout",
+                "ema_rsi_combo",
+            ]:
                 assert result["strategies"][strategy_name]["error"] == "VectorBT not installed"
         finally:
             if saved_vbt is not None:
@@ -493,25 +555,35 @@ class TestScreenerServiceFullScreen(TestCase):
     def test_strategy_generic_exception(self):
         """Generic exception in strategy is caught and reported."""
         import pandas as pd
+
         from analysis.services.screening import ScreenerService
 
-        mock_df = pd.DataFrame({"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h"))
+        mock_df = pd.DataFrame(
+            {"close": range(1, 201)}, index=pd.date_range("2024-01-01", periods=200, freq="h")
+        )
 
         mock_vbt = MagicMock()
         mock_vbt.MA.run_combs = MagicMock(side_effect=RuntimeError("VBT exploded"))
         mock_vbt.Portfolio.from_signals = MagicMock(side_effect=RuntimeError("VBT exploded"))
 
-        with patch("analysis.services.screening.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(load_ohlcv=MagicMock(return_value=mock_df)),
-                "common.indicators.technical": MagicMock(
-                    sma=MagicMock(return_value=pd.Series(range(200))),
-                    ema=MagicMock(return_value=pd.Series(range(200))),
-                    rsi=MagicMock(return_value=pd.Series([50] * 200)),
-                ),
-                "vectorbt": mock_vbt,
-            }):
-                result = ScreenerService.run_full_screen({}, lambda p, m: None)
+        with (
+            patch("analysis.services.screening.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        load_ohlcv=MagicMock(return_value=mock_df)
+                    ),
+                    "common.indicators.technical": MagicMock(
+                        sma=MagicMock(return_value=pd.Series(range(200))),
+                        ema=MagicMock(return_value=pd.Series(range(200))),
+                        rsi=MagicMock(return_value=pd.Series([50] * 200)),
+                    ),
+                    "vectorbt": mock_vbt,
+                },
+            ),
+        ):
+            result = ScreenerService.run_full_screen({}, lambda p, m: None)
 
         # All strategies should have errors
         for strat in result["strategies"].values():
@@ -520,6 +592,7 @@ class TestScreenerServiceFullScreen(TestCase):
     def test_none_result_df_skipped(self):
         """If screen function returns None, strategy not included in results."""
         import pandas as pd
+
         from analysis.services.screening import _screen_sma
 
         mock_vbt = MagicMock()
@@ -557,6 +630,7 @@ class TestScreenHelpers(TestCase):
 
     def test_screen_rsi(self):
         import pandas as pd
+
         from analysis.services.screening import _screen_rsi
 
         mock_vbt = self._make_mock_pf(MagicMock())
@@ -572,6 +646,7 @@ class TestScreenHelpers(TestCase):
     def test_screen_rsi_exception_caught(self):
         """Exceptions in individual RSI parameter combos are caught."""
         import pandas as pd
+
         from analysis.services.screening import _screen_rsi
 
         mock_vbt = MagicMock()
@@ -586,6 +661,7 @@ class TestScreenHelpers(TestCase):
 
     def test_screen_bollinger(self):
         import pandas as pd
+
         from analysis.services.screening import _screen_bollinger
 
         mock_vbt = self._make_mock_pf(MagicMock())
@@ -597,6 +673,7 @@ class TestScreenHelpers(TestCase):
 
     def test_screen_bollinger_exception_caught(self):
         import pandas as pd
+
         from analysis.services.screening import _screen_bollinger
 
         mock_vbt = MagicMock()
@@ -609,6 +686,7 @@ class TestScreenHelpers(TestCase):
 
     def test_screen_ema_rsi(self):
         import pandas as pd
+
         from analysis.services.screening import _screen_ema_rsi
 
         mock_vbt = self._make_mock_pf(MagicMock())
@@ -621,6 +699,7 @@ class TestScreenHelpers(TestCase):
 
     def test_screen_ema_rsi_exception_caught(self):
         import pandas as pd
+
         from analysis.services.screening import _screen_ema_rsi
 
         mock_vbt = MagicMock()
@@ -635,6 +714,7 @@ class TestScreenHelpers(TestCase):
     def test_screen_rsi_zero_trades_win_rate(self):
         """When trades.count() == 0, win_rate defaults to 0."""
         import pandas as pd
+
         from analysis.services.screening import _screen_rsi
 
         mock_vbt = MagicMock()
@@ -670,6 +750,7 @@ class TestBacktestServiceFreqtrade(TestCase):
         import json
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -689,8 +770,8 @@ class TestBacktestServiceFreqtrade(TestCase):
                         "max_drawdown": 0.08,
                         "sharpe": 1.5,
                         "wins": 25,
-                    }
-                }
+                    },
+                },
             }
             result_file = results_dir / "result_2024.json"
             result_file.write_text(json.dumps(result_data))
@@ -701,12 +782,14 @@ class TestBacktestServiceFreqtrade(TestCase):
             mock_result.stderr = ""
 
             progress_calls = []
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", return_value=mock_result):
-                    result = BacktestService._run_freqtrade(
-                        {"strategy": "TestStrat", "timeframe": "1h", "timerange": "20240101-"},
-                        lambda p, m: progress_calls.append((p, m)),
-                    )
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", return_value=mock_result),
+            ):
+                result = BacktestService._run_freqtrade(
+                    {"strategy": "TestStrat", "timeframe": "1h", "timerange": "20240101-"},
+                    lambda p, m: progress_calls.append((p, m)),
+                )
 
         assert result["framework"] == "freqtrade"
         assert result["strategy"] == "TestStrat"
@@ -716,6 +799,7 @@ class TestBacktestServiceFreqtrade(TestCase):
     def test_freqtrade_nonzero_return_code(self):
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -728,9 +812,11 @@ class TestBacktestServiceFreqtrade(TestCase):
             mock_result.stdout = ""
             mock_result.stderr = "Strategy error"
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", return_value=mock_result):
-                    result = BacktestService._run_freqtrade({}, lambda p, m: None)
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", return_value=mock_result),
+            ):
+                result = BacktestService._run_freqtrade({}, lambda p, m: None)
 
         assert "error" in result
         assert "Strategy error" in result["error"]
@@ -739,36 +825,43 @@ class TestBacktestServiceFreqtrade(TestCase):
         import subprocess
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
             ft_dir = Path(td)
             (ft_dir / "config.json").write_text("{}")
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 600)):
-                    result = BacktestService._run_freqtrade({}, lambda p, m: None)
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 600)),
+            ):
+                result = BacktestService._run_freqtrade({}, lambda p, m: None)
 
         assert result["error"] == "Backtest timed out (10 min limit)"
 
     def test_freqtrade_not_found(self):
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
             ft_dir = Path(td)
             (ft_dir / "config.json").write_text("{}")
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", side_effect=FileNotFoundError()):
-                    result = BacktestService._run_freqtrade({}, lambda p, m: None)
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", side_effect=FileNotFoundError()),
+            ):
+                result = BacktestService._run_freqtrade({}, lambda p, m: None)
 
         assert "freqtrade command not found" in result["error"]
 
     def test_freqtrade_config_missing(self):
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -784,6 +877,7 @@ class TestBacktestServiceFreqtrade(TestCase):
         """Success but no backtest_results directory."""
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -795,9 +889,11 @@ class TestBacktestServiceFreqtrade(TestCase):
             mock_result.stdout = "ok"
             mock_result.stderr = ""
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", return_value=mock_result):
-                    result = BacktestService._run_freqtrade({}, lambda p, m: None)
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", return_value=mock_result),
+            ):
+                result = BacktestService._run_freqtrade({}, lambda p, m: None)
 
         assert result["framework"] == "freqtrade"
 
@@ -805,6 +901,7 @@ class TestBacktestServiceFreqtrade(TestCase):
         """Corrupt JSON in results file is handled gracefully."""
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -819,9 +916,11 @@ class TestBacktestServiceFreqtrade(TestCase):
             mock_result.stdout = "ok"
             mock_result.stderr = ""
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("subprocess.run", return_value=mock_result):
-                    result = BacktestService._run_freqtrade({}, lambda p, m: None)
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("subprocess.run", return_value=mock_result),
+            ):
+                result = BacktestService._run_freqtrade({}, lambda p, m: None)
 
         # Should succeed despite parse error (logged warning)
         assert result["framework"] == "freqtrade"
@@ -835,21 +934,24 @@ class TestBacktestServiceNautilus(TestCase):
 
         mock_runner = MagicMock()
         mock_runner.run_nautilus_backtest = MagicMock(
-            return_value={"framework": "nautilus", "metrics": {"sharpe": 1.2}}
+            return_value={"framework": "nautilus", "metrics": {"sharpe": 1.2}},
         )
         mock_runner.list_nautilus_strategies = MagicMock(return_value=["TrendFollowing"])
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}):
-                result = BacktestService._run_nautilus(
-                    {"strategy": "TrendFollowing", "symbol": "BTC/USDT"},
-                    lambda p, m: None,
-                )
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}),
+        ):
+            result = BacktestService._run_nautilus(
+                {"strategy": "TrendFollowing", "symbol": "BTC/USDT"},
+                lambda p, m: None,
+            )
 
         assert result["framework"] == "nautilus"
 
     def test_nautilus_import_error(self):
         import sys
+
         from analysis.services.backtest import BacktestService
 
         saved = sys.modules.pop("nautilus.nautilus_runner", None)
@@ -871,12 +973,14 @@ class TestBacktestServiceNautilus(TestCase):
         mock_runner = MagicMock()
         mock_runner.list_nautilus_strategies = MagicMock(return_value=["MeanReversion"])
         mock_runner.run_nautilus_backtest = MagicMock(
-            return_value={"framework": "nautilus", "metrics": {}}
+            return_value={"framework": "nautilus", "metrics": {}},
         )
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}):
-                result = BacktestService._run_nautilus({"strategy": ""}, lambda p, m: None)
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}),
+        ):
+            BacktestService._run_nautilus({"strategy": ""}, lambda p, m: None)
 
         mock_runner.run_nautilus_backtest.assert_called_once()
         call_args = mock_runner.run_nautilus_backtest.call_args
@@ -888,9 +992,11 @@ class TestBacktestServiceNautilus(TestCase):
         mock_runner = MagicMock()
         mock_runner.list_nautilus_strategies = MagicMock(return_value=[])
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}):
-                result = BacktestService._run_nautilus({"strategy": ""}, lambda p, m: None)
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}),
+        ):
+            result = BacktestService._run_nautilus({"strategy": ""}, lambda p, m: None)
 
         assert "No Nautilus strategy specified" in result["error"]
 
@@ -899,14 +1005,17 @@ class TestBacktestServiceNautilus(TestCase):
 
         mock_runner = MagicMock()
         mock_runner.run_nautilus_backtest = MagicMock(
-            return_value={"error": "data missing"}
+            return_value={"error": "data missing"},
         )
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}):
-                result = BacktestService._run_nautilus(
-                    {"strategy": "X"}, lambda p, m: None
-                )
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"nautilus.nautilus_runner": mock_runner}),
+        ):
+            result = BacktestService._run_nautilus(
+                {"strategy": "X"},
+                lambda p, m: None,
+            )
 
         assert result["error"] == "data missing"
 
@@ -919,20 +1028,24 @@ class TestBacktestServiceHFT(TestCase):
 
         mock_runner = MagicMock()
         mock_runner.run_hft_backtest = MagicMock(
-            return_value={"framework": "hftbacktest", "metrics": {}}
+            return_value={"framework": "hftbacktest", "metrics": {}},
         )
         mock_runner.list_hft_strategies = MagicMock(return_value=["MarketMaker"])
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}):
-                result = BacktestService._run_hft(
-                    {"strategy": "MarketMaker"}, lambda p, m: None
-                )
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}),
+        ):
+            result = BacktestService._run_hft(
+                {"strategy": "MarketMaker"},
+                lambda p, m: None,
+            )
 
         assert result["framework"] == "hftbacktest"
 
     def test_hft_import_error(self):
         import sys
+
         from analysis.services.backtest import BacktestService
 
         saved = sys.modules.pop("hftbacktest.hft_runner", None)
@@ -953,12 +1066,14 @@ class TestBacktestServiceHFT(TestCase):
         mock_runner = MagicMock()
         mock_runner.list_hft_strategies = MagicMock(return_value=["GridTrader"])
         mock_runner.run_hft_backtest = MagicMock(
-            return_value={"framework": "hftbacktest", "metrics": {}}
+            return_value={"framework": "hftbacktest", "metrics": {}},
         )
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}):
-                result = BacktestService._run_hft({"strategy": ""}, lambda p, m: None)
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}),
+        ):
+            result = BacktestService._run_hft({"strategy": ""}, lambda p, m: None)
 
         assert result["framework"] == "hftbacktest"
 
@@ -968,9 +1083,11 @@ class TestBacktestServiceHFT(TestCase):
         mock_runner = MagicMock()
         mock_runner.list_hft_strategies = MagicMock(return_value=[])
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}):
-                result = BacktestService._run_hft({"strategy": ""}, lambda p, m: None)
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}),
+        ):
+            result = BacktestService._run_hft({"strategy": ""}, lambda p, m: None)
 
         assert "No HFT strategy specified" in result["error"]
 
@@ -980,11 +1097,14 @@ class TestBacktestServiceHFT(TestCase):
         mock_runner = MagicMock()
         mock_runner.run_hft_backtest = MagicMock(return_value={"error": "no data"})
 
-        with patch("analysis.services.backtest.ensure_platform_imports"):
-            with patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}):
-                result = BacktestService._run_hft(
-                    {"strategy": "X"}, lambda p, m: None
-                )
+        with (
+            patch("analysis.services.backtest.ensure_platform_imports"),
+            patch.dict("sys.modules", {"hftbacktest.hft_runner": mock_runner}),
+        ):
+            result = BacktestService._run_hft(
+                {"strategy": "X"},
+                lambda p, m: None,
+            )
 
         assert result["error"] == "no data"
 
@@ -995,6 +1115,7 @@ class TestBacktestServiceListStrategies(TestCase):
     def test_list_strategies_freqtrade_files(self):
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -1005,16 +1126,22 @@ class TestBacktestServiceListStrategies(TestCase):
             (strat_dir / "OtherStrat.py").write_text("# strategy")
 
             import sys
+
             saved_nt = sys.modules.pop("nautilus.strategies", None)
             saved_hft = sys.modules.pop("hftbacktest.strategies", None)
             try:
                 sys.modules["nautilus.strategies"] = None
                 sys.modules["hftbacktest.strategies"] = None
-                with patch("analysis.services.backtest.get_freqtrade_dir", return_value=Path(td)):
-                    with patch("analysis.services.backtest.ensure_platform_imports"):
-                        strategies = BacktestService.list_strategies()
+                with (
+                    patch("analysis.services.backtest.get_freqtrade_dir", return_value=Path(td)),
+                    patch("analysis.services.backtest.ensure_platform_imports"),
+                ):
+                    strategies = BacktestService.list_strategies()
             finally:
-                for k, v in [("nautilus.strategies", saved_nt), ("hftbacktest.strategies", saved_hft)]:
+                for k, v in [
+                    ("nautilus.strategies", saved_nt),
+                    ("hftbacktest.strategies", saved_hft),
+                ]:
                     if v is not None:
                         sys.modules[k] = v
                     else:
@@ -1030,6 +1157,7 @@ class TestBacktestServiceListStrategies(TestCase):
     def test_list_strategies_with_nautilus_and_hft(self):
         import tempfile
         from pathlib import Path
+
         from analysis.services.backtest import BacktestService
 
         with tempfile.TemporaryDirectory() as td:
@@ -1037,18 +1165,26 @@ class TestBacktestServiceListStrategies(TestCase):
             # No strategies dir
 
             mock_nt = MagicMock()
-            mock_nt.STRATEGY_REGISTRY = {"TrendFollowing": MagicMock(), "MeanReversion": MagicMock()}
+            mock_nt.STRATEGY_REGISTRY = {
+                "TrendFollowing": MagicMock(),
+                "MeanReversion": MagicMock(),
+            }
 
             mock_hft = MagicMock()
             mock_hft.STRATEGY_REGISTRY = {"MarketMaker": MagicMock()}
 
-            with patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir):
-                with patch("analysis.services.backtest.ensure_platform_imports"):
-                    with patch.dict("sys.modules", {
+            with (
+                patch("analysis.services.backtest.get_freqtrade_dir", return_value=ft_dir),
+                patch("analysis.services.backtest.ensure_platform_imports"),
+                patch.dict(
+                    "sys.modules",
+                    {
                         "nautilus.strategies": mock_nt,
                         "hftbacktest.strategies": mock_hft,
-                    }):
-                        strategies = BacktestService.list_strategies()
+                    },
+                ),
+            ):
+                strategies = BacktestService.list_strategies()
 
         nt_strats = [s for s in strategies if s["framework"] == "nautilus"]
         hft_strats = [s for s in strategies if s["framework"] == "hftbacktest"]
@@ -1067,6 +1203,7 @@ class TestAnalysisViewsPhase2(TestCase):
 
     def setUp(self):
         from django.contrib.auth.models import User
+
         self.client = APIClient()
         self.user = User.objects.create_user("testuser", password="testpass")
         self.client.force_authenticate(self.user)
@@ -1134,12 +1271,20 @@ class TestAnalysisViewsPhase2(TestCase):
     def test_backtest_result_list_filter_asset_class(self):
         job = self._create_job()
         BacktestResult.objects.create(
-            job=job, framework="ft", asset_class="crypto",
-            strategy_name="A", symbol="BTC/USDT", timeframe="1h",
+            job=job,
+            framework="ft",
+            asset_class="crypto",
+            strategy_name="A",
+            symbol="BTC/USDT",
+            timeframe="1h",
         )
         BacktestResult.objects.create(
-            job=job, framework="nt", asset_class="equity",
-            strategy_name="B", symbol="AAPL", timeframe="1d",
+            job=job,
+            framework="nt",
+            asset_class="equity",
+            strategy_name="B",
+            symbol="AAPL",
+            timeframe="1d",
         )
         resp = self.client.get("/api/backtest/results/?asset_class=crypto")
         assert resp.status_code == 200
@@ -1173,8 +1318,11 @@ class TestAnalysisViewsPhase2(TestCase):
     def test_screening_result_detail_success(self):
         job = self._create_job()
         sr = ScreenResult.objects.create(
-            job=job, symbol="BTC/USDT", timeframe="1h",
-            strategy_name="sma_crossover", total_combinations=100,
+            job=job,
+            symbol="BTC/USDT",
+            timeframe="1h",
+            strategy_name="sma_crossover",
+            total_combinations=100,
         )
         resp = self.client.get(f"/api/screening/results/{sr.id}/")
         assert resp.status_code == 200
@@ -1280,13 +1428,18 @@ class TestAnalysisViewsPhase2(TestCase):
         mock_report.passed = True
         mock_report.issues_summary = []
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    validate_all_data=MagicMock(return_value=[mock_report])
-                ),
-            }):
-                resp = self.client.get("/api/data/quality/")
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        validate_all_data=MagicMock(return_value=[mock_report]),
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/data/quality/")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -1309,13 +1462,18 @@ class TestAnalysisViewsPhase2(TestCase):
                 sys.modules.pop("common.data_pipeline.pipeline", None)
 
     def test_data_quality_list_os_error(self):
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    validate_all_data=MagicMock(side_effect=OSError("disk error"))
-                ),
-            }):
-                resp = self.client.get("/api/data/quality/")
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        validate_all_data=MagicMock(side_effect=OSError("disk error")),
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/data/quality/")
 
         assert resp.status_code == 500
 
@@ -1335,24 +1493,34 @@ class TestAnalysisViewsPhase2(TestCase):
         mock_report.passed = True
         mock_report.issues_summary = []
 
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    validate_data=MagicMock(return_value=mock_report)
-                ),
-            }):
-                resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        validate_data=MagicMock(return_value=mock_report),
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
 
         assert resp.status_code == 200
 
     def test_data_quality_detail_file_not_found(self):
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    validate_data=MagicMock(side_effect=FileNotFoundError())
-                ),
-            }):
-                resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        validate_data=MagicMock(side_effect=FileNotFoundError()),
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
 
         assert resp.status_code == 404
 
@@ -1372,13 +1540,18 @@ class TestAnalysisViewsPhase2(TestCase):
                 sys.modules.pop("common.data_pipeline.pipeline", None)
 
     def test_data_quality_detail_os_error(self):
-        with patch("core.platform_bridge.ensure_platform_imports"):
-            with patch.dict("sys.modules", {
-                "common.data_pipeline.pipeline": MagicMock(
-                    validate_data=MagicMock(side_effect=OSError("disk"))
-                ),
-            }):
-                resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch.dict(
+                "sys.modules",
+                {
+                    "common.data_pipeline.pipeline": MagicMock(
+                        validate_data=MagicMock(side_effect=OSError("disk")),
+                    ),
+                },
+            ),
+        ):
+            resp = self.client.get("/api/data/quality/BTC_USDT/1h/")
 
         assert resp.status_code == 500
 
@@ -1417,8 +1590,12 @@ class TestAnalysisViewsPhase2(TestCase):
         """Line 146: BacktestResultDetailView success path."""
         job = self._create_job()
         br = BacktestResult.objects.create(
-            job=job, framework="ft", asset_class="crypto",
-            strategy_name="SMA", symbol="BTC/USDT", timeframe="1h",
+            job=job,
+            framework="ft",
+            asset_class="crypto",
+            strategy_name="SMA",
+            symbol="BTC/USDT",
+            timeframe="1h",
         )
         resp = self.client.get(f"/api/backtest/results/{br.id}/")
         assert resp.status_code == 200
@@ -1428,8 +1605,12 @@ class TestAnalysisViewsPhase2(TestCase):
         """Line 257: BacktestExportView with strategy filter."""
         job = self._create_job()
         BacktestResult.objects.create(
-            job=job, framework="ft", asset_class="crypto",
-            strategy_name="SMAcross", symbol="BTC/USDT", timeframe="1h",
+            job=job,
+            framework="ft",
+            asset_class="crypto",
+            strategy_name="SMAcross",
+            symbol="BTC/USDT",
+            timeframe="1h",
         )
         resp = self.client.get("/api/backtest/export/?strategy=SMA")
         assert resp.status_code == 200
@@ -1439,8 +1620,11 @@ class TestAnalysisViewsPhase2(TestCase):
         """Line 336: ScreeningResultListView with asset_class filter."""
         job = self._create_job()
         ScreenResult.objects.create(
-            job=job, symbol="BTC/USDT", asset_class="crypto",
-            timeframe="1h", strategy_name="sma",
+            job=job,
+            symbol="BTC/USDT",
+            asset_class="crypto",
+            timeframe="1h",
+            strategy_name="sma",
         )
         resp = self.client.get("/api/screening/results/?asset_class=crypto")
         assert resp.status_code == 200
@@ -1461,7 +1645,9 @@ class TestAnalysisViewsPhase2(TestCase):
         """Line 729: WorkflowRunCancelView."""
         wf = Workflow.objects.create(id="wf-cancel-view", name="test")
         run = WorkflowRun.objects.create(
-            workflow=wf, status="running", trigger="api"
+            workflow=wf,
+            status="running",
+            trigger="api",
         )
         with patch("analysis.services.workflow_engine.WorkflowEngine.cancel", return_value=True):
             resp = self.client.post(f"/api/workflow-runs/{run.id}/cancel/")
@@ -1471,7 +1657,9 @@ class TestAnalysisViewsPhase2(TestCase):
     def test_workflow_run_cancel_not_cancellable(self):
         wf = Workflow.objects.create(id="wf-cancel-fail", name="test")
         run = WorkflowRun.objects.create(
-            workflow=wf, status="completed", trigger="api"
+            workflow=wf,
+            status="completed",
+            trigger="api",
         )
         with patch("analysis.services.workflow_engine.WorkflowEngine.cancel", return_value=False):
             resp = self.client.post(f"/api/workflow-runs/{run.id}/cancel/")
@@ -1489,7 +1677,9 @@ class TestStepRegistryReExports(TestCase):
     def test_step_data_refresh(self):
         from analysis.services.step_registry import _step_data_refresh
 
-        with patch("core.services.task_registry._run_data_refresh", return_value={"ok": True}) as mock:
+        with patch(
+            "core.services.task_registry._run_data_refresh", return_value={"ok": True}
+        ) as mock:
             result = _step_data_refresh({}, lambda p, m: None)
         mock.assert_called_once()
         assert result == {"ok": True}
@@ -1497,36 +1687,46 @@ class TestStepRegistryReExports(TestCase):
     def test_step_regime_detection(self):
         from analysis.services.step_registry import _step_regime_detection
 
-        with patch("core.services.task_registry._run_regime_detection", return_value={"ok": True}) as mock:
-            result = _step_regime_detection({}, lambda p, m: None)
+        with patch(
+            "core.services.task_registry._run_regime_detection", return_value={"ok": True}
+        ) as mock:
+            _step_regime_detection({}, lambda p, m: None)
         mock.assert_called_once()
 
     def test_step_news_fetch(self):
         from analysis.services.step_registry import _step_news_fetch
 
-        with patch("core.services.task_registry._run_news_fetch", return_value={"ok": True}) as mock:
-            result = _step_news_fetch({}, lambda p, m: None)
+        with patch(
+            "core.services.task_registry._run_news_fetch", return_value={"ok": True}
+        ) as mock:
+            _step_news_fetch({}, lambda p, m: None)
         mock.assert_called_once()
 
     def test_step_data_quality(self):
         from analysis.services.step_registry import _step_data_quality
 
-        with patch("core.services.task_registry._run_data_quality", return_value={"ok": True}) as mock:
-            result = _step_data_quality({}, lambda p, m: None)
+        with patch(
+            "core.services.task_registry._run_data_quality", return_value={"ok": True}
+        ) as mock:
+            _step_data_quality({}, lambda p, m: None)
         mock.assert_called_once()
 
     def test_step_order_sync(self):
         from analysis.services.step_registry import _step_order_sync
 
-        with patch("core.services.task_registry._run_order_sync", return_value={"ok": True}) as mock:
-            result = _step_order_sync({}, lambda p, m: None)
+        with patch(
+            "core.services.task_registry._run_order_sync", return_value={"ok": True}
+        ) as mock:
+            _step_order_sync({}, lambda p, m: None)
         mock.assert_called_once()
 
     def test_step_ml_training(self):
         from analysis.services.step_registry import _step_ml_training
 
-        with patch("core.services.task_registry._run_ml_training", return_value={"ok": True}) as mock:
-            result = _step_ml_training({}, lambda p, m: None)
+        with patch(
+            "core.services.task_registry._run_ml_training", return_value={"ok": True}
+        ) as mock:
+            _step_ml_training({}, lambda p, m: None)
         mock.assert_called_once()
 
 
@@ -1539,7 +1739,9 @@ class TestStepRegistryWorkflowSteps(TestCase):
         mock_screener = MagicMock()
         mock_screener.run_full_screen = MagicMock(return_value={"strategies": {}})
 
-        with patch.dict("sys.modules", {"analysis.services.screening": MagicMock(ScreenerService=mock_screener)}):
+        with patch.dict(
+            "sys.modules", {"analysis.services.screening": MagicMock(ScreenerService=mock_screener)}
+        ):
             result = _step_vbt_screen({}, lambda p, m: None)
 
         assert result["status"] == "completed"
@@ -1547,9 +1749,16 @@ class TestStepRegistryWorkflowSteps(TestCase):
     def test_step_vbt_screen_exception(self):
         from analysis.services.step_registry import _step_vbt_screen
 
-        with patch.dict("sys.modules", {"analysis.services.screening": MagicMock(
-            ScreenerService=MagicMock(run_full_screen=MagicMock(side_effect=Exception("fail")))
-        )}):
+        with patch.dict(
+            "sys.modules",
+            {
+                "analysis.services.screening": MagicMock(
+                    ScreenerService=MagicMock(
+                        run_full_screen=MagicMock(side_effect=Exception("fail"))
+                    ),
+                )
+            },
+        ):
             result = _step_vbt_screen({}, lambda p, m: None)
 
         assert result["status"] == "error"
@@ -1586,11 +1795,13 @@ class TestStepRegistryWorkflowSteps(TestCase):
 
         mock_regime = MagicMock()
         mock_regime_inst = MagicMock()
-        mock_regime_inst.get_all_current_regimes = MagicMock(return_value=[
-            {"regime": "strong_trend_up", "confidence": 0.8},
-            {"regime": "weak_trend_down", "confidence": 0.3},
-            {"regime": "unknown", "confidence": 0.5},
-        ])
+        mock_regime_inst.get_all_current_regimes = MagicMock(
+            return_value=[
+                {"regime": "strong_trend_up", "confidence": 0.8},
+                {"regime": "weak_trend_down", "confidence": 0.3},
+                {"regime": "unknown", "confidence": 0.5},
+            ]
+        )
         mock_regime.RegimeService = MagicMock(return_value=mock_regime_inst)
 
         prev_result = {
@@ -1599,7 +1810,8 @@ class TestStepRegistryWorkflowSteps(TestCase):
 
         with patch.dict("sys.modules", {"market.services.regime": mock_regime}):
             result = _step_composite_score(
-                {"_prev_result": prev_result}, lambda p, m: None
+                {"_prev_result": prev_result},
+                lambda p, m: None,
             )
 
         assert result["status"] == "completed"
@@ -1812,14 +2024,18 @@ class TestJobRunnerRunJob(TestCase):
 
         runner = JobRunner(max_workers=1)
         job = BackgroundJob.objects.create(
-            id=str(uuid.uuid4()), job_type="test", status="pending"
+            id=str(uuid.uuid4()),
+            job_type="test",
+            status="pending",
         )
 
         def mock_run_fn(params, cb):
             cb(0.5, "halfway")
             return {"result": "ok"}
 
-        with patch("core.services.ws_broadcast.broadcast_scheduler_event", side_effect=Exception("ws fail")):
+        with patch(
+            "core.services.ws_broadcast.broadcast_scheduler_event", side_effect=Exception("ws fail")
+        ):
             runner._run_job(job.id, mock_run_fn, {})
 
         job.refresh_from_db()
@@ -1831,7 +2047,9 @@ class TestJobRunnerRunJob(TestCase):
 
         runner = JobRunner(max_workers=1)
         job = BackgroundJob.objects.create(
-            id=str(uuid.uuid4()), job_type="backtest", status="pending"
+            id=str(uuid.uuid4()),
+            job_type="backtest",
+            status="pending",
         )
 
         def mock_run_fn(params, cb):
@@ -1874,13 +2092,17 @@ class TestJobRunnerRunJob(TestCase):
 
         runner = JobRunner(max_workers=1)
         job = BackgroundJob.objects.create(
-            id=str(uuid.uuid4()), job_type="test", status="pending"
+            id=str(uuid.uuid4()),
+            job_type="test",
+            status="pending",
         )
 
         def mock_run_fn(params, cb):
             raise RuntimeError("job exploded")
 
-        with patch("core.services.ws_broadcast.broadcast_scheduler_event", side_effect=Exception("ws fail")):
+        with patch(
+            "core.services.ws_broadcast.broadcast_scheduler_event", side_effect=Exception("ws fail")
+        ):
             runner._run_job(job.id, mock_run_fn, {})
 
         job.refresh_from_db()
@@ -1900,8 +2122,8 @@ class TestEvaluateConditionEdgeCases(TestCase):
         """Line 51: numeric != comparison."""
         from analysis.services.workflow_engine import _evaluate_condition
 
-        assert _evaluate_condition('result.score != 0.5', {"score": 0.6}) is True
-        assert _evaluate_condition('result.score != 0.5', {"score": 0.5}) is False
+        assert _evaluate_condition("result.score != 0.5", {"score": 0.6}) is True
+        assert _evaluate_condition("result.score != 0.5", {"score": 0.5}) is False
 
     def test_ge_le_operators_via_fixed_regex(self):
         """Lines 56-59: >= and <= operators.
@@ -1911,24 +2133,25 @@ class TestEvaluateConditionEdgeCases(TestCase):
         patch the regex to fix the ordering.
         """
         import re
+
         from analysis.services import workflow_engine
         from analysis.services.workflow_engine import _evaluate_condition
 
         # Fix the regex ordering to prioritize >= and <= over > and <
         fixed_re = re.compile(
-            r'^result\.(\w+)\s*(==|!=|>=|<=|>|<)\s*["\']?([^"\']*)["\']?$'
+            r'^result\.(\w+)\s*(==|!=|>=|<=|>|<)\s*["\']?([^"\']*)["\']?$',
         )
         original_re = workflow_engine._CONDITION_RE
         try:
             workflow_engine._CONDITION_RE = fixed_re
 
-            assert _evaluate_condition('result.score >= 0.5', {"score": 0.5}) is True
-            assert _evaluate_condition('result.score >= 0.5', {"score": 0.6}) is True
-            assert _evaluate_condition('result.score >= 0.5', {"score": 0.4}) is False
+            assert _evaluate_condition("result.score >= 0.5", {"score": 0.5}) is True
+            assert _evaluate_condition("result.score >= 0.5", {"score": 0.6}) is True
+            assert _evaluate_condition("result.score >= 0.5", {"score": 0.4}) is False
 
-            assert _evaluate_condition('result.score <= 0.5', {"score": 0.5}) is True
-            assert _evaluate_condition('result.score <= 0.5', {"score": 0.4}) is True
-            assert _evaluate_condition('result.score <= 0.5', {"score": 0.6}) is False
+            assert _evaluate_condition("result.score <= 0.5", {"score": 0.5}) is True
+            assert _evaluate_condition("result.score <= 0.5", {"score": 0.4}) is True
+            assert _evaluate_condition("result.score <= 0.5", {"score": 0.6}) is False
         finally:
             workflow_engine._CONDITION_RE = original_re
 
@@ -1949,18 +2172,30 @@ class TestExecuteWorkflowEdgeCases(TestCase):
         from analysis.services.workflow_engine import execute_workflow
 
         wf = Workflow.objects.create(id="wf-missing", name="test")
-        step = WorkflowStep.objects.create(
-            workflow=wf, order=1, name="step1", step_type="data_refresh"
+        WorkflowStep.objects.create(
+            workflow=wf,
+            order=1,
+            name="step1",
+            step_type="data_refresh",
         )
         run = WorkflowRun.objects.create(workflow=wf, trigger="api", total_steps=1)
         # Don't create WorkflowStepRun — it should be skipped
 
-        with patch("core.services.metrics.timed", return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock())):
+        with patch(
+            "core.services.metrics.timed",
+            return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock()),
+        ):
             result = execute_workflow(
                 {
                     "workflow_run_id": str(run.id),
                     "steps": [
-                        {"order": 1, "name": "step1", "step_type": "data_refresh", "params": {}, "condition": ""},
+                        {
+                            "order": 1,
+                            "name": "step1",
+                            "step_type": "data_refresh",
+                            "params": {},
+                            "condition": "",
+                        },
                     ],
                     "workflow_params": {},
                 },
@@ -1979,10 +2214,15 @@ class TestWorkflowEngineCancelWithJob(TestCase):
 
         wf = Workflow.objects.create(id="wf-cancel", name="test")
         job = BackgroundJob.objects.create(
-            id=str(uuid.uuid4()), job_type="workflow", status="running"
+            id=str(uuid.uuid4()),
+            job_type="workflow",
+            status="running",
         )
         run = WorkflowRun.objects.create(
-            workflow=wf, job=job, status="running", trigger="api"
+            workflow=wf,
+            job=job,
+            status="running",
+            trigger="api",
         )
 
         with patch("analysis.services.job_runner.get_job_runner") as mock_jr:
@@ -2006,7 +2246,9 @@ class TestAnalysisModels(TestCase):
     """Cover __str__ and clean() methods."""
 
     def test_background_job_str(self):
-        job = BackgroundJob(id="12345678-1234-1234-1234-123456789012", job_type="bt", status="running")
+        job = BackgroundJob(
+            id="12345678-1234-1234-1234-123456789012", job_type="bt", status="running"
+        )
         assert "12345678" in str(job)
         assert "bt" in str(job)
 
@@ -2054,7 +2296,9 @@ class TestAnalysisModels(TestCase):
 
     def test_workflow_step_clean_invalid_timeout(self):
         wf = Workflow.objects.create(id="wf-step2", name="test")
-        step = WorkflowStep(workflow=wf, order=1, name="s", step_type="data_refresh", timeout_seconds=0)
+        step = WorkflowStep(
+            workflow=wf, order=1, name="s", step_type="data_refresh", timeout_seconds=0
+        )
         with pytest.raises(ValidationError) as exc_info:
             step.clean()
         assert "timeout_seconds" in exc_info.value.message_dict
@@ -2070,7 +2314,9 @@ class TestAnalysisModels(TestCase):
         wf = Workflow.objects.create(id="wf-sr", name="test")
         step = WorkflowStep.objects.create(workflow=wf, order=1, name="s", step_type="data_refresh")
         run = WorkflowRun.objects.create(workflow=wf, trigger="api")
-        sr = WorkflowStepRun.objects.create(workflow_run=run, step=step, order=1, status="completed")
+        sr = WorkflowStepRun.objects.create(
+            workflow_run=run, step=step, order=1, status="completed"
+        )
         s = str(sr)
         assert "step 1" in s
         assert "completed" in s
@@ -2095,6 +2341,7 @@ class TestDataPipelineServiceErrors(TestCase):
         """Corrupt parquet file returns None."""
         import tempfile
         from pathlib import Path
+
         from analysis.services.data_pipeline import DataPipelineService
 
         with tempfile.TemporaryDirectory() as td:
@@ -2102,9 +2349,11 @@ class TestDataPipelineServiceErrors(TestCase):
             corrupt_file = processed / "kraken_BTC_USDT_1h.parquet"
             corrupt_file.write_text("not a parquet file")
 
-            with patch("analysis.services.data_pipeline.ensure_platform_imports"):
-                with patch("analysis.services.data_pipeline.get_processed_dir", return_value=processed):
-                    svc = DataPipelineService()
-                    result = svc.get_data_info("BTC/USDT", "1h", "kraken")
+            with (
+                patch("analysis.services.data_pipeline.ensure_platform_imports"),
+                patch("analysis.services.data_pipeline.get_processed_dir", return_value=processed),
+            ):
+                svc = DataPipelineService()
+                result = svc.get_data_info("BTC/USDT", "1h", "kraken")
 
         assert result is None

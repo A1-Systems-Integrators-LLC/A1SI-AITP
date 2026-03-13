@@ -1,11 +1,11 @@
-"""
-Comprehensive tests for the HFT backtest module (Tier 4)
+"""Comprehensive tests for the HFT backtest module (Tier 4)
 ==========================================================
 Covers: strategy imports, interfaces, synthetic data execution,
 result persistence (JSON files), error handling, configuration
 edge cases, and task registry integration.
 """
 
+import contextlib
 import json
 import sys
 import tempfile
@@ -38,7 +38,9 @@ def _make_ticks(
     return np.column_stack([timestamps, prices, volumes, sides])
 
 
-def _make_trending_ticks(n: int = 200, start_price: float = 100.0, trend: float = 0.05) -> np.ndarray:
+def _make_trending_ticks(
+    n: int = 200, start_price: float = 100.0, trend: float = 0.05
+) -> np.ndarray:
     """Generate ticks with a clear trend direction for strategy testing."""
     timestamps = np.arange(n, dtype=np.float64) * 1_000_000_000
     prices = start_price + np.arange(n) * trend + np.random.normal(0, 0.01, n)
@@ -47,7 +49,9 @@ def _make_trending_ticks(n: int = 200, start_price: float = 100.0, trend: float 
     return np.column_stack([timestamps, prices, volumes, sides])
 
 
-def _make_mean_reverting_ticks(n: int = 200, center: float = 100.0, amplitude: float = 2.0) -> np.ndarray:
+def _make_mean_reverting_ticks(
+    n: int = 200, center: float = 100.0, amplitude: float = 2.0
+) -> np.ndarray:
     """Generate ticks that oscillate around a center price."""
     timestamps = np.arange(n, dtype=np.float64) * 1_000_000_000
     prices = center + amplitude * np.sin(np.linspace(0, 8 * np.pi, n))
@@ -110,7 +114,11 @@ class TestStrategyInterface:
         ("MarketMaker", "hftbacktest.strategies.market_maker", "HFTMarketMaker"),
         ("MomentumScalper", "hftbacktest.strategies.momentum_scalper", "HFTMomentumScalper"),
         ("GridTrader", "hftbacktest.strategies.grid_trader", "HFTGridTrader"),
-        ("MeanReversionScalper", "hftbacktest.strategies.mean_reversion", "HFTMeanReversionScalper"),
+        (
+            "MeanReversionScalper",
+            "hftbacktest.strategies.mean_reversion",
+            "HFTMeanReversionScalper",
+        ),
     ]
 
     @pytest.mark.parametrize("name,module,cls_name", STRATEGY_CLASSES)
@@ -200,13 +208,15 @@ class TestStrategyWithSyntheticData:
         """MarketMaker should process ticks and maintain consistent state."""
         from hftbacktest.strategies.market_maker import HFTMarketMaker
 
-        s = HFTMarketMaker(config={
-            "half_spread": 0.001,
-            "skew_factor": 0.0005,
-            "order_size": 0.01,
-            "max_position": 10.0,
-            "quote_interval": 1,
-        })
+        s = HFTMarketMaker(
+            config={
+                "half_spread": 0.001,
+                "skew_factor": 0.0005,
+                "order_size": 0.01,
+                "max_position": 10.0,
+                "quote_interval": 1,
+            }
+        )
         ticks = _make_ticks(500)
         s.run(ticks)
         # Strategy should complete and maintain valid state
@@ -223,13 +233,15 @@ class TestStrategyWithSyntheticData:
         """
         from hftbacktest.strategies.market_maker import HFTMarketMaker
 
-        s = HFTMarketMaker(config={
-            "half_spread": 0.001,
-            "skew_factor": 10.0,  # Extreme skew to force fills
-            "order_size": 0.01,
-            "max_position": 10.0,
-            "quote_interval": 1,
-        })
+        s = HFTMarketMaker(
+            config={
+                "half_spread": 0.001,
+                "skew_factor": 10.0,  # Extreme skew to force fills
+                "order_size": 0.01,
+                "max_position": 10.0,
+                "quote_interval": 1,
+            }
+        )
         # Manually set a short position so skew shifts ask down below mid
         tick = {"timestamp": 0, "price": 100.0, "volume": 0.1, "side": "sell"}
         s.submit_order("sell", 100.0, 1.0, tick)
@@ -247,12 +259,14 @@ class TestStrategyWithSyntheticData:
         """MomentumScalper should enter positions on trending data."""
         from hftbacktest.strategies.momentum_scalper import HFTMomentumScalper
 
-        s = HFTMomentumScalper(config={
-            "lookback": 5,
-            "entry_threshold": 0.0001,
-            "order_size": 0.01,
-            "max_position": 10.0,
-        })
+        s = HFTMomentumScalper(
+            config={
+                "lookback": 5,
+                "entry_threshold": 0.0001,
+                "order_size": 0.01,
+                "max_position": 10.0,
+            }
+        )
         ticks = _make_trending_ticks(200, trend=0.1)
         s.run(ticks)
         assert len(s.fills) > 0, "MomentumScalper should trade on trending data"
@@ -261,12 +275,14 @@ class TestStrategyWithSyntheticData:
         """GridTrader should fill grid levels when price oscillates."""
         from hftbacktest.strategies.grid_trader import HFTGridTrader
 
-        s = HFTGridTrader(config={
-            "grid_spacing": 0.01,
-            "num_levels": 3,
-            "order_size": 0.01,
-            "max_position": 10.0,
-        })
+        s = HFTGridTrader(
+            config={
+                "grid_spacing": 0.01,
+                "num_levels": 3,
+                "order_size": 0.01,
+                "max_position": 10.0,
+            }
+        )
         ticks = _make_mean_reverting_ticks(500, center=100.0, amplitude=3.0)
         s.run(ticks)
         assert len(s.fills) > 0, "GridTrader should fill levels on oscillating data"
@@ -275,12 +291,14 @@ class TestStrategyWithSyntheticData:
         """MeanReversionScalper should trade when price deviates from VWAP."""
         from hftbacktest.strategies.mean_reversion import HFTMeanReversionScalper
 
-        s = HFTMeanReversionScalper(config={
-            "lookback": 10,
-            "deviation_threshold": 0.005,
-            "order_size": 0.01,
-            "max_position": 10.0,
-        })
+        s = HFTMeanReversionScalper(
+            config={
+                "lookback": 10,
+                "deviation_threshold": 0.005,
+                "order_size": 0.01,
+                "max_position": 10.0,
+            }
+        )
         ticks = _make_mean_reverting_ticks(300, center=100.0, amplitude=2.0)
         s.run(ticks)
         assert len(s.fills) > 0, "MeanReversionScalper should trade on oscillating data"
@@ -290,19 +308,21 @@ class TestStrategyWithSyntheticData:
         from hftbacktest.strategies import STRATEGY_REGISTRY
 
         ticks = _make_mean_reverting_ticks(500, center=100.0, amplitude=5.0)
-        for name, cls in STRATEGY_REGISTRY.items():
-            s = cls(config={
-                "max_position": 10.0,
-                "order_size": 0.01,
-                # Strategy-specific: wide parameters to encourage fills
-                "half_spread": 0.05,
-                "quote_interval": 1,
-                "lookback": 5,
-                "entry_threshold": 0.0001,
-                "deviation_threshold": 0.005,
-                "grid_spacing": 0.01,
-                "num_levels": 3,
-            })
+        for _name, cls in STRATEGY_REGISTRY.items():
+            s = cls(
+                config={
+                    "max_position": 10.0,
+                    "order_size": 0.01,
+                    # Strategy-specific: wide parameters to encourage fills
+                    "half_spread": 0.05,
+                    "quote_interval": 1,
+                    "lookback": 5,
+                    "entry_threshold": 0.0001,
+                    "deviation_threshold": 0.005,
+                    "grid_spacing": 0.01,
+                    "num_levels": 3,
+                }
+            )
             s.run(ticks)
             df = s.get_trades_df()
             # trades_df is either empty or has the expected columns
@@ -362,9 +382,8 @@ class TestResultPersistence:
     def test_load_nonexistent_result(self, tmp_path):
         """Loading a non-existent result should raise FileNotFoundError."""
         path = tmp_path / "nonexistent.json"
-        with pytest.raises(FileNotFoundError):
-            with open(path) as f:
-                json.load(f)
+        with pytest.raises(FileNotFoundError), open(path) as f:
+            json.load(f)
 
     def test_results_dir_exists(self):
         """The hftbacktest results directory should exist."""
@@ -376,17 +395,19 @@ class TestResultPersistence:
         """serialize_trades_df should produce JSON-compatible output."""
         from common.metrics.performance import serialize_trades_df
 
-        trades_df = pd.DataFrame({
-            "entry_time": pd.to_datetime(["2024-01-01", "2024-01-02"], utc=True),
-            "exit_time": pd.to_datetime(["2024-01-01 01:00", "2024-01-02 01:00"], utc=True),
-            "side": ["buy", "sell"],
-            "entry_price": [100.0, 110.0],
-            "exit_price": [105.0, 108.0],
-            "size": [0.01, 0.01],
-            "pnl": [0.05, -0.02],
-            "pnl_pct": [0.05, -0.018],
-            "fee": [0.002, 0.002],
-        })
+        trades_df = pd.DataFrame(
+            {
+                "entry_time": pd.to_datetime(["2024-01-01", "2024-01-02"], utc=True),
+                "exit_time": pd.to_datetime(["2024-01-01 01:00", "2024-01-02 01:00"], utc=True),
+                "side": ["buy", "sell"],
+                "entry_price": [100.0, 110.0],
+                "exit_price": [105.0, 108.0],
+                "size": [0.01, 0.01],
+                "pnl": [0.05, -0.02],
+                "pnl_pct": [0.05, -0.018],
+                "fee": [0.002, 0.002],
+            }
+        )
         serialized = serialize_trades_df(trades_df)
         assert isinstance(serialized, list)
         assert len(serialized) == 2
@@ -436,10 +457,8 @@ class TestErrorHandling:
         ticks = _make_ticks(50)
         ticks[10, 1] = np.nan  # Insert NaN price
         # Should not raise, even if behavior is undefined on NaN
-        try:
+        with contextlib.suppress(ValueError, FloatingPointError):
             s.run(ticks)
-        except (ValueError, FloatingPointError):
-            pass  # Acceptable to raise on NaN, but should not crash with unhandled exception
 
     def test_zero_volume_ticks(self):
         """Strategy should handle zero-volume ticks."""
@@ -611,7 +630,12 @@ class TestTaskRegistryIntegration:
 
         names = list_hft_strategies()
         assert len(names) == 4
-        assert set(names) == {"MarketMaker", "MomentumScalper", "GridTrader", "MeanReversionScalper"}
+        assert set(names) == {
+            "MarketMaker",
+            "MomentumScalper",
+            "GridTrader",
+            "MeanReversionScalper",
+        }
 
 
 # ── 8. Performance Metrics Integration ──────────────────
@@ -625,12 +649,14 @@ class TestPerformanceMetrics:
         from common.metrics.performance import compute_performance_metrics
         from hftbacktest.strategies.momentum_scalper import HFTMomentumScalper
 
-        s = HFTMomentumScalper(config={
-            "lookback": 5,
-            "entry_threshold": 0.0001,
-            "max_position": 10.0,
-            "order_size": 0.01,
-        })
+        s = HFTMomentumScalper(
+            config={
+                "lookback": 5,
+                "entry_threshold": 0.0001,
+                "max_position": 10.0,
+                "order_size": 0.01,
+            }
+        )
         ticks = _make_trending_ticks(200, trend=0.1)
         s.run(ticks)
         df = s.get_trades_df()
@@ -674,7 +700,7 @@ class TestEdgeCases:
         s = HFTBaseStrategy(config={"max_position": 100.0, "fee_rate": 0.0})
         tick = {"timestamp": 0, "price": 100.0, "volume": 0.1, "side": "sell"}
         # Do 100 buy/sell round trips
-        for i in range(100):
+        for _i in range(100):
             s.submit_order("buy", 100.0, 0.01, tick)
             s.submit_order("sell", 100.0, 0.01, tick)
         assert s.position == pytest.approx(0.0, abs=1e-10)
@@ -705,7 +731,7 @@ class TestEdgeCases:
         s._reference_price = 100.0
         buy_1 = s._grid_level_price(1, "buy")
         sell_1 = s._grid_level_price(1, "sell")
-        assert buy_1 == pytest.approx(99.0)   # 100 * (1 - 0.01)
+        assert buy_1 == pytest.approx(99.0)  # 100 * (1 - 0.01)
         assert sell_1 == pytest.approx(101.0)  # 100 * (1 + 0.01)
 
     def test_load_platform_config_missing_file(self):

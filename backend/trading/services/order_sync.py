@@ -30,7 +30,7 @@ async def _sync_loop() -> None:
                 Order.objects.filter(
                     mode=TradingMode.LIVE,
                     status__in=active_statuses,
-                )
+                ),
             )
 
             for order in orders:

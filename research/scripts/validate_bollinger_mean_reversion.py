@@ -1,5 +1,4 @@
-"""
-Gate 2+3 Validation: BollingerMeanReversion
+"""Gate 2+3 Validation: BollingerMeanReversion
 =============================================
 Sprint 1, Item 1.3
 
@@ -24,8 +23,8 @@ Usage:
     python validate_bollinger_mean_reversion.py --synthetic
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -38,13 +37,14 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(SCRIPTS_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from common.indicators.technical import rsi, bollinger_bands, sma, adx  # noqa: E402
 from validation_engine import (  # noqa: E402
+    DEFAULT_FEES,
+    generate_synthetic_ohlcv,
     run_validation,
     save_report,
-    generate_synthetic_ohlcv,
-    DEFAULT_FEES,
 )
+
+from common.indicators.technical import adx, bollinger_bands, rsi, sma  # noqa: E402
 
 logger = logging.getLogger("validate_bmr")
 
@@ -62,17 +62,18 @@ STOPLOSS = 0.04  # -4% hard stop (matches Freqtrade strategy)
 
 
 def bollinger_mr_signals(
-    df: pd.DataFrame, params: dict
+    df: pd.DataFrame, params: dict,
 ) -> tuple[pd.Series, pd.Series]:
-    """
-    Replicate BollingerMeanReversion entry/exit logic using pure pandas indicators.
+    """Replicate BollingerMeanReversion entry/exit logic using pure pandas indicators.
 
-    Parameters:
+    Parameters
+    ----------
         bb_period: Bollinger Band period (15-30)
         bb_std: Bollinger Band std dev multiplier (1.5-3.0)
         rsi_threshold: RSI entry threshold (25-40)
         volume_factor: Volume spike multiplier (1.0-2.5)
         sell_rsi_threshold: RSI exit threshold (55-75)
+
     """
     close = df["close"]
     volume = df["volume"]
@@ -103,7 +104,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Gate 2+3 Validation: BollingerMeanReversion"
+        description="Gate 2+3 Validation: BollingerMeanReversion",
     )
     parser.add_argument("--symbol", default="BTC/USDT", help="Trading pair")
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
@@ -144,7 +145,7 @@ def main():
         if df.empty:
             logger.error(
                 f"No data for {args.symbol} {args.timeframe}. "
-                "Run data pipeline first or use --synthetic."
+                "Run data pipeline first or use --synthetic.",
             )
             return
         symbol = args.symbol

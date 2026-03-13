@@ -279,7 +279,7 @@ class TestConnectionLimiter:
 
         user1 = await _create_user()
         user2 = await database_sync_to_async(User.objects.create_user)(
-            username="wsuser2", password="testpass123!"
+            username="wsuser2", password="testpass123!",
         )
         async with _conn_lock:
             _connection_counts.pop(user1.pk, None)

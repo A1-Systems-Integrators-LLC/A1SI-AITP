@@ -83,14 +83,16 @@ def fetch_rss_feed(feed_url: str, source_name: str, timeout: int = 10) -> list[d
 
             published_at = _parse_date(pub_date) if pub_date else datetime.now(tz=timezone.utc)
 
-            articles.append({
-                "article_id": article_id(link),
-                "title": title[:500],
-                "url": link[:1000],
-                "source": source_name,
-                "summary": _strip_html(description or "")[:2000],
-                "published_at": published_at,
-            })
+            articles.append(
+                {
+                    "article_id": article_id(link),
+                    "title": title[:500],
+                    "url": link[:1000],
+                    "source": source_name,
+                    "summary": _strip_html(description or "")[:2000],
+                    "published_at": published_at,
+                }
+            )
 
     except Exception as e:
         logger.warning("RSS fetch failed for %s (%s): %s", source_name, feed_url, e)
@@ -99,7 +101,9 @@ def fetch_rss_feed(feed_url: str, source_name: str, timeout: int = 10) -> list[d
 
 
 def fetch_newsapi(
-    asset_class: str, api_key: str, timeout: int = 10
+    asset_class: str,
+    api_key: str,
+    timeout: int = 10,
 ) -> list[dict[str, Any]]:
     """Fetch articles from NewsAPI.org, rate-limited to 1 call per 15 min."""
     global _newsapi_last_call
@@ -110,7 +114,9 @@ def fetch_newsapi(
     with _newsapi_lock:
         now = time.time()
         if now - _newsapi_last_call < _NEWSAPI_MIN_INTERVAL:
-            logger.debug("NewsAPI rate limit: skipping (last call %.0fs ago)", now - _newsapi_last_call)
+            logger.debug(
+                "NewsAPI rate limit: skipping (last call %.0fs ago)", now - _newsapi_last_call
+            )
             return []
         _newsapi_last_call = now
 
@@ -143,14 +149,16 @@ def fetch_newsapi(
 
             published_at = _parse_date(item.get("publishedAt", ""))
 
-            articles.append({
-                "article_id": article_id(art_url),
-                "title": (item.get("title") or "")[:500],
-                "url": art_url[:1000],
-                "source": (item.get("source", {}).get("name") or "NewsAPI")[:100],
-                "summary": (item.get("description") or "")[:2000],
-                "published_at": published_at,
-            })
+            articles.append(
+                {
+                    "article_id": article_id(art_url),
+                    "title": (item.get("title") or "")[:500],
+                    "url": art_url[:1000],
+                    "source": (item.get("source", {}).get("name") or "NewsAPI")[:100],
+                    "summary": (item.get("description") or "")[:2000],
+                    "published_at": published_at,
+                }
+            )
 
     except Exception as e:
         logger.warning("NewsAPI fetch failed for %s: %s", asset_class, e)
@@ -159,7 +167,8 @@ def fetch_newsapi(
 
 
 def fetch_all_news(
-    asset_class: str, api_key: str = ""
+    asset_class: str,
+    api_key: str = "",
 ) -> list[dict[str, Any]]:
     """Fetch news from all sources for an asset class. Returns deduped articles."""
     seen_ids: set[str] = set()
@@ -183,6 +192,7 @@ def fetch_all_news(
 
 
 # ── Helpers ─────────────────────────────────────────────────
+
 
 def _get_text(element: ET.Element, tag: str, ns: dict[str, str]) -> str:
     """Get text from child element, trying both plain and namespaced."""

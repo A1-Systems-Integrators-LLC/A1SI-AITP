@@ -1,5 +1,4 @@
-"""
-HFTMarketMaker — inventory-aware market making strategy
+"""HFTMarketMaker — inventory-aware market making strategy
 ========================================================
 Quotes both sides of the spread with inventory-aware skew.
 
@@ -9,15 +8,16 @@ Logic:
     - Hard position limits
     - Drawdown halt
 
-Parameters:
+Parameters
+----------
     - half_spread: base half-spread (e.g. 0.001 = 10 bps)
     - skew_factor: how much to skew per unit of inventory
     - order_size: size per quote
     - max_position: max absolute position
     - drawdown_halt_pct: halt at this drawdown level
+
 """
 
-from typing import Optional
 
 from hftbacktest.strategies.base import HFTBaseStrategy
 
@@ -26,7 +26,7 @@ class HFTMarketMaker(HFTBaseStrategy):
 
     name = "MarketMaker"
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         super().__init__(config)
         self.half_spread: float = self.config.get("half_spread", 0.001)
         self.skew_factor: float = self.config.get("skew_factor", 0.0005)
@@ -55,12 +55,18 @@ class HFTMarketMaker(HFTBaseStrategy):
         ask_price = mid_price * (1 + self.half_spread) - inventory_skew
 
         # Submit passive quotes if within position limits
-        if self.position < self.max_position:
-            # Buy side (bid)
-            if tick["price"] <= bid_price and tick["side"] == "sell":
-                self.submit_order("buy", bid_price, self.order_size, tick)
+        # Buy side (bid)
+        if (
+            self.position < self.max_position
+            and tick["price"] <= bid_price
+            and tick["side"] == "sell"
+        ):
+            self.submit_order("buy", bid_price, self.order_size, tick)
 
-        if self.position > -self.max_position:
-            # Sell side (ask)
-            if tick["price"] >= ask_price and tick["side"] == "buy":
-                self.submit_order("sell", ask_price, self.order_size, tick)
+        # Sell side (ask)
+        if (
+            self.position > -self.max_position
+            and tick["price"] >= ask_price
+            and tick["side"] == "buy"
+        ):
+            self.submit_order("sell", ask_price, self.order_size, tick)

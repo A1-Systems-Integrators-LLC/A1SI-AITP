@@ -1,5 +1,4 @@
-"""
-Comprehensive tests for Notifications and Alerts — S14.
+"""Comprehensive tests for Notifications and Alerts — S14.
 
 Covers: Telegram/webhook failure isolation, rate limiting (same key, different
 keys, expiry, thread safety), AlertLog creation/filtering, notification
@@ -10,7 +9,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -25,16 +24,15 @@ from core.services.notification import (
 )
 from risk.models import AlertLog
 
-
 # ── Fixtures ────────────────────────────────────────────────
 
 
-@pytest.fixture()
+@pytest.fixture
 def user(django_user_model):
     return django_user_model.objects.create_user(username="notif_user", password="pass")
 
 
-@pytest.fixture()
+@pytest.fixture
 def auth_client(client, user):
     client.force_login(user)
     return client
@@ -85,7 +83,7 @@ class TestTelegramFailureIsolation:
             mock_settings.TELEGRAM_CHAT_ID = "123"
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
+                side_effect=httpx.ConnectError("Connection refused"),
             )
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -106,7 +104,7 @@ class TestTelegramFailureIsolation:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: False
             mock_client_cls.return_value.post.side_effect = httpx.ConnectError(
-                "Connection refused"
+                "Connection refused",
             )
 
             delivered, error = NotificationService.send_telegram_sync("boom")
@@ -124,7 +122,7 @@ class TestTelegramFailureIsolation:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: False
             mock_client_cls.return_value.post.side_effect = httpx.TimeoutException(
-                "read timed out"
+                "read timed out",
             )
 
             delivered, error = NotificationService.send_telegram_sync("boom")
@@ -146,7 +144,7 @@ class TestWebhookFailureIsolation:
             mock_settings.NOTIFICATION_WEBHOOK_URL = "https://hooks.example.com/test"
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(
-                side_effect=httpx.ConnectError("DNS resolution failed")
+                side_effect=httpx.ConnectError("DNS resolution failed"),
             )
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -243,7 +241,7 @@ class TestAlertDateRangeFiltering:
         _create_alert(event_type="new_event")
 
         after = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+            "%Y-%m-%dT%H:%M:%SZ",
         )
         resp = auth_client.get(f"/api/risk/1/alerts/?created_after={after}")
         data = resp.json()
@@ -258,7 +256,7 @@ class TestAlertDateRangeFiltering:
         _create_alert(event_type="new_event")
 
         before = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+            "%Y-%m-%dT%H:%M:%SZ",
         )
         resp = auth_client.get(f"/api/risk/1/alerts/?created_before={before}")
         data = resp.json()
@@ -273,13 +271,13 @@ class TestAlertDateRangeFiltering:
             a.save(update_fields=["created_at"])
 
         after = (datetime.now(timezone.utc) - timedelta(days=4)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+            "%Y-%m-%dT%H:%M:%SZ",
         )
         before = (datetime.now(timezone.utc) - timedelta(days=2)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+            "%Y-%m-%dT%H:%M:%SZ",
         )
         resp = auth_client.get(
-            f"/api/risk/1/alerts/?created_after={after}&created_before={before}"
+            f"/api/risk/1/alerts/?created_after={after}&created_before={before}",
         )
         data = resp.json()
         # Should only include alerts within the 2-day window
@@ -353,7 +351,7 @@ class TestAlertLogCreation:
             )
 
         tg_alert = AlertLog.objects.get(
-            portfolio_id=1, event_type="halt", channel="telegram"
+            portfolio_id=1, event_type="halt", channel="telegram",
         )
         assert tg_alert.delivered is False
         assert "403" in tg_alert.error

@@ -114,7 +114,7 @@ class TestRiskLimitHistoryAPI:
         RiskManagementService.update_limits(portfolio_id, {"max_open_positions": 20})
 
         resp = client.get(
-            f"/api/risk/{portfolio_id}/limit-history/?field=max_daily_loss"
+            f"/api/risk/{portfolio_id}/limit-history/?field=max_daily_loss",
         )
         data = resp.json()
         assert len(data) == 1

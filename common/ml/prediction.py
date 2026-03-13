@@ -1,5 +1,4 @@
-"""
-ML Prediction Service
+"""ML Prediction Service
 =====================
 Real-time prediction with model selection cascade, caching, and batch support.
 Integrates with ModelRegistry and SignalAggregator.
@@ -80,6 +79,7 @@ class PredictionService:
 
         Returns:
             PredictionResult or None if no model available.
+
         """
         # Check cache
         cache_key = f"{symbol}:{asset_class}"
@@ -127,6 +127,7 @@ class PredictionService:
             if cal_params and "a" in cal_params and "b" in cal_params:
                 try:
                     import math
+
                     a, b = cal_params["a"], cal_params["b"]
                     calibrated_prob = 1.0 / (1.0 + math.exp(a * raw_prob + b))
                 except Exception:
@@ -170,6 +171,7 @@ class PredictionService:
 
         Returns:
             List of PredictionResult (only successful predictions).
+
         """
         results = []
         for sym in symbols:
@@ -200,6 +202,7 @@ class PredictionService:
 
         Returns:
             Blended score (0-100). Returns scanner_score if ML unavailable.
+
         """
         prediction = self.predict_single(symbol, features, asset_class)
         if prediction is None:
@@ -233,8 +236,7 @@ class PredictionService:
 
         # 2. Asset-class match by label
         asset_models = [
-            m for m in models
-            if asset_class.lower() in (m.get("label", "") or "").lower()
+            m for m in models if asset_class.lower() in (m.get("label", "") or "").lower()
         ]
         if asset_models:
             best = max(asset_models, key=lambda m: m.get("metrics", {}).get("accuracy", 0))

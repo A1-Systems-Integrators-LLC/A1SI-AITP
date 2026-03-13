@@ -153,7 +153,7 @@ class DailyReportService:
                 ac_covered = len(available_symbols & ac_symbols)
                 per_asset_class[ac]["pairs_with_data"] = ac_covered
                 per_asset_class[ac]["coverage_pct"] = round(
-                    ac_covered / max(len(ac_symbols), 1) * 100, 1
+                    ac_covered / max(len(ac_symbols), 1) * 100, 1,
                 )
 
             return {

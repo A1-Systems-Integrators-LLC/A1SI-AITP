@@ -140,7 +140,7 @@ class TestOrderStateMachine:
         ]:
             order = self._make_order()
             order.transition_to(
-                OrderStatus.REJECTED if terminal == OrderStatus.REJECTED else OrderStatus.SUBMITTED
+                OrderStatus.REJECTED if terminal == OrderStatus.REJECTED else OrderStatus.SUBMITTED,
             )
             if terminal not in (OrderStatus.REJECTED,):
                 order.transition_to(terminal)

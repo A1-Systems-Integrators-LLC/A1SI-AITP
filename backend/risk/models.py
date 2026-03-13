@@ -40,11 +40,11 @@ class RiskLimits(models.Model):
                 errors.setdefault(field, []).append(f"{field} must be between 0 and 1.")
         if self.max_open_positions is not None and self.max_open_positions < 0:
             errors.setdefault("max_open_positions", []).append(
-                "max_open_positions must be >= 0."
+                "max_open_positions must be >= 0.",
             )
         if self.min_risk_reward is not None and self.min_risk_reward < 0:
             errors.setdefault("min_risk_reward", []).append(
-                "min_risk_reward must be >= 0."
+                "min_risk_reward must be >= 0.",
             )
         if self.max_leverage is not None and self.max_leverage < 0:
             errors.setdefault("max_leverage", []).append("max_leverage must be >= 0.")

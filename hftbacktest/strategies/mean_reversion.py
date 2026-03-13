@@ -1,5 +1,4 @@
-"""
-HFTMeanReversionScalper — VWAP reversion
+"""HFTMeanReversionScalper — VWAP reversion
 ==========================================
 Tracks rolling VWAP over recent ticks and trades mean-reversion
 when price deviates beyond a threshold.
@@ -10,25 +9,25 @@ Logic:
     - Sell when price > VWAP * (1 + ``deviation_threshold``)
     - Exit: price crosses back through VWAP OR ``max_hold_ticks`` exceeded
 
-Parameters:
+Parameters
+----------
     - lookback: number of ticks for rolling VWAP (default 50)
     - deviation_threshold: min deviation from VWAP to trigger entry (10 bps, 0.001)
     - order_size: size per order (default 0.01)
     - max_hold_ticks: forced exit after N ticks (default 40)
     - drawdown_halt_pct: halt at this drawdown level (default 0.04)
+
 """
 
 from collections import deque
-from typing import Optional
 
 from hftbacktest.strategies.base import HFTBaseStrategy
 
 
 class HFTMeanReversionScalper(HFTBaseStrategy):
-
     name = "MeanReversionScalper"
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         super().__init__(config)
         self.lookback: int = self.config.get("lookback", 50)
         self.deviation_threshold: float = self.config.get("deviation_threshold", 0.001)
@@ -78,7 +77,7 @@ class HFTMeanReversionScalper(HFTBaseStrategy):
             self.submit_order("sell", price, self.position, tick)
             self._hold_counter = 0
             return
-        elif self.position < 0 and price <= self._vwap:
+        if self.position < 0 and price <= self._vwap:
             # Short position — price reverted to VWAP, exit
             self.submit_order("buy", price, abs(self.position), tick)
             self._hold_counter = 0

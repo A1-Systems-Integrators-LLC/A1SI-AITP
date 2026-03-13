@@ -44,7 +44,7 @@ class NewsService:
                     asset_class=asset_class,
                     sentiment_score=score,
                     sentiment_label=label,
-                )
+                ),
             )
 
         # Bulk create, skip duplicates
@@ -57,7 +57,7 @@ class NewsService:
             excess = total - NEWS_ARTICLE_CAP
             oldest_ids = list(
                 NewsArticle.objects.order_by("published_at")
-                .values_list("id", flat=True)[:excess]
+                .values_list("id", flat=True)[:excess],
             )
             NewsArticle.objects.filter(id__in=oldest_ids).delete()
             logger.info("Pruned %d old news articles (cap=%d)", excess, NEWS_ARTICLE_CAP)
@@ -88,7 +88,7 @@ class NewsService:
                 "article_id", "title", "url", "source", "summary",
                 "published_at", "symbols", "asset_class",
                 "sentiment_score", "sentiment_label", "created_at",
-            )[:limit]
+            )[:limit],
         )
 
     def get_sentiment_signal(

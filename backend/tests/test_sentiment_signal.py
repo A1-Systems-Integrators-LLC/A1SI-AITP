@@ -68,7 +68,7 @@ class TestComputeSignal:
 
     def test_single_positive_article(self):
         articles = [
-            {"sentiment_score": 0.5, "age_hours": 0.0, "title": "Bull market", "summary": ""}
+            {"sentiment_score": 0.5, "age_hours": 0.0, "title": "Bull market", "summary": ""},
         ]
         result = compute_signal(articles, "crypto")
         assert result.signal > 0
@@ -77,7 +77,7 @@ class TestComputeSignal:
 
     def test_single_negative_article(self):
         articles = [
-            {"sentiment_score": -0.5, "age_hours": 0.0, "title": "Market crash", "summary": ""}
+            {"sentiment_score": -0.5, "age_hours": 0.0, "title": "Market crash", "summary": ""},
         ]
         result = compute_signal(articles, "crypto")
         assert result.signal < 0

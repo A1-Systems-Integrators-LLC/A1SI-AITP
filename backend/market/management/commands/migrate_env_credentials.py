@@ -16,19 +16,19 @@ class Command(BaseCommand):
 
         if not api_key:
             self.stdout.write(
-                self.style.WARNING("No EXCHANGE_API_KEY found in settings — nothing to migrate.")
+                self.style.WARNING("No EXCHANGE_API_KEY found in settings — nothing to migrate."),
             )
             return
 
         existing = ExchangeConfig.objects.filter(
-            exchange_id=exchange_id, api_key__isnull=False
+            exchange_id=exchange_id, api_key__isnull=False,
         ).exclude(api_key="")
         if existing.exists():
             self.stdout.write(
                 self.style.WARNING(
                     f"An ExchangeConfig for '{exchange_id}'"
-                    " with credentials already exists. Skipping."
-                )
+                    " with credentials already exists. Skipping.",
+                ),
             )
             return
 
@@ -44,6 +44,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Created ExchangeConfig #{config.pk} for '{exchange_id}' as default. "
-                "You can now remove EXCHANGE_API_KEY/SECRET from your .env file."
-            )
+                "You can now remove EXCHANGE_API_KEY/SECRET from your .env file.",
+            ),
         )

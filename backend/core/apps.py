@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import threading
@@ -83,7 +84,7 @@ def _verify_scheduler() -> None:
                     logger.info("Scheduler started on retry")
                 else:
                     logger.critical(
-                        "SCHEDULER FAILED TO START — scheduled tasks will not execute"
+                        "SCHEDULER FAILED TO START — scheduled tasks will not execute",
                     )
             except Exception:
                 logger.critical("SCHEDULER RETRY FAILED", exc_info=True)
@@ -112,10 +113,8 @@ class CoreConfig(AppConfig):
             # Python 3.12's concurrent.futures.process registers an atexit
             # handler at import time — this fails with RuntimeError if the
             # import first happens inside a Timer thread.
-            try:
+            with contextlib.suppress(Exception):
                 import apscheduler.schedulers.background  # noqa: F401
-            except Exception:
-                pass
 
             if os.environ.get("RUN_MAIN", "true") == "true":
                 threading.Timer(2.0, _start_scheduler).start()

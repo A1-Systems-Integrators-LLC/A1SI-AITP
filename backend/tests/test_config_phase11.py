@@ -65,9 +65,11 @@ class TestSettingsProductionGuards:
             "DJANGO_SECRET_KEY": "insecure-dev-key-change-me",
             "DJANGO_ENCRYPTION_KEY": "some-key",
         }
-        with mock.patch.dict(os.environ, env, clear=False):
-            with pytest.raises(ValueError, match="DJANGO_SECRET_KEY must be set"):
-                importlib.reload(importlib.import_module("config.settings"))
+        with (
+            mock.patch.dict(os.environ, env, clear=False),
+            pytest.raises(ValueError, match="DJANGO_SECRET_KEY must be set"),
+        ):
+            importlib.reload(importlib.import_module("config.settings"))
 
     def test_encryption_key_required_in_production(self):
         """Line 31: raises ValueError when DEBUG=False and no ENCRYPTION_KEY."""
@@ -76,9 +78,11 @@ class TestSettingsProductionGuards:
             "DJANGO_SECRET_KEY": "a-real-secret-key-for-testing-1234",
             "DJANGO_ENCRYPTION_KEY": "",
         }
-        with mock.patch.dict(os.environ, env, clear=False):
-            with pytest.raises(ValueError, match="DJANGO_ENCRYPTION_KEY must be set"):
-                importlib.reload(importlib.import_module("config.settings"))
+        with (
+            mock.patch.dict(os.environ, env, clear=False),
+            pytest.raises(ValueError, match="DJANGO_ENCRYPTION_KEY must be set"),
+        ):
+            importlib.reload(importlib.import_module("config.settings"))
 
     def test_hsts_settings_when_not_debug(self):
         """Lines 167-170: HSTS/SSL settings are set when DEBUG=False."""
@@ -105,15 +109,17 @@ class TestSettingsProductionGuards:
         original_argv = sys.argv
         sys.argv = ["manage.py", "runserver"]
         try:
-            with mock.patch.dict(os.environ, env, clear=False):
-                with warnings.catch_warnings(record=True) as w:
-                    warnings.simplefilter("always")
-                    importlib.reload(importlib.import_module("config.settings"))
-                    deprecation_warnings = [
-                        x for x in w if issubclass(x.category, DeprecationWarning)
-                    ]
-                    assert len(deprecation_warnings) >= 1
-                    assert "EXCHANGE_API_KEY" in str(deprecation_warnings[0].message)
+            with (
+                mock.patch.dict(os.environ, env, clear=False),
+                warnings.catch_warnings(record=True) as w,
+            ):
+                warnings.simplefilter("always")
+                importlib.reload(importlib.import_module("config.settings"))
+                deprecation_warnings = [
+                    x for x in w if issubclass(x.category, DeprecationWarning)
+                ]
+                assert len(deprecation_warnings) >= 1
+                assert "EXCHANGE_API_KEY" in str(deprecation_warnings[0].message)
         finally:
             sys.argv = original_argv
             if pytest_mod is not None:

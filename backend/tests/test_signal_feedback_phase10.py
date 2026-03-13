@@ -4,15 +4,13 @@ Covers:
 - SignalAttribution model (creation, validation, __str__)
 - PerformanceTracker (record_entry, record_outcome, get_source_accuracy, get_records)
 - PerformanceFeedback (compute_weight_adjustments, apply_adjustments, reset)
-- SignalFeedbackService (record_attribution, backfill_outcomes, get_source_accuracy, get_weight_recommendations)
+- SignalFeedbackService (record/backfill/accuracy/weights)
 - Views (attribution list/detail, record, feedback, accuracy, weights)
 - Task executors (signal_feedback, adaptive_weighting)
 - URL routing
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -20,7 +18,6 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from analysis.models import SignalAttribution
-
 
 # ── Model tests ──────────────────────────────────────────────────────
 
@@ -110,8 +107,10 @@ class TestSignalAttributionModel(TestCase):
 class TestPerformanceTracker:
     def setup_method(self):
         import sys
+
         sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
         from common.signals.performance_tracker import PerformanceTracker
+
         self.tracker = PerformanceTracker()
 
     def test_record_entry(self):
@@ -233,13 +232,21 @@ class TestPerformanceTracker:
 
     def test_get_records_filtered_by_outcome(self):
         self.tracker.record_entry(
-            order_id="w1", symbol="BTC/USDT", asset_class="crypto",
-            strategy="CIV1", composite_score=70.0, contributions={},
+            order_id="w1",
+            symbol="BTC/USDT",
+            asset_class="crypto",
+            strategy="CIV1",
+            composite_score=70.0,
+            contributions={},
         )
         self.tracker.record_outcome("w1", "win")
         self.tracker.record_entry(
-            order_id="l1", symbol="BTC/USDT", asset_class="crypto",
-            strategy="CIV1", composite_score=50.0, contributions={},
+            order_id="l1",
+            symbol="BTC/USDT",
+            asset_class="crypto",
+            strategy="CIV1",
+            composite_score=50.0,
+            contributions={},
         )
         self.tracker.record_outcome("l1", "loss")
 
@@ -249,8 +256,12 @@ class TestPerformanceTracker:
 
     def test_clear(self):
         self.tracker.record_entry(
-            order_id="x1", symbol="BTC/USDT", asset_class="crypto",
-            strategy="CIV1", composite_score=70.0, contributions={},
+            order_id="x1",
+            symbol="BTC/USDT",
+            asset_class="crypto",
+            strategy="CIV1",
+            composite_score=70.0,
+            contributions={},
         )
         assert len(self.tracker.get_records()) == 1
         self.tracker.clear()
@@ -259,6 +270,7 @@ class TestPerformanceTracker:
     def test_source_accuracy_insufficient_data(self):
         """SourceAccuracy.accuracy returns 0.5 with < 5 trades."""
         from common.signals.performance_tracker import SourceAccuracy
+
         acc = SourceAccuracy(source="ml", total=3, wins=2, losses=1)
         assert acc.accuracy == 0.5
 
@@ -269,9 +281,11 @@ class TestPerformanceTracker:
 class TestPerformanceFeedback:
     def setup_method(self):
         import sys
+
         sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
         from common.signals.feedback import PerformanceFeedback
         from common.signals.performance_tracker import PerformanceTracker
+
         self.tracker = PerformanceTracker()
         self.feedback = PerformanceFeedback(tracker=self.tracker)
 
@@ -287,16 +301,22 @@ class TestPerformanceFeedback:
         # 20 trades, ML always 80 on wins, 40 on losses
         for i in range(15):
             self.tracker.record_entry(
-                order_id=f"w{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=75.0,
+                order_id=f"w{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=75.0,
                 contributions={"ml": 80.0, "regime": 70.0, "technical": 60.0},
             )
             self.tracker.record_outcome(f"w{i}", "win", pnl=100.0)
 
         for i in range(5):
             self.tracker.record_entry(
-                order_id=f"l{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=55.0,
+                order_id=f"l{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=55.0,
                 contributions={"ml": 40.0, "regime": 30.0, "technical": 55.0},
             )
             self.tracker.record_outcome(f"l{i}", "loss", pnl=-50.0)
@@ -311,16 +331,22 @@ class TestPerformanceFeedback:
         """Sources with <45% win rate get decreased weight."""
         for i in range(4):
             self.tracker.record_entry(
-                order_id=f"w{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=60.0,
+                order_id=f"w{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=60.0,
                 contributions={"ml": 80.0, "sentiment": 70.0},
             )
             self.tracker.record_outcome(f"w{i}", "win")
 
         for i in range(8):
             self.tracker.record_entry(
-                order_id=f"l{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=50.0,
+                order_id=f"l{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=50.0,
                 contributions={"ml": 60.0, "sentiment": 50.0},
             )
             self.tracker.record_outcome(f"l{i}", "loss")
@@ -333,16 +359,22 @@ class TestPerformanceFeedback:
         """Win rate > 65% should lower threshold."""
         for i in range(14):
             self.tracker.record_entry(
-                order_id=f"w{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=80.0,
+                order_id=f"w{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=80.0,
                 contributions={"ml": 90.0},
             )
             self.tracker.record_outcome(f"w{i}", "win")
 
         for i in range(6):
             self.tracker.record_entry(
-                order_id=f"l{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=55.0,
+                order_id=f"l{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=55.0,
                 contributions={"ml": 50.0},
             )
             self.tracker.record_outcome(f"l{i}", "loss")
@@ -353,6 +385,7 @@ class TestPerformanceFeedback:
 
     def test_apply_adjustments(self):
         from common.signals.feedback import WeightAdjustment
+
         adj = WeightAdjustment(
             current_weights={"ml": 0.20, "regime": 0.25},
             recommended_weights={"ml": 0.25, "regime": 0.20},
@@ -368,6 +401,7 @@ class TestPerformanceFeedback:
 
     def test_reset(self):
         from common.signals.feedback import WeightAdjustment
+
         adj = WeightAdjustment(
             current_weights={},
             recommended_weights={"ml": 0.30},
@@ -385,10 +419,19 @@ class TestPerformanceFeedback:
         """Recommended weights should sum to ~1.0."""
         for i in range(12):
             self.tracker.record_entry(
-                order_id=f"t{i}", symbol="BTC/USDT", asset_class="crypto",
-                strategy="CIV1", composite_score=70.0,
-                contributions={"ml": 80.0, "regime": 60.0, "technical": 70.0,
-                               "sentiment": 50.0, "scanner": 40.0, "win_rate": 55.0},
+                order_id=f"t{i}",
+                symbol="BTC/USDT",
+                asset_class="crypto",
+                strategy="CIV1",
+                composite_score=70.0,
+                contributions={
+                    "ml": 80.0,
+                    "regime": 60.0,
+                    "technical": 70.0,
+                    "sentiment": 50.0,
+                    "scanner": 40.0,
+                    "win_rate": 55.0,
+                },
             )
             self.tracker.record_outcome(f"t{i}", "win" if i < 8 else "loss")
 
@@ -503,6 +546,7 @@ class TestSignalFeedbackService(TestCase):
 class TestSignalAttributionViews(TestCase):
     def setUp(self):
         from django.contrib.auth.models import User
+
         self.user = User.objects.create_user(username="testuser", password="testpass")
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
@@ -548,32 +592,40 @@ class TestSignalAttributionViews(TestCase):
         assert resp.status_code == 404
 
     def test_record_attribution(self):
-        resp = self.client.post("/api/signals/record/", {
-            "order_id": "new-order-1",
-            "symbol": "ETH/USDT",
-            "asset_class": "crypto",
-            "strategy": "BollingerMeanReversion",
-            "signal_data": {
-                "composite_score": 68.0,
-                "position_modifier": 0.4,
-                "components": {
-                    "ml": 70.0,
-                    "sentiment": 55.0,
-                    "regime": 65.0,
-                    "scanner": 30.0,
-                    "win_rate": 50.0,
+        resp = self.client.post(
+            "/api/signals/record/",
+            {
+                "order_id": "new-order-1",
+                "symbol": "ETH/USDT",
+                "asset_class": "crypto",
+                "strategy": "BollingerMeanReversion",
+                "signal_data": {
+                    "composite_score": 68.0,
+                    "position_modifier": 0.4,
+                    "components": {
+                        "ml": 70.0,
+                        "sentiment": 55.0,
+                        "regime": 65.0,
+                        "scanner": 30.0,
+                        "win_rate": 50.0,
+                    },
                 },
             },
-        }, format="json")
+            format="json",
+        )
         assert resp.status_code == 201
         assert SignalAttribution.objects.filter(order_id="new-order-1").exists()
 
     def test_feedback_backfill(self):
-        resp = self.client.post("/api/signals/feedback/", {
-            "order_id": "view-test-order",
-            "outcome": "win",
-            "pnl": 250.0,
-        }, format="json")
+        resp = self.client.post(
+            "/api/signals/feedback/",
+            {
+                "order_id": "view-test-order",
+                "outcome": "win",
+                "pnl": 250.0,
+            },
+            format="json",
+        )
         assert resp.status_code == 200
         self.attr.refresh_from_db()
         assert self.attr.outcome == "win"
@@ -581,10 +633,14 @@ class TestSignalAttributionViews(TestCase):
         assert self.attr.resolved_at is not None
 
     def test_feedback_not_found(self):
-        resp = self.client.post("/api/signals/feedback/", {
-            "order_id": "nonexistent",
-            "outcome": "loss",
-        }, format="json")
+        resp = self.client.post(
+            "/api/signals/feedback/",
+            {
+                "order_id": "nonexistent",
+                "outcome": "loss",
+            },
+            format="json",
+        )
         assert resp.status_code == 404
 
     def test_accuracy_view(self):
@@ -615,6 +671,7 @@ class TestSignalFeedbackExecutors(TestCase):
         assert "signal_feedback" in TASK_REGISTRY
 
         progress_calls = []
+
         def progress_cb(pct, msg):
             progress_calls.append((pct, msg))
 
@@ -629,6 +686,7 @@ class TestSignalFeedbackExecutors(TestCase):
         assert "adaptive_weighting" in TASK_REGISTRY
 
         progress_calls = []
+
         def progress_cb(pct, msg):
             progress_calls.append((pct, msg))
 
@@ -637,6 +695,7 @@ class TestSignalFeedbackExecutors(TestCase):
 
     def test_registry_has_22_executors(self):
         from core.services.task_registry import TASK_REGISTRY
+
         assert len(TASK_REGISTRY) == 22
 
 
@@ -648,7 +707,10 @@ class TestSignalFeedbackURLs(TestCase):
         from django.urls import reverse
 
         assert reverse("signal-attribution-list") == "/api/signals/attribution/"
-        assert reverse("signal-attribution-detail", args=["test-order"]) == "/api/signals/attribution/test-order/"
+        assert (
+            reverse("signal-attribution-detail", args=["test-order"])
+            == "/api/signals/attribution/test-order/"
+        )
         assert reverse("signal-record") == "/api/signals/record/"
         assert reverse("signal-feedback") == "/api/signals/feedback/"
         assert reverse("signal-accuracy") == "/api/signals/accuracy/"

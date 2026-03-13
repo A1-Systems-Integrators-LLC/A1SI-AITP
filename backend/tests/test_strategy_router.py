@@ -1,5 +1,4 @@
-"""
-Tests for Regime-Adaptive Strategy Router — Sprint 2, Item 2.4
+"""Tests for Regime-Adaptive Strategy Router — Sprint 2, Item 2.4
 ==============================================================
 Covers: StrategyWeight, RoutingDecision, StrategyRouter routing for
 all 6 regimes, low confidence handling, strategy switch suggestions,

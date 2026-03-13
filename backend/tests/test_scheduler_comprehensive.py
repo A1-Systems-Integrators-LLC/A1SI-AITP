@@ -4,8 +4,7 @@ Covers: missing executor types, silent skip loops, concurrent task execution,
 scheduler lifecycle, workflow scheduling, task state transitions.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -24,14 +23,28 @@ class TestRegistryCompleteness:
     """Verify all 15 registered executors and their signatures."""
 
     EXPECTED_TYPES = {
-        "data_refresh", "regime_detection", "order_sync",
-        "data_quality", "news_fetch", "workflow", "risk_monitoring",
-        "db_maintenance", "vbt_screen", "ml_training",
-        "market_scan", "daily_report", "forex_paper_trading",
-        "nautilus_backtest", "hft_backtest",
-        "ml_predict", "ml_feedback", "ml_retrain",
-        "conviction_audit", "strategy_orchestration",
-        "signal_feedback", "adaptive_weighting",
+        "data_refresh",
+        "regime_detection",
+        "order_sync",
+        "data_quality",
+        "news_fetch",
+        "workflow",
+        "risk_monitoring",
+        "db_maintenance",
+        "vbt_screen",
+        "ml_training",
+        "market_scan",
+        "daily_report",
+        "forex_paper_trading",
+        "nautilus_backtest",
+        "hft_backtest",
+        "ml_predict",
+        "ml_feedback",
+        "ml_retrain",
+        "conviction_audit",
+        "strategy_orchestration",
+        "signal_feedback",
+        "adaptive_weighting",
     }
 
     def test_registry_count(self):
@@ -187,9 +200,9 @@ class TestExecutorErrorIsolation:
                 "common.data_pipeline.pipeline.download_watchlist",
                 side_effect=Exception("Exchange timeout"),
             ),
+            pytest.raises(Exception, match="Exchange timeout"),
         ):
-            with pytest.raises(Exception, match="Exchange timeout"):
-                executor({"asset_class": "crypto"}, _noop_cb)
+            executor({"asset_class": "crypto"}, _noop_cb)
 
     def test_vbt_screen_empty_watchlist(self):
         executor = TASK_REGISTRY["vbt_screen"]
@@ -209,7 +222,10 @@ class TestExecutorErrorIsolation:
         with (
             patch("core.platform_bridge.ensure_platform_imports"),
             patch("core.platform_bridge.get_platform_config", return_value=mock_config),
-            patch("nautilus.nautilus_runner.list_nautilus_strategies", return_value=["NautilusTrendFollowing"]),
+            patch(
+                "nautilus.nautilus_runner.list_nautilus_strategies",
+                return_value=["NautilusTrendFollowing"],
+            ),
         ):
             result = executor({"asset_class": "crypto"}, _noop_cb)
             assert result["status"] == "skipped"
@@ -320,14 +336,14 @@ class TestProgressCallbacks:
     def test_order_sync_reports_progress(self):
         executor = TASK_REGISTRY["order_sync"]
         progress = []
-        result = executor({}, lambda pct, msg: progress.append((pct, msg)))
+        executor({}, lambda pct, msg: progress.append((pct, msg)))
         assert len(progress) >= 1
         assert progress[0][0] == 0.0  # Initial progress
 
     def test_db_maintenance_reports_progress(self):
         executor = TASK_REGISTRY["db_maintenance"]
         progress = []
-        result = executor({}, lambda pct, msg: progress.append((pct, msg)))
+        executor({}, lambda pct, msg: progress.append((pct, msg)))
         assert len(progress) == 2  # 0.1 and 0.9
 
 
@@ -346,7 +362,7 @@ class TestWorkflowScheduling:
     def test_execute_workflow_inactive(self):
         from analysis.models import Workflow
 
-        wf = Workflow.objects.create(
+        Workflow.objects.create(
             id="inactive_wf",
             name="Inactive",
             schedule_enabled=False,

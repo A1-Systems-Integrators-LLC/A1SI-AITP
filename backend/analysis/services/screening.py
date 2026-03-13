@@ -67,7 +67,7 @@ class ScreenerService:
                 elif strategy == "ema_rsi_combo":
                     result_df = _screen_ema_rsi(df, vbt, ema, rsi, fees)
                 else:
-                    continue
+                    continue  # pragma: no cover — defensive guard
 
                 if result_df is not None and not result_df.empty:
                     top = result_df.head(10)
@@ -126,7 +126,7 @@ def _screen_sma(close, vbt, fees: float):
             "max_drawdown": pf.max_drawdown(),
             "win_rate": pf.trades.win_rate(),
             "num_trades": pf.trades.count(),
-        }
+        },
     )
     return results.sort_values("sharpe_ratio", ascending=False)
 
@@ -142,7 +142,7 @@ def _screen_rsi(df, vbt, fees: float):
         for os_lvl in [20, 25, 30, 35]:
             for ob_lvl in [65, 70, 75, 80]:
                 if os_lvl >= ob_lvl:
-                    continue
+                    continue  # pragma: no cover — never true with current param ranges
                 try:
                     entries = rsi_val < os_lvl
                     exits = rsi_val > ob_lvl
@@ -164,7 +164,7 @@ def _screen_rsi(df, vbt, fees: float):
                             "max_drawdown": pf.max_drawdown(),
                             "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
                             "num_trades": pf.trades.count(),
-                        }
+                        },
                     )
                 except Exception:
                     logger.debug("Skipped RSI combo", exc_info=True)
@@ -203,7 +203,7 @@ def _screen_bollinger(df, vbt, sma_fn, fees: float):
                         "max_drawdown": pf.max_drawdown(),
                         "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
                         "num_trades": pf.trades.count(),
-                    }
+                    },
                 )
             except Exception:
                 logger.debug("Skipped param combo", exc_info=True)
@@ -240,7 +240,7 @@ def _screen_ema_rsi(df, vbt, ema_fn, rsi_fn, fees: float):
                         "max_drawdown": pf.max_drawdown(),
                         "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
                         "num_trades": pf.trades.count(),
-                    }
+                    },
                 )
             except Exception:
                 logger.debug("Skipped param combo", exc_info=True)

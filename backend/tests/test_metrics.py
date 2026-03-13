@@ -1,5 +1,4 @@
-"""
-Tests for Prometheus-compatible metrics endpoint and collector.
+"""Tests for Prometheus-compatible metrics endpoint and collector.
 """
 
 import contextlib
@@ -196,7 +195,7 @@ class TestMetricsInstrumentation:
 
         with contextlib.suppress(Exception):
             execute_workflow(
-                {"workflow_run_id": "nonexistent", "steps": []}, lambda p, m: None
+                {"workflow_run_id": "nonexistent", "steps": []}, lambda p, m: None,
             )
         output = metrics.collect()
         assert "workflow_execution_seconds" in output

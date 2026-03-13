@@ -1,5 +1,4 @@
-"""
-Tests for Paper Trading Infrastructure — Sprint 1, Item 1.5
+"""Tests for Paper Trading Infrastructure — Sprint 1, Item 1.5
 ============================================================
 Covers: process lifecycle (start/stop/status), event logging,
 idempotent operations, error handling.
@@ -22,7 +21,7 @@ from trading.services.paper_trading import PaperTradingService
 # ── Helpers ───────────────────────────────────────────────────
 
 
-@pytest.fixture()
+@pytest.fixture
 def ft_env(tmp_path):
     """Set up a fake freqtrade directory and patch get_freqtrade_dir for the whole test."""
     ft_dir = tmp_path / "freqtrade"
@@ -40,7 +39,7 @@ def ft_env(tmp_path):
                     "listen_port": 8080,
                     "username": "freqtrader",
                     "password": "freqtrader",
-                }
+                },
             },
         ),
         patch("trading.services.paper_trading.get_freqtrade_dir", return_value=ft_dir),

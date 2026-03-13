@@ -1,7 +1,7 @@
 """Tests for auto-starting order sync on startup."""
 
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,13 +33,15 @@ class TestMaybeStartOrderSync:
 
         from core.apps import _maybe_start_order_sync
 
-        with patch("asyncio.get_running_loop", side_effect=RuntimeError):
-            with patch("threading.Thread") as mock_thread:
-                mock_thread_instance = MagicMock()
-                mock_thread.return_value = mock_thread_instance
-                _maybe_start_order_sync()
-                mock_thread.assert_called_once()
-                mock_thread_instance.start.assert_called_once()
+        with (
+            patch("asyncio.get_running_loop", side_effect=RuntimeError),
+            patch("threading.Thread") as mock_thread,
+        ):
+            mock_thread_instance = MagicMock()
+            mock_thread.return_value = mock_thread_instance
+            _maybe_start_order_sync()
+            mock_thread.assert_called_once()
+            mock_thread_instance.start.assert_called_once()
 
     @patch("core.apps.logger")
     def test_does_not_start_sync_when_no_active_orders(self, mock_logger):

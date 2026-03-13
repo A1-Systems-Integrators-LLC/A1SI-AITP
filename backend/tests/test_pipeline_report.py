@@ -1,18 +1,14 @@
-"""
-Tests for research/scripts/pipeline_report.py — Phase 1 Coverage
+"""Tests for research/scripts/pipeline_report.py — Phase 1 Coverage
 ================================================================
 Covers: collect_data_summary, collect_vbt_screening, collect_gate_validation,
 collect_freqtrade_backtests, build_report, main.
 """
 
 import json
-import os
 import sys
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -26,7 +22,6 @@ from research.scripts.pipeline_report import (
     collect_vbt_screening,
     main,
 )
-
 
 # ── collect_data_summary ─────────────────────────────────────
 
@@ -120,7 +115,7 @@ class TestCollectGateValidation:
 
     def test_collects_validation_files(self, tmp_path):
         self._make_validation_json(
-            tmp_path / "civ1_validation_20260101.json", "CIV1", True
+            tmp_path / "civ1_validation_20260101.json", "CIV1", True,
         )
 
         with patch("research.scripts.pipeline_report.VALIDATION_DIR", tmp_path):
@@ -136,7 +131,7 @@ class TestCollectGateValidation:
 
     def test_failed_strategy(self, tmp_path):
         self._make_validation_json(
-            tmp_path / "bmr_validation_20260101.json", "BMR", False
+            tmp_path / "bmr_validation_20260101.json", "BMR", False,
         )
 
         with patch("research.scripts.pipeline_report.VALIDATION_DIR", tmp_path):
@@ -191,7 +186,7 @@ class TestCollectFreqtradeBacktests:
                     "backtest_start": "2025-01-01",
                     "backtest_end": "2025-12-31",
                     "market_change": 0.10,
-                }
+                },
             },
         )
 
@@ -359,7 +354,7 @@ class TestMain:
                   return_value=ft_results),
             patch("research.scripts.pipeline_report.RESULTS_DIR", tmp_path),
         ):
-            report = main()
+            main()
 
         captured = capsys.readouterr()
         assert "Report saved to" in captured.out

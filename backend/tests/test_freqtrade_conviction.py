@@ -1,5 +1,4 @@
-"""
-Tests for Freqtrade strategy conviction system integration (IEB Phase 5).
+"""Tests for Freqtrade strategy conviction system integration (IEB Phase 5).
 
 Covers:
 - _conviction_helpers module (fetch_signal, check_conviction, etc.)
@@ -25,10 +24,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "freqtrade" / "user_data" / "strategies"))
 
-import _conviction_helpers as helpers  # noqa: I001, E402
-from BollingerMeanReversion import BollingerMeanReversion  # noqa: E402
-from CryptoInvestorV1 import CryptoInvestorV1  # noqa: E402
-from VolatilityBreakout import VolatilityBreakout  # noqa: E402
+import _conviction_helpers as helpers  # noqa: I001
+from BollingerMeanReversion import BollingerMeanReversion
+from CryptoInvestorV1 import CryptoInvestorV1
+from VolatilityBreakout import VolatilityBreakout
 
 
 # ── Fixtures ──────────────────────────────────────────────────────
@@ -408,7 +407,7 @@ class TestCIV1ConfirmTradeConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",
@@ -424,7 +423,7 @@ class TestCIV1ConfirmTradeConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",
@@ -592,7 +591,7 @@ class TestBMRConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",
@@ -606,7 +605,7 @@ class TestBMRConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",
@@ -664,7 +663,7 @@ class TestVBConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",
@@ -678,7 +677,7 @@ class TestVBConviction:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
         result = self.strategy.confirm_trade_entry(
             "BTC/USDT", "limit", 0.01, 50000.0, "GTC",

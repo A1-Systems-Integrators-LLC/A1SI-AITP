@@ -1,5 +1,4 @@
-"""
-Tests for Gate 2+3 Validation Engine — Sprint 1, Items 1.2 & 1.3
+"""Tests for Gate 2+3 Validation Engine — Sprint 1, Items 1.2 & 1.3
 ================================================================
 Covers: Gate 2 criteria checking, synthetic data generation,
 signal function shapes, ADX indicator, and integration tests.
@@ -10,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 # Ensure project root and scripts directory on sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -300,7 +298,6 @@ class TestBollingerMRSignals:
 # ── Integration Tests (require VectorBT) ─────────────────────
 
 import vectorbt  # noqa: F401
-
 
 
 class TestIntegrationWithVBT:
@@ -595,8 +592,13 @@ class TestWalkForwardValidation:
 
         # Very small data with many splits → test sets < 50
         df = generate_synthetic_ohlcv(n=150)
-        params = {"bb_period": 20, "bb_std": 2.0, "rsi_threshold": 35,
-                  "volume_factor": 1.5, "sell_rsi_threshold": 65}
+        params = {
+            "bb_period": 20,
+            "bb_std": 2.0,
+            "rsi_threshold": 35,
+            "volume_factor": 1.5,
+            "sell_rsi_threshold": 65,
+        }
         results = walk_forward_validate(df, bollinger_mr_signals, params, n_splits=10)
         assert isinstance(results, list)
 
@@ -747,8 +749,12 @@ class TestRunValidationFullPipeline:
             "sell_rsi_threshold": [55],
         }
         report = run_validation(
-            "BMR_gate3_test", df, bollinger_mr_signals, tiny_grid,
-            sl_stop=0.04, symbol="SYNTHETIC",
+            "BMR_gate3_test",
+            df,
+            bollinger_mr_signals,
+            tiny_grid,
+            sl_stop=0.04,
+            symbol="SYNTHETIC",
         )
         # Regardless of pass/fail, gate3 sections should exist
         assert "gate3_walkforward" in report
@@ -785,12 +791,23 @@ class TestRunValidationFullPipeline:
         # Mock sweep_parameters to return a "passing" result
         from unittest.mock import patch as _patch
 
-        fake_sweep = pd.DataFrame([{
-            "sharpe_ratio": 2.0, "max_drawdown": 0.05, "annualized_trades": 100,
-            "pvalue": 0.001, "passes_gate2": True, "total_return": 0.5,
-            "num_trades": 50, "win_rate": 0.6, "profit_factor": 2.0,
-            "params": {"p": 1}, "failure_reasons": [],
-        }])
+        fake_sweep = pd.DataFrame(
+            [
+                {
+                    "sharpe_ratio": 2.0,
+                    "max_drawdown": 0.05,
+                    "annualized_trades": 100,
+                    "pvalue": 0.001,
+                    "passes_gate2": True,
+                    "total_return": 0.5,
+                    "num_trades": 50,
+                    "win_rate": 0.6,
+                    "profit_factor": 2.0,
+                    "params": {"p": 1},
+                    "failure_reasons": [],
+                }
+            ]
+        )
 
         def always_fail_signal(df, params):
             raise ValueError("always fails")
@@ -816,7 +833,9 @@ class TestRunValidationFullPipeline:
         report = run_validation("OverallTest", df, bollinger_mr_signals, tiny_grid, sl_stop=0.04)
         overall = report["overall"]
         assert overall["passed"] == (
-            overall["gate2_passed"] and overall["gate3_wf_passed"] and overall["gate3_perturb_passed"]
+            overall["gate2_passed"]
+            and overall["gate3_wf_passed"]
+            and overall["gate3_perturb_passed"]
         )
 
 
@@ -829,9 +848,15 @@ class TestValidateBMRMain:
     def test_main_synthetic(self, capsys, monkeypatch):
         from unittest.mock import patch as _patch
 
-        monkeypatch.setattr("sys.argv", [
-            "validate_bollinger_mean_reversion.py", "--synthetic", "--synthetic-rows", "500",
-        ])
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "validate_bollinger_mean_reversion.py",
+                "--synthetic",
+                "--synthetic-rows",
+                "500",
+            ],
+        )
 
         mock_report = {
             "overall": {"passed": False},
@@ -842,10 +867,17 @@ class TestValidateBMRMain:
 
         with (
             _patch("validate_bollinger_mean_reversion.run_validation", return_value=mock_report),
-            _patch("validate_bollinger_mean_reversion.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_bollinger_mean_reversion.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_bollinger_mean_reversion.save_report",
+                return_value=Path("/tmp/report.json"),
+            ),
+            _patch(
+                "validate_bollinger_mean_reversion.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_bollinger_mean_reversion import main as bmr_main
+
             bmr_main()
 
         captured = capsys.readouterr()
@@ -867,10 +899,17 @@ class TestValidateBMRMain:
 
         with (
             _patch("validate_bollinger_mean_reversion.run_validation", return_value=mock_report),
-            _patch("validate_bollinger_mean_reversion.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_bollinger_mean_reversion.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_bollinger_mean_reversion.save_report",
+                return_value=Path("/tmp/report.json"),
+            ),
+            _patch(
+                "validate_bollinger_mean_reversion.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_bollinger_mean_reversion import main as bmr_main
+
             bmr_main()
 
         captured = capsys.readouterr()
@@ -883,6 +922,7 @@ class TestValidateBMRMain:
 
         with _patch("common.data_pipeline.pipeline.load_ohlcv", return_value=pd.DataFrame()):
             from validate_bollinger_mean_reversion import main as bmr_main
+
             bmr_main()
         # Should return early without crash
 
@@ -901,9 +941,12 @@ class TestValidateBMRMain:
         with (
             _patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df),
             _patch("validate_bollinger_mean_reversion.run_validation", return_value=mock_report),
-            _patch("validate_bollinger_mean_reversion.save_report", return_value=Path("/tmp/r.json")),
+            _patch(
+                "validate_bollinger_mean_reversion.save_report", return_value=Path("/tmp/r.json")
+            ),
         ):
             from validate_bollinger_mean_reversion import main as bmr_main
+
             bmr_main()
 
         captured = capsys.readouterr()
@@ -923,10 +966,17 @@ class TestValidateBMRMain:
 
         with (
             _patch("validate_bollinger_mean_reversion.run_validation", return_value=mock_report),
-            _patch("validate_bollinger_mean_reversion.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_bollinger_mean_reversion.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_bollinger_mean_reversion.save_report",
+                return_value=Path("/tmp/report.json"),
+            ),
+            _patch(
+                "validate_bollinger_mean_reversion.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_bollinger_mean_reversion import main as bmr_main
+
             bmr_main()
 
         captured = capsys.readouterr()
@@ -951,10 +1001,16 @@ class TestValidateCIV1Main:
 
         with (
             _patch("validate_crypto_investor_v1.run_validation", return_value=mock_report),
-            _patch("validate_crypto_investor_v1.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_crypto_investor_v1.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_crypto_investor_v1.save_report", return_value=Path("/tmp/report.json")
+            ),
+            _patch(
+                "validate_crypto_investor_v1.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_crypto_investor_v1 import main as civ1_main
+
             civ1_main()
 
         captured = capsys.readouterr()
@@ -972,10 +1028,16 @@ class TestValidateCIV1Main:
 
         with (
             _patch("validate_crypto_investor_v1.run_validation", return_value=mock_report),
-            _patch("validate_crypto_investor_v1.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_crypto_investor_v1.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_crypto_investor_v1.save_report", return_value=Path("/tmp/report.json")
+            ),
+            _patch(
+                "validate_crypto_investor_v1.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_crypto_investor_v1 import main as civ1_main
+
             civ1_main()
 
         captured = capsys.readouterr()
@@ -988,6 +1050,7 @@ class TestValidateCIV1Main:
 
         with _patch("common.data_pipeline.pipeline.load_ohlcv", return_value=pd.DataFrame()):
             from validate_crypto_investor_v1 import main as civ1_main
+
             civ1_main()
 
     def test_main_real_data_success(self, capsys, monkeypatch):
@@ -1005,6 +1068,7 @@ class TestValidateCIV1Main:
             _patch("validate_crypto_investor_v1.save_report", return_value=Path("/tmp/r.json")),
         ):
             from validate_crypto_investor_v1 import main as civ1_main
+
             civ1_main()
 
         captured = capsys.readouterr()
@@ -1028,10 +1092,16 @@ class TestValidateVBMain:
 
         with (
             _patch("validate_volatility_breakout.run_validation", return_value=mock_report),
-            _patch("validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_volatility_breakout.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")
+            ),
+            _patch(
+                "validate_volatility_breakout.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_volatility_breakout import main as vb_main
+
             vb_main()
 
         captured = capsys.readouterr()
@@ -1050,10 +1120,16 @@ class TestValidateVBMain:
 
         with (
             _patch("validate_volatility_breakout.run_validation", return_value=mock_report),
-            _patch("validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_volatility_breakout.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")
+            ),
+            _patch(
+                "validate_volatility_breakout.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_volatility_breakout import main as vb_main
+
             vb_main()
 
         captured = capsys.readouterr()
@@ -1066,6 +1142,7 @@ class TestValidateVBMain:
 
         with _patch("common.data_pipeline.pipeline.load_ohlcv", return_value=pd.DataFrame()):
             from validate_volatility_breakout import main as vb_main
+
             vb_main()
 
     def test_main_real_data_success(self, capsys, monkeypatch):
@@ -1083,6 +1160,7 @@ class TestValidateVBMain:
             _patch("validate_volatility_breakout.save_report", return_value=Path("/tmp/r.json")),
         ):
             from validate_volatility_breakout import main as vb_main
+
             vb_main()
 
         captured = capsys.readouterr()
@@ -1103,10 +1181,16 @@ class TestValidateVBMain:
 
         with (
             _patch("validate_volatility_breakout.run_validation", return_value=mock_report),
-            _patch("validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")),
-            _patch("validate_volatility_breakout.generate_synthetic_ohlcv", return_value=generate_synthetic_ohlcv(n=500)),
+            _patch(
+                "validate_volatility_breakout.save_report", return_value=Path("/tmp/report.json")
+            ),
+            _patch(
+                "validate_volatility_breakout.generate_synthetic_ohlcv",
+                return_value=generate_synthetic_ohlcv(n=500),
+            ),
         ):
             from validate_volatility_breakout import main as vb_main
+
             vb_main()
 
         captured = capsys.readouterr()
@@ -1124,8 +1208,13 @@ class TestRunBacktestEdgeCases:
         from validation_engine import _run_backtest
 
         df = generate_synthetic_ohlcv(n=2000)
-        params = {"bb_period": 20, "bb_std": 2.0, "rsi_threshold": 40,
-                  "volume_factor": 1.0, "sell_rsi_threshold": 55}
+        params = {
+            "bb_period": 20,
+            "bb_std": 2.0,
+            "rsi_threshold": 40,
+            "volume_factor": 1.0,
+            "sell_rsi_threshold": 55,
+        }
         entries, exits = bollinger_mr_signals(df, params)
         # Normal call - exercises the pnl extraction code path
         metrics = _run_backtest(df["close"], entries, exits, fees=0.0015, sl_stop=0.04)
@@ -1145,16 +1234,24 @@ class TestRunBacktestEdgeCases:
 
     def test_backtest_pnl_ttest_exception(self):
         """Cover lines 126-127: exception in pvalue calculation."""
+        from unittest.mock import patch as _patch
+
         from validation_engine import _run_backtest
-        from unittest.mock import patch as _patch, MagicMock
 
         df = generate_synthetic_ohlcv(n=2000)
-        params = {"bb_period": 20, "bb_std": 2.0, "rsi_threshold": 40,
-                  "volume_factor": 1.0, "sell_rsi_threshold": 55}
+        params = {
+            "bb_period": 20,
+            "bb_std": 2.0,
+            "rsi_threshold": 40,
+            "volume_factor": 1.0,
+            "sell_rsi_threshold": 55,
+        }
         entries, exits = bollinger_mr_signals(df, params)
 
         # Mock ttest_1samp to raise
-        with _patch("validation_engine.scipy_stats.ttest_1samp", side_effect=RuntimeError("stats error")):
+        with _patch(
+            "validation_engine.scipy_stats.ttest_1samp", side_effect=RuntimeError("stats error")
+        ):
             metrics = _run_backtest(df["close"], entries, exits, fees=0.0015, sl_stop=0.04)
 
         assert metrics["pvalue"] == 1.0
@@ -1218,25 +1315,44 @@ class TestRunValidationGate3Details:
 
     def test_gate3_with_valid_folds(self):
         """Force gate2 to pass and gate3 to run with actual walk-forward folds."""
-        from validation_engine import run_validation
         from unittest.mock import patch as _patch
+
+        from validation_engine import run_validation
 
         df = generate_synthetic_ohlcv(n=5000)
 
         # Mock sweep_parameters to return a "passing" result with params that produce signals
-        fake_sweep = pd.DataFrame([{
-            "sharpe_ratio": 2.0, "max_drawdown": 0.05, "annualized_trades": 100,
-            "pvalue": 0.001, "passes_gate2": True, "total_return": 0.5,
-            "num_trades": 50, "win_rate": 0.6, "profit_factor": 2.0,
-            "params": {"bb_period": 20, "bb_std": 2.0, "rsi_threshold": 40,
-                       "volume_factor": 1.0, "sell_rsi_threshold": 55},
-            "failure_reasons": [],
-        }])
+        fake_sweep = pd.DataFrame(
+            [
+                {
+                    "sharpe_ratio": 2.0,
+                    "max_drawdown": 0.05,
+                    "annualized_trades": 100,
+                    "pvalue": 0.001,
+                    "passes_gate2": True,
+                    "total_return": 0.5,
+                    "num_trades": 50,
+                    "win_rate": 0.6,
+                    "profit_factor": 2.0,
+                    "params": {
+                        "bb_period": 20,
+                        "bb_std": 2.0,
+                        "rsi_threshold": 40,
+                        "volume_factor": 1.0,
+                        "sell_rsi_threshold": 55,
+                    },
+                    "failure_reasons": [],
+                }
+            ]
+        )
 
         with _patch("validation_engine.sweep_parameters", return_value=fake_sweep):
             report = run_validation(
-                "Gate3Test", df, bollinger_mr_signals,
-                {"bb_period": [20]}, sl_stop=0.04,
+                "Gate3Test",
+                df,
+                bollinger_mr_signals,
+                {"bb_period": [20]},
+                sl_stop=0.04,
             )
 
         # Gate2 should be marked as passed
@@ -1269,8 +1385,9 @@ class TestRunValidationGate3Details:
 
     def test_save_report_default_dir(self):
         """Cover validation_engine.py line 542 (output_dir=None → RESULTS_DIR)."""
-        from validation_engine import save_report, RESULTS_DIR
         import os
+
+        from validation_engine import RESULTS_DIR, save_report
 
         report = {"strategy_name": "default_dir_test", "timestamp": "2026-01-01"}
         filepath = save_report(report)  # No output_dir → uses RESULTS_DIR

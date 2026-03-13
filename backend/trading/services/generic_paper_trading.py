@@ -117,7 +117,7 @@ class GenericPaperTradingService:
 
         logger.info(
             f"Paper fill: {order.side} {order.amount} {order.symbol} "
-            f"@ {fill_price} (fee={fee:.4f}, {asset_class})"
+            f"@ {fill_price} (fee={fee:.4f}, {asset_class})",
         )
         return order
 

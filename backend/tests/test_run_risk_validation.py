@@ -1,17 +1,16 @@
-"""
-Tests for research/scripts/run_risk_validation.py — Phase 1 Coverage
+"""Tests for research/scripts/run_risk_validation.py — Phase 1 Coverage
 ====================================================================
 The script is entirely module-level code (no functions), so we test it
 by mocking all imports and running the module via runpy.
 """
 
+import contextlib
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -72,22 +71,21 @@ class TestRunRiskValidation:
         )
         mock_rm.return_tracker.get_correlation_matrix.return_value = mock_corr
 
-        import importlib
 
         # Patch all dependencies before importing the module
         with (
             patch.dict("sys.modules", {
                 "common.data_pipeline.pipeline": MagicMock(
-                    load_ohlcv=MagicMock(return_value=mock_df)
+                    load_ohlcv=MagicMock(return_value=mock_df),
                 ),
                 "common.regime.regime_detector": MagicMock(
-                    RegimeDetector=MagicMock(return_value=mock_detector)
+                    RegimeDetector=MagicMock(return_value=mock_detector),
                 ),
                 "common.regime.strategy_router": MagicMock(
-                    StrategyRouter=MagicMock(return_value=mock_router)
+                    StrategyRouter=MagicMock(return_value=mock_router),
                 ),
                 "common.risk.risk_manager": MagicMock(
-                    RiskManager=MagicMock(return_value=mock_rm)
+                    RiskManager=MagicMock(return_value=mock_rm),
                 ),
             }),
         ):
@@ -97,10 +95,8 @@ class TestRunRiskValidation:
 
             # Execute the script via import (it's all module-level code)
             import runpy
-            try:
+            with contextlib.suppress(SystemExit):
                 runpy.run_path(str(SCRIPT_PATH), run_name="__main__")
-            except SystemExit:
-                pass
 
         captured = capsys.readouterr()
         assert "RISK MANAGER VALIDATION" in captured.out
@@ -146,16 +142,16 @@ class TestRunRiskValidation:
         with (
             patch.dict("sys.modules", {
                 "common.data_pipeline.pipeline": MagicMock(
-                    load_ohlcv=MagicMock(side_effect=mock_load)
+                    load_ohlcv=MagicMock(side_effect=mock_load),
                 ),
                 "common.regime.regime_detector": MagicMock(
-                    RegimeDetector=MagicMock(return_value=mock_detector)
+                    RegimeDetector=MagicMock(return_value=mock_detector),
                 ),
                 "common.regime.strategy_router": MagicMock(
-                    StrategyRouter=MagicMock(return_value=mock_router)
+                    StrategyRouter=MagicMock(return_value=mock_router),
                 ),
                 "common.risk.risk_manager": MagicMock(
-                    RiskManager=MagicMock(return_value=mock_rm)
+                    RiskManager=MagicMock(return_value=mock_rm),
                 ),
             }),
         ):
@@ -163,10 +159,8 @@ class TestRunRiskValidation:
                 del sys.modules["research.scripts.run_risk_validation"]
 
             import runpy
-            try:
+            with contextlib.suppress(SystemExit):
                 runpy.run_path(str(SCRIPT_PATH), run_name="__main__")
-            except SystemExit:
-                pass
 
         captured = capsys.readouterr()
         assert "RISK MANAGER VALIDATION" in captured.out

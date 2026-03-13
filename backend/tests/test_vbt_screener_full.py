@@ -6,7 +6,7 @@ fee sensitivity, insufficient data, NaN handling, run_full_screen, SCREEN_FUNCTI
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -17,8 +17,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from research.scripts.vbt_screener import (
-    SCREEN_FUNCTIONS,
     _ASSET_CLASS_FEES,
+    SCREEN_FUNCTIONS,
     run_full_screen,
     screen_bollinger_breakout,
     screen_ema_rsi_combo,
@@ -29,8 +29,8 @@ from research.scripts.vbt_screener import (
     walk_forward_validate,
 )
 
-
 # ── Helpers ────────────────────────────────────
+
 
 def _make_ohlcv(periods=500, seed=42, base=50000):
     rng = np.random.RandomState(seed)
@@ -57,25 +57,38 @@ class TestSMACrossoverEdgeCases:
     def test_basic_screen(self):
         close = _make_ohlcv(200)["close"]
         # run_combs needs at least 2 windows to create combinations
-        result = screen_sma_crossover(close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.001)
+        result = screen_sma_crossover(
+            close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.001
+        )
         assert isinstance(result, pd.DataFrame)
         assert len(result) >= 1
 
     def test_zero_fees(self):
         close = _make_ohlcv(200)["close"]
-        result = screen_sma_crossover(close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.0)
+        result = screen_sma_crossover(
+            close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.0
+        )
         assert not result.empty
 
     def test_high_fees(self):
         close = _make_ohlcv(200)["close"]
-        result = screen_sma_crossover(close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.01)
+        result = screen_sma_crossover(
+            close, fast_windows=[10, 20], slow_windows=[50, 100], fees=0.01
+        )
         assert not result.empty
 
     def test_expected_columns(self):
         close = _make_ohlcv(200)["close"]
         result = screen_sma_crossover(close, fast_windows=[10, 20], slow_windows=[50, 100])
-        expected = {"total_return", "sharpe_ratio", "max_drawdown", "win_rate",
-                    "profit_factor", "num_trades", "avg_trade_pnl"}
+        expected = {
+            "total_return",
+            "sharpe_ratio",
+            "max_drawdown",
+            "win_rate",
+            "profit_factor",
+            "num_trades",
+            "avg_trade_pnl",
+        }
         assert expected.issubset(set(result.columns))
 
 
@@ -88,7 +101,10 @@ class TestRSIMeanReversionEdgeCases:
     def test_single_param_set(self):
         df = _make_ohlcv(200)
         result = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+            df,
+            rsi_periods=[14],
+            oversold_levels=[30],
+            overbought_levels=[70],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -96,7 +112,10 @@ class TestRSIMeanReversionEdgeCases:
         """Invalid combos where oversold >= overbought should be skipped."""
         df = _make_ohlcv(200)
         result = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[70], overbought_levels=[30]
+            df,
+            rsi_periods=[14],
+            oversold_levels=[70],
+            overbought_levels=[30],
         )
         assert result.empty
 
@@ -104,7 +123,10 @@ class TestRSIMeanReversionEdgeCases:
         df = _make_ohlcv(200)
         df["close"] = 100.0
         result = screen_rsi_mean_reversion(
-            df, rsi_periods=[14], oversold_levels=[30], overbought_levels=[70]
+            df,
+            rsi_periods=[14],
+            oversold_levels=[30],
+            overbought_levels=[70],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -147,7 +169,10 @@ class TestVolatilityBreakoutEdgeCases:
     def test_single_combo(self):
         df = _make_ohlcv(200)
         result = screen_volatility_breakout(
-            df, breakout_periods=[20], volume_factors=[1.5], adx_ranges=[(15, 30)]
+            df,
+            breakout_periods=[20],
+            volume_factors=[1.5],
+            adx_ranges=[(15, 30)],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -171,7 +196,10 @@ class TestRelativeStrengthEdgeCases:
         df = _make_ohlcv(300, seed=1)
         bench = _make_ohlcv(300, seed=2)
         result = screen_relative_strength(
-            df, bench, lookback_periods=[50], rs_thresholds=[1.05]
+            df,
+            bench,
+            lookback_periods=[50],
+            rs_thresholds=[1.05],
         )
         assert isinstance(result, pd.DataFrame)
 
@@ -200,8 +228,13 @@ class TestWalkForwardValidation:
         assert result.empty or len(result) == 0
 
     def test_all_screen_functions_registered(self):
-        expected = {"sma_crossover", "rsi_mean_reversion", "bollinger_breakout",
-                    "ema_rsi_combo", "volatility_breakout"}
+        expected = {
+            "sma_crossover",
+            "rsi_mean_reversion",
+            "bollinger_breakout",
+            "ema_rsi_combo",
+            "volatility_breakout",
+        }
         assert expected.issubset(set(SCREEN_FUNCTIONS.keys()))
 
 

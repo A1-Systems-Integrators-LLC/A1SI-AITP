@@ -1,5 +1,4 @@
-"""
-Tests for NautilusTrader / HFT end-to-end integration
+"""Tests for NautilusTrader / HFT end-to-end integration
 ======================================================
 Covers:
 - BacktestResult persistence for scheduled_nautilus_backtest / scheduled_hft_backtest jobs
@@ -36,12 +35,7 @@ def _make_trending_ohlcv(n: int = 500, start_price: float = 100.0) -> pd.DataFra
     prices = [start_price]
     for i in range(1, n):
         phase = i % 60
-        if phase < 50:
-            # Uptrend phase
-            trend = 0.002
-        else:
-            # Shallow pullback (only ~1% total dip over 10 bars)
-            trend = -0.001
+        trend = 0.002 if phase < 50 else -0.001
         noise = np.random.normal(0, 0.001)
         prices.append(prices[-1] * (1 + trend + noise))
 
@@ -73,29 +67,31 @@ def _make_multi_strategy_result(
     results = []
     for strategy in strategies:
         for symbol in symbols:
-            results.append({
-                "strategy": strategy,
-                "symbol": symbol,
-                "status": "completed",
-                "result": {
-                    "framework": framework,
+            results.append(
+                {
                     "strategy": strategy,
                     "symbol": symbol,
-                    "timeframe": "1h",
-                    "metrics": {"total_trades": 3, "sharpe_ratio": 1.1},
-                    "trades": [
-                        {
-                            "entry_time": "2024-01-01T00:00:00+00:00",
-                            "exit_time": "2024-01-02T00:00:00+00:00",
-                            "side": "long",
-                            "entry_price": 42000.0,
-                            "exit_price": 43000.0,
-                            "size": 0.1,
-                            "pnl": 99.58,
-                        }
-                    ],
-                },
-            })
+                    "status": "completed",
+                    "result": {
+                        "framework": framework,
+                        "strategy": strategy,
+                        "symbol": symbol,
+                        "timeframe": "1h",
+                        "metrics": {"total_trades": 3, "sharpe_ratio": 1.1},
+                        "trades": [
+                            {
+                                "entry_time": "2024-01-01T00:00:00+00:00",
+                                "exit_time": "2024-01-02T00:00:00+00:00",
+                                "side": "long",
+                                "entry_price": 42000.0,
+                                "exit_price": 43000.0,
+                                "size": 0.1,
+                                "pnl": 99.58,
+                            },
+                        ],
+                    },
+                }
+            )
     return {
         "status": "completed",
         "framework": framework,
@@ -134,12 +130,12 @@ class TestScheduledBacktestPersistence:
         job.completed_at = datetime.now(timezone.utc)
         job.save()
 
-        _BACKTEST_JOB_TYPES = {
+        backtest_job_types = {
             "backtest",
             "scheduled_nautilus_backtest",
             "scheduled_hft_backtest",
         }
-        if job.job_type in _BACKTEST_JOB_TYPES and isinstance(result, dict):
+        if job.job_type in backtest_job_types and isinstance(result, dict):
             if result.get("results") and result.get("status") == "completed":
                 for sub in result["results"]:
                     if sub.get("status") == "completed" and sub.get("result"):
@@ -150,7 +146,9 @@ class TestScheduledBacktestPersistence:
                             asset_class=result.get("asset_class", "crypto"),
                             strategy_name=sub.get("strategy", ""),
                             symbol=sub.get("symbol", ""),
-                            timeframe=sub_result.get("timeframe", (job.params or {}).get("timeframe", "")),
+                            timeframe=sub_result.get(
+                                "timeframe", (job.params or {}).get("timeframe", "")
+                            ),
                             metrics=sub_result.get("metrics"),
                             trades=sub_result.get("trades"),
                             config=job.params,
@@ -322,6 +320,7 @@ class TestTrendFollowingRelaxedParams:
     def test_enters_trade_when_conditions_met(self):
         """Strategy enters a trade when all conditions are met via on_bar simulation."""
         from unittest.mock import patch
+
         from nautilus.strategies.trend_following import NautilusTrendFollowing
 
         strategy = NautilusTrendFollowing(config={"mode": "backtest"})
@@ -329,14 +328,16 @@ class TestTrendFollowingRelaxedParams:
         # Pre-fill 200 bars to pass warmup check
         df = _make_trending_ohlcv(n=201, start_price=100.0)
         for ts, row in df.iterrows():
-            strategy.bars.append({
-                "timestamp": ts,
-                "open": float(row["open"]),
-                "high": float(row["high"]),
-                "low": float(row["low"]),
-                "close": float(row["close"]),
-                "volume": float(row["volume"]),
-            })
+            strategy.bars.append(
+                {
+                    "timestamp": ts,
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row["volume"]),
+                }
+            )
 
         # Mock should_enter to return True for one bar, then exit
         enter_calls = [0]
@@ -348,14 +349,19 @@ class TestTrendFollowingRelaxedParams:
                 return True  # Enter on first check
             return original_enter(ind)
 
-        with patch.object(strategy, "should_enter", side_effect=mock_enter):
-            with patch.object(strategy, "should_exit", return_value=False):
-                bar = {
-                    "timestamp": pd.Timestamp("2024-01-10", tz="UTC"),
-                    "open": 110.0, "high": 111.0, "low": 109.0,
-                    "close": 110.0, "volume": 3000.0,
-                }
-                strategy.on_bar(bar)
+        with (
+            patch.object(strategy, "should_enter", side_effect=mock_enter),
+            patch.object(strategy, "should_exit", return_value=False),
+        ):
+            bar = {
+                "timestamp": pd.Timestamp("2024-01-10", tz="UTC"),
+                "open": 110.0,
+                "high": 111.0,
+                "low": 109.0,
+                "close": 110.0,
+                "volume": 3000.0,
+            }
+            strategy.on_bar(bar)
 
         assert strategy.position is not None
         assert strategy.position["entry_price"] == 110.0
@@ -370,16 +376,18 @@ class TestTrendFollowingRelaxedParams:
 
         strategy = NautilusTrendFollowing()
         # Craft indicators that satisfy all conditions with RSI=42
-        ind = pd.Series({
-            "close": 110.0,
-            "ema_21": 108.0,
-            "ema_100": 105.0,
-            "rsi_14": 42.0,  # Would be rejected with old threshold of 40
-            "volume_ratio": 1.2,
-            "macd_hist": 0.5,
-            "macd_hist_prev": 0.3,
-            "bb_upper": 120.0,
-        })
+        ind = pd.Series(
+            {
+                "close": 110.0,
+                "ema_21": 108.0,
+                "ema_100": 105.0,
+                "rsi_14": 42.0,  # Would be rejected with old threshold of 40
+                "volume_ratio": 1.2,
+                "macd_hist": 0.5,
+                "macd_hist_prev": 0.3,
+                "bb_upper": 120.0,
+            }
+        )
         assert strategy.should_enter(ind) is True
 
     def test_should_enter_rejects_high_rsi(self):
@@ -387,16 +395,18 @@ class TestTrendFollowingRelaxedParams:
         from nautilus.strategies.trend_following import NautilusTrendFollowing
 
         strategy = NautilusTrendFollowing()
-        ind = pd.Series({
-            "close": 110.0,
-            "ema_21": 108.0,
-            "ema_100": 105.0,
-            "rsi_14": 46.0,
-            "volume_ratio": 1.2,
-            "macd_hist": 0.5,
-            "macd_hist_prev": 0.3,
-            "bb_upper": 120.0,
-        })
+        ind = pd.Series(
+            {
+                "close": 110.0,
+                "ema_21": 108.0,
+                "ema_100": 105.0,
+                "rsi_14": 46.0,
+                "volume_ratio": 1.2,
+                "macd_hist": 0.5,
+                "macd_hist_prev": 0.3,
+                "bb_upper": 120.0,
+            }
+        )
         assert strategy.should_enter(ind) is False
 
 
@@ -425,10 +435,17 @@ class TestNautilusRunnerCLI:
             default="crypto",
         )
 
-        args = parser.parse_args([
-            "backtest", "--strategy", "EquityMomentum",
-            "--asset-class", "equity", "--symbol", "AAPL",
-        ])
+        args = parser.parse_args(
+            [
+                "backtest",
+                "--strategy",
+                "EquityMomentum",
+                "--asset-class",
+                "equity",
+                "--symbol",
+                "AAPL",
+            ]
+        )
         assert args.asset_class == "equity"
         assert args.symbol == "AAPL"
         assert args.strategy == "EquityMomentum"

@@ -1,5 +1,4 @@
-"""
-Comprehensive tests for all 3 Freqtrade strategies.
+"""Comprehensive tests for all 3 Freqtrade strategies.
 
 Tests cover indicator population, entry/exit signals, custom stoploss,
 custom exit, and risk gate (confirm_trade_entry). All framework deps required.
@@ -12,17 +11,15 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-import pytest
 
 # Ensure freqtrade strategies are importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "freqtrade" / "user_data" / "strategies"))
 
-from CryptoInvestorV1 import CryptoInvestorV1
 from BollingerMeanReversion import BollingerMeanReversion
+from CryptoInvestorV1 import CryptoInvestorV1
 from VolatilityBreakout import VolatilityBreakout
-
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -33,7 +30,7 @@ def _make_ohlcv(n: int = 300, trend: str = "up") -> pd.DataFrame:
     dates = pd.date_range("2025-01-01", periods=n, freq="1h")
     base = 100.0
     prices = [base]
-    for i in range(1, n):
+    for _i in range(1, n):
         if trend == "up":
             drift = 0.0003
         elif trend == "down":
@@ -264,7 +261,7 @@ class TestCryptoInvestorV1ConfirmTrade:
         from freqtrade.enums import RunMode
         self.strategy.dp.runmode = RunMode.DRY_RUN
         mock_post.return_value = MagicMock(
-            status_code=200, json=MagicMock(return_value={"approved": True})
+            status_code=200, json=MagicMock(return_value={"approved": True}),
         )
 
         result = self.strategy.confirm_trade_entry(
@@ -485,7 +482,7 @@ class TestStrategyMetadata:
         """ROI targets should decrease over time."""
         for cls in [CryptoInvestorV1, BollingerMeanReversion, VolatilityBreakout]:
             roi = cls.minimal_roi
-            sorted_keys = sorted(int(k) for k in roi.keys())
+            sorted_keys = sorted(int(k) for k in roi)
             values = [roi[str(k)] for k in sorted_keys]
             for i in range(1, len(values)):
                 assert values[i] <= values[i - 1], (

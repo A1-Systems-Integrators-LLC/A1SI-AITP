@@ -1,4 +1,4 @@
-"""ML module — feature engineering, training, model registry, prediction, calibration, ensemble, feedback."""
+"""ML module: features, training, registry, prediction, calibration, ensemble, feedback."""
 
 from common.ml.calibration import PredictionCalibrator
 from common.ml.ensemble import EnsembleResult, ModelEnsemble

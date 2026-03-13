@@ -36,6 +36,7 @@ def civ1_technical_score(
         macd_hist: MACD histogram value.
         volume_ratio: Current volume / 20-period average volume.
         adx_value: ADX(14) value.
+
     """
     score = 0.0
 
@@ -105,6 +106,7 @@ def bmr_technical_score(
         stoch_k: Stochastic %K value.
         mfi: Money Flow Index value.
         volume_ratio: Current volume / 20-period average volume.
+
     """
     score = 0.0
 
@@ -179,6 +181,7 @@ def vb_technical_score(
         bb_width_prev: Previous period Bollinger Band width.
         adx_value: ADX(14) value.
         rsi: RSI(14) value.
+
     """
     score = 0.0
 

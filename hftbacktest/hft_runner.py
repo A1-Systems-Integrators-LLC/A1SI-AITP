@@ -1,5 +1,4 @@
-"""
-hftbacktest Runner
+"""hftbacktest Runner
 ===================
 Bridge between A1SI-AITP platform and hftbacktest HFT simulation.
 
@@ -10,8 +9,8 @@ Handles:
 """
 
 import json
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +37,7 @@ def _load_platform_config() -> dict:
         return {}
     try:
         import yaml
+
         with open(CONFIG_PATH) as f:
             return yaml.safe_load(f) or {}
     except ImportError:
@@ -53,8 +53,7 @@ def convert_ohlcv_to_hft_ticks(
     timeframe: str = "1h",
     exchange: str = "kraken",
 ) -> Path:
-    """
-    Convert OHLCV Parquet data to synthetic tick numpy arrays.
+    """Convert OHLCV Parquet data to synthetic tick numpy arrays.
 
     Generates 4 ticks per bar (O/H/L/C) with interpolated timestamps.
     This is a development approximation — real HFT requires actual tick data.
@@ -81,6 +80,7 @@ def convert_ohlcv_to_hft_ticks(
 def list_hft_strategies() -> list[str]:
     """Return names of all registered HFT strategies."""
     from hftbacktest.strategies import STRATEGY_REGISTRY
+
     return list(STRATEGY_REGISTRY.keys())
 
 
@@ -92,14 +92,16 @@ def run_hft_backtest(
     latency_ns: int = 1_000_000,
     initial_balance: float = 10000.0,
 ) -> dict:
-    """
-    Run an HFT backtest using one of the registered strategies.
+    """Run an HFT backtest using one of the registered strategies.
 
     Loads tick data (generating from OHLCV if needed), runs the strategy,
     and computes performance metrics.
     """
+    from common.metrics.performance import (
+        compute_performance_metrics,
+        serialize_trades_df,
+    )
     from hftbacktest.strategies import STRATEGY_REGISTRY
-    from common.metrics.performance import compute_performance_metrics, serialize_trades_df
 
     if strategy_name not in STRATEGY_REGISTRY:
         available = ", ".join(STRATEGY_REGISTRY.keys())
@@ -201,8 +203,12 @@ def cli_main(argv: list[str] | None = None) -> None:
         convert_ohlcv_to_hft_ticks(args.symbol, args.timeframe, args.exchange)
     elif args.command == "backtest":
         result = run_hft_backtest(
-            args.strategy, args.symbol, args.timeframe, args.exchange,
-            args.latency, args.balance,
+            args.strategy,
+            args.symbol,
+            args.timeframe,
+            args.exchange,
+            args.latency,
+            args.balance,
         )
         print(json.dumps(result, indent=2, default=str))
     elif args.command == "list-strategies":

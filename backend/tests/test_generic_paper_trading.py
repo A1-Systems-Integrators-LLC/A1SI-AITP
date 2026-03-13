@@ -66,7 +66,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_market_order_fills_with_last_key(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(return_value={"last": 150.0})
@@ -84,7 +84,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_market_order_fills_with_price_key(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         """Bug fix: yfinance returns 'price' key, not 'last' or 'close'."""
         mock_router_inst = MagicMock()
@@ -103,7 +103,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(False, "Drawdown limit"))
     async def test_rejected_when_risk_check_fails(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         order = await _async_make_order(portfolio, asset_class="equity")
         result = await GenericPaperTradingService.submit_order(order)
@@ -117,7 +117,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_equity_rejected_when_market_closed(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         order = await _async_make_order(portfolio, asset_class="equity")
         result = await GenericPaperTradingService.submit_order(order)
@@ -146,7 +146,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_error_when_price_fetch_fails(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(side_effect=RuntimeError("Network error"))
@@ -163,7 +163,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_error_when_fill_price_is_zero(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(return_value={"last": 0})
@@ -180,7 +180,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_limit_buy_not_filled_above_limit(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(return_value={"last": 150.0})
@@ -202,7 +202,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_limit_sell_not_filled_below_limit(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(return_value={"last": 150.0})
@@ -260,7 +260,7 @@ class TestSubmitOrder:
     @patch(_ROUTER)
     @patch(_RISK, return_value=(True, ""))
     async def test_equity_fill_uses_usd_currency(
-        self, mock_risk, mock_router, mock_hours, portfolio
+        self, mock_risk, mock_router, mock_hours, portfolio,
     ):
         mock_router_inst = MagicMock()
         mock_router_inst.fetch_ticker = AsyncMock(return_value={"last": 150.0})

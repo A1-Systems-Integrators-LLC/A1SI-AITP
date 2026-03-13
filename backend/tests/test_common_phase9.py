@@ -1,5 +1,4 @@
-"""
-Phase 9: common/ module — 100% coverage tests.
+"""Phase 9: common/ module — 100% coverage tests.
 
 Covers all 91 uncovered lines across 11 files in the common/ package.
 """
@@ -8,13 +7,11 @@ import asyncio
 import json
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
-
 
 # ── pipeline.py ──────────────────────────────────────────────
 
@@ -30,7 +27,7 @@ class TestPipelineDownloadWatchlistCryptoDefaults:
 
         mock_fetch.return_value = pd.DataFrame()
 
-        results = download_watchlist(
+        download_watchlist(
             symbols=["BTC/USDT"],
             timeframes=None,
             exchange_id="kraken",
@@ -60,9 +57,11 @@ class TestPipelineValidateDataIssues:
         df.loc[df.index[0], "volume"] = np.nan
         mock_load.return_value = df
 
-        with patch("common.data_pipeline.pipeline.audit_nans", return_value={"volume": 1}), \
-             patch("common.data_pipeline.pipeline.detect_outliers", return_value=[]), \
-             patch("common.data_pipeline.pipeline.check_ohlc_integrity", return_value=[]):
+        with (
+            patch("common.data_pipeline.pipeline.audit_nans", return_value={"volume": 1}),
+            patch("common.data_pipeline.pipeline.detect_outliers", return_value=[]),
+            patch("common.data_pipeline.pipeline.check_ohlc_integrity", return_value=[]),
+        ):
             report = validate_data("BTC/USDT", "1h")
 
         assert not report.passed
@@ -82,8 +81,13 @@ class TestPipelineValidateDataIssues:
         )
         mock_load.return_value = df
 
-        with patch("common.data_pipeline.pipeline.detect_outliers", return_value=[{"idx": 0, "change": 0.50}]), \
-             patch("common.data_pipeline.pipeline.check_ohlc_integrity", return_value=[]):
+        with (
+            patch(
+                "common.data_pipeline.pipeline.detect_outliers",
+                return_value=[{"idx": 0, "change": 0.50}],
+            ),
+            patch("common.data_pipeline.pipeline.check_ohlc_integrity", return_value=[]),
+        ):
             report = validate_data("BTC/USDT", "1h")
 
         assert not report.passed
@@ -104,7 +108,10 @@ class TestPipelineValidateDataIssues:
         )
         mock_load.return_value = df
 
-        with patch("common.data_pipeline.pipeline.check_ohlc_integrity", return_value=[{"row": 0, "issue": "high < open"}]):
+        with patch(
+            "common.data_pipeline.pipeline.check_ohlc_integrity",
+            return_value=[{"row": 0, "issue": "high < open"}],
+        ):
             report = validate_data("BTC/USDT", "1h")
 
         assert not report.passed
@@ -122,23 +129,27 @@ class TestModelRegistryNoLightGBM:
         from common.ml.registry import ModelRegistry
 
         registry = ModelRegistry(models_dir=tmp_path)
-        with patch("common.ml.registry.HAS_LIGHTGBM", False):
-            with pytest.raises(ImportError, match="lightgbm required"):
-                registry.save_model(
-                    model=MagicMock(),
-                    metrics={"accuracy": 0.9},
-                    metadata={},
-                    feature_importance={},
-                )
+        with (
+            patch("common.ml.registry.HAS_LIGHTGBM", False),
+            pytest.raises(ImportError, match="lightgbm required"),
+        ):
+            registry.save_model(
+                model=MagicMock(),
+                metrics={"accuracy": 0.9},
+                metadata={},
+                feature_importance={},
+            )
 
     def test_load_model_no_lightgbm(self, tmp_path):
         """Line 111: load_model raises ImportError."""
         from common.ml.registry import ModelRegistry
 
         registry = ModelRegistry(models_dir=tmp_path)
-        with patch("common.ml.registry.HAS_LIGHTGBM", False):
-            with pytest.raises(ImportError, match="lightgbm required"):
-                registry.load_model("some_model_id")
+        with (
+            patch("common.ml.registry.HAS_LIGHTGBM", False),
+            pytest.raises(ImportError, match="lightgbm required"),
+        ):
+            registry.load_model("some_model_id")
 
 
 class TestModelRegistryListModels:
@@ -222,18 +233,22 @@ class TestTrainerNoLightGBM:
 
         x = pd.DataFrame({"a": [1, 2, 3]})
         y = pd.Series([0, 1, 0])
-        with patch("common.ml.trainer.HAS_LIGHTGBM", False):
-            with pytest.raises(ImportError, match="lightgbm is required"):
-                train_model(x, y, ["a"])
+        with (
+            patch("common.ml.trainer.HAS_LIGHTGBM", False),
+            pytest.raises(ImportError, match="lightgbm is required"),
+        ):
+            train_model(x, y, ["a"])
 
     def test_predict_no_lightgbm(self):
         """Line 162: predict raises ImportError."""
         from common.ml.trainer import predict
 
         x = pd.DataFrame({"a": [1, 2]})
-        with patch("common.ml.trainer.HAS_LIGHTGBM", False):
-            with pytest.raises(ImportError, match="lightgbm is required"):
-                predict(MagicMock(), x)
+        with (
+            patch("common.ml.trainer.HAS_LIGHTGBM", False),
+            pytest.raises(ImportError, match="lightgbm is required"),
+        ):
+            predict(MagicMock(), x)
 
 
 # ── data_pipeline/news_adapter.py ────────────────────────────
@@ -272,7 +287,10 @@ class TestNewsAdapterAtomFeed:
         from common.data_pipeline.news_adapter import _get_text
 
         ns = {"atom": "http://www.w3.org/2005/Atom"}
-        xml_str = '<entry xmlns:atom="http://www.w3.org/2005/Atom"><atom:summary>Atom text</atom:summary></entry>'
+        xml_str = (
+            '<entry xmlns:atom="http://www.w3.org/2005/Atom">'
+            "<atom:summary>Atom text</atom:summary></entry>"
+        )
         element = ET.fromstring(xml_str)
         result = _get_text(element, "summary", ns)
         assert result == "Atom text"
@@ -298,7 +316,11 @@ class TestNewsAdapterFetchAllDedup:
         from common.data_pipeline.news_adapter import fetch_all_news
 
         rss_article = {"article_id": "abc123", "title": "RSS Article", "source": "RSS"}
-        newsapi_article = {"article_id": "abc123", "title": "NewsAPI Duplicate", "source": "NewsAPI"}
+        newsapi_article = {
+            "article_id": "abc123",
+            "title": "NewsAPI Duplicate",
+            "source": "NewsAPI",
+        }
         newsapi_unique = {"article_id": "def456", "title": "NewsAPI Unique", "source": "NewsAPI"}
 
         mock_rss.return_value = [rss_article]
@@ -397,7 +419,7 @@ class TestYfinanceAdapterUncovered:
         with patch("common.data_pipeline.yfinance_adapter._fetch_ohlcv_sync") as mock_sync:
             mock_sync.return_value = pd.DataFrame({"close": [1.0]})
             result = asyncio.get_event_loop().run_until_complete(
-                fetch_ohlcv_yfinance("AAPL/USD", "1d", 30, "equity")
+                fetch_ohlcv_yfinance("AAPL/USD", "1d", 30, "equity"),
             )
             mock_sync.assert_called_once()
             assert not result.empty
@@ -409,7 +431,7 @@ class TestYfinanceAdapterUncovered:
         with patch("common.data_pipeline.yfinance_adapter._fetch_ticker_sync") as mock_sync:
             mock_sync.return_value = {"symbol": "AAPL", "price": 150.0}
             result = asyncio.get_event_loop().run_until_complete(
-                fetch_ticker_yfinance("AAPL/USD", "equity")
+                fetch_ticker_yfinance("AAPL/USD", "equity"),
             )
             assert result["price"] == 150.0
 
@@ -420,7 +442,7 @@ class TestYfinanceAdapterUncovered:
         with patch("common.data_pipeline.yfinance_adapter._fetch_tickers_sync") as mock_sync:
             mock_sync.return_value = [{"symbol": "AAPL", "price": 150.0}]
             result = asyncio.get_event_loop().run_until_complete(
-                fetch_tickers_yfinance(["AAPL/USD"], "equity")
+                fetch_tickers_yfinance(["AAPL/USD"], "equity"),
             )
             assert len(result) == 1
 
@@ -433,7 +455,8 @@ class TestSupertrendDirectionChanges:
 
     def test_direction_changes_up_and_down(self):
         """Lines 54, 56, 61: close crosses above upper → direction=1,
-        close crosses below lower → direction=-1, then direction=1 path for st."""
+        close crosses below lower → direction=-1, then direction=1 path for st.
+        """
         from common.indicators.technical import supertrend
 
         # Use small multiplier and tight data, then extreme jumps
@@ -452,13 +475,15 @@ class TestSupertrendDirectionChanges:
         close = np.array(flat + jump_up + high_flat + crash, dtype=float)
 
         # Tight high/low to keep ATR small so crossing is easier
-        df = pd.DataFrame({
-            "open": close,
-            "high": close * 1.001,
-            "low": close * 0.999,
-            "close": close,
-            "volume": np.ones(n) * 1000,
-        })
+        df = pd.DataFrame(
+            {
+                "open": close,
+                "high": close * 1.001,
+                "low": close * 0.999,
+                "close": close,
+                "volume": np.ones(n) * 1000,
+            }
+        )
 
         result = supertrend(df, period=5, multiplier=1.0)
         assert "supertrend" in result.columns
@@ -520,8 +545,11 @@ class TestRiskManagerMarketHoursImportError:
 
         with patch("builtins.__import__", side_effect=selective_import):
             approved, reason = rm.check_new_trade(
-                symbol="EUR/USD", side="buy", size=1.0,
-                entry_price=1.10, asset_class="forex",
+                symbol="EUR/USD",
+                side="buy",
+                size=1.0,
+                entry_price=1.10,
+                asset_class="forex",
             )
             assert approved is True
 
@@ -536,12 +564,18 @@ class TestRiskManagerCorrelationNotInMatrix:
         rm = RiskManager()
         # Add two existing positions with enough return data
         rm.state.open_positions["BTC/USDT"] = {
-            "side": "buy", "size": 0.1, "entry_price": 50000,
-            "value": 1000, "timestamp": datetime.now(timezone.utc),
+            "side": "buy",
+            "size": 0.1,
+            "entry_price": 50000,
+            "value": 1000,
+            "timestamp": datetime.now(timezone.utc),
         }
         rm.state.open_positions["SOL/USDT"] = {
-            "side": "buy", "size": 10, "entry_price": 100,
-            "value": 1000, "timestamp": datetime.now(timezone.utc),
+            "side": "buy",
+            "size": 10,
+            "entry_price": 100,
+            "value": 1000,
+            "timestamp": datetime.now(timezone.utc),
         }
         # Record enough prices for BTC and SOL (so corr matrix is non-empty)
         for i in range(25):
@@ -551,7 +585,9 @@ class TestRiskManagerCorrelationNotInMatrix:
         # ETH has no return data → won't be in corr_matrix columns
         # So line 396 fires: symbol not in corr_matrix.columns → return True
         approved, reason = rm.check_new_trade(
-            symbol="ETH/USDT", side="buy", size=0.1,
+            symbol="ETH/USDT",
+            side="buy",
+            size=0.1,
             entry_price=3000.0,
         )
         assert approved is True
@@ -617,7 +653,7 @@ class TestRegimeTransitionProbabilities:
 
     def test_transition_probabilities_too_few_data_points(self):
         """Line 404: fewer than 2 data points → empty dict."""
-        from common.regime.regime_detector import RegimeDetector, Regime
+        from common.regime.regime_detector import Regime, RegimeDetector
 
         detector = RegimeDetector()
         regimes = pd.Series([Regime.RANGING])
@@ -626,16 +662,18 @@ class TestRegimeTransitionProbabilities:
 
     def test_transition_probabilities_no_matching_transitions(self):
         """Line 418: current regime never appears earlier → empty dict."""
-        from common.regime.regime_detector import RegimeDetector, Regime
+        from common.regime.regime_detector import Regime, RegimeDetector
 
         detector = RegimeDetector()
         # Current is last element. If it never appears before the last position,
         # there are no transitions from it → total == 0 → empty dict
-        regimes = pd.Series([
-            Regime.STRONG_TREND_UP,
-            Regime.WEAK_TREND_UP,
-            Regime.RANGING,  # current — never appears earlier
-        ])
+        regimes = pd.Series(
+            [
+                Regime.STRONG_TREND_UP,
+                Regime.WEAK_TREND_UP,
+                Regime.RANGING,  # current — never appears earlier
+            ]
+        )
         result = detector._compute_transition_probabilities(regimes)
         assert result == {}
 
@@ -649,7 +687,7 @@ class TestStrategyRouterUncovered:
     def test_route_unknown_regime_fallback(self):
         """Line 244: regime not in routing dict falls back to RANGING."""
         from common.regime.regime_detector import Regime, RegimeState
-        from common.regime.strategy_router import StrategyRouter, StrategyWeight, BMR
+        from common.regime.strategy_router import BMR, StrategyRouter, StrategyWeight
 
         # Create a custom routing dict that's MISSING UNKNOWN
         custom_routing = {
@@ -678,7 +716,7 @@ class TestStrategyRouterUncovered:
     def test_suggest_strategy_switch_weight_above_threshold(self):
         """Line 296: current strategy in weights with weight >= 0.5 → no switch."""
         from common.regime.regime_detector import Regime, RegimeState
-        from common.regime.strategy_router import StrategyRouter, StrategyWeight, BMR, VB
+        from common.regime.strategy_router import BMR, VB, StrategyRouter, StrategyWeight
 
         # Create a custom routing where VB is NOT primary but has weight >= 0.5
         custom_routing = {

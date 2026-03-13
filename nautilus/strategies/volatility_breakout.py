@@ -1,5 +1,4 @@
-"""
-NautilusVolatilityBreakout — ports VolatilityBreakout logic
+"""NautilusVolatilityBreakout — ports VolatilityBreakout logic
 ============================================================
 N-period high breakout + BB width expansion + emerging ADX.
 
@@ -49,10 +48,7 @@ class NautilusVolatilityBreakout(NautilusStrategyBase):
 
         # RSI in neutral zone
         rsi_val = ind.get("rsi_14", 50)
-        if rsi_val < self.rsi_low or rsi_val > self.rsi_high:
-            return False
-
-        return True
+        return bool(not (rsi_val < self.rsi_low or rsi_val > self.rsi_high))
 
     def should_exit(self, ind: pd.Series) -> bool:
         # RSI exhaustion
@@ -60,7 +56,4 @@ class NautilusVolatilityBreakout(NautilusStrategyBase):
             return True
 
         # Close below EMA20 (trend failure)
-        if ind.get("close", 0) < ind.get("ema_20", 0):
-            return True
-
-        return False
+        return bool(ind.get("close", 0) < ind.get("ema_20", 0))

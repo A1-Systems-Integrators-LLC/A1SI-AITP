@@ -70,7 +70,7 @@ class TestVolumeSurge:
     def test_forex_lower_threshold(self):
         volume = pd.Series([100.0] * 168 + [170.0] * 24)
         opp = MarketScannerService._check_volume_surge(
-            "EUR/USD", volume, 1.1000, "1h", surge_ratio=1.5
+            "EUR/USD", volume, 1.1000, "1h", surge_ratio=1.5,
         )
         assert opp is not None
 
@@ -101,7 +101,7 @@ class TestTrendPullback:
         adx_series = pd.Series([30.0] * 50)
         ema_50 = pd.Series([90.0] * 50)
         opp = MarketScannerService._check_trend_pullback(
-            "BTC/USDT", close, adx_series, ema_50, 96.0, "1h"
+            "BTC/USDT", close, adx_series, ema_50, 96.0, "1h",
         )
         assert opp is not None
 
@@ -138,7 +138,7 @@ class TestBreakout:
         volume = pd.Series([100.0] * 5 + [200.0] * 5)
         sma_20 = pd.Series([99.0] * 20)
         opp = MarketScannerService._check_breakout(
-            "BTC/USDT", close, volume, sma_20, 100.0, "1h"
+            "BTC/USDT", close, volume, sma_20, 100.0, "1h",
         )
         assert opp is not None
 

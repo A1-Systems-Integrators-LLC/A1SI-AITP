@@ -1,5 +1,4 @@
-"""
-NautilusTrader Integration Layer
+"""NautilusTrader Integration Layer
 =================================
 Bridge between A1SI-AITP platform and NautilusTrader's
 institutional-grade backtesting and execution engine.
@@ -20,8 +19,8 @@ Handles:
 """
 
 import json
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +29,10 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.metrics.performance import compute_performance_metrics, serialize_trades_df  # noqa: E402
+from common.metrics.performance import (  # noqa: E402
+    compute_performance_metrics,
+    serialize_trades_df,
+)
 
 logger = logging.getLogger("nautilus_runner")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -55,6 +57,7 @@ def _load_platform_config() -> dict:
         return {}
     try:
         import yaml
+
         with open(CONFIG_PATH) as f:
             return yaml.safe_load(f) or {}
     except ImportError:
@@ -70,8 +73,7 @@ def convert_ohlcv_to_nautilus_csv(
     timeframe: str = "1h",
     exchange: str = "kraken",
 ) -> Path:
-    """
-    Convert shared Parquet OHLCV data into Nautilus-compatible CSV bars.
+    """Convert shared Parquet OHLCV data into Nautilus-compatible CSV bars.
     NautilusTrader can ingest CSV data via its data catalog or wranglers.
     """
     from common.data_pipeline.pipeline import load_ohlcv
@@ -84,16 +86,18 @@ def convert_ohlcv_to_nautilus_csv(
     safe_symbol = symbol.replace("/", "")
     venue = exchange.upper()
 
-    nautilus_df = pd.DataFrame({
-        "bar_type": f"{safe_symbol}.{venue}-{_tf_to_nautilus(timeframe)}-LAST-EXTERNAL",
-        "open": df["open"].astype(str),
-        "high": df["high"].astype(str),
-        "low": df["low"].astype(str),
-        "close": df["close"].astype(str),
-        "volume": df["volume"].astype(str),
-        "ts_event": df.index.astype(np.int64),
-        "ts_init": df.index.astype(np.int64),
-    })
+    nautilus_df = pd.DataFrame(
+        {
+            "bar_type": f"{safe_symbol}.{venue}-{_tf_to_nautilus(timeframe)}-LAST-EXTERNAL",
+            "open": df["open"].astype(str),
+            "high": df["high"].astype(str),
+            "low": df["low"].astype(str),
+            "close": df["close"].astype(str),
+            "volume": df["volume"].astype(str),
+            "ts_event": df.index.astype(np.int64),
+            "ts_init": df.index.astype(np.int64),
+        }
+    )
 
     output_path = CATALOG_DIR / f"{safe_symbol}_{venue}_{timeframe}_bars.csv"
     nautilus_df.to_csv(output_path, index=False)
@@ -117,6 +121,7 @@ def _tf_to_nautilus(timeframe: str) -> str:
 def list_nautilus_strategies() -> list[str]:
     """Return names of all registered NautilusTrader strategies."""
     from nautilus.strategies import STRATEGY_REGISTRY
+
     return list(STRATEGY_REGISTRY.keys())
 
 
@@ -128,8 +133,7 @@ def run_nautilus_backtest(
     initial_balance: float = 10000.0,
     asset_class: str = "crypto",
 ) -> dict:
-    """
-    Run a backtest using one of the registered Nautilus strategies.
+    """Run a backtest using one of the registered Nautilus strategies.
 
     Tries the native NautilusTrader BacktestEngine first (when the library
     is installed). Falls back to the pandas-based simulation otherwise.
@@ -137,8 +141,8 @@ def run_nautilus_backtest(
     Both modes use identical entry/exit signal logic from the strategy
     registry. The native mode provides more accurate fill simulation.
     """
-    from nautilus.strategies import STRATEGY_REGISTRY
     from common.data_pipeline.pipeline import load_ohlcv
+    from nautilus.strategies import STRATEGY_REGISTRY
 
     if strategy_name not in STRATEGY_REGISTRY:
         available = ", ".join(STRATEGY_REGISTRY.keys())
@@ -154,7 +158,12 @@ def run_nautilus_backtest(
     if HAS_NAUTILUS_TRADER:
         logger.info(f"Using native NautilusTrader engine for {strategy_name}")
         result = _run_native_backtest(
-            strategy_name, df, symbol, timeframe, exchange, initial_balance,
+            strategy_name,
+            df,
+            symbol,
+            timeframe,
+            exchange,
+            initial_balance,
         )
         if result is not None:
             return result
@@ -162,7 +171,12 @@ def run_nautilus_backtest(
 
     # Pandas-based fallback
     return _run_pandas_backtest(
-        strategy_name, df, symbol, timeframe, exchange, initial_balance,
+        strategy_name,
+        df,
+        symbol,
+        timeframe,
+        exchange,
+        initial_balance,
     )
 
 
@@ -180,11 +194,11 @@ def _run_native_backtest(
     """
     try:
         from nautilus.engine import (
-            create_backtest_engine,
             add_venue,
-            create_crypto_instrument,
             build_bar_type,
             convert_df_to_bars,
+            create_backtest_engine,
+            create_crypto_instrument,
         )
         from nautilus.strategies.nt_native import NATIVE_STRATEGY_REGISTRY
 
@@ -217,7 +231,8 @@ def _run_native_backtest(
 
         # Convert data and add to engine
         bars = convert_df_to_bars(
-            df, bar_type,
+            df,
+            bar_type,
             price_precision=instrument.price_precision,
             size_precision=instrument.size_precision,
         )
@@ -276,7 +291,9 @@ def _run_pandas_backtest(
     """Run backtest using pandas-based simulation (fallback mode)."""
     from nautilus.strategies import STRATEGY_REGISTRY
 
-    logger.info(f"Running pandas backtest: {strategy_name} on {symbol} {timeframe} ({len(df)} bars)")
+    logger.info(
+        f"Running pandas backtest: {strategy_name} on {symbol} {timeframe} ({len(df)} bars)"
+    )
 
     # Build config: platform_config.yaml defaults -> function args
     platform_cfg = _load_platform_config()
@@ -350,6 +367,7 @@ def run_nautilus_engine_test() -> bool:
     if HAS_NAUTILUS_TRADER:
         try:
             from nautilus.engine import create_backtest_engine
+
             engine = create_backtest_engine(log_level="WARNING")
             logger.info("NautilusTrader BacktestEngine initialized successfully")
             logger.info(f"  Engine type: {type(engine).__name__}")
@@ -408,7 +426,11 @@ if __name__ == "__main__":  # pragma: no cover
             print("NautilusTrader engine test: FAILED (library not installed)")
     elif args.command == "backtest":
         result = run_nautilus_backtest(
-            args.strategy, args.symbol, args.timeframe, args.exchange, args.balance,
+            args.strategy,
+            args.symbol,
+            args.timeframe,
+            args.exchange,
+            args.balance,
             asset_class=args.asset_class,
         )
         print(json.dumps(result, indent=2, default=str))

@@ -1,5 +1,4 @@
-"""
-Tests for common.risk.risk_manager — Sprint 1, Item 1.1
+"""Tests for common.risk.risk_manager — Sprint 1, Item 1.1
 =========================================================
 Covers: RiskManager, ReturnTracker, VaR/CVaR, correlation checks,
 portfolio heat check, position sizing, drawdown limits.

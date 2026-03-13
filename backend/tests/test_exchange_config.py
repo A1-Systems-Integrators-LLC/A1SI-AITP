@@ -16,7 +16,7 @@ class TestEncryptedTextField:
     def test_round_trip(self):
         """Value is decrypted when read back from DB."""
         config = ExchangeConfig.objects.create(
-            name="Test", exchange_id="binance", api_key="my-secret-key-12345"
+            name="Test", exchange_id="binance", api_key="my-secret-key-12345",
         )
         config.refresh_from_db()
         assert config.api_key == "my-secret-key-12345"
@@ -24,7 +24,7 @@ class TestEncryptedTextField:
     def test_raw_db_value_is_ciphertext(self):
         """Raw database value should be encrypted, not plaintext."""
         config = ExchangeConfig.objects.create(
-            name="Test", exchange_id="binance", api_key="plaintext-secret"
+            name="Test", exchange_id="binance", api_key="plaintext-secret",
         )
         with connection.cursor() as cursor:
             cursor.execute(
@@ -141,7 +141,7 @@ class TestExchangeConfigCRUD:
 
     def test_update(self, authenticated_client):
         config = ExchangeConfig.objects.create(
-            name="Old", exchange_id="binance", api_key="original-key-1234"
+            name="Old", exchange_id="binance", api_key="original-key-1234",
         )
         resp = authenticated_client.put(
             f"/api/exchange-configs/{config.pk}/",
@@ -200,7 +200,7 @@ class TestExchangeConfigDefault:
 class TestExchangeConfigTest:
     def test_test_endpoint(self, authenticated_client):
         config = ExchangeConfig.objects.create(
-            name="Test", exchange_id="binance", api_key="key123456789"
+            name="Test", exchange_id="binance", api_key="key123456789",
         )
 
         mock_exchange = MagicMock()
@@ -248,7 +248,7 @@ class TestDataSourceConfig:
     def test_list(self, authenticated_client):
         config = ExchangeConfig.objects.create(name="Binance", exchange_id="binance")
         DataSourceConfig.objects.create(
-            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"],
         )
         resp = authenticated_client.get("/api/data-sources/")
         assert resp.status_code == 200
@@ -258,7 +258,7 @@ class TestDataSourceConfig:
         """Deleting an exchange config should delete its data sources."""
         config = ExchangeConfig.objects.create(name="Binance", exchange_id="binance")
         DataSourceConfig.objects.create(
-            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"],
         )
         config.delete()
         assert DataSourceConfig.objects.count() == 0
@@ -266,7 +266,7 @@ class TestDataSourceConfig:
     def test_delete(self, authenticated_client):
         config = ExchangeConfig.objects.create(name="Binance", exchange_id="binance")
         ds = DataSourceConfig.objects.create(
-            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"]
+            exchange_config=config, symbols=["BTC/USDT"], timeframes=["1h"],
         )
         resp = authenticated_client.delete(f"/api/data-sources/{ds.pk}/")
         assert resp.status_code == 204
@@ -308,7 +308,7 @@ class TestExchangeConfigRotation:
         assert resp.status_code == 404
 
     def test_rotate_validates_new_keys_first(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock()
@@ -327,7 +327,7 @@ class TestExchangeConfigRotation:
         assert data["success"] is True
 
     def test_rotate_fails_if_new_keys_invalid(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock(side_effect=Exception("Invalid API key"))
@@ -344,7 +344,7 @@ class TestExchangeConfigRotation:
         assert "validation failed" in resp.json()["error"].lower()
 
     def test_rotate_updates_keys_on_success(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock()
@@ -364,7 +364,7 @@ class TestExchangeConfigRotation:
         assert exchange_config_for_rotation.api_secret == "new-secret-456-abcde"
 
     def test_rotate_sets_rotated_at_timestamp(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock()
@@ -385,7 +385,7 @@ class TestExchangeConfigRotation:
         assert exchange_config_for_rotation.key_rotated_at is not None
 
     def test_rotate_creates_audit_log_entry(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         from risk.models import AlertLog
 
@@ -407,7 +407,7 @@ class TestExchangeConfigRotation:
         assert AlertLog.objects.filter(event_type="key_rotation").count() == initial_count + 1
 
     def test_rotate_preserves_old_keys_on_failure(
-        self, authenticated_client, exchange_config_for_rotation
+        self, authenticated_client, exchange_config_for_rotation,
     ):
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock(side_effect=Exception("Connection failed"))
@@ -437,12 +437,12 @@ class TestExchangeConfigTestFailure:
     def test_test_connection_ccxt_error(self, authenticated_client):
         """When ccxt raises during load_markets, test returns 400 with error."""
         config = ExchangeConfig.objects.create(
-            name="Fail Test", exchange_id="binance", api_key="key123456789"
+            name="Fail Test", exchange_id="binance", api_key="key123456789",
         )
 
         mock_exchange = MagicMock()
         mock_exchange.load_markets = AsyncMock(
-            side_effect=Exception("AuthenticationError: invalid key")
+            side_effect=Exception("AuthenticationError: invalid key"),
         )
         mock_exchange.close = AsyncMock()
         mock_exchange.set_sandbox_mode = MagicMock()
@@ -458,7 +458,7 @@ class TestExchangeConfigTestFailure:
     def test_test_connection_updates_db_fields(self, authenticated_client):
         """Test endpoint should update last_tested_at and last_test_success fields."""
         config = ExchangeConfig.objects.create(
-            name="DB Update", exchange_id="binance", api_key="key123456789"
+            name="DB Update", exchange_id="binance", api_key="key123456789",
         )
         assert config.last_tested_at is None
 
@@ -501,7 +501,7 @@ class TestExchangeConfigCRUDExtra:
     def test_update_name_only(self, authenticated_client):
         """Updating just the name should preserve everything else."""
         config = ExchangeConfig.objects.create(
-            name="Before", exchange_id="binance", is_sandbox=True, is_active=True
+            name="Before", exchange_id="binance", is_sandbox=True, is_active=True,
         )
         resp = authenticated_client.put(
             f"/api/exchange-configs/{config.pk}/",

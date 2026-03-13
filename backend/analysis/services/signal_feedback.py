@@ -37,6 +37,7 @@ class SignalFeedbackService:
 
         Returns:
             Dict with the created attribution record.
+
         """
         from analysis.models import SignalAttribution
 
@@ -73,6 +74,7 @@ class SignalFeedbackService:
 
         Returns:
             Dict with counts of resolved records.
+
         """
         from analysis.models import SignalAttribution
 

@@ -1,5 +1,4 @@
-"""
-A1SI-AITP Shared Technical Indicators
+"""A1SI-AITP Shared Technical Indicators
 =============================================
 Indicator library used across all framework tiers.
 These are pure-pandas implementations that work with any OHLCV DataFrame.
@@ -8,10 +7,10 @@ These are pure-pandas implementations that work with any OHLCV DataFrame.
 import numpy as np
 import pandas as pd
 
-
 # ──────────────────────────────────────────────
 # Trend Indicators
 # ──────────────────────────────────────────────
+
 
 def sma(series: pd.Series, period: int) -> pd.Series:
     return series.rolling(window=period).mean()
@@ -24,7 +23,8 @@ def ema(series: pd.Series, period: int) -> pd.Series:
 def wma(series: pd.Series, period: int) -> pd.Series:
     weights = np.arange(1, period + 1, dtype=float)
     return series.rolling(window=period).apply(
-        lambda x: np.dot(x, weights) / weights.sum(), raw=True
+        lambda x: np.dot(x, weights) / weights.sum(),
+        raw=True,
     )
 
 
@@ -58,9 +58,13 @@ def supertrend(df: pd.DataFrame, period: int = 10, multiplier: float = 3.0) -> p
             direction.iloc[i] = direction.iloc[i - 1]
 
         if direction.iloc[i] == 1:
-            st.iloc[i] = max(lower.iloc[i], st.iloc[i - 1]) if direction.iloc[i - 1] == 1 else lower.iloc[i]
+            st.iloc[i] = (
+                max(lower.iloc[i], st.iloc[i - 1]) if direction.iloc[i - 1] == 1 else lower.iloc[i]
+            )
         else:
-            st.iloc[i] = min(upper.iloc[i], st.iloc[i - 1]) if direction.iloc[i - 1] == -1 else upper.iloc[i]
+            st.iloc[i] = (
+                min(upper.iloc[i], st.iloc[i - 1]) if direction.iloc[i - 1] == -1 else upper.iloc[i]
+            )
 
     result = df[[]].copy()
     result["supertrend"] = st
@@ -71,6 +75,7 @@ def supertrend(df: pd.DataFrame, period: int = 10, multiplier: float = 3.0) -> p
 # ──────────────────────────────────────────────
 # Momentum Indicators
 # ──────────────────────────────────────────────
+
 
 def rsi(series: pd.Series, period: int = 14) -> pd.Series:
     delta = series.diff()
@@ -121,14 +126,19 @@ def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     minus_dm = -low.diff()
     plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0.0)
     minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0.0)
-    tr = pd.concat([
-        high - low,
-        (high - close.shift()).abs(),
-        (low - close.shift()).abs(),
-    ], axis=1).max(axis=1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - close.shift()).abs(),
+            (low - close.shift()).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
     atr_val = tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
     plus_di = 100 * plus_dm.ewm(alpha=1 / period, min_periods=period, adjust=False).mean() / atr_val
-    minus_di = 100 * minus_dm.ewm(alpha=1 / period, min_periods=period, adjust=False).mean() / atr_val
+    minus_di = (
+        100 * minus_dm.ewm(alpha=1 / period, min_periods=period, adjust=False).mean() / atr_val
+    )
     dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
     return dx.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
 
@@ -136,6 +146,7 @@ def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
 # ──────────────────────────────────────────────
 # Volatility Indicators
 # ──────────────────────────────────────────────
+
 
 def atr_indicator(df: pd.DataFrame, period: int = 14) -> pd.Series:
     high_low = df["high"] - df["low"]
@@ -148,33 +159,42 @@ def atr_indicator(df: pd.DataFrame, period: int = 14) -> pd.Series:
 def bollinger_bands(series: pd.Series, period: int = 20, std_dev: float = 2.0) -> pd.DataFrame:
     mid = sma(series, period)
     std = series.rolling(window=period).std()
-    return pd.DataFrame({
-        "bb_upper": mid + (std * std_dev),
-        "bb_mid": mid,
-        "bb_lower": mid - (std * std_dev),
-        "bb_width": ((mid + std * std_dev) - (mid - std * std_dev)) / mid,
-        "bb_pct": (series - (mid - std * std_dev)) / ((mid + std * std_dev) - (mid - std * std_dev)),
-    })
+    return pd.DataFrame(
+        {
+            "bb_upper": mid + (std * std_dev),
+            "bb_mid": mid,
+            "bb_lower": mid - (std * std_dev),
+            "bb_width": ((mid + std * std_dev) - (mid - std * std_dev)) / mid,
+            "bb_pct": (series - (mid - std * std_dev))
+            / ((mid + std * std_dev) - (mid - std * std_dev)),
+        }
+    )
 
 
-def keltner_channels(df: pd.DataFrame, ema_period: int = 20, atr_period: int = 10, multiplier: float = 2.0) -> pd.DataFrame:
+def keltner_channels(
+    df: pd.DataFrame, ema_period: int = 20, atr_period: int = 10, multiplier: float = 2.0
+) -> pd.DataFrame:
     mid = ema(df["close"], ema_period)
     atr_val = atr_indicator(df, atr_period)
-    return pd.DataFrame({
-        "kc_upper": mid + (atr_val * multiplier),
-        "kc_mid": mid,
-        "kc_lower": mid - (atr_val * multiplier),
-    })
+    return pd.DataFrame(
+        {
+            "kc_upper": mid + (atr_val * multiplier),
+            "kc_mid": mid,
+            "kc_lower": mid - (atr_val * multiplier),
+        }
+    )
 
 
 # ──────────────────────────────────────────────
 # Volume Indicators
 # ──────────────────────────────────────────────
 
+
 def obv(df: pd.DataFrame) -> pd.Series:
     """On-Balance Volume."""
-    direction = np.where(df["close"] > df["close"].shift(), 1,
-                         np.where(df["close"] < df["close"].shift(), -1, 0))
+    direction = np.where(
+        df["close"] > df["close"].shift(), 1, np.where(df["close"] < df["close"].shift(), -1, 0)
+    )
     return (df["volume"] * direction).cumsum()
 
 
@@ -199,6 +219,7 @@ def mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
 # ──────────────────────────────────────────────
 # Composite: Add all indicators to DataFrame
 # ──────────────────────────────────────────────
+
 
 def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """Add a comprehensive set of indicators to an OHLCV DataFrame."""

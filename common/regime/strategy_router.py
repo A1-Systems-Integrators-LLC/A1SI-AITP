@@ -1,5 +1,4 @@
-"""
-Regime-Adaptive Strategy Router
+"""Regime-Adaptive Strategy Router
 ================================
 Maps detected market regimes to optimal trading strategies with
 weighted allocations and position-sizing adjustments.
@@ -237,6 +236,7 @@ class StrategyRouter:
             state: Detected regime state from RegimeDetector.
             sentiment_modifier: Optional position size multiplier from sentiment signal.
                 Clamped to [0.5, 1.5]. None preserves existing behavior.
+
         """
         mapping = self.routing.get(state.regime)
         if mapping is None:
@@ -274,10 +274,11 @@ class StrategyRouter:
         )
 
     def suggest_strategy_switch(
-        self, current_strategy: str, state: RegimeState
+        self,
+        current_strategy: str,
+        state: RegimeState,
     ) -> RoutingDecision | None:
-        """
-        Return a new routing decision if current strategy mismatches the regime.
+        """Return a new routing decision if current strategy mismatches the regime.
 
         Returns None if no switch is needed.
         """

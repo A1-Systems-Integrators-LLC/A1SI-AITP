@@ -34,7 +34,7 @@ class DataPipelineService:
                             "start": str(df.index.min()) if len(df) > 0 else None,
                             "end": str(df.index.max()) if len(df) > 0 else None,
                             "file": f.name,
-                        }
+                        },
                     )
                 except Exception as e:
                     logger.warning(f"Failed to read {f}: {e}")

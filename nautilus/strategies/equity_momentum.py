@@ -1,5 +1,4 @@
-"""
-EquityMomentum — US Equity Momentum Strategy
+"""EquityMomentum — US Equity Momentum Strategy
 ==============================================
 Price > SMA200, RSI pullback 30-50, MACD positive, volume spike.
 Exit: RSI>75 or close < SMA50.
@@ -38,10 +37,7 @@ class EquityMomentum(NautilusStrategyBase):
             return False
 
         # Volume spike (above average)
-        if ind.get("volume_ratio", 0) < 1.2:
-            return False
-
-        return True
+        return bool(not ind.get("volume_ratio", 0) < 1.2)
 
     def should_exit(self, ind: pd.Series) -> bool:
         # RSI overbought
@@ -49,7 +45,4 @@ class EquityMomentum(NautilusStrategyBase):
             return True
 
         # Price below SMA50 (trend weakening)
-        if ind.get("close", 0) < ind.get(f"sma_{self.sma_fast}", 0):
-            return True
-
-        return False
+        return bool(ind.get("close", 0) < ind.get(f"sma_{self.sma_fast}", 0))

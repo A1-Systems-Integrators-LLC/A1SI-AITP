@@ -1,5 +1,4 @@
-"""
-NautilusTrader Strategy Registry
+"""NautilusTrader Strategy Registry
 =================================
 Maps strategy names to classes for dynamic lookup by the runner and backend.
 """

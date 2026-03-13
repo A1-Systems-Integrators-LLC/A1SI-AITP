@@ -1,5 +1,4 @@
-"""
-EquityMeanReversion — US Equity Mean Reversion Strategy
+"""EquityMeanReversion — US Equity Mean Reversion Strategy
 ========================================================
 Below BB lower, RSI<30, volume spike. Exit: above SMA20. Stop: -4%
 """
@@ -29,14 +28,8 @@ class EquityMeanReversion(NautilusStrategyBase):
             return False
 
         # Volume spike confirmation
-        if ind.get("volume_ratio", 0) < self.volume_factor:
-            return False
-
-        return True
+        return bool(not ind.get("volume_ratio", 0) < self.volume_factor)
 
     def should_exit(self, ind: pd.Series) -> bool:
         # Price back above SMA20 (mean reversion complete)
-        if ind.get("close", 0) > ind.get(f"sma_{self.sell_sma_period}", 0):
-            return True
-
-        return False
+        return bool(ind.get("close", 0) > ind.get(f"sma_{self.sell_sma_period}", 0))

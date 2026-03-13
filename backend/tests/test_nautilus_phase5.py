@@ -1,5 +1,4 @@
-"""
-Phase 5 coverage tests for nautilus/ — targeting 100% line coverage.
+"""Phase 5 coverage tests for nautilus/ — targeting 100% line coverage.
 
 Covers:
 - nt_native.py: native adapter instantiation, on_bar signal paths, enter/exit/stop
@@ -9,22 +8,20 @@ Covers:
 - Strategy edge cases: volume/BB width guards
 """
 
-import pytest
-from collections import deque
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-
+import pytest
 from nautilus.strategies.nt_native import (
     HAS_NAUTILUS_TRADER,
-    _NativeAdapterConfig,
-    NativeTrendFollowing,
-    NativeMeanReversion,
-    NativeVolatilityBreakout,
-    NativeEquityMomentum,
     NativeEquityMeanReversion,
-    NativeForexTrend,
+    NativeEquityMomentum,
     NativeForexRange,
+    NativeForexTrend,
+    NativeMeanReversion,
+    NativeTrendFollowing,
+    NativeVolatilityBreakout,
+    _NativeAdapterConfig,
 )
 
 pytestmark = pytest.mark.skipif(not HAS_NAUTILUS_TRADER, reason="nautilus_trader not installed")
@@ -59,11 +56,11 @@ def _setup_engine_with_strategy(adapter_cls, n_bars=250, closes=None,
     Returns (engine, strategy) — caller must engine.dispose() after.
     """
     from nautilus.engine import (
-        create_backtest_engine,
         add_venue,
-        create_crypto_instrument,
         build_bar_type,
         convert_df_to_bars,
+        create_backtest_engine,
+        create_crypto_instrument,
     )
 
     engine = create_backtest_engine(log_level="WARNING")
@@ -83,7 +80,7 @@ def _setup_engine_with_strategy(adapter_cls, n_bars=250, closes=None,
 
     # Mock signal engine to control signal flow
     strategy._signal_engine._compute_indicators = MagicMock(
-        return_value=pd.Series({"close": 1000.0})
+        return_value=pd.Series({"close": 1000.0}),
     )
     if should_enter_seq is not None:
         strategy._signal_engine.should_enter = MagicMock(side_effect=should_enter_seq)
@@ -346,7 +343,7 @@ class TestNautilusRunnerGaps:
                         "low": [0.5],
                         "close": [1.5],
                         "volume": [100.0],
-                    }
+                    },
                 ),
                 "BTC/USDT",
                 "1h",
@@ -359,12 +356,11 @@ class TestNautilusRunnerGaps:
         """Cover lines 358-360: engine init raises in run_nautilus_engine_test."""
         from nautilus.nautilus_runner import run_nautilus_engine_test
 
-        with patch("nautilus.nautilus_runner.HAS_NAUTILUS_TRADER", True):
-            with patch(
-                "nautilus.engine.create_backtest_engine",
-                side_effect=RuntimeError("init failed"),
-            ):
-                assert run_nautilus_engine_test() is False
+        with patch("nautilus.nautilus_runner.HAS_NAUTILUS_TRADER", True), patch(
+            "nautilus.engine.create_backtest_engine",
+            side_effect=RuntimeError("init failed"),
+        ):
+            assert run_nautilus_engine_test() is False
 
     def test_run_nautilus_engine_test_not_installed(self):
         """Cover lines 361-364: NT not installed path."""

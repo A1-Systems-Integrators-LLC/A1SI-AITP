@@ -1,5 +1,4 @@
-"""
-Tests for Market Regime Detector — Sprint 2, Item 2.1
+"""Tests for Market Regime Detector — Sprint 2, Item 2.1
 =====================================================
 Covers: Regime enum, RegimeState, RegimeConfig, RegimeDetector
 classification (all 6 regimes), sub-indicators, transition
@@ -274,7 +273,7 @@ class TestClassificationLogic:
         """High BB width + low ADX → HIGH_VOLATILITY."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=20, bb_pct=90, slope=0.001, alignment=0.1, structure=0.1
+            adx_val=20, bb_pct=90, slope=0.001, alignment=0.1, structure=0.1,
         )
         assert regime == Regime.HIGH_VOLATILITY
 
@@ -282,7 +281,7 @@ class TestClassificationLogic:
         """High ADX + positive alignment/slope/structure → STRONG_TREND_UP."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=50, bb_pct=50, slope=0.01, alignment=0.8, structure=0.5
+            adx_val=50, bb_pct=50, slope=0.01, alignment=0.8, structure=0.5,
         )
         assert regime == Regime.STRONG_TREND_UP
 
@@ -290,7 +289,7 @@ class TestClassificationLogic:
         """High ADX + negative alignment/slope/structure → STRONG_TREND_DOWN."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=50, bb_pct=50, slope=-0.01, alignment=-0.8, structure=-0.5
+            adx_val=50, bb_pct=50, slope=-0.01, alignment=-0.8, structure=-0.5,
         )
         assert regime == Regime.STRONG_TREND_DOWN
 
@@ -298,7 +297,7 @@ class TestClassificationLogic:
         """Mid ADX + positive alignment → WEAK_TREND_UP."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=30, bb_pct=50, slope=0.005, alignment=0.3, structure=0.2
+            adx_val=30, bb_pct=50, slope=0.005, alignment=0.3, structure=0.2,
         )
         assert regime == Regime.WEAK_TREND_UP
 
@@ -306,7 +305,7 @@ class TestClassificationLogic:
         """Mid ADX + negative alignment → WEAK_TREND_DOWN."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=30, bb_pct=50, slope=-0.005, alignment=-0.3, structure=-0.2
+            adx_val=30, bb_pct=50, slope=-0.005, alignment=-0.3, structure=-0.2,
         )
         assert regime == Regime.WEAK_TREND_DOWN
 
@@ -314,7 +313,7 @@ class TestClassificationLogic:
         """Low ADX + normal volatility → RANGING."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=15, bb_pct=50, slope=0.0, alignment=0.0, structure=0.0
+            adx_val=15, bb_pct=50, slope=0.0, alignment=0.0, structure=0.0,
         )
         assert regime == Regime.RANGING
 
@@ -327,7 +326,7 @@ class TestCompositeScoring:
         """Scoring should return a dict with all 7 regime keys."""
         detector = RegimeDetector()
         scores = detector._compute_regime_scores(
-            adx_val=30, bb_pct=50, slope=0.005, alignment=0.3, structure=0.2
+            adx_val=30, bb_pct=50, slope=0.005, alignment=0.3, structure=0.2,
         )
         assert len(scores) == 7
         for regime in Regime:
@@ -337,7 +336,7 @@ class TestCompositeScoring:
         """ADX=50, BB=90, alignment=0.8 → STRONG_TREND_UP, not HIGH_VOLATILITY."""
         detector = RegimeDetector()
         regime, conf = detector._classify_regime(
-            adx_val=50, bb_pct=90, slope=0.01, alignment=0.8, structure=0.5
+            adx_val=50, bb_pct=90, slope=0.01, alignment=0.8, structure=0.5,
         )
         assert regime == Regime.STRONG_TREND_UP
 
@@ -425,11 +424,11 @@ class TestCompositeScoring:
         detector = RegimeDetector()
         # Clear strong uptrend → high margin
         _, conf_clear = detector._classify_regime(
-            adx_val=60, bb_pct=40, slope=0.02, alignment=0.9, structure=0.8
+            adx_val=60, bb_pct=40, slope=0.02, alignment=0.9, structure=0.8,
         )
         # Ambiguous (ranging-ish but some trend) → smaller margin
         _, conf_ambig = detector._classify_regime(
-            adx_val=25, bb_pct=50, slope=0.001, alignment=0.1, structure=0.05
+            adx_val=25, bb_pct=50, slope=0.001, alignment=0.1, structure=0.05,
         )
         assert conf_clear > conf_ambig
 

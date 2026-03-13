@@ -67,4 +67,3 @@ class YFinanceService:
 
     async def close(self):
         """No-op: yfinance doesn't need connection cleanup."""
-        pass

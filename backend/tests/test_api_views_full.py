@@ -15,7 +15,7 @@ Covers ~32 previously untested view endpoints:
 """
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone as tz
@@ -32,8 +32,10 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def portfolio():
     from portfolio.models import Portfolio
+
     return Portfolio.objects.create(
-        name="Test Portfolio", exchange_id="kraken",
+        name="Test Portfolio",
+        exchange_id="kraken",
         asset_class="crypto",
     )
 
@@ -41,27 +43,41 @@ def portfolio():
 @pytest.fixture
 def risk_limits(portfolio):
     from risk.models import RiskLimits
+
     return RiskLimits.objects.create(
-        portfolio_id=portfolio.id, max_portfolio_drawdown=0.15, max_daily_loss=0.05,
-        max_leverage=1.0, max_position_size_pct=0.10,
+        portfolio_id=portfolio.id,
+        max_portfolio_drawdown=0.15,
+        max_daily_loss=0.05,
+        max_leverage=1.0,
+        max_position_size_pct=0.10,
     )
 
 
 @pytest.fixture
 def risk_state(portfolio):
     from risk.models import RiskState
+
     return RiskState.objects.create(
-        portfolio_id=portfolio.id, peak_equity=10000, total_equity=9800,
-        daily_pnl=-50, is_halted=False,
+        portfolio_id=portfolio.id,
+        peak_equity=10000,
+        total_equity=9800,
+        daily_pnl=-50,
+        is_halted=False,
     )
 
 
 @pytest.fixture
 def order(portfolio):
     from trading.models import Order
+
     return Order.objects.create(
-        symbol="BTC/USDT", side="buy", amount=0.1, price=50000,
-        mode="paper", asset_class="crypto", status="filled",
+        symbol="BTC/USDT",
+        side="buy",
+        amount=0.1,
+        price=50000,
+        mode="paper",
+        asset_class="crypto",
+        status="filled",
         timestamp=tz.now(),
     )
 
@@ -69,13 +85,19 @@ def order(portfolio):
 @pytest.fixture
 def workflow():
     from analysis.models import Workflow, WorkflowStep
+
     wf = Workflow.objects.create(
-        id="test_wf", name="Test Workflow",
-        asset_class="crypto", schedule_enabled=False,
+        id="test_wf",
+        name="Test Workflow",
+        asset_class="crypto",
+        schedule_enabled=False,
     )
     WorkflowStep.objects.create(
-        workflow=wf, order=1, step_type="data_refresh",
-        name="Refresh Data", params={},
+        workflow=wf,
+        order=1,
+        step_type="data_refresh",
+        name="Refresh Data",
+        params={},
     )
     return wf
 
@@ -83,10 +105,14 @@ def workflow():
 @pytest.fixture
 def workflow_run(workflow):
     from analysis.models import BackgroundJob, WorkflowRun
+
     job = BackgroundJob.objects.create(job_type="workflow", status="running")
     return WorkflowRun.objects.create(
-        workflow=workflow, job=job, status="running",
-        trigger="api", params={},
+        workflow=workflow,
+        job=job,
+        status="running",
+        trigger="api",
+        params={},
     )
 
 
@@ -168,7 +194,7 @@ class TestRiskLimitHistoryView:
 
     def test_field_filter(self, authenticated_client, portfolio, risk_limits, risk_state):
         resp = authenticated_client.get(
-            f"/api/risk/{portfolio.id}/limit-history/?field=max_drawdown"
+            f"/api/risk/{portfolio.id}/limit-history/?field=max_drawdown",
         )
         assert resp.status_code == status.HTTP_200_OK
 
@@ -241,20 +267,23 @@ class TestOrderExportView:
 
 class TestSentimentSignalView:
     def test_get(self, authenticated_client):
-        with patch("market.services.news.NewsService") as MockNS:
-            MockNS.return_value.get_sentiment_signal.return_value = {
-                "asset_class": "crypto", "score": 0.5, "label": "neutral",
+        with patch("market.services.news.NewsService") as mock_ns:
+            mock_ns.return_value.get_sentiment_signal.return_value = {
+                "asset_class": "crypto",
+                "score": 0.5,
+                "label": "neutral",
             }
             resp = authenticated_client.get("/api/market/news/signal/")
         assert resp.status_code == status.HTTP_200_OK
 
     def test_custom_params(self, authenticated_client):
-        with patch("market.services.news.NewsService") as MockNS:
-            MockNS.return_value.get_sentiment_signal.return_value = {
-                "asset_class": "equity", "score": 0.3,
+        with patch("market.services.news.NewsService") as mock_ns:
+            mock_ns.return_value.get_sentiment_signal.return_value = {
+                "asset_class": "equity",
+                "score": 0.3,
             }
             resp = authenticated_client.get(
-                "/api/market/news/signal/?asset_class=equity&hours=48"
+                "/api/market/news/signal/?asset_class=equity&hours=48",
             )
         assert resp.status_code == status.HTTP_200_OK
 
@@ -267,9 +296,12 @@ class TestOpportunityListView:
 
     def test_with_data(self, authenticated_client):
         from market.models import MarketOpportunity
+
         MarketOpportunity.objects.create(
-            symbol="BTC/USDT", opportunity_type="volume_surge",
-            score=80, asset_class="crypto",
+            symbol="BTC/USDT",
+            opportunity_type="volume_surge",
+            score=80,
+            asset_class="crypto",
             expires_at=tz.now() + timedelta(hours=24),
         )
         resp = authenticated_client.get("/api/market/opportunities/")
@@ -278,9 +310,12 @@ class TestOpportunityListView:
 
     def test_filter_type(self, authenticated_client):
         from market.models import MarketOpportunity
+
         MarketOpportunity.objects.create(
-            symbol="BTC/USDT", opportunity_type="breakout",
-            score=70, asset_class="crypto",
+            symbol="BTC/USDT",
+            opportunity_type="breakout",
+            score=70,
+            asset_class="crypto",
             expires_at=tz.now() + timedelta(hours=24),
         )
         resp = authenticated_client.get("/api/market/opportunities/?type=breakout")
@@ -289,9 +324,12 @@ class TestOpportunityListView:
 
     def test_filter_min_score(self, authenticated_client):
         from market.models import MarketOpportunity
+
         MarketOpportunity.objects.create(
-            symbol="BTC/USDT", opportunity_type="volume_surge",
-            score=50, asset_class="crypto",
+            symbol="BTC/USDT",
+            opportunity_type="volume_surge",
+            score=50,
+            asset_class="crypto",
             expires_at=tz.now() + timedelta(hours=24),
         )
         resp = authenticated_client.get("/api/market/opportunities/?min_score=60")
@@ -300,9 +338,12 @@ class TestOpportunityListView:
 
     def test_filter_asset_class(self, authenticated_client):
         from market.models import MarketOpportunity
+
         MarketOpportunity.objects.create(
-            symbol="AAPL", opportunity_type="breakout",
-            score=85, asset_class="equity",
+            symbol="AAPL",
+            opportunity_type="breakout",
+            score=85,
+            asset_class="equity",
             expires_at=tz.now() + timedelta(hours=24),
         )
         resp = authenticated_client.get("/api/market/opportunities/?asset_class=equity")
@@ -318,14 +359,19 @@ class TestOpportunitySummaryView:
 
     def test_with_data(self, authenticated_client):
         from market.models import MarketOpportunity
+
         MarketOpportunity.objects.create(
-            symbol="BTC/USDT", opportunity_type="volume_surge",
-            score=80, asset_class="crypto",
+            symbol="BTC/USDT",
+            opportunity_type="volume_surge",
+            score=80,
+            asset_class="crypto",
             expires_at=tz.now() + timedelta(hours=24),
         )
         MarketOpportunity.objects.create(
-            symbol="ETH/USDT", opportunity_type="rsi_bounce",
-            score=70, asset_class="crypto",
+            symbol="ETH/USDT",
+            opportunity_type="rsi_bounce",
+            score=70,
+            asset_class="crypto",
             expires_at=tz.now() + timedelta(hours=24),
         )
         resp = authenticated_client.get("/api/market/opportunities/summary/")
@@ -336,9 +382,10 @@ class TestOpportunitySummaryView:
 
 class TestDailyReportView:
     def test_get(self, authenticated_client):
-        with patch("market.services.daily_report.DailyReportService") as MockDR:
-            MockDR.return_value.get_latest.return_value = {
-                "regime": {}, "system_status": {},
+        with patch("market.services.daily_report.DailyReportService") as mock_dr:
+            mock_dr.return_value.get_latest.return_value = {
+                "regime": {},
+                "system_status": {},
             }
             resp = authenticated_client.get("/api/market/daily-report/")
         assert resp.status_code == status.HTTP_200_OK
@@ -346,8 +393,8 @@ class TestDailyReportView:
 
 class TestDailyReportHistoryView:
     def test_get(self, authenticated_client):
-        with patch("market.services.daily_report.DailyReportService") as MockDR:
-            MockDR.return_value.get_history.return_value = []
+        with patch("market.services.daily_report.DailyReportService") as mock_dr:
+            mock_dr.return_value.get_history.return_value = []
             resp = authenticated_client.get("/api/market/daily-report/history/")
         assert resp.status_code == status.HTTP_200_OK
 
@@ -378,8 +425,10 @@ class TestScreeningStrategyListView:
 
 class TestDataListView:
     def test_get(self, authenticated_client):
-        with patch("analysis.services.data_pipeline.DataPipelineService.list_available_data",
-                    return_value=[]):
+        with patch(
+            "analysis.services.data_pipeline.DataPipelineService.list_available_data",
+            return_value=[],
+        ):
             resp = authenticated_client.get("/api/data/")
         assert resp.status_code == status.HTTP_200_OK
 
@@ -390,14 +439,17 @@ class TestDataListView:
 
 class TestDataDetailView:
     def test_not_found(self, authenticated_client):
-        with patch("analysis.services.data_pipeline.DataPipelineService.get_data_info",
-                    return_value=None):
+        with patch(
+            "analysis.services.data_pipeline.DataPipelineService.get_data_info", return_value=None
+        ):
             resp = authenticated_client.get("/api/data/kraken/BTC_USDT/1h/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
     def test_found(self, authenticated_client):
-        with patch("analysis.services.data_pipeline.DataPipelineService.get_data_info",
-                    return_value={"symbol": "BTC/USDT", "rows": 100}):
+        with patch(
+            "analysis.services.data_pipeline.DataPipelineService.get_data_info",
+            return_value={"symbol": "BTC/USDT", "rows": 100},
+        ):
             resp = authenticated_client.get("/api/data/kraken/BTC_USDT/1h/")
         assert resp.status_code == status.HTTP_200_OK
 
@@ -423,6 +475,7 @@ class TestDataDownloadView:
 class TestJobCancelView:
     def test_cancel(self, authenticated_client):
         from analysis.models import BackgroundJob
+
         job = BackgroundJob.objects.create(job_type="backtest", status="running")
         with patch("analysis.services.job_runner.get_job_runner") as mock_jr:
             mock_jr.return_value.cancel_job.return_value = True
@@ -458,7 +511,9 @@ class TestWorkflowListView:
                 "id": "new_wf",
                 "name": "New Workflow",
                 "asset_class": "crypto",
-                "steps": [{"order": 1, "step_type": "data_refresh", "name": "Refresh", "params": {}}],
+                "steps": [
+                    {"order": 1, "step_type": "data_refresh", "name": "Refresh", "params": {}}
+                ],
             },
             format="json",
         )
@@ -505,16 +560,21 @@ class TestWorkflowDetailView:
 
 class TestWorkflowTriggerView:
     def test_trigger(self, authenticated_client, workflow):
-        with patch("analysis.services.workflow_engine.WorkflowEngine.trigger",
-                    return_value=("run-123", "job-456")):
+        with patch(
+            "analysis.services.workflow_engine.WorkflowEngine.trigger",
+            return_value=("run-123", "job-456"),
+        ):
             resp = authenticated_client.post(f"/api/workflows/{workflow.id}/trigger/")
         assert resp.status_code == status.HTTP_202_ACCEPTED
         assert resp.data["workflow_run_id"] == "run-123"
 
     def test_not_found(self, authenticated_client):
         from analysis.models import Workflow
-        with patch("analysis.services.workflow_engine.WorkflowEngine.trigger",
-                    side_effect=Workflow.DoesNotExist):
+
+        with patch(
+            "analysis.services.workflow_engine.WorkflowEngine.trigger",
+            side_effect=Workflow.DoesNotExist,
+        ):
             resp = authenticated_client.post("/api/workflows/nonexistent/trigger/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
@@ -538,7 +598,7 @@ class TestWorkflowEnableDisableView:
 class TestWorkflowRunListView:
     def test_list(self, authenticated_client, workflow_run):
         resp = authenticated_client.get(
-            f"/api/workflows/{workflow_run.workflow_id}/runs/"
+            f"/api/workflows/{workflow_run.workflow_id}/runs/",
         )
         assert resp.status_code == status.HTTP_200_OK
         assert len(resp.data) >= 1
@@ -556,18 +616,16 @@ class TestWorkflowRunDetailView:
 
 class TestWorkflowRunCancelView:
     def test_cancel(self, authenticated_client, workflow_run):
-        with patch("analysis.services.workflow_engine.WorkflowEngine.cancel",
-                    return_value=True):
+        with patch("analysis.services.workflow_engine.WorkflowEngine.cancel", return_value=True):
             resp = authenticated_client.post(
-                f"/api/workflow-runs/{workflow_run.id}/cancel/"
+                f"/api/workflow-runs/{workflow_run.id}/cancel/",
             )
         assert resp.status_code == status.HTTP_200_OK
 
     def test_cancel_not_found(self, authenticated_client):
-        with patch("analysis.services.workflow_engine.WorkflowEngine.cancel",
-                    return_value=False):
+        with patch("analysis.services.workflow_engine.WorkflowEngine.cancel", return_value=False):
             resp = authenticated_client.post(
-                "/api/workflow-runs/nonexistent/cancel/"
+                "/api/workflow-runs/nonexistent/cancel/",
             )
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 

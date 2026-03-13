@@ -1,5 +1,4 @@
-"""
-VolatilityBreakout — Freqtrade Strategy
+"""VolatilityBreakout — Freqtrade Strategy
 ========================================
 Volatility breakout strategy that catches momentum expansions.
 
@@ -29,20 +28,9 @@ Risk Management:
 """
 
 import logging
-from functools import reduce
-from typing import Optional
 from datetime import datetime
 
-import numpy as np
 import talib.abstract as ta
-from pandas import DataFrame
-
-from freqtrade.strategy import (
-    DecimalParameter,
-    IntParameter,
-    IStrategy,
-)
-
 from _conviction_helpers import (
     check_conviction,
     check_exit_advice,
@@ -51,6 +39,12 @@ from _conviction_helpers import (
     record_entry_regime,
     refresh_signals,
 )
+from freqtrade.strategy import (
+    DecimalParameter,
+    IntParameter,
+    IStrategy,
+)
+from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +133,6 @@ class VolatilityBreakout(IStrategy):
 
         BB width expansion and ADX rising removed as hard requirements.
         """
-
         # Required: breakout above N-period high
         breakout = dataframe["close"] > dataframe[f"high_{self.breakout_period.value}"].shift(1)
 
@@ -218,7 +211,7 @@ class VolatilityBreakout(IStrategy):
         rate: float,
         time_in_force: str,
         current_time: datetime,
-        entry_tag: Optional[str],
+        entry_tag: str | None,
         side: str,
         **kwargs,
     ) -> bool:
@@ -277,12 +270,12 @@ class VolatilityBreakout(IStrategy):
         current_profit: float,
         after_fill: bool,
         **kwargs,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Conviction-based exit: regime deterioration, time limits."""
         return check_exit_advice(self, pair, trade, current_time, current_profit)
 
     def custom_stoploss(
-        self, pair, trade, current_time, current_rate, current_profit, after_fill, **kwargs
+        self, pair, trade, current_time, current_rate, current_profit, after_fill, **kwargs,
     ):
         """ATR-based dynamic stop loss with regime-aware tightening."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)

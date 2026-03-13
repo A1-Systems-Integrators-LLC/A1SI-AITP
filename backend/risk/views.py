@@ -118,7 +118,7 @@ class PositionSizeView(APIView):
                 d["entry_price"],
                 d["stop_loss_price"],
                 d.get("risk_per_trade"),
-            )
+            ),
         )
 
 
@@ -170,7 +170,7 @@ class HaltTradingView(APIView):
         ser.is_valid(raise_exception=True)
         reason = ser.validated_data["reason"]
         result = async_to_sync(RiskManagementService.halt_trading_with_cancellation)(
-            portfolio_id, reason
+            portfolio_id, reason,
         )
         return Response(result)
 
@@ -193,10 +193,10 @@ class AlertListView(APIView):
             OpenApiParameter("severity", str, description="Filter by severity level"),
             OpenApiParameter("event_type", str, description="Filter by event type"),
             OpenApiParameter(
-                "created_after", str, description="Filter alerts after this ISO datetime"
+                "created_after", str, description="Filter alerts after this ISO datetime",
             ),
             OpenApiParameter(
-                "created_before", str, description="Filter alerts before this ISO datetime"
+                "created_before", str, description="Filter alerts before this ISO datetime",
             ),
         ],
     )

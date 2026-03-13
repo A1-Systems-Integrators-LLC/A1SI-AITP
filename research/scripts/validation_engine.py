@@ -1,5 +1,4 @@
-"""
-Gate 2+3 Strategy Validation Engine
+"""Gate 2+3 Strategy Validation Engine
 ====================================
 Shared infrastructure for validating Freqtrade strategies via VectorBT.
 
@@ -15,13 +14,13 @@ Gate 3 (Backtest Validation):
     - Realistic transaction costs (0.1% fee + 0.05% slippage = 0.15%)
 """
 
-import sys
+import itertools
 import json
 import logging
-import itertools
-from pathlib import Path
+import sys
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -54,7 +53,9 @@ SignalFn = Callable[[pd.DataFrame, dict], tuple[pd.Series, pd.Series]]
 
 
 def generate_synthetic_ohlcv(
-    n: int = 5000, freq: str = "1h", seed: int = 42
+    n: int = 5000,
+    freq: str = "1h",
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Generate synthetic OHLCV data with trend + mean-reversion regimes."""
     np.random.seed(seed)
@@ -147,11 +148,11 @@ def check_gate2(result: dict) -> tuple[bool, list[str]]:
         failures.append(f"Sharpe {sharpe:.3f} < {GATE2_MIN_SHARPE}")
     if result.get("max_drawdown", 1.0) > GATE2_MAX_DRAWDOWN:
         failures.append(
-            f"Drawdown {result['max_drawdown']:.1%} > {GATE2_MAX_DRAWDOWN:.0%}"
+            f"Drawdown {result['max_drawdown']:.1%} > {GATE2_MAX_DRAWDOWN:.0%}",
         )
     if result.get("annualized_trades", 0) < GATE2_MIN_TRADES_PER_YEAR:
         failures.append(
-            f"Trades/year {result['annualized_trades']:.0f} < {GATE2_MIN_TRADES_PER_YEAR}"
+            f"Trades/year {result['annualized_trades']:.0f} < {GATE2_MIN_TRADES_PER_YEAR}",
         )
     if result.get("pvalue", 1.0) > GATE2_PVALUE:
         failures.append(f"p-value {result['pvalue']:.4f} > {GATE2_PVALUE}")
@@ -170,8 +171,7 @@ def sweep_parameters(
     sl_stop: float = 0.05,
     freq: str = "1h",
 ) -> pd.DataFrame:
-    """
-    Run Gate 2 parameter sweep across all combinations.
+    """Run Gate 2 parameter sweep across all combinations.
 
     Returns DataFrame sorted by Sharpe ratio, with passes_gate2 column.
     """
@@ -181,14 +181,14 @@ def sweep_parameters(
 
     logger.info(
         f"Gate 2: Sweeping {len(combos)} parameter combinations "
-        f"({' x '.join(f'{k}[{len(v)}]' for k, v in param_grid.items())})"
+        f"({' x '.join(f'{k}[{len(v)}]' for k, v in param_grid.items())})",
     )
 
     close = df["close"]
     results = []
 
     for i, combo in enumerate(combos):
-        params = dict(zip(param_names, combo))
+        params = dict(zip(param_names, combo, strict=False))
         try:
             entries, exits = signal_fn(df, params)
             metrics = _run_backtest(close, entries, exits, fees, sl_stop, freq)
@@ -206,12 +206,13 @@ def sweep_parameters(
     results_df = pd.DataFrame(results)
     if not results_df.empty:
         results_df = results_df.sort_values(
-            "sharpe_ratio", ascending=False
+            "sharpe_ratio",
+            ascending=False,
         ).reset_index(drop=True)
 
     passing = int(results_df["passes_gate2"].sum()) if not results_df.empty else 0
     logger.info(
-        f"Gate 2 complete: {passing}/{len(results_df)} combos pass all criteria"
+        f"Gate 2 complete: {passing}/{len(results_df)} combos pass all criteria",
     )
     return results_df
 
@@ -228,8 +229,7 @@ def walk_forward_validate(
     freq: str = "1h",
     n_splits: int = GATE3_WF_SPLITS,
 ) -> list[dict]:
-    """
-    Expanding-window walk-forward out-of-sample validation.
+    """Expanding-window walk-forward out-of-sample validation.
 
     Splits data into n_splits+1 segments. For fold k (1..n_splits):
       - Train on segments 0..k-1 (expanding window)
@@ -240,7 +240,7 @@ def walk_forward_validate(
 
     if segment_size < 100:
         logger.warning(
-            f"Segment size {segment_size} is small — results may be unreliable"
+            f"Segment size {segment_size} is small — results may be unreliable",
         )
 
     results = []
@@ -254,14 +254,19 @@ def walk_forward_validate(
 
         if len(test_df) < 50:
             logger.warning(
-                f"Fold {fold}: test set too small ({len(test_df)} rows), skipping"
+                f"Fold {fold}: test set too small ({len(test_df)} rows), skipping",
             )
             continue
 
         try:
             is_entries, is_exits = signal_fn(train_df, best_params)
             is_metrics = _run_backtest(
-                train_df["close"], is_entries, is_exits, fees, sl_stop, freq
+                train_df["close"],
+                is_entries,
+                is_exits,
+                fees,
+                sl_stop,
+                freq,
             )
         except Exception as e:
             logger.warning(f"Fold {fold} IS failed: {e}")
@@ -270,7 +275,12 @@ def walk_forward_validate(
         try:
             oos_entries, oos_exits = signal_fn(test_df, best_params)
             oos_metrics = _run_backtest(
-                test_df["close"], oos_entries, oos_exits, fees, sl_stop, freq
+                test_df["close"],
+                oos_entries,
+                oos_exits,
+                fees,
+                sl_stop,
+                freq,
             )
         except Exception as e:
             logger.warning(f"Fold {fold} OOS failed: {e}")
@@ -292,7 +302,7 @@ def walk_forward_validate(
         results.append(fold_result)
         logger.info(
             f"  Fold {fold}: IS Sharpe={is_metrics['sharpe_ratio']:.3f}, "
-            f"OOS Sharpe={oos_metrics['sharpe_ratio']:.3f}"
+            f"OOS Sharpe={oos_metrics['sharpe_ratio']:.3f}",
         )
 
     return results
@@ -310,8 +320,7 @@ def perturbation_test(
     freq: str = "1h",
     perturbation_pct: float = GATE3_PERTURB_PCT,
 ) -> list[dict]:
-    """
-    Test robustness by perturbing each parameter ±20%.
+    """Test robustness by perturbing each parameter ±20%.
 
     A robust strategy maintains positive Sharpe across perturbations.
     """
@@ -353,7 +362,7 @@ def perturbation_test(
                     "total_return": metrics["total_return"],
                     "max_drawdown": metrics["max_drawdown"],
                     "num_trades": metrics["num_trades"],
-                }
+                },
             )
 
     return results
@@ -426,13 +435,13 @@ def run_validation(
                     "win_rate": row["win_rate"],
                     "profit_factor": row["profit_factor"],
                     "pvalue": row["pvalue"],
-                }
+                },
             )
 
         report["gate2"] = {
             "passed": True,
             "total_combos": len(sweep_df),
-            "passing_combos": int(len(passing)),
+            "passing_combos": len(passing),
             "best_params": best_params,
             "best_sharpe": float(best_row["sharpe_ratio"]),
             "best_return": float(best_row["total_return"]),
@@ -442,7 +451,7 @@ def run_validation(
         }
         logger.info(
             f"Gate 2 PASSED: {len(passing)} combos pass, "
-            f"best Sharpe={best_row['sharpe_ratio']:.3f}"
+            f"best Sharpe={best_row['sharpe_ratio']:.3f}",
         )
 
     # ── Gate 3 ──
@@ -453,7 +462,12 @@ def run_validation(
         # Gate 3a: Walk-Forward
         logger.info("\n-- Gate 3a: Walk-Forward OOS Validation --")
         wf_results = walk_forward_validate(
-            df, signal_fn, best_params, fees, sl_stop, freq
+            df,
+            signal_fn,
+            best_params,
+            fees,
+            sl_stop,
+            freq,
         )
 
         if wf_results:
@@ -473,7 +487,7 @@ def run_validation(
             }
             logger.info(
                 f"Walk-forward: IS={avg_is:.3f}, OOS={avg_oos:.3f}, "
-                f"ratio={ratio:.2f} {'PASS' if gate3_wf_passed else 'FAIL'}"
+                f"ratio={ratio:.2f} {'PASS' if gate3_wf_passed else 'FAIL'}",
             )
         else:
             report["gate3_walkforward"] = {
@@ -484,29 +498,30 @@ def run_validation(
         # Gate 3b: Perturbation
         logger.info("\n-- Gate 3b: Parameter Perturbation (+/-20%) --")
         perturb_results = perturbation_test(
-            df, signal_fn, best_params, fees, sl_stop, freq
+            df,
+            signal_fn,
+            best_params,
+            fees,
+            sl_stop,
+            freq,
         )
 
         sharpes = [r["sharpe_ratio"] for r in perturb_results]
         valid_sharpes = [s for s in sharpes if not np.isnan(s)]
         min_sharpe = min(valid_sharpes) if valid_sharpes else float("nan")
 
-        gate3_perturb_passed = (
-            all(s > 0 for s in valid_sharpes) if valid_sharpes else False
-        )
+        gate3_perturb_passed = all(s > 0 for s in valid_sharpes) if valid_sharpes else False
 
         report["gate3_perturbation"] = {
             "passed": gate3_perturb_passed,
-            "min_sharpe": round(min_sharpe, 4)
-            if not np.isnan(min_sharpe)
-            else None,
+            "min_sharpe": round(min_sharpe, 4) if not np.isnan(min_sharpe) else None,
             "all_positive": gate3_perturb_passed,
             "results": perturb_results,
         }
         logger.info(
             f"Perturbation: min Sharpe={min_sharpe:.3f}, "
             f"all positive={'YES' if gate3_perturb_passed else 'NO'} "
-            f"{'PASS' if gate3_perturb_passed else 'FAIL'}"
+            f"{'PASS' if gate3_perturb_passed else 'FAIL'}",
         )
     else:
         report["gate3_walkforward"] = {"passed": False, "skipped": "Gate 2 failed"}
@@ -526,10 +541,10 @@ def run_validation(
     logger.info(f"VALIDATION {status}: {strategy_name}")
     logger.info(f"  Gate 2 (Parameter Sweep): {'PASS' if gate2_passed else 'FAIL'}")
     logger.info(
-        f"  Gate 3a (Walk-Forward):   {'PASS' if gate3_wf_passed else 'FAIL'}"
+        f"  Gate 3a (Walk-Forward):   {'PASS' if gate3_wf_passed else 'FAIL'}",
     )
     logger.info(
-        f"  Gate 3b (Perturbation):   {'PASS' if gate3_perturb_passed else 'FAIL'}"
+        f"  Gate 3b (Perturbation):   {'PASS' if gate3_perturb_passed else 'FAIL'}",
     )
     logger.info(f"{'=' * 60}")
 

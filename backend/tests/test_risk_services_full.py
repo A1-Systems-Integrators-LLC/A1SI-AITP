@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
+
 django.setup()
 
 
@@ -95,7 +96,7 @@ class TestCheckTrade:
         from risk.models import TradeCheckLog
         from risk.services.risk import RiskManagementService
         approved, reason = RiskManagementService.check_trade(
-            9020, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0
+            9020, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0,
         )
         assert approved is True
         log = TradeCheckLog.objects.filter(portfolio_id=9020).first()
@@ -111,7 +112,7 @@ class TestCheckTrade:
         state.save()
         with patch.object(RiskManagementService, "send_notification"):
             approved, reason = RiskManagementService.check_trade(
-                9021, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0
+                9021, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0,
             )
         assert approved is False
         assert "halted" in reason.lower() or "halt" in reason.lower()
@@ -125,17 +126,17 @@ class TestCheckTrade:
         state.halt_reason = "test"
         state.save()
         with patch.object(
-            RiskManagementService, "send_notification", side_effect=Exception("telegram down")
+            RiskManagementService, "send_notification", side_effect=Exception("telegram down"),
         ):
             approved, reason = RiskManagementService.check_trade(
-                9022, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0
+                9022, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0,
             )
         assert approved is False  # Still returns result despite notification failure
 
     def test_no_stop_loss(self):
         from risk.services.risk import RiskManagementService
         approved, reason = RiskManagementService.check_trade(
-            9023, "BTC/USDT", "buy", 0.001, 50000.0
+            9023, "BTC/USDT", "buy", 0.001, 50000.0,
         )
         assert isinstance(approved, bool)
 
@@ -157,7 +158,7 @@ class TestCalculatePositionSize:
     def test_custom_risk_per_trade(self):
         from risk.services.risk import RiskManagementService
         result = RiskManagementService.calculate_position_size(
-            9031, 50000.0, 49000.0, risk_per_trade=0.005
+            9031, 50000.0, 49000.0, risk_per_trade=0.005,
         )
         assert result["risk_amount"] == round(10000.0 * 0.005, 2)
 
@@ -183,7 +184,7 @@ class TestResetDaily:
     def test_notification_failure_isolated(self):
         from risk.services.risk import RiskManagementService
         with patch.object(
-            RiskManagementService, "send_notification", side_effect=Exception("fail")
+            RiskManagementService, "send_notification", side_effect=Exception("fail"),
         ):
             # Should not raise
             result = RiskManagementService.reset_daily(9041)
@@ -290,7 +291,7 @@ class TestPeriodicRiskCheckBranches:
     def test_metrics_failure_does_not_break_check(self):
         from risk.services.risk import RiskManagementService
         with patch.object(
-            RiskManagementService, "record_metrics", side_effect=Exception("db error")
+            RiskManagementService, "record_metrics", side_effect=Exception("db error"),
         ):
             result = RiskManagementService.periodic_risk_check(9065)
         assert result["status"] == "ok"
@@ -306,7 +307,7 @@ class TestPeriodicRiskCheckBranches:
         limits.max_portfolio_drawdown = 0.15
         limits.save()
         with patch.object(
-            RiskManagementService, "send_notification", side_effect=Exception("telegram fail")
+            RiskManagementService, "send_notification", side_effect=Exception("telegram fail"),
         ):
             result = RiskManagementService.periodic_risk_check(9066)
         assert result["status"] == "auto_halted"
@@ -355,7 +356,7 @@ class TestSendNotification:
                     return_value=(False, "connection refused")):
             RiskManagementService.send_notification(9072, "test", "warning", "msg")
         telegram_alert = AlertLog.objects.filter(
-            portfolio_id=9072, channel="telegram"
+            portfolio_id=9072, channel="telegram",
         ).first()
         assert telegram_alert is not None
         assert telegram_alert.delivered is False
@@ -472,7 +473,7 @@ class TestGetMetricHistory:
         )
         # Backdate it
         RiskMetricHistory.objects.filter(pk=m.pk).update(
-            recorded_at=datetime.now(timezone.utc) - timedelta(hours=200)
+            recorded_at=datetime.now(timezone.utc) - timedelta(hours=200),
         )
         result = RiskManagementService.get_metric_history(9101, hours=1)
         assert len(result) == 0
@@ -491,7 +492,7 @@ class TestHaltResume:
         result = RiskManagementService.halt_trading(9110, "test reason")
         assert result["is_halted"] is True
         assert AlertLog.objects.filter(
-            portfolio_id=9110, event_type="kill_switch_halt"
+            portfolio_id=9110, event_type="kill_switch_halt",
         ).exists()
 
     def test_resume_creates_alert_log(self):
@@ -501,7 +502,7 @@ class TestHaltResume:
         result = RiskManagementService.resume_trading(9111)
         assert result["is_halted"] is False
         assert AlertLog.objects.filter(
-            portfolio_id=9111, event_type="kill_switch_resume"
+            portfolio_id=9111, event_type="kill_switch_resume",
         ).exists()
 
 
@@ -524,7 +525,7 @@ class TestHaltWithCancellationAsync:
             mock_cl.return_value = mock_layer
             with patch.object(RiskManagementService, "send_notification"):
                 result = await RiskManagementService.halt_trading_with_cancellation(
-                    9120, "emergency"
+                    9120, "emergency",
                 )
         assert result["cancelled_orders"] == 3
         assert result["is_halted"] is True
@@ -535,13 +536,12 @@ class TestHaltWithCancellationAsync:
         with patch(
             "trading.services.live_trading.LiveTradingService.cancel_all_open_orders",
             new_callable=AsyncMock, return_value=0,
-        ), patch("risk.services.risk.get_channel_layer", return_value=None):
-            with patch.object(
-                RiskManagementService, "send_notification", side_effect=Exception("fail")
-            ):
-                result = await RiskManagementService.halt_trading_with_cancellation(
-                    9121, "reason"
-                )
+        ), patch("risk.services.risk.get_channel_layer", return_value=None), patch.object(
+            RiskManagementService, "send_notification", side_effect=Exception("fail"),
+        ):
+            result = await RiskManagementService.halt_trading_with_cancellation(
+                9121, "reason",
+            )
         assert result["is_halted"] is True
 
 
@@ -555,6 +555,7 @@ class TestHaltWithCancellationAsync:
 class TestResumeWithBroadcastAsync:
     async def test_resumes_and_broadcasts(self):
         from asgiref.sync import sync_to_async
+
         from risk.services.risk import RiskManagementService
         # Halt first
         await sync_to_async(RiskManagementService.halt_trading)(9130, "halt first")
@@ -569,13 +570,13 @@ class TestResumeWithBroadcastAsync:
 
     async def test_notification_failure_isolated(self):
         from asgiref.sync import sync_to_async
+
         from risk.services.risk import RiskManagementService
         await sync_to_async(RiskManagementService.halt_trading)(9131, "halt")
-        with patch("risk.services.risk.get_channel_layer", return_value=None):
-            with patch.object(
-                RiskManagementService, "send_notification", side_effect=Exception("fail")
-            ):
-                result = await RiskManagementService.resume_trading_with_broadcast(9131)
+        with patch("risk.services.risk.get_channel_layer", return_value=None), patch.object(
+            RiskManagementService, "send_notification", side_effect=Exception("fail"),
+        ):
+            result = await RiskManagementService.resume_trading_with_broadcast(9131)
         assert result["is_halted"] is False
 
 
@@ -593,7 +594,7 @@ class TestUpdateLimitsEdgeCases:
         current_dd = limits.max_portfolio_drawdown
         # Update with same value
         RiskManagementService.update_limits(
-            9140, {"max_portfolio_drawdown": current_dd}, changed_by="test"
+            9140, {"max_portfolio_drawdown": current_dd}, changed_by="test",
         )
         changes = RiskLimitChange.objects.filter(portfolio_id=9140)
         assert changes.count() == 0
@@ -602,7 +603,7 @@ class TestUpdateLimitsEdgeCases:
         from risk.models import RiskLimitChange
         from risk.services.risk import RiskManagementService
         RiskManagementService.update_limits(
-            9141, {"max_daily_loss": None}, changed_by="test"
+            9141, {"max_daily_loss": None}, changed_by="test",
         )
         changes = RiskLimitChange.objects.filter(portfolio_id=9141)
         assert changes.count() == 0
@@ -611,7 +612,7 @@ class TestUpdateLimitsEdgeCases:
         from risk.services.risk import RiskManagementService
         # Should not raise
         limits = RiskManagementService.update_limits(
-            9142, {"nonexistent_field": 999}
+            9142, {"nonexistent_field": 999},
         )
         assert limits is not None
 

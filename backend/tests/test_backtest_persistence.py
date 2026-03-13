@@ -1,5 +1,4 @@
-"""
-Tests for BacktestResult persistence (Sprint E wiring)
+"""Tests for BacktestResult persistence (Sprint E wiring)
 =======================================================
 Verifies that the job_runner correctly creates BacktestResult records
 when a backtest job completes successfully.
@@ -9,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest  # noqa: F401 (used by django_db marker)
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -40,12 +39,12 @@ class TestBacktestResultPersistence:
         job.completed_at = datetime.now(timezone.utc)
         job.save()
 
-        _BACKTEST_JOB_TYPES = {
+        backtest_job_types = {
             "backtest",
             "scheduled_nautilus_backtest",
             "scheduled_hft_backtest",
         }
-        if job.job_type in _BACKTEST_JOB_TYPES and isinstance(result, dict):
+        if job.job_type in backtest_job_types and isinstance(result, dict):
             if result.get("results") and result.get("status") == "completed":
                 # Multi-strategy result (nautilus/hft executors)
                 for sub in result["results"]:
@@ -57,7 +56,9 @@ class TestBacktestResultPersistence:
                             asset_class=result.get("asset_class", "crypto"),
                             strategy_name=sub.get("strategy", ""),
                             symbol=sub.get("symbol", ""),
-                            timeframe=sub_result.get("timeframe", (job.params or {}).get("timeframe", "")),
+                            timeframe=sub_result.get(
+                                "timeframe", (job.params or {}).get("timeframe", "")
+                            ),
                             metrics=sub_result.get("metrics"),
                             trades=sub_result.get("trades"),
                             config=job.params,

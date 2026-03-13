@@ -5,9 +5,8 @@ sentiment/signal.py, market_hours/sessions.py, ml/trainer.py, ml/features.py, ml
 """
 
 import sys
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -18,8 +17,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.indicators.technical import (
-    adx,
     add_all_indicators,
+    adx,
     atr_indicator,
     bollinger_bands,
     cci,
@@ -37,9 +36,9 @@ from common.indicators.technical import (
     williams_r,
     wma,
 )
+from common.market_hours.sessions import MarketHoursService
 from common.regime.regime_detector import (
     Regime,
-    RegimeConfig,
     RegimeDetector,
     RegimeState,
     config_for_asset_class,
@@ -50,15 +49,12 @@ from common.regime.strategy_router import (
     StrategyWeight,
 )
 from common.sentiment.signal import (
+    BULLISH_THRESHOLD,
     SentimentSignal,
     _compute_decay_weight,
     _compute_term_multiplier,
     compute_signal,
-    BULLISH_THRESHOLD,
-    BEARISH_THRESHOLD,
 )
-from common.market_hours.sessions import MarketHoursService
-
 
 # ── Helpers ────────────────────────────────────
 
@@ -444,7 +440,7 @@ class TestSentimentSignal:
     def test_compute_signal_bullish(self):
         articles = [
             {"sentiment_score": 0.8, "title": "Bitcoin Surges",
-             "summary": "", "published_at": datetime.now(tz=timezone.utc)}
+             "summary": "", "published_at": datetime.now(tz=timezone.utc)},
         ]
         sig = compute_signal(articles, "crypto")
         assert sig.signal > 0
@@ -452,7 +448,7 @@ class TestSentimentSignal:
     def test_compute_signal_bearish(self):
         articles = [
             {"sentiment_score": -0.8, "title": "Crash",
-             "summary": "", "published_at": datetime.now(tz=timezone.utc)}
+             "summary": "", "published_at": datetime.now(tz=timezone.utc)},
         ]
         sig = compute_signal(articles, "crypto")
         assert sig.signal < 0
@@ -479,7 +475,7 @@ class TestSentimentSignal:
         # At exact threshold
         sig = SentimentSignal(
             signal=BULLISH_THRESHOLD, conviction=0.5, signal_label="bullish",
-            position_modifier=1.0, article_count=5, avg_age_hours=1.0, asset_class="crypto"
+            position_modifier=1.0, article_count=5, avg_age_hours=1.0, asset_class="crypto",
         )
         assert sig.signal_label == "bullish"
 
@@ -581,53 +577,53 @@ class TestMLTrainer:
         """Generate training data with enough rows."""
         rng = np.random.RandomState(42)
         n = 200
-        X = pd.DataFrame({
+        x_data = pd.DataFrame({
             f"feat_{i}": rng.randn(n) for i in range(5)
         })
         y = pd.Series((rng.randn(n) > 0).astype(int))
-        return X, y
+        return x_data, y
 
     def test_time_series_split(self, ml_data):
         from common.ml.trainer import time_series_split
-        X, y = ml_data
-        X_train, X_test, y_train, y_test = time_series_split(X, y, test_ratio=0.2)
-        assert len(X_train) == 160
-        assert len(X_test) == 40
+        x_data, y = ml_data
+        x_train, x_test, y_train, y_test = time_series_split(x_data, y, test_ratio=0.2)
+        assert len(x_train) == 160
+        assert len(x_test) == 40
         # Verify chronological order preserved
-        assert X_train.index[-1] < X_test.index[0]
+        assert x_train.index[-1] < x_test.index[0]
 
     def test_time_series_split_ratio_zero(self, ml_data):
         from common.ml.trainer import time_series_split
-        X, y = ml_data
-        X_train, X_test, y_train, y_test = time_series_split(X, y, test_ratio=0.0)
-        assert len(X_train) == 200
-        assert len(X_test) == 0
+        x_data, y = ml_data
+        x_train, x_test, y_train, y_test = time_series_split(x_data, y, test_ratio=0.0)
+        assert len(x_train) == 200
+        assert len(x_test) == 0
 
     def test_train_model(self, ml_data):
-        from common.ml.trainer import train_model, HAS_LIGHTGBM
+        from common.ml.trainer import HAS_LIGHTGBM, train_model
         if not HAS_LIGHTGBM:
             pytest.skip("LightGBM not installed")
-        X, y = ml_data
-        result = train_model(X, y, list(X.columns))
+        x_data, y = ml_data
+        result = train_model(x_data, y, list(x_data.columns))
         assert "model" in result
         assert "metrics" in result
         assert 0 <= result["metrics"]["accuracy"] <= 1
         assert result["metrics"]["n_features"] == 5
 
     def test_predict(self, ml_data):
-        from common.ml.trainer import train_model, predict, HAS_LIGHTGBM
+        from common.ml.trainer import HAS_LIGHTGBM, predict, train_model
         if not HAS_LIGHTGBM:
             pytest.skip("LightGBM not installed")
-        X, y = ml_data
-        result = train_model(X, y, list(X.columns))
-        pred = predict(result["model"], X.iloc[:10])
+        x_data, y = ml_data
+        result = train_model(x_data, y, list(x_data.columns))
+        pred = predict(result["model"], x_data.iloc[:10])
         assert "probabilities" in pred
         assert "predictions" in pred
         assert len(pred["predictions"]) == 10
         assert all(p in (0, 1) for p in pred["predictions"])
 
     def test_safe_helpers(self):
-        from common.ml.trainer import _safe_precision, _safe_recall, _safe_f1
+        from common.ml.trainer import _safe_f1, _safe_precision, _safe_recall
         assert _safe_precision(np.array([1, 0]), np.array([1, 1])) == 0.5
         assert _safe_recall(np.array([1, 0]), np.array([1, 0])) == 1.0
         assert _safe_f1(0.5, 0.5) == 0.5
@@ -672,18 +668,18 @@ class TestMLFeatures:
     def test_build_feature_matrix(self):
         from common.ml.features import build_feature_matrix
         df = _make_ohlcv(200)
-        X, y, features = build_feature_matrix(df)
-        assert isinstance(X, pd.DataFrame)
+        x_mat, y, features = build_feature_matrix(df)
+        assert isinstance(x_mat, pd.DataFrame)
         assert isinstance(y, pd.Series)
         assert len(features) > 0
-        assert not X.isna().any().any()  # No NaNs after drop
+        assert not x_mat.isna().any().any()  # No NaNs after drop
 
     def test_build_feature_matrix_short_data(self):
         from common.ml.features import build_feature_matrix
         df = _make_ohlcv(10)
-        X, y, features = build_feature_matrix(df)
+        x_mat, y, features = build_feature_matrix(df)
         # Very short data may drop all rows
-        assert len(X) >= 0
+        assert len(x_mat) >= 0
 
     def test_compute_target_horizon_5(self):
         from common.ml.features import compute_target
@@ -721,57 +717,57 @@ class TestMLRegistry:
             reg.load_model("nonexistent")
 
     def test_save_and_list(self, tmp_path):
-        from common.ml.registry import ModelRegistry, HAS_LIGHTGBM
+        from common.ml.registry import HAS_LIGHTGBM, ModelRegistry
         if not HAS_LIGHTGBM:
             pytest.skip("LightGBM not installed")
         from common.ml.trainer import train_model
         rng = np.random.RandomState(42)
-        X = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
+        x_data = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
         y = pd.Series((rng.randn(200) > 0).astype(int))
-        result = train_model(X, y, list(X.columns))
+        result = train_model(x_data, y, list(x_data.columns))
 
         reg = ModelRegistry(models_dir=tmp_path / "models")
         model_id = reg.save_model(
             result["model"], result["metrics"], result["metadata"],
-            result["feature_importance"], symbol="BTC/USDT", timeframe="1h"
+            result["feature_importance"], symbol="BTC/USDT", timeframe="1h",
         )
         models = reg.list_models()
         assert len(models) == 1
         assert models[0]["model_id"] == model_id
 
     def test_save_load_roundtrip(self, tmp_path):
-        from common.ml.registry import ModelRegistry, HAS_LIGHTGBM
+        from common.ml.registry import HAS_LIGHTGBM, ModelRegistry
         if not HAS_LIGHTGBM:
             pytest.skip("LightGBM not installed")
         from common.ml.trainer import train_model
         rng = np.random.RandomState(42)
-        X = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
+        x_data = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
         y = pd.Series((rng.randn(200) > 0).astype(int))
-        result = train_model(X, y, list(X.columns))
+        result = train_model(x_data, y, list(x_data.columns))
 
         reg = ModelRegistry(models_dir=tmp_path / "models")
         model_id = reg.save_model(
             result["model"], result["metrics"], result["metadata"],
-            result["feature_importance"], symbol="BTC/USDT"
+            result["feature_importance"], symbol="BTC/USDT",
         )
         loaded_model, manifest = reg.load_model(model_id)
         assert loaded_model is not None
         assert manifest["model_id"] == model_id
 
     def test_delete_model(self, tmp_path):
-        from common.ml.registry import ModelRegistry, HAS_LIGHTGBM
+        from common.ml.registry import HAS_LIGHTGBM, ModelRegistry
         if not HAS_LIGHTGBM:
             pytest.skip("LightGBM not installed")
         from common.ml.trainer import train_model
         rng = np.random.RandomState(42)
-        X = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
+        x_data = pd.DataFrame({f"f{i}": rng.randn(200) for i in range(3)})
         y = pd.Series((rng.randn(200) > 0).astype(int))
-        result = train_model(X, y, list(X.columns))
+        result = train_model(x_data, y, list(x_data.columns))
 
         reg = ModelRegistry(models_dir=tmp_path / "models")
         model_id = reg.save_model(
             result["model"], result["metrics"], result["metadata"],
-            result["feature_importance"]
+            result["feature_importance"],
         )
         assert reg.delete_model(model_id) is True
         assert reg.list_models() == []

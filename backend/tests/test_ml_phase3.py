@@ -1,5 +1,4 @@
-"""
-Tests for Phase 3: ML Prediction Service & Feedback Loop.
+"""Tests for Phase 3: ML Prediction Service & Feedback Loop.
 Covers: prediction.py, calibration.py, ensemble.py, feedback.py,
         enhanced features.py, enhanced trainer.py.
 """
@@ -9,7 +8,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -18,19 +17,18 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.ml.calibration import PredictionCalibrator  # noqa: E402
-from common.ml.ensemble import EnsembleResult, ModelEnsemble  # noqa: E402
-from common.ml.features import (  # noqa: E402
+from common.ml.calibration import PredictionCalibrator
+from common.ml.ensemble import EnsembleResult, ModelEnsemble
+from common.ml.features import (
     add_regime_features,
     add_sentiment_features,
     add_temporal_features,
     add_volatility_regime_features,
     build_feature_matrix,
 )
-from common.ml.feedback import FeedbackTracker  # noqa: E402
-from common.ml.prediction import PredictionResult, PredictionService  # noqa: E402
-from common.ml.registry import ModelRegistry  # noqa: E402
-
+from common.ml.feedback import FeedbackTracker
+from common.ml.prediction import PredictionResult, PredictionService
+from common.ml.registry import ModelRegistry
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -362,7 +360,9 @@ class TestPredictionService:
         assert selected == btc_id
 
     def test_select_model_asset_class_fallback(self, ohlcv_df, tmp_models_dir):
-        model_id, registry, _ = _train_and_save(ohlcv_df, tmp_models_dir, symbol="", label="crypto general")
+        model_id, registry, _ = _train_and_save(
+            ohlcv_df, tmp_models_dir, symbol="", label="crypto general"
+        )
         svc = PredictionService(registry=registry)
         selected = svc._select_model("DOGE/USDT", "crypto")
         assert selected == model_id
@@ -379,14 +379,20 @@ class TestPredictionService:
         # because load_model checks model_dir exists but model.txt is missing)
         model_dir = tmp_models_dir / "corrupt_model"
         model_dir.mkdir()
-        (model_dir / "manifest.json").write_text(json.dumps({
-            "model_id": "corrupt_model",
-            "symbol": "BTC/USDT",
-            "metrics": {"accuracy": 0.8},
-        }))
+        (model_dir / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "model_id": "corrupt_model",
+                    "symbol": "BTC/USDT",
+                    "metrics": {"accuracy": 0.8},
+                }
+            )
+        )
         svc = PredictionService(registry=registry)
         # Patch load_model to raise FileNotFoundError (simulates missing model file)
-        with patch.object(registry, "load_model", side_effect=FileNotFoundError("model.txt not found")):
+        with patch.object(
+            registry, "load_model", side_effect=FileNotFoundError("model.txt not found")
+        ):
             result = svc.predict_single("BTC/USDT", pd.DataFrame({"a": [1]}))
         assert result is None
 
@@ -571,8 +577,12 @@ class TestFeedbackTracker:
     def test_backfill_outcomes(self, tmp_feedback_dir):
         tracker = FeedbackTracker(feedback_dir=tmp_feedback_dir)
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        tracker.record_prediction("m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00")
-        tracker.record_prediction("m1", "ETH/USDT", "crypto", 0.3, "down", timestamp=f"{today}T12:00:00+00:00")
+        tracker.record_prediction(
+            "m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00"
+        )
+        tracker.record_prediction(
+            "m1", "ETH/USDT", "crypto", 0.3, "down", timestamp=f"{today}T12:00:00+00:00"
+        )
 
         updated = tracker.backfill_outcomes(
             {"BTC/USDT": 0.05, "ETH/USDT": -0.02},
@@ -594,7 +604,9 @@ class TestFeedbackTracker:
     def test_backfill_already_filled(self, tmp_feedback_dir):
         tracker = FeedbackTracker(feedback_dir=tmp_feedback_dir)
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        tracker.record_prediction("m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00")
+        tracker.record_prediction(
+            "m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00"
+        )
         tracker.backfill_outcomes({"BTC/USDT": 0.05}, date=today)
         # Second backfill should not update again
         updated = tracker.backfill_outcomes({"BTC/USDT": -0.05}, date=today)
@@ -603,7 +615,9 @@ class TestFeedbackTracker:
     def test_backfill_missing_symbol(self, tmp_feedback_dir):
         tracker = FeedbackTracker(feedback_dir=tmp_feedback_dir)
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        tracker.record_prediction("m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00")
+        tracker.record_prediction(
+            "m1", "BTC/USDT", "crypto", 0.75, "up", timestamp=f"{today}T12:00:00+00:00"
+        )
         updated = tracker.backfill_outcomes({"ETH/USDT": 0.05}, date=today)
         assert updated == 0
 
@@ -614,8 +628,13 @@ class TestFeedbackTracker:
         for i in range(10):
             direction = "up" if i < 7 else "down"
             tracker.record_prediction(
-                "m1", "BTC/USDT", "crypto", 0.7, direction,
-                regime="TRENDING", timestamp=f"{today}T{i:02d}:00:00+00:00",
+                "m1",
+                "BTC/USDT",
+                "crypto",
+                0.7,
+                direction,
+                regime="TRENDING",
+                timestamp=f"{today}T{i:02d}:00:00+00:00",
             )
         actual_returns = {"BTC/USDT": 0.01}
         tracker.backfill_outcomes(actual_returns, date=today)
@@ -642,7 +661,11 @@ class TestFeedbackTracker:
         # All wrong predictions
         for i in range(60):
             tracker.record_prediction(
-                "m1", "BTC/USDT", "crypto", 0.7, "up",
+                "m1",
+                "BTC/USDT",
+                "crypto",
+                0.7,
+                "up",
                 timestamp=f"{today}T00:{i:02d}:00+00:00",
             )
         tracker.backfill_outcomes({"BTC/USDT": -0.01}, date=today)
@@ -654,9 +677,15 @@ class TestFeedbackTracker:
         old_date = "2020-01-01"
         filepath = tmp_feedback_dir / f"{old_date}.jsonl"
         record = {
-            "model_id": "m1", "symbol": "BTC/USDT", "asset_class": "crypto",
-            "probability": 0.7, "direction": "up", "regime": "", "timestamp": f"{old_date}T00:00:00+00:00",
-            "actual_direction": "up", "correct": True,
+            "model_id": "m1",
+            "symbol": "BTC/USDT",
+            "asset_class": "crypto",
+            "probability": 0.7,
+            "direction": "up",
+            "regime": "",
+            "timestamp": f"{old_date}T00:00:00+00:00",
+            "actual_direction": "up",
+            "correct": True,
         }
         filepath.write_text(json.dumps(record) + "\n")
         assert tracker.should_retrain("m1", stale_days=7) is True
@@ -667,13 +696,23 @@ class TestFeedbackTracker:
         # Good in trending, bad in ranging
         for i in range(30):
             tracker.record_prediction(
-                "m1", "BTC/USDT", "crypto", 0.7, "up",
-                regime="TRENDING", timestamp=f"{today}T00:{i:02d}:00+00:00",
+                "m1",
+                "BTC/USDT",
+                "crypto",
+                0.7,
+                "up",
+                regime="TRENDING",
+                timestamp=f"{today}T00:{i:02d}:00+00:00",
             )
         for i in range(30):
             tracker.record_prediction(
-                "m1", "BTC/USDT", "crypto", 0.7, "down",
-                regime="RANGING", timestamp=f"{today}T01:{i:02d}:00+00:00",
+                "m1",
+                "BTC/USDT",
+                "crypto",
+                0.7,
+                "down",
+                regime="RANGING",
+                timestamp=f"{today}T01:{i:02d}:00+00:00",
             )
         tracker.backfill_outcomes({"BTC/USDT": 0.01}, date=today)
         # TRENDING: all correct (up=up), RANGING: all wrong (down≠up)
@@ -684,8 +723,13 @@ class TestFeedbackTracker:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         for i in range(60):
             tracker.record_prediction(
-                "m1", "BTC/USDT", "crypto", 0.7, "up",
-                regime="TRENDING", timestamp=f"{today}T00:{i:02d}:00+00:00",
+                "m1",
+                "BTC/USDT",
+                "crypto",
+                0.7,
+                "up",
+                regime="TRENDING",
+                timestamp=f"{today}T00:{i:02d}:00+00:00",
             )
         tracker.backfill_outcomes({"BTC/USDT": 0.01}, date=today)
         assert tracker.should_retrain("m1", min_predictions=50) is False
@@ -693,8 +737,12 @@ class TestFeedbackTracker:
     def test_get_all_model_stats(self, tmp_feedback_dir):
         tracker = FeedbackTracker(feedback_dir=tmp_feedback_dir)
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        tracker.record_prediction("m1", "BTC/USDT", "crypto", 0.7, "up", timestamp=f"{today}T00:00:00+00:00")
-        tracker.record_prediction("m2", "ETH/USDT", "crypto", 0.3, "down", timestamp=f"{today}T00:01:00+00:00")
+        tracker.record_prediction(
+            "m1", "BTC/USDT", "crypto", 0.7, "up", timestamp=f"{today}T00:00:00+00:00"
+        )
+        tracker.record_prediction(
+            "m2", "ETH/USDT", "crypto", 0.3, "down", timestamp=f"{today}T00:01:00+00:00"
+        )
         tracker.backfill_outcomes({"BTC/USDT": 0.01, "ETH/USDT": -0.01}, date=today)
         stats = tracker.get_all_model_stats(lookback_days=1)
         assert len(stats) == 2
@@ -710,7 +758,11 @@ class TestFeedbackTracker:
     def test_record_with_custom_timestamp(self, tmp_feedback_dir):
         tracker = FeedbackTracker(feedback_dir=tmp_feedback_dir)
         record = tracker.record_prediction(
-            "m1", "BTC/USDT", "crypto", 0.7, "up",
+            "m1",
+            "BTC/USDT",
+            "crypto",
+            0.7,
+            "up",
             timestamp="2025-06-15T12:00:00+00:00",
         )
         assert record["timestamp"] == "2025-06-15T12:00:00+00:00"
@@ -725,7 +777,9 @@ class TestFeedbackTracker:
 
 class TestRegimeFeatures:
     def test_adds_regime_columns(self, ohlcv_df):
-        feat = add_regime_features(ohlcv_df, regime_ordinal=3, regime_confidence=0.8, regime_adx=25.0)
+        feat = add_regime_features(
+            ohlcv_df, regime_ordinal=3, regime_confidence=0.8, regime_adx=25.0
+        )
         assert "regime_ordinal" in feat.columns
         assert "regime_confidence" in feat.columns
         assert "regime_adx" in feat.columns
@@ -834,7 +888,9 @@ class TestBuildFeatureMatrixEnhanced:
         assert "dow_cos" in names
 
     def test_with_volatility_regime_features(self, ohlcv_df):
-        x, y, names = build_feature_matrix(ohlcv_df, config=self._no_reduce, include_volatility_regime=True)
+        x, y, names = build_feature_matrix(
+            ohlcv_df, config=self._no_reduce, include_volatility_regime=True
+        )
         assert "realized_vol_20" in names
         assert "vol_of_vol_20" in names
 
@@ -892,12 +948,9 @@ class TestTrainerCalibration:
 class TestMLPackageImports:
     def test_imports(self):
         from common.ml import (
-            EnsembleResult,
             FeedbackTracker,
             ModelEnsemble,
-            ModelRegistry,
             PredictionCalibrator,
-            PredictionResult,
             PredictionService,
         )
 

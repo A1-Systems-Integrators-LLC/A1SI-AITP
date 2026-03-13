@@ -1,9 +1,9 @@
 """Tests for incremental data download functionality."""
 
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -13,12 +13,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.data_pipeline.pipeline import (
-    get_last_timestamp,
+    download_watchlist,
     fetch_ohlcv,
     fetch_ohlcv_multi,
-    download_watchlist,
+    get_last_timestamp,
     save_ohlcv,
-    PROCESSED_DIR,
 )
 
 

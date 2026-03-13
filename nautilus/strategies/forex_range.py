@@ -1,5 +1,4 @@
-"""
-ForexRange — Forex Range Trading Strategy
+"""ForexRange — Forex Range Trading Strategy
 ===========================================
 BB band touch + RSI divergence, ADX<20 (ranging).
 Exit: midline. Stop: -1.5%
@@ -35,10 +34,7 @@ class ForexRange(NautilusStrategyBase):
             return False
 
         # RSI oversold (divergence zone)
-        if ind.get("rsi_14", 50) >= self.buy_rsi_threshold:
-            return False
-
-        return True
+        return bool(not ind.get("rsi_14", 50) >= self.buy_rsi_threshold)
 
     def should_exit(self, ind: pd.Series) -> bool:
         # Price reaches midline (BB middle)
@@ -46,7 +42,4 @@ class ForexRange(NautilusStrategyBase):
             return True
 
         # RSI overbought
-        if ind.get("rsi_14", 50) > self.sell_rsi_threshold:
-            return True
-
-        return False
+        return bool(ind.get("rsi_14", 50) > self.sell_rsi_threshold)

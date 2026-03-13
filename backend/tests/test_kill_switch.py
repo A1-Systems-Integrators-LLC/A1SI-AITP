@@ -1,5 +1,4 @@
-"""
-Tests for kill switch (halt/resume) endpoints and service-level cancellation.
+"""Tests for kill switch (halt/resume) endpoints and service-level cancellation.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -60,7 +59,7 @@ class TestHaltWithCancellation:
             ),
         ):
             result = await RiskManagementService.halt_trading_with_cancellation(
-                portfolio_id=1, reason="test halt"
+                portfolio_id=1, reason="test halt",
             )
 
         assert result["is_halted"] is True
@@ -80,7 +79,7 @@ class TestHaltWithCancellation:
             ),
         ):
             await RiskManagementService.halt_trading_with_cancellation(
-                portfolio_id=1, reason="ws test"
+                portfolio_id=1, reason="ws test",
             )
 
         # Verify broadcast was called with halt_status
@@ -94,7 +93,7 @@ class TestHaltWithCancellation:
         from risk.models import RiskState
 
         await sync_to_async(RiskState.objects.create)(
-            portfolio_id=1, is_halted=True, halt_reason="test"
+            portfolio_id=1, is_halted=True, halt_reason="test",
         )
 
         mock_channel_layer = MagicMock(group_send=AsyncMock())
@@ -115,7 +114,7 @@ class TestOrderRejectionDuringHalt:
         from risk.models import RiskState
 
         await sync_to_async(RiskState.objects.create)(
-            portfolio_id=1, is_halted=True, halt_reason="emergency"
+            portfolio_id=1, is_halted=True, halt_reason="emergency",
         )
 
         from trading.services.live_trading import LiveTradingService

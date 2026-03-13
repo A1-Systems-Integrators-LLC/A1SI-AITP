@@ -1,5 +1,4 @@
-"""
-ML Model Registry
+"""ML Model Registry
 =================
 Filesystem-based model storage with versioning and metadata tracking.
 Models stored in: models/<model_id>/{model.txt, manifest.json}
@@ -61,6 +60,7 @@ class ModelRegistry:
 
         Returns:
             model_id string.
+
         """
         if not HAS_LIGHTGBM:
             raise ImportError("lightgbm required to save models")
@@ -106,6 +106,7 @@ class ModelRegistry:
         Raises:
             FileNotFoundError: If model_id doesn't exist.
             ImportError: If lightgbm not installed.
+
         """
         if not HAS_LIGHTGBM:
             raise ImportError("lightgbm required to load models")
@@ -127,6 +128,7 @@ class ModelRegistry:
 
         Returns:
             List of manifest dicts (sorted newest first).
+
         """
         models = []
         if not self.models_dir.exists():
@@ -140,14 +142,16 @@ class ModelRegistry:
                 continue
             try:
                 manifest = json.loads(manifest_path.read_text())
-                models.append({
-                    "model_id": manifest.get("model_id", model_dir.name),
-                    "created_at": manifest.get("created_at", ""),
-                    "symbol": manifest.get("symbol", ""),
-                    "timeframe": manifest.get("timeframe", ""),
-                    "label": manifest.get("label", ""),
-                    "metrics": manifest.get("metrics", {}),
-                })
+                models.append(
+                    {
+                        "model_id": manifest.get("model_id", model_dir.name),
+                        "created_at": manifest.get("created_at", ""),
+                        "symbol": manifest.get("symbol", ""),
+                        "timeframe": manifest.get("timeframe", ""),
+                        "label": manifest.get("label", ""),
+                        "metrics": manifest.get("metrics", {}),
+                    }
+                )
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("Skipping corrupt manifest in %s: %s", model_dir, e)
 
@@ -158,6 +162,7 @@ class ModelRegistry:
 
         Returns:
             Full manifest dict or None if not found.
+
         """
         model_dir = self.models_dir / model_id
         manifest_path = model_dir / "manifest.json"
@@ -173,6 +178,7 @@ class ModelRegistry:
 
         Returns:
             True if deleted, False if not found.
+
         """
         import shutil
 

@@ -513,9 +513,8 @@ class TestFreqtradePauseCheck:
             sentinel = object()
             strategy.dp.runmode = sentinel
             return strategy, sentinel
-        else:
-            strategy.dp.runmode = MagicMock()
-            return strategy, None
+        strategy.dp.runmode = MagicMock()
+        return strategy, None
 
     def test_check_strategy_paused_in_backtest(self):
         """Should return False (not paused) in backtest mode."""

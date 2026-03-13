@@ -1,16 +1,16 @@
-"""
-Tests for NautilusTrader Runner and Engine
+"""Tests for NautilusTrader Runner and Engine
 ==========================================
 Covers: CLI argument parsing, engine creation, venue setup,
 instrument factories, bar type building, data conversion,
 strategy registry, error handling, and result persistence.
 """
 
+import contextlib
 import json
 import sys
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -57,8 +57,6 @@ class TestRunnerCLI:
         """Backtest subcommand should set default values."""
         import argparse
 
-        from nautilus.nautilus_runner import __name__ as _  # ensure module loads
-
         # Re-create the parser logic from the module
         parser = argparse.ArgumentParser()
         sub = parser.add_subparsers(dest="command")
@@ -101,15 +99,23 @@ class TestRunnerCLI:
             default="crypto",
         )
 
-        args = parser.parse_args([
-            "backtest",
-            "--strategy", "EquityMomentum",
-            "--symbol", "AAPL/USD",
-            "--timeframe", "1d",
-            "--exchange", "NYSE",
-            "--balance", "50000",
-            "--asset-class", "equity",
-        ])
+        args = parser.parse_args(
+            [
+                "backtest",
+                "--strategy",
+                "EquityMomentum",
+                "--symbol",
+                "AAPL/USD",
+                "--timeframe",
+                "1d",
+                "--exchange",
+                "NYSE",
+                "--balance",
+                "50000",
+                "--asset-class",
+                "equity",
+            ]
+        )
         assert args.strategy == "EquityMomentum"
         assert args.symbol == "AAPL/USD"
         assert args.timeframe == "1d"
@@ -584,7 +590,12 @@ class TestRunnerBacktest:
 
         df = _make_ohlcv(300)
         result = _run_pandas_backtest(
-            "NautilusTrendFollowing", df, "BTC/USDT", "1h", "kraken", 10000.0,
+            "NautilusTrendFollowing",
+            df,
+            "BTC/USDT",
+            "1h",
+            "kraken",
+            10000.0,
         )
         assert result["engine"] == "pandas"
         assert result["framework"] == "nautilus"
@@ -599,7 +610,11 @@ class TestRunnerBacktest:
         from nautilus.nautilus_runner import _run_pandas_backtest
 
         df = _make_ohlcv(300)
-        for name in ["NautilusTrendFollowing", "NautilusMeanReversion", "NautilusVolatilityBreakout"]:
+        for name in [
+            "NautilusTrendFollowing",
+            "NautilusMeanReversion",
+            "NautilusVolatilityBreakout",
+        ]:
             result = _run_pandas_backtest(name, df, "BTC/USDT", "1h", "kraken", 10000.0)
             assert "error" not in result, f"{name} returned error: {result.get('error')}"
             assert result["strategy"] == name
@@ -630,7 +645,11 @@ class TestRunnerBacktest:
         df = _make_ohlcv(300)
         save_ohlcv(df, "NTEST/USDT", "1h", "testexch")
         result = run_nautilus_backtest(
-            "NautilusTrendFollowing", "NTEST/USDT", "1h", "testexch", 10000.0,
+            "NautilusTrendFollowing",
+            "NTEST/USDT",
+            "1h",
+            "testexch",
+            10000.0,
         )
         assert "error" not in result
         assert result["engine"] in ("native", "pandas")
@@ -644,7 +663,7 @@ class TestResultSaving:
     """Test _save_result writes JSON correctly."""
 
     def test_save_result_creates_json_file(self, tmp_path):
-        from nautilus.nautilus_runner import _save_result, RESULTS_DIR
+        from nautilus.nautilus_runner import RESULTS_DIR, _save_result
 
         result = {
             "framework": "nautilus",
@@ -662,7 +681,7 @@ class TestResultSaving:
         expected_path.unlink(missing_ok=True)
 
     def test_save_result_symbol_slash_removed(self, tmp_path):
-        from nautilus.nautilus_runner import _save_result, RESULTS_DIR
+        from nautilus.nautilus_runner import RESULTS_DIR, _save_result
 
         _save_result({"strategy": "X"}, "X", "ETH/USDT", "4h")
         expected_path = RESULTS_DIR / "X_ETHUSDT_4h.json"
@@ -760,7 +779,16 @@ class TestOHLCVConversion:
         assert path.exists()
         csv_df = pd.read_csv(path)
         assert len(csv_df) == 50
-        expected_cols = {"bar_type", "open", "high", "low", "close", "volume", "ts_event", "ts_init"}
+        expected_cols = {
+            "bar_type",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "ts_event",
+            "ts_init",
+        }
         assert expected_cols.issubset(set(csv_df.columns))
 
     def test_convert_with_no_data_returns_none(self):
@@ -779,14 +807,13 @@ class TestBacktestResultPersistence:
     @pytest.fixture(autouse=True)
     def _setup_django(self):
         """Ensure Django is configured for model tests."""
-        import django
         import os
 
+        import django
+
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-        try:
+        with contextlib.suppress(RuntimeError):
             django.setup()
-        except RuntimeError:
-            pass  # Already configured
 
     def test_backtest_result_model_exists(self):
         from analysis.models import BacktestResult

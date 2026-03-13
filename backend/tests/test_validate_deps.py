@@ -4,7 +4,6 @@ import importlib
 
 import pytest
 
-
 # Every module listed here MUST be installed in the dev/test environment.
 # If a test fails here, install the missing package — do NOT skip it.
 REQUIRED_IMPORTS = [
@@ -77,8 +76,9 @@ class TestValidateDepsCommand:
     """Test the validate_deps management command."""
 
     def test_command_runs(self):
-        from django.core.management import call_command
         from io import StringIO
+
+        from django.core.management import call_command
 
         out = StringIO()
         call_command("validate_deps", stdout=out)
@@ -87,8 +87,9 @@ class TestValidateDepsCommand:
 
     def test_command_strict_passes(self):
         """Strict mode should not exit(1) when all deps are present."""
-        from django.core.management import call_command
         from io import StringIO
+
+        from django.core.management import call_command
 
         out = StringIO()
         # Should not raise SystemExit

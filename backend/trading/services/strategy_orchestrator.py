@@ -279,12 +279,12 @@ class StrategyOrchestrator:
         if new_action == ACTION_PAUSE:
             self._notify_telegram(
                 f"⚠️ Strategy PAUSED: {strategy} ({asset_class}) — "
-                f"regime={regime}, alignment={alignment}"
+                f"regime={regime}, alignment={alignment}",
             )
         elif previous_action == ACTION_PAUSE and new_action == ACTION_ACTIVE:
             self._notify_telegram(
                 f"✅ Strategy RESUMED: {strategy} ({asset_class}) — "
-                f"regime={regime}, alignment={alignment}"
+                f"regime={regime}, alignment={alignment}",
             )
 
     def _log_alert(

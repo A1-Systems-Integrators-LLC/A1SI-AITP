@@ -33,7 +33,7 @@ def mock_exchange():
             "id": "EX-12345",
             "status": "open",
             "filled": 0,
-        }
+        },
     )
     exchange.fetch_order = AsyncMock(
         return_value={
@@ -42,7 +42,7 @@ def mock_exchange():
             "filled": 0.1,
             "average": 50100.0,
             "fee": {"cost": 0.05, "currency": "USDT"},
-        }
+        },
     )
     exchange.cancel_order = AsyncMock(return_value={"status": "canceled"})
     exchange.load_markets = AsyncMock()
@@ -105,7 +105,7 @@ class TestLiveTradingSubmit:
         from risk.models import RiskState
 
         await sync_to_async(RiskState.objects.create)(
-            portfolio_id=1, is_halted=True, halt_reason="test halt"
+            portfolio_id=1, is_halted=True, halt_reason="test halt",
         )
 
         with patch(
@@ -140,7 +140,7 @@ class TestLiveTradingSync:
     async def test_sync_order_filled(self, live_order, mock_exchange):
         # First set the order to submitted state
         await sync_to_async(live_order.transition_to)(
-            OrderStatus.SUBMITTED, exchange_order_id="EX-12345"
+            OrderStatus.SUBMITTED, exchange_order_id="EX-12345",
         )
 
         mock_service = MagicMock()
@@ -172,7 +172,7 @@ class TestLiveTradingSync:
 class TestLiveTradingCancel:
     async def test_cancel_order(self, live_order, mock_exchange):
         await sync_to_async(live_order.transition_to)(
-            OrderStatus.SUBMITTED, exchange_order_id="EX-12345"
+            OrderStatus.SUBMITTED, exchange_order_id="EX-12345",
         )
 
         mock_service = MagicMock()

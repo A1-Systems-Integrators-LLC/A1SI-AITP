@@ -8,7 +8,7 @@ from risk.models import RiskLimits, RiskState
 from risk.services.risk import RiskManagementService
 
 
-@pytest.fixture()
+@pytest.fixture
 def portfolio_state(db):
     """Create a portfolio with state and limits for testing."""
     state = RiskState.objects.create(

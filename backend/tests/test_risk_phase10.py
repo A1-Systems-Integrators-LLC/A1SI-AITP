@@ -1,9 +1,8 @@
 """Phase 10: 100% coverage for backend/risk/ — models, services/risk.py, views.py."""
 
 import sys
-from datetime import timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -11,8 +10,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.utils import timezone as django_tz
-
 
 # ---------------------------------------------------------------------------
 # models.py — __str__ and clean() branches
@@ -157,7 +154,7 @@ class TestPeriodicRiskCheckNotificationFailures:
             return original_send(*args, **kwargs)
 
         with patch.object(
-            RiskManagementService, "send_notification", side_effect=fail_on_daily_halt
+            RiskManagementService, "send_notification", side_effect=fail_on_daily_halt,
         ):
             result = RiskManagementService.periodic_risk_check(50)
 
@@ -188,7 +185,7 @@ class TestPeriodicRiskCheckNotificationFailures:
                 raise RuntimeError("Telegram down")
 
         with patch.object(
-            RiskManagementService, "send_notification", side_effect=fail_on_warning
+            RiskManagementService, "send_notification", side_effect=fail_on_warning,
         ):
             result = RiskManagementService.periodic_risk_check(51)
 
@@ -208,7 +205,7 @@ class TestRiskViewsPhase10:
     def test_equity_update(self, authenticated_client):
         """Lines 68-71: EquityUpdateView.post."""
         resp = authenticated_client.post(
-            "/api/risk/1/equity/", {"equity": 11000.0}, format="json"
+            "/api/risk/1/equity/", {"equity": 11000.0}, format="json",
         )
         assert resp.status_code == 200
         assert resp.json()["equity"] == 11000.0
@@ -291,7 +288,7 @@ class TestRiskViewsPhase10:
             return_value=mock_result,
         ):
             resp = authenticated_client.post(
-                "/api/risk/1/halt/", {"reason": "Test halt"}, format="json"
+                "/api/risk/1/halt/", {"reason": "Test halt"}, format="json",
             )
         assert resp.status_code == 200
         assert resp.json()["is_halted"] is True
@@ -339,7 +336,7 @@ class TestRiskViewsPhase10:
         resp = authenticated_client.get(
             "/api/risk/1/alerts/?severity=warning&event_type=risk"
             "&created_after=2020-01-01T00:00:00Z&created_before=2030-01-01T00:00:00Z"
-            "&limit=10"
+            "&limit=10",
         )
         assert resp.status_code == 200
 

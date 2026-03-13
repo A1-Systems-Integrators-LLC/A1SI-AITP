@@ -1,5 +1,4 @@
-"""
-VectorBT Strategy Research & Screening Engine
+"""VectorBT Strategy Research & Screening Engine
 ==============================================
 Rapid strategy screening using vectorized backtesting.
 Screens thousands of parameter combinations in seconds.
@@ -11,11 +10,11 @@ Workflow:
     4. Export top candidates for Freqtrade/Nautilus event-driven backtesting
 """
 
-import sys
 import json
 import logging
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import vectorbt as vbt
@@ -25,7 +24,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.data_pipeline.pipeline import load_ohlcv  # noqa: E402
-from common.indicators.technical import sma, ema, rsi, adx, bollinger_bands  # noqa: E402
+from common.indicators.technical import (  # noqa: E402
+    adx,
+    bollinger_bands,
+    ema,
+    rsi,
+    sma,
+)
 
 logger = logging.getLogger("vbt_screener")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -38,14 +43,14 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # Strategy Definitions
 # ──────────────────────────────────────────────
 
+
 def screen_sma_crossover(
     close: pd.Series,
     fast_windows: list = None,
     slow_windows: list = None,
     fees: float = 0.001,
 ) -> pd.DataFrame:
-    """
-    Screen SMA crossover strategies across parameter grid.
+    """Screen SMA crossover strategies across parameter grid.
 
     Tests all combinations of fast/slow moving average windows.
     """
@@ -56,7 +61,7 @@ def screen_sma_crossover(
 
     logger.info(
         f"Screening SMA crossover: {len(fast_windows)} fast x {len(slow_windows)} slow "
-        f"= {len(fast_windows) * len(slow_windows)} combinations"
+        f"= {len(fast_windows) * len(slow_windows)} combinations",
     )
 
     # VectorBT parameter sweep
@@ -82,15 +87,17 @@ def screen_sma_crossover(
     )
 
     # Extract metrics
-    results = pd.DataFrame({
-        "total_return": pf.total_return(),
-        "sharpe_ratio": pf.sharpe_ratio(),
-        "max_drawdown": pf.max_drawdown(),
-        "win_rate": pf.trades.win_rate(),
-        "profit_factor": pf.trades.profit_factor(),
-        "num_trades": pf.trades.count(),
-        "avg_trade_pnl": pf.trades.pnl.mean(),
-    })
+    results = pd.DataFrame(
+        {
+            "total_return": pf.total_return(),
+            "sharpe_ratio": pf.sharpe_ratio(),
+            "max_drawdown": pf.max_drawdown(),
+            "win_rate": pf.trades.win_rate(),
+            "profit_factor": pf.trades.profit_factor(),
+            "num_trades": pf.trades.count(),
+            "avg_trade_pnl": pf.trades.pnl.mean(),
+        }
+    )
 
     results = results.sort_values("sharpe_ratio", ascending=False)
     logger.info(f"Screening complete. Top Sharpe: {results['sharpe_ratio'].iloc[0]:.3f}")
@@ -104,8 +111,7 @@ def screen_rsi_mean_reversion(
     overbought_levels: list = None,
     fees: float = 0.001,
 ) -> pd.DataFrame:
-    """
-    Screen RSI mean-reversion strategies.
+    """Screen RSI mean-reversion strategies.
 
     Buy when RSI drops below oversold, sell when RSI rises above overbought.
     """
@@ -139,17 +145,21 @@ def screen_rsi_mean_reversion(
                         init_cash=10000,
                     )
 
-                    results.append({
-                        "rsi_period": period,
-                        "oversold": os_level,
-                        "overbought": ob_level,
-                        "total_return": pf.total_return(),
-                        "sharpe_ratio": pf.sharpe_ratio(),
-                        "max_drawdown": pf.max_drawdown(),
-                        "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
-                        "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
-                        "num_trades": pf.trades.count(),
-                    })
+                    results.append(
+                        {
+                            "rsi_period": period,
+                            "oversold": os_level,
+                            "overbought": ob_level,
+                            "total_return": pf.total_return(),
+                            "sharpe_ratio": pf.sharpe_ratio(),
+                            "max_drawdown": pf.max_drawdown(),
+                            "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
+                            "profit_factor": pf.trades.profit_factor()
+                            if pf.trades.count() > 0
+                            else 0,
+                            "num_trades": pf.trades.count(),
+                        }
+                    )
                 except Exception as e:
                     logger.debug(f"Skipping RSI({period}, {os_level}, {ob_level}): {e}")
 
@@ -166,8 +176,7 @@ def screen_bollinger_breakout(
     bb_stds: list = None,
     fees: float = 0.001,
 ) -> pd.DataFrame:
-    """
-    Screen Bollinger Band breakout strategies.
+    """Screen Bollinger Band breakout strategies.
 
     Buy when price closes above upper band, sell when it closes below lower band.
     """
@@ -198,16 +207,18 @@ def screen_bollinger_breakout(
                     freq="1h",
                     init_cash=10000,
                 )
-                results.append({
-                    "bb_period": period,
-                    "bb_std": std_mult,
-                    "total_return": pf.total_return(),
-                    "sharpe_ratio": pf.sharpe_ratio(),
-                    "max_drawdown": pf.max_drawdown(),
-                    "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
-                    "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
-                    "num_trades": pf.trades.count(),
-                })
+                results.append(
+                    {
+                        "bb_period": period,
+                        "bb_std": std_mult,
+                        "total_return": pf.total_return(),
+                        "sharpe_ratio": pf.sharpe_ratio(),
+                        "max_drawdown": pf.max_drawdown(),
+                        "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
+                        "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
+                        "num_trades": pf.trades.count(),
+                    }
+                )
             except Exception as e:
                 logger.debug(f"Skipping BB({period}, {std_mult}): {e}")
 
@@ -223,8 +234,7 @@ def screen_ema_rsi_combo(
     rsi_entry_levels: list = None,
     fees: float = 0.001,
 ) -> pd.DataFrame:
-    """
-    Screen combined EMA trend + RSI momentum strategies.
+    """Screen combined EMA trend + RSI momentum strategies.
 
     Buy when price > EMA (uptrend) AND RSI < oversold (pullback entry).
     Sell when price < EMA OR RSI > overbought.
@@ -248,18 +258,24 @@ def screen_ema_rsi_combo(
 
             try:
                 pf = vbt.Portfolio.from_signals(
-                    close, entries=entries, exits=exits,
-                    fees=fees, freq="1h", init_cash=10000,
+                    close,
+                    entries=entries,
+                    exits=exits,
+                    fees=fees,
+                    freq="1h",
+                    init_cash=10000,
                 )
-                results.append({
-                    "ema_period": ema_p,
-                    "rsi_entry": rsi_entry,
-                    "total_return": pf.total_return(),
-                    "sharpe_ratio": pf.sharpe_ratio(),
-                    "max_drawdown": pf.max_drawdown(),
-                    "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
-                    "num_trades": pf.trades.count(),
-                })
+                results.append(
+                    {
+                        "ema_period": ema_p,
+                        "rsi_entry": rsi_entry,
+                        "total_return": pf.total_return(),
+                        "sharpe_ratio": pf.sharpe_ratio(),
+                        "max_drawdown": pf.max_drawdown(),
+                        "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
+                        "num_trades": pf.trades.count(),
+                    }
+                )
             except Exception:
                 pass
 
@@ -276,8 +292,7 @@ def screen_volatility_breakout(
     adx_ranges: list = None,
     fees: float = 0.001,
 ) -> pd.DataFrame:
-    """
-    Screen volatility breakout strategies.
+    """Screen volatility breakout strategies.
 
     Buy when close breaks above N-period high with volume spike,
     expanding BB width, and ADX in emerging-trend range.
@@ -317,9 +332,7 @@ def screen_volatility_breakout(
 
                 entries = breakout & vol_ok & bb_width_expanding & adx_ok & rsi_ok & (volume > 0)
                 exits = (rsi_14 > 85) | (
-                    (close < ema_20)
-                    & (close.shift(1) >= ema_20.shift(1))
-                    & (volume_ratio > 1.0)
+                    (close < ema_20) & (close.shift(1) >= ema_20.shift(1)) & (volume_ratio > 1.0)
                 )
                 entries = entries.fillna(False)
                 exits = exits.fillna(False)
@@ -334,18 +347,22 @@ def screen_volatility_breakout(
                         init_cash=10000,
                         sl_stop=0.03,
                     )
-                    results.append({
-                        "breakout_period": bp,
-                        "volume_factor": vf,
-                        "adx_low": adx_lo,
-                        "adx_high": adx_hi,
-                        "total_return": pf.total_return(),
-                        "sharpe_ratio": pf.sharpe_ratio(),
-                        "max_drawdown": pf.max_drawdown(),
-                        "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
-                        "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
-                        "num_trades": pf.trades.count(),
-                    })
+                    results.append(
+                        {
+                            "breakout_period": bp,
+                            "volume_factor": vf,
+                            "adx_low": adx_lo,
+                            "adx_high": adx_hi,
+                            "total_return": pf.total_return(),
+                            "sharpe_ratio": pf.sharpe_ratio(),
+                            "max_drawdown": pf.max_drawdown(),
+                            "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
+                            "profit_factor": pf.trades.profit_factor()
+                            if pf.trades.count() > 0
+                            else 0,
+                            "num_trades": pf.trades.count(),
+                        }
+                    )
                 except Exception as e:
                     logger.debug(f"Skipping VB({bp}, {vf}, {adx_lo}-{adx_hi}): {e}")
 
@@ -363,8 +380,7 @@ def screen_relative_strength(
     rs_thresholds: list = None,
     fees: float = 0.0,
 ) -> pd.DataFrame:
-    """
-    Screen relative strength strategies for equities (vs a benchmark like SPY).
+    """Screen relative strength strategies for equities (vs a benchmark like SPY).
 
     Buy when asset's relative strength vs benchmark exceeds threshold.
     Sell when relative strength drops below 1.0 (underperforming benchmark).
@@ -407,16 +423,18 @@ def screen_relative_strength(
                     freq="1d",
                     init_cash=10000,
                 )
-                results.append({
-                    "lookback": lookback,
-                    "rs_threshold": threshold,
-                    "total_return": pf.total_return(),
-                    "sharpe_ratio": pf.sharpe_ratio(),
-                    "max_drawdown": pf.max_drawdown(),
-                    "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
-                    "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
-                    "num_trades": pf.trades.count(),
-                })
+                results.append(
+                    {
+                        "lookback": lookback,
+                        "rs_threshold": threshold,
+                        "total_return": pf.total_return(),
+                        "sharpe_ratio": pf.sharpe_ratio(),
+                        "max_drawdown": pf.max_drawdown(),
+                        "win_rate": pf.trades.win_rate() if pf.trades.count() > 0 else 0,
+                        "profit_factor": pf.trades.profit_factor() if pf.trades.count() > 0 else 0,
+                        "num_trades": pf.trades.count(),
+                    }
+                )
             except Exception as e:
                 logger.debug(f"Skipping RS({lookback}, {threshold}): {e}")
 
@@ -466,9 +484,12 @@ def walk_forward_validate(
 
     Returns:
         DataFrame with one row per split showing IS and OOS metrics.
+
     """
     if strategy_name not in SCREEN_FUNCTIONS:
-        raise ValueError(f"Unknown strategy: {strategy_name}. Options: {list(SCREEN_FUNCTIONS.keys())}")
+        raise ValueError(
+            f"Unknown strategy: {strategy_name}. Options: {list(SCREEN_FUNCTIONS.keys())}"
+        )
 
     screen_fn = SCREEN_FUNCTIONS[strategy_name]
     n_rows = len(df)
@@ -477,7 +498,7 @@ def walk_forward_validate(
 
     logger.info(
         f"Walk-forward validation: {strategy_name}, {n_splits} splits, "
-        f"{n_rows} total rows, ~{window_size} per window"
+        f"{n_rows} total rows, ~{window_size} per window",
     )
 
     for i in range(n_splits):
@@ -494,7 +515,9 @@ def walk_forward_validate(
         test_df = window_df.iloc[train_end:]
 
         if len(train_df) < 50 or len(test_df) < 20:
-            logger.warning(f"Split {i + 1}: insufficient data (train={len(train_df)}, test={len(test_df)})")
+            logger.warning(
+                f"Split {i + 1}: insufficient data (train={len(train_df)}, test={len(test_df)})"
+            )
             continue
 
         # Phase 1: Optimize on training data
@@ -513,9 +536,15 @@ def walk_forward_validate(
         best_params = {
             col: best_row[col]
             for col in is_results.columns
-            if col not in {
-                "total_return", "sharpe_ratio", "max_drawdown",
-                "win_rate", "profit_factor", "num_trades", "avg_trade_pnl",
+            if col
+            not in {
+                "total_return",
+                "sharpe_ratio",
+                "max_drawdown",
+                "win_rate",
+                "profit_factor",
+                "num_trades",
+                "avg_trade_pnl",
             }
         }
 
@@ -533,10 +562,7 @@ def walk_forward_validate(
             oos_drawdown = 0.0
         else:
             # Match IS-best params in OOS results (not the OOS-best!)
-            param_cols = [
-                col for col in best_params
-                if col in oos_results.columns
-            ]
+            param_cols = [col for col in best_params if col in oos_results.columns]
             oos_match = oos_results
             for col in param_cols:
                 oos_match = oos_match[oos_match[col] == best_params[col]]
@@ -559,23 +585,25 @@ def walk_forward_validate(
         # Degradation ratio: how much worse is OOS vs IS?
         degradation = oos_sharpe / is_sharpe if is_sharpe > 0 else 0.0
 
-        results.append({
-            "split": i + 1,
-            "train_rows": len(train_df),
-            "test_rows": len(test_df),
-            "is_sharpe": round(is_sharpe, 4),
-            "is_return": round(is_return, 4),
-            "is_max_drawdown": round(is_drawdown, 4),
-            "oos_sharpe": round(oos_sharpe, 4),
-            "oos_return": round(oos_return, 4),
-            "oos_max_drawdown": round(oos_drawdown, 4),
-            "degradation_ratio": round(degradation, 4),
-            **{f"best_{k}": v for k, v in best_params.items()},
-        })
+        results.append(
+            {
+                "split": i + 1,
+                "train_rows": len(train_df),
+                "test_rows": len(test_df),
+                "is_sharpe": round(is_sharpe, 4),
+                "is_return": round(is_return, 4),
+                "is_max_drawdown": round(is_drawdown, 4),
+                "oos_sharpe": round(oos_sharpe, 4),
+                "oos_return": round(oos_return, 4),
+                "oos_max_drawdown": round(oos_drawdown, 4),
+                "degradation_ratio": round(degradation, 4),
+                **{f"best_{k}": v for k, v in best_params.items()},
+            }
+        )
 
         logger.info(
             f"Split {i + 1}: IS Sharpe={is_sharpe:.3f}, OOS Sharpe={oos_sharpe:.3f}, "
-            f"degradation={degradation:.2f}"
+            f"degradation={degradation:.2f}",
         )
 
     results_df = pd.DataFrame(results)
@@ -583,8 +611,7 @@ def walk_forward_validate(
         avg_oos = results_df["oos_sharpe"].mean()
         avg_deg = results_df["degradation_ratio"].mean()
         logger.info(
-            f"Walk-forward complete: avg OOS Sharpe={avg_oos:.3f}, "
-            f"avg degradation={avg_deg:.2f}"
+            f"Walk-forward complete: avg OOS Sharpe={avg_oos:.3f}, avg degradation={avg_deg:.2f}",
         )
         # Flag: robust if avg OOS Sharpe > 0 and degradation > 0.5
         robust = avg_oos > 0 and avg_deg > 0.5
@@ -600,9 +627,9 @@ def walk_forward_validate(
 # ──────────────────────────────────────────────
 
 _ASSET_CLASS_FEES: dict[str, float] = {
-    "crypto": 0.001,   # 0.1%
-    "equity": 0.0,     # Commission-free
-    "forex": 0.0001,   # ~1 pip spread
+    "crypto": 0.001,  # 0.1%
+    "equity": 0.0,  # Commission-free
+    "forex": 0.0001,  # ~1 pip spread
 }
 
 
@@ -613,8 +640,7 @@ def run_full_screen(
     fees: float | None = None,
     asset_class: str = "crypto",
 ) -> dict:
-    """
-    Run all strategy screens for a given symbol and return ranked results.
+    """Run all strategy screens for a given symbol and return ranked results.
 
     When asset_class is "equity", also runs a relative strength screen
     using SPY as benchmark (if data available).
@@ -675,7 +701,9 @@ def run_full_screen(
             spy_df = load_ohlcv("SPY/USD", timeframe, "yfinance")
             if not spy_df.empty:
                 results["relative_strength"] = screen_relative_strength(
-                    df, spy_df, fees=fees,
+                    df,
+                    spy_df,
+                    fees=fees,
                 )
             else:
                 logger.warning("SPY benchmark data not available, skipping relative strength")
@@ -696,8 +724,12 @@ def run_full_screen(
             top = df_result.head(3)
             summary[name] = {
                 "total_combos": len(df_result),
-                "top_sharpe": float(top["sharpe_ratio"].iloc[0]) if "sharpe_ratio" in top.columns else None,
-                "top_return": float(top["total_return"].iloc[0]) if "total_return" in top.columns else None,
+                "top_sharpe": float(top["sharpe_ratio"].iloc[0])
+                if "sharpe_ratio" in top.columns
+                else None,
+                "top_return": float(top["total_return"].iloc[0])
+                if "total_return" in top.columns
+                else None,
             }
 
     # Walk-forward OOS validation for each strategy
@@ -743,8 +775,13 @@ if __name__ == "__main__":  # pragma: no cover
     parser.add_argument("--timeframe", default="1h", help="Candle timeframe")
     parser.add_argument("--exchange", default="kraken", help="Exchange")
     parser.add_argument("--fees", type=float, default=None, help="Trading fees (0.001 = 0.1%%)")
-    parser.add_argument("--asset-class", default="crypto", choices=["crypto", "equity", "forex"],
-                        dest="asset_class", help="Asset class")
+    parser.add_argument(
+        "--asset-class",
+        default="crypto",
+        choices=["crypto", "equity", "forex"],
+        dest="asset_class",
+        help="Asset class",
+    )
     parser.add_argument(
         "--walk-forward-only",
         metavar="STRATEGY",
@@ -764,7 +801,10 @@ if __name__ == "__main__":  # pragma: no cover
             logger.error(f"No data for {args.symbol} {args.timeframe}")
         else:
             wf = walk_forward_validate(
-                _df, args.walk_forward_only, n_splits=args.splits, fees=fees,
+                _df,
+                args.walk_forward_only,
+                n_splits=args.splits,
+                fees=fees,
             )
             if not wf.empty:
                 print(wf.to_string(index=False))

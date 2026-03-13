@@ -1,5 +1,4 @@
-"""
-Django settings for A1SI-AITP.
+"""Django settings for A1SI-AITP.
 
 Security-hardened configuration with DRF, Channels, and session-based auth.
 """
@@ -100,7 +99,7 @@ DATABASES = {
             "timeout": 30,
         },
         "CONN_HEALTH_CHECKS": True,
-    }
+    },
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -139,7 +138,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.environ.get(
-        "CSRF_TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:8000"
+        "CSRF_TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:8000",
     ).split(",")
 ]
 
@@ -478,7 +477,7 @@ SCHEDULED_TASKS = {
     },
     "signal_feedback": {
         "name": "Signal Feedback",
-        "description": "Backfill signal attribution outcomes and compute source accuracy (every 1h)",
+        "description": "Backfill signal attribution outcomes and compute source accuracy",
         "task_type": "signal_feedback",
         "interval_seconds": 3600,
         "params": {},

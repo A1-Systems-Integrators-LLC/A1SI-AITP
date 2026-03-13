@@ -41,7 +41,7 @@ class OrderListView(APIView):
         parameters=[
             OpenApiParameter("limit", int, description="Max results (default 50, max 200)"),
             OpenApiParameter(
-                "mode", str, description="Filter by trading mode", enum=["paper", "live"]
+                "mode", str, description="Filter by trading mode", enum=["paper", "live"],
             ),
             OpenApiParameter(
                 "asset_class",
@@ -50,7 +50,7 @@ class OrderListView(APIView):
                 enum=["crypto", "equity", "forex"],
             ),
             OpenApiParameter(
-                "symbol", str, description="Filter by symbol (case-insensitive contains)"
+                "symbol", str, description="Filter by symbol (case-insensitive contains)",
             ),
             OpenApiParameter(
                 "status",
@@ -210,7 +210,7 @@ class LiveTradingStatusView(APIView):
                 "exchange_error": exchange_error,
                 "is_halted": is_halted,
                 "active_live_orders": active_count,
-            }
+            },
         )
 
 
@@ -285,7 +285,7 @@ class OrderExportView(APIView):
                 "mode",
                 "timestamp",
                 "filled_at",
-            ]
+            ],
         )
         for o in qs.iterator():
             writer.writerow(
@@ -304,7 +304,7 @@ class OrderExportView(APIView):
                     o.mode,
                     o.timestamp.isoformat() if o.timestamp else "",
                     o.filled_at.isoformat() if o.filled_at else "",
-                ]
+                ],
             )
 
         response = DjangoHttpResponse(output.getvalue(), content_type="text/csv")
@@ -561,7 +561,7 @@ class ExchangeHealthView(APIView):
                 "latency_ms": round(latency_ms, 1),
                 "last_checked": datetime.now(timezone.utc).isoformat(),
                 "error": error if not connected else None,
-            }
+            },
         )
 
 
@@ -584,7 +584,7 @@ def _get_paper_trading_services() -> dict:
                 if not instances:
                     # Fallback to single-instance for backwards compat
                     _paper_trading_services = {
-                        "default": PaperTradingService()
+                        "default": PaperTradingService(),
                     }
                 else:
                     _paper_trading_services = {}

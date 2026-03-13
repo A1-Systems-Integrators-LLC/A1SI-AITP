@@ -1,5 +1,4 @@
-"""
-Fernet symmetric encryption utilities for credentials at rest.
+"""Fernet symmetric encryption utilities for credentials at rest.
 
 Uses DJANGO_ENCRYPTION_KEY env var (Fernet-compatible base64url 32-byte key).
 """
@@ -18,7 +17,7 @@ def _get_fernet() -> Fernet:
         raise ValueError(
             "ENCRYPTION_KEY is not configured. "
             "Set DJANGO_ENCRYPTION_KEY env var (generate with: python -c "
-            '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")'
+            '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")',
         )
     return Fernet(key.encode() if isinstance(key, str) else key)
 

@@ -6,30 +6,40 @@ get_exchange, _parquet_path, news_adapter, yfinance_adapter edge cases.
 """
 
 import sys
-import threading
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from common.data_pipeline.news_adapter import (
+    _get_link,
+    _get_text,
+    _parse_date,
+    _strip_html,
+    article_id,
+    fetch_all_news,
+    fetch_newsapi,
+    fetch_rss_feed,
+)
 from common.data_pipeline.pipeline import (
+    _DEFAULT_WATCHLISTS,
+    DataQualityReport,
     _parquet_path,
     add_indicators,
+    audit_nans,
     detect_gaps,
     detect_outliers,
     detect_stale_data,
     download_watchlist,
     fetch_ohlcv,
-    fetch_ohlcv_multi,
     get_exchange,
     get_last_timestamp,
     list_available_data,
@@ -41,10 +51,6 @@ from common.data_pipeline.pipeline import (
     to_vectorbt_format,
     validate_all_data,
     validate_data,
-    audit_nans,
-    check_ohlc_integrity,
-    _DEFAULT_WATCHLISTS,
-    DataQualityReport,
 )
 from common.data_pipeline.yfinance_adapter import (
     _fetch_ohlcv_sync,
@@ -54,17 +60,6 @@ from common.data_pipeline.yfinance_adapter import (
     normalize_symbol,
     yfinance_to_platform_symbol,
 )
-from common.data_pipeline.news_adapter import (
-    article_id,
-    fetch_all_news,
-    fetch_newsapi,
-    fetch_rss_feed,
-    _get_link,
-    _get_text,
-    _parse_date,
-    _strip_html,
-)
-
 
 # ── Helpers ────────────────────────────────────
 
@@ -509,7 +504,7 @@ class TestValidateAllData:
 
     def test_multiple_files_validated(self, tmp_path):
         now_str = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime(
-            "%Y-%m-%d %H:%M"
+            "%Y-%m-%d %H:%M",
         )
         df = _make_ohlcv(start=now_str, periods=10)
         save_ohlcv(df, "BTC/USDT", "1h", "kraken", directory=tmp_path)
@@ -534,7 +529,7 @@ class TestDownloadWatchlistEdgeCases:
         mock_save.return_value = Path("/tmp/x.parquet")
 
         results = download_watchlist(
-            symbols=None, timeframes=["1h"], exchange_id="kraken", asset_class="crypto"
+            symbols=None, timeframes=["1h"], exchange_id="kraken", asset_class="crypto",
         )
         # Should use default crypto watchlist
         expected_count = len(_DEFAULT_WATCHLISTS["crypto"])
@@ -546,7 +541,7 @@ class TestDownloadWatchlistEdgeCases:
     def test_default_equity_timeframes(self, mock_save, mock_last_ts, mock_fetch):
         mock_fetch.return_value = pd.DataFrame()
         results = download_watchlist(
-            symbols=["AAPL/USD"], timeframes=None, asset_class="equity"
+            symbols=["AAPL/USD"], timeframes=None, asset_class="equity",
         )
         # Equity default is ["1d"]
         assert len(results) == 1
@@ -558,7 +553,7 @@ class TestDownloadWatchlistEdgeCases:
     def test_default_forex_timeframes(self, mock_save, mock_last_ts, mock_fetch):
         mock_fetch.return_value = pd.DataFrame()
         results = download_watchlist(
-            symbols=["EUR/USD"], timeframes=None, asset_class="forex"
+            symbols=["EUR/USD"], timeframes=None, asset_class="forex",
         )
         # Forex default is ["1h", "4h", "1d"]
         assert len(results) == 3
@@ -567,7 +562,7 @@ class TestDownloadWatchlistEdgeCases:
     @patch("common.data_pipeline.pipeline.get_last_timestamp")
     @patch("common.data_pipeline.pipeline.save_ohlcv")
     def test_incremental_update_uses_last_timestamp(
-        self, mock_save, mock_last_ts, mock_fetch
+        self, mock_save, mock_last_ts, mock_fetch,
     ):
         ts = datetime(2025, 6, 1, tzinfo=timezone.utc)
         mock_last_ts.return_value = ts
@@ -575,7 +570,7 @@ class TestDownloadWatchlistEdgeCases:
         mock_save.return_value = Path("/tmp/x.parquet")
 
         download_watchlist(
-            symbols=["BTC/USDT"], timeframes=["1h"], exchange_id="kraken"
+            symbols=["BTC/USDT"], timeframes=["1h"], exchange_id="kraken",
         )
         # fetch_ohlcv_multi should be called with since_timestamp
         call_kwargs = mock_fetch.call_args
@@ -587,8 +582,8 @@ class TestDownloadWatchlistEdgeCases:
         """Equity downloads should use 'yfinance' as the source prefix."""
         mock_fetch.return_value = pd.DataFrame()
 
-        results = download_watchlist(
-            symbols=["AAPL/USD"], timeframes=["1d"], asset_class="equity"
+        download_watchlist(
+            symbols=["AAPL/USD"], timeframes=["1d"], asset_class="equity",
         )
         # get_last_timestamp should be called with "yfinance" source
         call_args = mock_last_ts.call_args
@@ -605,7 +600,7 @@ class TestStaleDataThresholds:
         # Data 3 hours old should be stale for crypto (2h threshold)
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=3)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=1,
         )
@@ -616,7 +611,7 @@ class TestStaleDataThresholds:
         # Data 10 hours old should NOT be stale for equity (18h threshold)
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=10)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=1,
         )
@@ -627,7 +622,7 @@ class TestStaleDataThresholds:
         # Data 5 hours old should be stale for forex (4h threshold)
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=5)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=1,
         )
@@ -638,7 +633,7 @@ class TestStaleDataThresholds:
         # max_stale_hours != 2.0 means custom, don't use asset-class default
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=3)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=1,
         )
@@ -870,7 +865,7 @@ class TestYfinanceAdapterEdgeCases:
         assert result.empty
 
     def test_fetch_missing_volume_column(self):
-        """yfinance sometimes omits Volume — should fill with 0."""
+        """Yfinance sometimes omits Volume — should fill with 0."""
         dates = pd.date_range("2025-01-01", periods=3, freq="1d", tz="UTC")
         mock_df = pd.DataFrame(
             {
@@ -1091,7 +1086,7 @@ class TestFetchRssFeed:
     @patch("common.data_pipeline.news_adapter.urllib.request.urlopen")
     def test_items_capped_at_20(self, mock_urlopen):
         items = "".join(
-            f'<item><title>Art {i}</title><link>https://example.com/{i}</link></item>'
+            f"<item><title>Art {i}</title><link>https://example.com/{i}</link></item>"
             for i in range(30)
         )
         rss_xml = f'<?xml version="1.0"?><rss><channel>{items}</channel></rss>'.encode()
@@ -1157,7 +1152,7 @@ class TestFetchNewsapi:
                     "url": "",  # Empty URL, should be skipped
                     "title": "Bad Article",
                 },
-            ]
+            ],
         }
         import json
 
@@ -1236,7 +1231,7 @@ class TestFullPipelineIntegration:
         """End-to-end: generate → save → load → validate → convert to all formats."""
         df = _make_ohlcv(
             start=(datetime.now(timezone.utc) - timedelta(hours=50)).strftime(
-                "%Y-%m-%d %H:%M"
+                "%Y-%m-%d %H:%M",
             ),
             periods=48,
         )

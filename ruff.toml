@@ -1,0 +1,11 @@
+target-version = "py310"
+line-length = 100
+exclude = ["*/migrations/*", "backend/.venv/*"]
+
+[lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "SIM"]
+
+[lint.per-file-ignores]
+"market/services/regime.py" = ["E402"]
+"tests/*.py" = ["E402"]
+"backend/tests/*.py" = ["E402"]

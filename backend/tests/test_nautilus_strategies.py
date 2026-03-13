@@ -1,5 +1,4 @@
-"""
-Tests for NautilusTrader strategies (Tier 3)
+"""Tests for NautilusTrader strategies (Tier 3)
 =============================================
 Covers: strategy registry, base class, indicator computation,
 data conversion, backtesting, and backend integration.
@@ -60,7 +59,7 @@ def _bars_from_df(df: pd.DataFrame) -> list[dict]:
                 "low": float(row["low"]),
                 "close": float(row["close"]),
                 "volume": float(row["volume"]),
-            }
+            },
         )
     return bars
 
@@ -223,7 +222,7 @@ class TestNautilusBase:
                 "low": 109.0,
                 "close": exit_price,
                 "volume": 1000.0,
-            }
+            },
         )
         s.position = {
             "side": "long",
@@ -283,7 +282,7 @@ class TestTrendFollowing:
                 "macd_hist": -0.1,  # negative
                 "macd_hist_prev": -0.5,  # but rising (prev was more negative)
                 "bb_upper": 120.0,
-            }
+            },
         )
         assert s.should_enter(ind) is True
 
@@ -302,7 +301,7 @@ class TestTrendFollowing:
                 "macd_hist": -0.5,  # negative
                 "macd_hist_prev": -0.1,  # and falling (prev was less negative)
                 "bb_upper": 120.0,
-            }
+            },
         )
         assert s.should_enter(ind) is False
 
@@ -335,7 +334,7 @@ class TestMeanReversion:
                 "rsi_14": 25.0,  # oversold (< 35)
                 "volume_ratio": 2.0,  # above volume_factor (1.5)
                 "adx_14": 20.0,  # ranging market (< 30)
-            }
+            },
         )
         assert s.should_enter(ind) is True
 
@@ -351,7 +350,7 @@ class TestMeanReversion:
                 "rsi_14": 40.0,  # above buy_rsi_threshold (35)
                 "volume_ratio": 2.0,
                 "adx_14": 20.0,
-            }
+            },
         )
         assert s.should_enter(ind) is False
 
@@ -367,7 +366,7 @@ class TestMeanReversion:
                 "rsi_14": 25.0,
                 "volume_ratio": 2.0,
                 "adx_14": 35.0,  # above adx_ceiling (30) -> trending
-            }
+            },
         )
         assert s.should_enter(ind) is False
 
@@ -381,7 +380,7 @@ class TestMeanReversion:
                 "close": 102.0,
                 "bb_mid": 100.0,  # close above bb_mid -> exit
                 "rsi_14": 50.0,
-            }
+            },
         )
         assert s.should_exit(ind) is True
 
@@ -395,7 +394,7 @@ class TestMeanReversion:
                 "close": 98.0,
                 "bb_mid": 100.0,  # still below mid
                 "rsi_14": 70.0,  # above sell_rsi_threshold (65)
-            }
+            },
         )
         assert s.should_exit(ind) is True
 
@@ -429,7 +428,7 @@ class TestVolatilityBreakout:
                 "bb_width": 0.05,  # positive BB width
                 "adx_14": 20.0,  # in emerging-trend range (15-25)
                 "rsi_14": 55.0,  # neutral zone (40-70)
-            }
+            },
         )
         assert s.should_enter(ind) is True
 
@@ -446,7 +445,7 @@ class TestVolatilityBreakout:
                 "bb_width": 0.05,
                 "adx_14": 20.0,
                 "rsi_14": 55.0,
-            }
+            },
         )
         assert s.should_enter(ind) is False
 
@@ -460,7 +459,7 @@ class TestVolatilityBreakout:
                 "rsi_14": 60.0,  # not exhausted
                 "close": 98.0,
                 "ema_20": 100.0,  # close below ema_20 -> exit
-            }
+            },
         )
         assert s.should_exit(ind) is True
 
@@ -541,7 +540,7 @@ class TestRunnerDualMode:
 # ── Native Engine Tests (skip when NT not installed) ─
 
 
-from nautilus.engine import HAS_NAUTILUS_TRADER as _HAS_NT  # noqa: E402
+from nautilus.engine import HAS_NAUTILUS_TRADER as _HAS_NT
 
 assert _HAS_NT, "nautilus_trader must be installed — tests must not silently skip"
 

@@ -1,5 +1,4 @@
-"""
-Market Regime Detector
+"""Market Regime Detector
 ======================
 Classifies market conditions into regimes (trending, ranging, volatile)
 using a weighted composite of ADX, Bollinger Band width, EMA slope,
@@ -41,7 +40,7 @@ class RegimeConfig:
     ema_slope_period: int = 20
     ema_slope_lookback: int = 5
     alignment_ema_periods: list[int] = field(
-        default_factory=lambda: [21, 50, 100, 200]
+        default_factory=lambda: [21, 50, 100, 200],
     )
     structure_lookback: int = 20
     strong_alignment_threshold: float = 0.5
@@ -100,7 +99,11 @@ class RegimeDetector:
         structure = float(indicators["price_structure_score"].iloc[-1])
 
         regime, confidence = self._classify_regime(
-            adx_val, bb_pct, slope, alignment, structure
+            adx_val,
+            bb_pct,
+            slope,
+            alignment,
+            structure,
         )
 
         # Compute transition probabilities from recent history
@@ -195,7 +198,9 @@ class RegimeDetector:
     def _compute_bb_width_percentile(self, df: pd.DataFrame) -> pd.Series:
         """Bollinger Band width as rolling percentile (0-100)."""
         bb = bollinger_bands(
-            df["close"], self.config.bb_period, self.config.bb_std
+            df["close"],
+            self.config.bb_period,
+            self.config.bb_std,
         )
         bb_width = bb["bb_width"]
         # Rolling percentile rank over the last 100 periods
@@ -217,8 +222,7 @@ class RegimeDetector:
         return slope
 
     def _compute_trend_alignment(self, df: pd.DataFrame) -> pd.Series:
-        """
-        EMA alignment score from -1 (bearish) to +1 (bullish).
+        """EMA alignment score from -1 (bearish) to +1 (bullish).
 
         Checks whether shorter EMAs are above longer EMAs.
         """
@@ -242,8 +246,7 @@ class RegimeDetector:
         return alignment
 
     def _compute_price_structure(self, df: pd.DataFrame) -> pd.Series:
-        """
-        Price structure score from -1 (lower lows/lower highs) to +1 (higher highs/higher lows).
+        """Price structure score from -1 (lower lows/lower highs) to +1 (higher highs/higher lows).
 
         Measures recent higher-high/higher-low structure.
         """
@@ -270,8 +273,7 @@ class RegimeDetector:
         alignment: float,
         structure: float,
     ) -> dict[Regime, float]:
-        """
-        Compute composite 0-1 score for each regime.
+        """Compute composite 0-1 score for each regime.
 
         Scoring uses weighted indicator contributions so that a high-vol
         strong uptrend (ADX=50, BB=90) resolves to STRONG_TREND_UP rather
@@ -291,7 +293,9 @@ class RegimeDetector:
 
         # ADX strength tiers
         adx_strong_score = max(0.0, (adx_val - cfg.adx_strong) / 30)  # 0 at threshold, ~1 at 70
-        adx_weak_score = max(0.0, min(1.0, (adx_val - cfg.adx_weak) / (cfg.adx_strong - cfg.adx_weak)))
+        adx_weak_score = max(
+            0.0, min(1.0, (adx_val - cfg.adx_weak) / (cfg.adx_strong - cfg.adx_weak))
+        )
         adx_low_score = max(0.0, 1.0 - adx_val / cfg.adx_weak)  # High when ADX < weak
 
         scores: dict[Regime, float] = {}
@@ -302,7 +306,11 @@ class RegimeDetector:
             + align_abs * is_up * 0.25
             + slope_abs * is_up * 0.15
             + struct_abs * (1.0 if structure > 0 else 0.0) * 0.15
-            + (0.1 if adx_val > cfg.adx_strong and alignment > cfg.strong_alignment_threshold else 0.0)
+            + (
+                0.1
+                if adx_val > cfg.adx_strong and alignment > cfg.strong_alignment_threshold
+                else 0.0
+            )
         )
 
         # STRONG_TREND_DOWN: high ADX + negative direction signals
@@ -311,7 +319,11 @@ class RegimeDetector:
             + align_abs * is_down * 0.25
             + slope_abs * is_down * 0.15
             + struct_abs * (1.0 if structure < 0 else 0.0) * 0.15
-            + (0.1 if adx_val > cfg.adx_strong and alignment < -cfg.strong_alignment_threshold else 0.0)
+            + (
+                0.1
+                if adx_val > cfg.adx_strong and alignment < -cfg.strong_alignment_threshold
+                else 0.0
+            )
         )
 
         # WEAK_TREND_UP: mid ADX + positive direction
@@ -320,21 +332,29 @@ class RegimeDetector:
         adx_trend_gate = min(1.0, max(0.0, (adx_val - 18.0) / (cfg.adx_weak - 18.0)))
 
         scores[Regime.WEAK_TREND_UP] = (
-            adx_weak_score * 0.25
-            + align_abs * is_up * 0.3
-            + slope_abs * is_up * 0.15
-            + max(0.0, structure) * 0.1
-            + (0.2 if alignment > 0 and slope > 0 else 0.0)
-        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5) * adx_trend_gate
+            (
+                adx_weak_score * 0.25
+                + align_abs * is_up * 0.3
+                + slope_abs * is_up * 0.15
+                + max(0.0, structure) * 0.1
+                + (0.2 if alignment > 0 and slope > 0 else 0.0)
+            )
+            * (1.0 if adx_val <= cfg.adx_strong else 0.5)
+            * adx_trend_gate
+        )
 
         # WEAK_TREND_DOWN: mid ADX + negative direction
         scores[Regime.WEAK_TREND_DOWN] = (
-            adx_weak_score * 0.25
-            + align_abs * is_down * 0.3
-            + slope_abs * is_down * 0.15
-            + max(0.0, -structure) * 0.1
-            + (0.2 if alignment < 0 and slope < 0 else 0.0)
-        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5) * adx_trend_gate
+            (
+                adx_weak_score * 0.25
+                + align_abs * is_down * 0.3
+                + slope_abs * is_down * 0.15
+                + max(0.0, -structure) * 0.1
+                + (0.2 if alignment < 0 and slope < 0 else 0.0)
+            )
+            * (1.0 if adx_val <= cfg.adx_strong else 0.5)
+            * adx_trend_gate
+        )
 
         # HIGH_VOLATILITY: high BB width + low ADX (directionless volatility)
         scores[Regime.HIGH_VOLATILITY] = (
@@ -348,7 +368,9 @@ class RegimeDetector:
         # Penalize when there IS directional signal, but soften the penalty
         # when ADX is very low (directional signals are noise at low ADX)
         adx_noise_factor = max(0.0, 1.0 - adx_val / 20.0)  # 1.0 at ADX=0, 0 at ADX=20
-        direction_penalty = 1.0 - (align_abs * 0.5 + slope_abs * 0.3) * (1.0 - adx_noise_factor * 0.6)
+        direction_penalty = 1.0 - (align_abs * 0.5 + slope_abs * 0.3) * (
+            1.0 - adx_noise_factor * 0.6
+        )
         scores[Regime.RANGING] = (
             adx_low_score * 0.3
             + (1.0 - slope_abs) * 0.15
@@ -371,8 +393,7 @@ class RegimeDetector:
         alignment: float,
         structure: float,
     ) -> tuple[Regime, float]:
-        """
-        Classify regime using composite scoring of sub-indicators.
+        """Classify regime using composite scoring of sub-indicators.
 
         Computes a 0-1 score per regime, picks the highest scorer.
         Confidence reflects the margin between top two scores.
@@ -397,10 +418,10 @@ class RegimeDetector:
     # ── Transition probabilities ───────────────────────────────
 
     def _compute_transition_probabilities(
-        self, regimes: pd.Series
+        self,
+        regimes: pd.Series,
     ) -> dict[str, float]:
-        """
-        Compute empirical transition probabilities from recent regime history.
+        """Compute empirical transition probabilities from recent regime history.
 
         Returns dict mapping target regime -> probability.
         """

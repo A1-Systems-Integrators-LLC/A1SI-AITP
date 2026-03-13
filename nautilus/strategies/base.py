@@ -1,5 +1,4 @@
-"""
-NautilusTrader Strategy Base Class
+"""NautilusTrader Strategy Base Class
 ===================================
 Shared functionality for all Nautilus strategies:
 - Indicator computation via common.indicators.technical
@@ -14,18 +13,17 @@ import logging
 import time
 from collections import deque
 from datetime import datetime, timezone
-from typing import Optional
 
 import pandas as pd
 
 from common.indicators.technical import (
-    ema,
-    sma,
-    rsi,
-    macd,
-    bollinger_bands,
-    atr_indicator,
     adx,
+    atr_indicator,
+    bollinger_bands,
+    ema,
+    macd,
+    rsi,
+    sma,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,8 +51,8 @@ STRATEGY_ASSET_CLASS: dict[str, str] = {
 
 # Try to import conviction system modules
 try:
-    from common.signals.exit_manager import advise_exit, get_stop_multiplier
     from common.regime.regime_detector import Regime, RegimeDetector
+    from common.signals.exit_manager import advise_exit, get_stop_multiplier
 
     HAS_CONVICTION = True
 except ImportError:  # pragma: no cover
@@ -78,10 +76,10 @@ class NautilusStrategyBase:
     stoploss: float = -0.05
     atr_multiplier: float = 2.0
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
         self.bars: deque = deque(maxlen=self.config.get("max_bars", MAX_BARS))
-        self.position: Optional[dict] = None  # {side, entry_price, size, entry_time}
+        self.position: dict | None = None  # {side, entry_price, size, entry_time}
         self.trades: list[dict] = []
         self.fee_rate = self.config.get("fee_rate", 0.001)  # 0.1% per side (taker)
         self.risk_api_url = self.config.get("risk_api_url", RISK_API_URL)
@@ -90,9 +88,9 @@ class NautilusStrategyBase:
         # Conviction system state
         self._signals: dict[str, dict] = {}
         self._last_signal_fetch: float = 0
-        self._entry_regime: Optional[str] = None  # regime name at entry time
+        self._entry_regime: str | None = None  # regime name at entry time
 
-    def on_bar(self, bar: dict) -> Optional[dict]:
+    def on_bar(self, bar: dict) -> dict | None:
         """Process a single OHLCV bar. Returns a trade dict if a fill occurred."""
         self.bars.append(bar)
 
@@ -144,7 +142,7 @@ class NautilusStrategyBase:
 
         return None
 
-    def on_stop(self) -> Optional[dict]:
+    def on_stop(self) -> dict | None:
         """Flatten any open position at the last bar's close."""
         if self.position is not None and len(self.bars) > 0:
             last_bar = self.bars[-1]
@@ -352,14 +350,14 @@ class NautilusStrategyBase:
             logger.warning(
                 f"Conviction gate REJECTED: "
                 f"score={signal.get('score', 0):.1f}, "
-                f"label={signal.get('signal_label', 'unknown')}"
+                f"label={signal.get('signal_label', 'unknown')}",
             )
             return False
 
         logger.info(
             f"Conviction gate approved: "
             f"score={signal.get('score', 0):.1f}, "
-            f"label={signal.get('signal_label', 'unknown')}"
+            f"label={signal.get('signal_label', 'unknown')}",
         )
         return True
 
@@ -426,7 +424,7 @@ class NautilusStrategyBase:
                 tag = f"conviction_{advice.reason.replace(' ', '_')[:30]}"
                 logger.info(
                     f"Exit advisor: {advice.reason} "
-                    f"(urgency={advice.urgency}, partial={advice.partial_pct})"
+                    f"(urgency={advice.urgency}, partial={advice.partial_pct})",
                 )
                 return tag
         except Exception as e:

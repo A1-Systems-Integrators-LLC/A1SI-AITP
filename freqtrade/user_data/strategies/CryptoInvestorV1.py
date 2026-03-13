@@ -1,5 +1,4 @@
-"""
-CryptoInvestorStrategy v1 — Freqtrade Strategy
+"""CryptoInvestorStrategy v1 — Freqtrade Strategy
 =================================================
 Trend-following strategy using EMA alignment + RSI pullback entries.
 
@@ -23,24 +22,10 @@ Risk Management:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from functools import reduce
-from typing import Optional
 
-import numpy as np
-import pandas as pd
 import talib.abstract as ta
-from pandas import DataFrame
-
-from freqtrade.strategy import (
-    BooleanParameter,
-    CategoricalParameter,
-    DecimalParameter,
-    IntParameter,
-    IStrategy,
-    merge_informative_pair,
-)
-
 from _conviction_helpers import (
     check_conviction,
     check_exit_advice,
@@ -49,13 +34,18 @@ from _conviction_helpers import (
     record_entry_regime,
     refresh_signals,
 )
+from freqtrade.strategy import (
+    DecimalParameter,
+    IntParameter,
+    IStrategy,
+)
+from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
 
 class CryptoInvestorV1(IStrategy):
-    """
-    Trend-following strategy with RSI pullback entries.
+    """Trend-following strategy with RSI pullback entries.
 
     Designed for spot crypto trading on 1h timeframe.
     """
@@ -113,7 +103,6 @@ class CryptoInvestorV1(IStrategy):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Calculate all technical indicators."""
-
         # ── Moving Averages ──
         for period in [7, 14, 21, 50, 100, 200]:
             dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
@@ -171,7 +160,6 @@ class CryptoInvestorV1(IStrategy):
         Aggressive mode: RSI pullback + any ONE confirmation signal.
         EMA alignment removed — trades in any trend direction.
         """
-
         # Required: RSI pullback (core signal)
         rsi_pullback = dataframe["rsi"] < self.buy_rsi_threshold.value
 
@@ -204,7 +192,6 @@ class CryptoInvestorV1(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Define exit (sell) conditions."""
-
         conditions = []
 
         # Exit 1: RSI overbought
@@ -219,7 +206,7 @@ class CryptoInvestorV1(IStrategy):
         if conditions:
             dataframe.loc[
                 reduce(lambda x, y: x | y, conditions) | exit_trend_break,
-                "exit_long"
+                "exit_long",
             ] = 1
 
         return dataframe
@@ -265,8 +252,7 @@ class CryptoInvestorV1(IStrategy):
         after_fill: bool,
         **kwargs,
     ) -> float:
-        """
-        ATR-based dynamic stop loss with regime-aware tightening.
+        """ATR-based dynamic stop loss with regime-aware tightening.
 
         - Initial: 2x ATR below entry
         - Tightens as profit increases
@@ -306,7 +292,7 @@ class CryptoInvestorV1(IStrategy):
         current_profit: float,
         after_fill: bool,
         **kwargs,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Custom exit logic: conviction advisor + trend/stale checks."""
         # 1. Conviction-based exit (regime deterioration, time limits)
         exit_tag = check_exit_advice(self, pair, trade, current_time, current_profit)
@@ -344,7 +330,7 @@ class CryptoInvestorV1(IStrategy):
         rate: float,
         time_in_force: str,
         current_time: datetime,
-        entry_tag: Optional[str],
+        entry_tag: str | None,
         side: str,
         **kwargs,
     ) -> bool:

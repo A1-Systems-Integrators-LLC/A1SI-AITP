@@ -1,5 +1,4 @@
-"""
-Tests for hftbacktest strategies (Tier 4)
+"""Tests for hftbacktest strategies (Tier 4)
 ==========================================
 Covers: strategy registry, base class, tick data conversion,
 market maker logic, backtesting, and backend integration.

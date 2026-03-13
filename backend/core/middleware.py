@@ -1,5 +1,4 @@
-"""
-Custom middleware — request tracing, rate limiting, audit logging, security event logging.
+"""Custom middleware — request tracing, rate limiting, audit logging, security event logging.
 """
 
 import logging
@@ -149,6 +148,7 @@ class RateLimitMiddleware:
         Returns:
             Tuple of (allowed, remaining, reset_time) where reset_time is a
             Unix timestamp when the oldest request in the window expires.
+
         """
         now = time.time()
         with self._lock:

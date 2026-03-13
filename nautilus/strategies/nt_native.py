@@ -1,5 +1,4 @@
-"""
-NautilusTrader Native Strategy Adapters
+"""NautilusTrader Native Strategy Adapters
 =========================================
 Real nautilus_trader.trading.strategy.Strategy subclasses that wrap
 the existing pandas-based signal logic from our strategy modules.
@@ -72,7 +71,7 @@ if HAS_NAUTILUS_TRADER:
 
             # Instantiate the pandas strategy for signal computation
             self._signal_engine = self.pandas_strategy_cls(
-                config={"mode": config.mode}
+                config={"mode": config.mode},
             )
 
         def on_start(self) -> None:

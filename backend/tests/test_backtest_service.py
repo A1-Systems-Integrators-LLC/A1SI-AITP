@@ -16,7 +16,7 @@ class TestBacktestServiceRunBacktest:
 
     def test_routes_to_freqtrade(self):
         with patch.object(
-            BacktestService, "_run_freqtrade", return_value={"framework": "freqtrade"}
+            BacktestService, "_run_freqtrade", return_value={"framework": "freqtrade"},
         ) as mock_ft:
             result = BacktestService.run_backtest(
                 {"framework": "freqtrade", "strategy": "TestStrat"},
@@ -27,7 +27,7 @@ class TestBacktestServiceRunBacktest:
 
     def test_routes_to_nautilus(self):
         with patch.object(
-            BacktestService, "_run_nautilus", return_value={"framework": "nautilus"}
+            BacktestService, "_run_nautilus", return_value={"framework": "nautilus"},
         ) as mock_nt:
             result = BacktestService.run_backtest(
                 {"framework": "nautilus"},
@@ -38,7 +38,7 @@ class TestBacktestServiceRunBacktest:
 
     def test_routes_to_hftbacktest(self):
         with patch.object(
-            BacktestService, "_run_hft", return_value={"framework": "hftbacktest"}
+            BacktestService, "_run_hft", return_value={"framework": "hftbacktest"},
         ) as mock_hft:
             result = BacktestService.run_backtest(
                 {"framework": "hftbacktest"},
@@ -49,7 +49,7 @@ class TestBacktestServiceRunBacktest:
 
     def test_defaults_to_freqtrade(self):
         with patch.object(
-            BacktestService, "_run_freqtrade", return_value={"framework": "freqtrade"}
+            BacktestService, "_run_freqtrade", return_value={"framework": "freqtrade"},
         ) as mock_ft:
             _result = BacktestService.run_backtest(
                 {},

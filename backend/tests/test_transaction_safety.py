@@ -13,7 +13,7 @@ class TestUpdateLimitsAtomic:
     def test_success(self):
         RiskLimits.objects.create(portfolio_id=1)
         result = RiskManagementService.update_limits(
-            1, {"max_daily_loss": 0.10}, changed_by="test", reason="test"
+            1, {"max_daily_loss": 0.10}, changed_by="test", reason="test",
         )
         assert result.max_daily_loss == 0.10
         assert RiskLimitChange.objects.filter(portfolio_id=1).count() == 1
@@ -25,7 +25,7 @@ class TestUpdateLimitsAtomic:
             pytest.raises(RuntimeError),
         ):
             RiskManagementService.update_limits(
-                2, {"max_daily_loss": 0.20}, changed_by="test"
+                2, {"max_daily_loss": 0.20}, changed_by="test",
             )
         # Change record should have been rolled back
         assert RiskLimitChange.objects.filter(portfolio_id=2).count() == 0
@@ -52,7 +52,7 @@ class TestUpdateLimitsAtomic:
     def test_no_changes_no_records(self):
         RiskLimits.objects.create(portfolio_id=4, max_daily_loss=0.05)
         RiskManagementService.update_limits(
-            4, {"max_daily_loss": 0.05}, changed_by="test"
+            4, {"max_daily_loss": 0.05}, changed_by="test",
         )
         assert RiskLimitChange.objects.filter(portfolio_id=4).count() == 0
 
@@ -66,14 +66,14 @@ class TestHaltTradingAtomic:
         state = RiskState.objects.get(portfolio_id=10)
         assert state.is_halted is True
         assert AlertLog.objects.filter(
-            portfolio_id=10, event_type="kill_switch_halt"
+            portfolio_id=10, event_type="kill_switch_halt",
         ).exists()
 
     def test_rolls_back_on_error(self):
         RiskState.objects.create(portfolio_id=11, is_halted=False)
         with (
             patch.object(
-                AlertLog.objects, "create", side_effect=RuntimeError("DB error")
+                AlertLog.objects, "create", side_effect=RuntimeError("DB error"),
             ),
             pytest.raises(RuntimeError),
         ):
@@ -99,14 +99,14 @@ class TestResumeTradingAtomic:
         state = RiskState.objects.get(portfolio_id=20)
         assert state.is_halted is False
         assert AlertLog.objects.filter(
-            portfolio_id=20, event_type="kill_switch_resume"
+            portfolio_id=20, event_type="kill_switch_resume",
         ).exists()
 
     def test_rolls_back_on_error(self):
         RiskState.objects.create(portfolio_id=21, is_halted=True, halt_reason="stuck")
         with (
             patch.object(
-                AlertLog.objects, "create", side_effect=RuntimeError("DB error")
+                AlertLog.objects, "create", side_effect=RuntimeError("DB error"),
             ),
             pytest.raises(RuntimeError),
         ):
@@ -118,7 +118,7 @@ class TestResumeTradingAtomic:
         RiskState.objects.create(portfolio_id=22, is_halted=True)
         RiskManagementService.resume_trading(22)
         alert = AlertLog.objects.filter(
-            portfolio_id=22, event_type="kill_switch_resume"
+            portfolio_id=22, event_type="kill_switch_resume",
         ).first()
         assert alert is not None
         assert "RESUME" in alert.message

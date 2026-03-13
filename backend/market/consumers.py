@@ -107,7 +107,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "halt_status",
                 "data": event["data"],
-            }
+            },
         )
 
     async def order_update(self, event):
@@ -116,7 +116,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "order_update",
                 "data": event["data"],
-            }
+            },
         )
 
     async def risk_alert(self, event):
@@ -125,7 +125,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "risk_alert",
                 "data": event["data"],
-            }
+            },
         )
 
     async def news_update(self, event):
@@ -134,7 +134,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "news_update",
                 "data": event["data"],
-            }
+            },
         )
 
     async def sentiment_update(self, event):
@@ -143,7 +143,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "sentiment_update",
                 "data": event["data"],
-            }
+            },
         )
 
     async def scheduler_event(self, event):
@@ -152,7 +152,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "scheduler_event",
                 "data": event["data"],
-            }
+            },
         )
 
     async def regime_change(self, event):
@@ -161,7 +161,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "regime_change",
                 "data": event["data"],
-            }
+            },
         )
 
     async def opportunity_alert(self, event):
@@ -170,7 +170,7 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             {
                 "type": "opportunity_alert",
                 "data": event["data"],
-            }
+            },
         )
 
     @database_sync_to_async

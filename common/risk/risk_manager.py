@@ -1,5 +1,4 @@
-"""
-A1SI-AITP Risk Management Module
+"""A1SI-AITP Risk Management Module
 =======================================
 Shared risk controls that wrap all framework tiers.
 Enforces position sizing, drawdown limits, correlation checks,
@@ -11,7 +10,6 @@ import threading
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -23,19 +21,21 @@ logger = logging.getLogger("risk_manager")
 @dataclass
 class RiskLimits:
     """Global risk parameters."""
-    max_portfolio_drawdown: float = 0.15      # 15% max drawdown -> halt
-    max_single_trade_risk: float = 0.03       # 3% portfolio risk per trade
-    max_daily_loss: float = 0.05              # 5% max daily loss
+
+    max_portfolio_drawdown: float = 0.15  # 15% max drawdown -> halt
+    max_single_trade_risk: float = 0.03  # 3% portfolio risk per trade
+    max_daily_loss: float = 0.05  # 5% max daily loss
     max_open_positions: int = 10
-    max_position_size_pct: float = 0.20       # 20% max in single position
-    max_correlation: float = 0.70             # Max correlation between positions
-    min_risk_reward: float = 1.5              # Minimum risk/reward ratio
-    max_leverage: float = 1.0                 # No leverage by default
+    max_position_size_pct: float = 0.20  # 20% max in single position
+    max_correlation: float = 0.70  # Max correlation between positions
+    min_risk_reward: float = 1.5  # Minimum risk/reward ratio
+    max_leverage: float = 1.0  # No leverage by default
 
 
 @dataclass
 class PortfolioState:
     """Track current portfolio state for risk checks."""
+
     total_equity: float = 10000.0
     peak_equity: float = 10000.0
     daily_start_equity: float = 10000.0
@@ -44,23 +44,23 @@ class PortfolioState:
     total_pnl: float = 0.0
     is_halted: bool = False
     halt_reason: str = ""
-    last_update: Optional[datetime] = None
+    last_update: datetime | None = None
 
 
 @dataclass
 class VaRResult:
     """Value-at-Risk calculation result."""
-    var_95: float = 0.0          # 95% VaR (dollar amount)
-    var_99: float = 0.0          # 99% VaR (dollar amount)
-    cvar_95: float = 0.0         # 95% Conditional VaR (Expected Shortfall)
-    cvar_99: float = 0.0         # 99% Conditional VaR
-    method: str = "parametric"   # parametric or historical
-    window_days: int = 0         # number of return observations used
+
+    var_95: float = 0.0  # 95% VaR (dollar amount)
+    var_99: float = 0.0  # 99% VaR (dollar amount)
+    cvar_95: float = 0.0  # 95% Conditional VaR (Expected Shortfall)
+    cvar_99: float = 0.0  # 99% Conditional VaR
+    method: str = "parametric"  # parametric or historical
+    window_days: int = 0  # number of return observations used
 
 
 class ReturnTracker:
-    """
-    Tracks per-symbol return series for correlation and VaR calculations.
+    """Tracks per-symbol return series for correlation and VaR calculations.
 
     Stores a rolling window of daily returns for each symbol that has been
     traded, enabling portfolio-level risk metrics.
@@ -90,9 +90,8 @@ class ReturnTracker:
             return np.array([])
         return np.array(self._returns[symbol])
 
-    def get_correlation_matrix(self, symbols: Optional[list[str]] = None) -> pd.DataFrame:
-        """
-        Compute correlation matrix across tracked symbols.
+    def get_correlation_matrix(self, symbols: list[str] | None = None) -> pd.DataFrame:
+        """Compute correlation matrix across tracked symbols.
 
         Only includes symbols with >= 20 return observations for statistical relevance.
         """
@@ -116,8 +115,7 @@ class ReturnTracker:
         portfolio_value: float,
         method: str = "parametric",
     ) -> VaRResult:
-        """
-        Compute portfolio VaR and CVaR.
+        """Compute portfolio VaR and CVaR.
 
         Parameters
         ----------
@@ -131,10 +129,10 @@ class ReturnTracker:
         Returns
         -------
         VaRResult with VaR and CVaR at 95% and 99% confidence
+
         """
         valid_symbols = [
-            s for s in symbols_weights
-            if s in self._returns and len(self._returns[s]) >= 20
+            s for s in symbols_weights if s in self._returns and len(self._returns[s]) >= 20
         ]
 
         if not valid_symbols:
@@ -157,8 +155,12 @@ class ReturnTracker:
 
             var_95 = -sorted_returns[idx_95] * portfolio_value
             var_99 = -sorted_returns[idx_99] * portfolio_value
-            cvar_95 = -sorted_returns[:idx_95 + 1].mean() * portfolio_value if idx_95 > 0 else var_95
-            cvar_99 = -sorted_returns[:idx_99 + 1].mean() * portfolio_value if idx_99 > 0 else var_99
+            cvar_95 = (
+                -sorted_returns[: idx_95 + 1].mean() * portfolio_value if idx_95 > 0 else var_95
+            )
+            cvar_99 = (
+                -sorted_returns[: idx_99 + 1].mean() * portfolio_value if idx_99 > 0 else var_99
+            )
         else:
             # Parametric (Gaussian) VaR
             mu = portfolio_returns.mean()
@@ -195,8 +197,7 @@ class ReturnTracker:
 
 
 class RiskManager:
-    """
-    Centralized risk manager that gates all trade decisions.
+    """Centralized risk manager that gates all trade decisions.
 
     Usage:
         rm = RiskManager(limits=RiskLimits(max_portfolio_drawdown=0.10))
@@ -208,7 +209,7 @@ class RiskManager:
             logger.warning(f"Trade rejected: {reason}")
     """
 
-    def __init__(self, limits: Optional[RiskLimits] = None):
+    def __init__(self, limits: RiskLimits | None = None):
         self.limits = limits or RiskLimits()
         self.state = PortfolioState()
         self.return_tracker = ReturnTracker()
@@ -227,17 +228,21 @@ class RiskManager:
             if drawdown >= self.limits.max_portfolio_drawdown:
                 self.state.is_halted = True
                 self.state.halt_reason = (
-                    f"Max drawdown breached: {drawdown:.2%} >= {self.limits.max_portfolio_drawdown:.2%}"
+                    f"Max drawdown breached: {drawdown:.2%}"
+                    f" >= {self.limits.max_portfolio_drawdown:.2%}"
                 )
                 logger.critical(self.state.halt_reason)
                 return False
 
             # Check daily loss
-            daily_change = (current_equity - self.state.daily_start_equity) / self.state.daily_start_equity
+            daily_change = (
+                current_equity - self.state.daily_start_equity
+            ) / self.state.daily_start_equity
             if daily_change <= -self.limits.max_daily_loss:
                 self.state.is_halted = True
                 self.state.halt_reason = (
-                    f"Daily loss limit breached: {daily_change:.2%} <= -{self.limits.max_daily_loss:.2%}"
+                    f"Daily loss limit breached: {daily_change:.2%}"
+                    f" <= -{self.limits.max_daily_loss:.2%}"
                 )
                 logger.critical(self.state.halt_reason)
                 return False
@@ -258,12 +263,11 @@ class RiskManager:
         self,
         entry_price: float,
         stop_loss_price: float,
-        risk_per_trade: Optional[float] = None,
-        regime_modifier: Optional[float] = None,
-        signal_modifier: Optional[float] = None,
+        risk_per_trade: float | None = None,
+        regime_modifier: float | None = None,
+        signal_modifier: float | None = None,
     ) -> float:
-        """
-        Calculate position size based on risk per trade.
+        """Calculate position size based on risk per trade.
 
         Uses the formula:
             position_size = (equity * risk_pct) / abs(entry - stop_loss)
@@ -277,6 +281,7 @@ class RiskManager:
             Optional conviction-based position sizing modifier (0.2-1.5).
             From SignalAggregator.compute().position_modifier.
             Applied after regime modifier.
+
         """
         risk_pct = risk_per_trade or self.limits.max_single_trade_risk
         risk_amount = self.state.total_equity * risk_pct
@@ -298,7 +303,7 @@ class RiskManager:
             clamped = max(0.0, min(1.0, regime_modifier))
             size *= clamped
             logger.info(
-                f"Regime modifier applied: {clamped:.2f} → adjusted size {size:.6f}"
+                f"Regime modifier applied: {clamped:.2f} → adjusted size {size:.6f}",
             )
 
         # Apply signal/conviction modifier after regime modifier
@@ -306,12 +311,12 @@ class RiskManager:
             clamped = max(0.2, min(1.5, signal_modifier))
             size *= clamped
             logger.info(
-                f"Signal modifier applied: {clamped:.2f} → adjusted size {size:.6f}"
+                f"Signal modifier applied: {clamped:.2f} → adjusted size {size:.6f}",
             )
 
         logger.info(
             f"Position size: {size:.6f} (risk ${risk_amount:.2f}, "
-            f"price risk ${price_risk:.2f}, entry ${entry_price:.2f})"
+            f"price risk ${price_risk:.2f}, entry ${entry_price:.2f})",
         )
         return size
 
@@ -321,11 +326,10 @@ class RiskManager:
         side: str,
         size: float,
         entry_price: float,
-        stop_loss_price: Optional[float] = None,
+        stop_loss_price: float | None = None,
         asset_class: str = "crypto",
     ) -> tuple[bool, str]:
-        """
-        Gate function: check if a new trade passes all risk checks.
+        """Gate function: check if a new trade passes all risk checks.
 
         Returns (approved, reason) tuple.
         """
@@ -341,10 +345,7 @@ class RiskManager:
                 if not MarketHoursService.is_market_open(asset_class):
                     session_info = MarketHoursService.get_session_info(asset_class)
                     next_open = session_info.get("next_open", "unknown")
-                    return False, (
-                        f"Market closed for {asset_class}. "
-                        f"Next open: {next_open}"
-                    )
+                    return False, (f"Market closed for {asset_class}. Next open: {next_open}")
             except ImportError:
                 logger.warning("market_hours module not available, skipping hours check")
 
@@ -367,7 +368,7 @@ class RiskManager:
         # Check risk/reward if stop loss provided
         if stop_loss_price:
             price_risk = abs(entry_price - stop_loss_price)
-            trade_risk = (price_risk / entry_price)
+            trade_risk = price_risk / entry_price
             if trade_risk > self.limits.max_single_trade_risk * 2:
                 return False, f"Stop loss too wide: {trade_risk:.2%} risk per unit"
 
@@ -450,7 +451,11 @@ class RiskManager:
 
     def get_status(self) -> dict:
         """Return current risk manager status."""
-        drawdown = 1.0 - (self.state.total_equity / self.state.peak_equity) if self.state.peak_equity > 0 else 0
+        drawdown = (
+            1.0 - (self.state.total_equity / self.state.peak_equity)
+            if self.state.peak_equity > 0
+            else 0
+        )
         return {
             "equity": self.state.total_equity,
             "peak_equity": self.state.peak_equity,
@@ -463,8 +468,7 @@ class RiskManager:
         }
 
     def get_var(self, method: str = "parametric") -> VaRResult:
-        """
-        Compute portfolio VaR/CVaR based on current open positions.
+        """Compute portfolio VaR/CVaR based on current open positions.
 
         Requires return data to have been fed via return_tracker.record_price().
         """
@@ -478,13 +482,16 @@ class RiskManager:
         return self.return_tracker.compute_var(weights, self.state.total_equity, method)
 
     def portfolio_heat_check(self) -> dict:
-        """
-        Aggregate portfolio health assessment.
+        """Aggregate portfolio health assessment.
 
         Returns a dict with all risk metrics and an overall 'healthy' flag.
         Call before every trade to get a full picture.
         """
-        drawdown = 1.0 - (self.state.total_equity / self.state.peak_equity) if self.state.peak_equity > 0 else 0.0
+        drawdown = (
+            1.0 - (self.state.total_equity / self.state.peak_equity)
+            if self.state.peak_equity > 0
+            else 0.0
+        )
 
         # Correlation matrix for open positions
         open_symbols = list(self.state.open_positions.keys())
@@ -493,7 +500,7 @@ class RiskManager:
         high_corr_pairs = []
         if not corr_matrix.empty and len(corr_matrix) >= 2:
             for i, s1 in enumerate(corr_matrix.columns):
-                for s2 in corr_matrix.columns[i + 1:]:
+                for s2 in corr_matrix.columns[i + 1 :]:
                     c = abs(corr_matrix.loc[s1, s2])
                     max_corr = max(max_corr, c)
                     if c > self.limits.max_correlation:
@@ -505,7 +512,9 @@ class RiskManager:
         # Position concentration
         position_pcts = {}
         for symbol, pos in self.state.open_positions.items():
-            position_pcts[symbol] = pos["value"] / self.state.total_equity if self.state.total_equity > 0 else 0.0
+            position_pcts[symbol] = (
+                pos["value"] / self.state.total_equity if self.state.total_equity > 0 else 0.0
+            )
         max_concentration = max(position_pcts.values()) if position_pcts else 0.0
 
         # Overall health
@@ -513,7 +522,10 @@ class RiskManager:
         if self.state.is_halted:
             issues.append(f"HALTED: {self.state.halt_reason}")
         if drawdown > self.limits.max_portfolio_drawdown * 0.8:
-            issues.append(f"Drawdown warning: {drawdown:.2%} approaching limit {self.limits.max_portfolio_drawdown:.2%}")
+            issues.append(
+                f"Drawdown warning: {drawdown:.2%} approaching"
+                f" limit {self.limits.max_portfolio_drawdown:.2%}"
+            )
         if high_corr_pairs:
             issues.append(f"High correlation: {high_corr_pairs}")
         if max_concentration > self.limits.max_position_size_pct * 0.9:

@@ -162,7 +162,7 @@ class TestOrderSyncExecutor:
         mock_service_cls = MagicMock()
         mock_service_instance = MagicMock()
         mock_service_instance.sync_order = MagicMock(
-            side_effect=Exception("network error")
+            side_effect=Exception("network error"),
         )
         mock_service_cls.return_value = mock_service_instance
 

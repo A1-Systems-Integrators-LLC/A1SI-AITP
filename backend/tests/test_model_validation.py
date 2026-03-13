@@ -53,7 +53,7 @@ class TestOrderClean:
 
     def test_valid_order_passes(self):
         order = self._make_order(
-            side="buy", order_type="limit", amount=0.5, price=50000.0
+            side="buy", order_type="limit", amount=0.5, price=50000.0,
         )
         order.clean()  # Should not raise
 
@@ -105,7 +105,7 @@ class TestHoldingClean:
     def test_negative_price(self):
         portfolio = Portfolio.objects.create(name="Test")
         holding = Holding(
-            portfolio=portfolio, symbol="BTC/USDT", amount=1.0, avg_buy_price=-50.0
+            portfolio=portfolio, symbol="BTC/USDT", amount=1.0, avg_buy_price=-50.0,
         )
         with pytest.raises(ValidationError) as exc_info:
             holding.clean()
@@ -114,7 +114,7 @@ class TestHoldingClean:
     def test_valid_passes(self):
         portfolio = Portfolio.objects.create(name="Test")
         holding = Holding(
-            portfolio=portfolio, symbol="BTC/USDT", amount=1.0, avg_buy_price=50000.0
+            portfolio=portfolio, symbol="BTC/USDT", amount=1.0, avg_buy_price=50000.0,
         )
         holding.clean()  # Should not raise
 

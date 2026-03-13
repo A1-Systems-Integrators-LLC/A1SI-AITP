@@ -1,9 +1,10 @@
 """Tests for stale job/workflow recovery on startup."""
 
-import pytest
 from datetime import datetime, timezone
 
-from analysis.models import BackgroundJob, WorkflowRun, Workflow
+import pytest
+
+from analysis.models import BackgroundJob, Workflow, WorkflowRun
 from analysis.services.job_runner import recover_stale_jobs, recover_stale_workflow_runs
 
 

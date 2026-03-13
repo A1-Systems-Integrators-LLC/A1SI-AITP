@@ -91,7 +91,7 @@ def forex_order(db):
 def mock_exchange():
     exchange = AsyncMock()
     exchange.create_order = AsyncMock(
-        return_value={"id": "EX-001", "status": "open", "filled": 0}
+        return_value={"id": "EX-001", "status": "open", "filled": 0},
     )
     exchange.fetch_order = AsyncMock(
         return_value={
@@ -101,7 +101,7 @@ def mock_exchange():
             "average": 48100.0,
             "price": 48100.0,
             "fee": {"cost": 0.12, "currency": "USDT"},
-        }
+        },
     )
     exchange.cancel_order = AsyncMock(return_value={"status": "canceled"})
     return exchange
@@ -136,11 +136,11 @@ class TestSubmitOrder:
         assert result.exchange_order_id == "EX-001"
 
     async def test_submit_exchange_error_transitions_to_error(
-        self, pending_live_order, mock_exchange
+        self, pending_live_order, mock_exchange,
     ):
         """When ccxt raises, order transitions to ERROR with message."""
         mock_exchange.create_order = AsyncMock(
-            side_effect=Exception("Rate limit exceeded")
+            side_effect=Exception("Rate limit exceeded"),
         )
         with (
             patch(
@@ -189,7 +189,7 @@ class TestSubmitOrder:
         from risk.models import RiskState
 
         await sync_to_async(RiskState.objects.create)(
-            portfolio_id=1, is_halted=True, halt_reason="drawdown breach"
+            portfolio_id=1, is_halted=True, halt_reason="drawdown breach",
         )
         with patch(
             "trading.services.live_trading.get_channel_layer",
@@ -214,7 +214,7 @@ class TestSyncOrder:
         assert result.status == OrderStatus.PENDING  # unchanged
 
     async def test_sync_fills_order_and_creates_fill_event(
-        self, submitted_live_order, mock_exchange
+        self, submitted_live_order, mock_exchange,
     ):
         """Sync detects closed status, updates filled/avg_fill_price, creates FillEvent."""
         with (
@@ -235,7 +235,7 @@ class TestSyncOrder:
         assert result.avg_fill_price == 48100.0
 
         fill_count = await sync_to_async(
-            OrderFillEvent.objects.filter(order=result).count
+            OrderFillEvent.objects.filter(order=result).count,
         )()
         assert fill_count == 1
 
@@ -249,7 +249,7 @@ class TestSyncOrder:
                 "status": "open",
                 "filled": 0,
                 "average": 0,
-            }
+            },
         )
         with (
             patch(

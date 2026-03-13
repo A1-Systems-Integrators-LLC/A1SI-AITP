@@ -22,7 +22,6 @@ from analysis.services.workflow_engine import (
     execute_workflow,
 )
 
-
 # ── Helpers ──────────────────────────────────────────────────
 
 def _make_workflow(wf_id: str, steps_data: list[dict]) -> Workflow:
@@ -88,7 +87,7 @@ class TestCascadeFailure:
         assert result["failed_step"] == 2
 
         step_runs = list(
-            WorkflowStepRun.objects.filter(workflow_run=run).order_by("order")
+            WorkflowStepRun.objects.filter(workflow_run=run).order_by("order"),
         )
         assert step_runs[0].status == "completed"
         assert step_runs[1].status == "failed"
@@ -205,7 +204,7 @@ class TestWorkflowTimeout:
         assert "Unknown step type" in result["error"]
 
         step_runs = list(
-            WorkflowStepRun.objects.filter(workflow_run=run).order_by("order")
+            WorkflowStepRun.objects.filter(workflow_run=run).order_by("order"),
         )
         assert step_runs[0].status == "completed"
         assert step_runs[1].status == "failed"
@@ -362,11 +361,10 @@ class TestStepExecutionOrder:
             assert execution_order == [1, 2, 3]
 
     def test_current_step_tracks_progress(self):
-        current_steps_seen = []
 
         def tracking_executor(params, cb):
             # Read the run's current_step at time of execution
-            run_id = params.get("_prev_result", {}).get("_run_id", params.get("_run_id"))
+            params.get("_prev_result", {}).get("_run_id", params.get("_run_id"))
             return {"status": "completed"}
 
         with patch("analysis.services.step_registry.STEP_REGISTRY", {
@@ -747,10 +745,9 @@ class TestWorkflowRunStatusTransitions:
     """Verify status transitions during execution."""
 
     def test_run_transitions_to_running_then_completed(self):
-        statuses_seen = []
 
         def observe_executor(params, cb):
-            run_id = params.get("_run_id")
+            params.get("_run_id")
             return {"status": "completed"}
 
         with patch("analysis.services.step_registry.STEP_REGISTRY", {

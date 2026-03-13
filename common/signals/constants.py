@@ -18,8 +18,8 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 # (offset_above_threshold, position_modifier, label)
 # Actual threshold is conviction_threshold from asset_tuning + session adjustment.
 ENTRY_TIER_OFFSETS: list[tuple[int, float, str]] = [
-    (20, 1.0, "strong_buy"),   # threshold + 20
-    (10, 0.7, "buy"),          # threshold + 10
+    (20, 1.0, "strong_buy"),  # threshold + 20
+    (10, 0.7, "buy"),  # threshold + 10
     (0, 0.4, "cautious_buy"),  # threshold + 0
 ]
 
@@ -34,33 +34,57 @@ LABEL_AVOID = "avoid"
 # Higher = better alignment.  0 = hard-disable (instant reject).
 
 CRYPTO_ALIGNMENT: dict[Regime, dict[str, int]] = {
-    Regime.STRONG_TREND_UP:   {"CryptoInvestorV1": 95, "BollingerMeanReversion": 25, "VolatilityBreakout": 85},
-    Regime.WEAK_TREND_UP:     {"CryptoInvestorV1": 70, "BollingerMeanReversion": 55, "VolatilityBreakout": 15},
-    Regime.RANGING:           {"CryptoInvestorV1": 15, "BollingerMeanReversion": 95, "VolatilityBreakout":  5},
-    Regime.WEAK_TREND_DOWN:   {"CryptoInvestorV1": 10, "BollingerMeanReversion": 75, "VolatilityBreakout":  5},
-    Regime.STRONG_TREND_DOWN: {"CryptoInvestorV1":  0, "BollingerMeanReversion": 45, "VolatilityBreakout":  0},
-    Regime.HIGH_VOLATILITY:   {"CryptoInvestorV1": 25, "BollingerMeanReversion": 65, "VolatilityBreakout": 70},
-    Regime.UNKNOWN:           {"CryptoInvestorV1": 20, "BollingerMeanReversion": 45, "VolatilityBreakout": 10},
+    Regime.STRONG_TREND_UP: {
+        "CryptoInvestorV1": 95,
+        "BollingerMeanReversion": 25,
+        "VolatilityBreakout": 85,
+    },
+    Regime.WEAK_TREND_UP: {
+        "CryptoInvestorV1": 70,
+        "BollingerMeanReversion": 55,
+        "VolatilityBreakout": 15,
+    },
+    Regime.RANGING: {"CryptoInvestorV1": 15, "BollingerMeanReversion": 95, "VolatilityBreakout": 5},
+    Regime.WEAK_TREND_DOWN: {
+        "CryptoInvestorV1": 10,
+        "BollingerMeanReversion": 75,
+        "VolatilityBreakout": 5,
+    },
+    Regime.STRONG_TREND_DOWN: {
+        "CryptoInvestorV1": 0,
+        "BollingerMeanReversion": 45,
+        "VolatilityBreakout": 0,
+    },
+    Regime.HIGH_VOLATILITY: {
+        "CryptoInvestorV1": 25,
+        "BollingerMeanReversion": 65,
+        "VolatilityBreakout": 70,
+    },
+    Regime.UNKNOWN: {
+        "CryptoInvestorV1": 20,
+        "BollingerMeanReversion": 45,
+        "VolatilityBreakout": 10,
+    },
 }
 
 EQUITY_ALIGNMENT: dict[Regime, dict[str, int]] = {
-    Regime.STRONG_TREND_UP:   {"EquityMomentum": 95, "EquityMeanReversion": 25},
-    Regime.WEAK_TREND_UP:     {"EquityMomentum": 75, "EquityMeanReversion": 45},
-    Regime.RANGING:           {"EquityMomentum": 20, "EquityMeanReversion": 90},
-    Regime.WEAK_TREND_DOWN:   {"EquityMomentum": 10, "EquityMeanReversion": 65},
-    Regime.STRONG_TREND_DOWN: {"EquityMomentum":  0, "EquityMeanReversion": 35},
-    Regime.HIGH_VOLATILITY:   {"EquityMomentum": 25, "EquityMeanReversion": 55},
-    Regime.UNKNOWN:           {"EquityMomentum": 20, "EquityMeanReversion": 35},
+    Regime.STRONG_TREND_UP: {"EquityMomentum": 95, "EquityMeanReversion": 25},
+    Regime.WEAK_TREND_UP: {"EquityMomentum": 75, "EquityMeanReversion": 45},
+    Regime.RANGING: {"EquityMomentum": 20, "EquityMeanReversion": 90},
+    Regime.WEAK_TREND_DOWN: {"EquityMomentum": 10, "EquityMeanReversion": 65},
+    Regime.STRONG_TREND_DOWN: {"EquityMomentum": 0, "EquityMeanReversion": 35},
+    Regime.HIGH_VOLATILITY: {"EquityMomentum": 25, "EquityMeanReversion": 55},
+    Regime.UNKNOWN: {"EquityMomentum": 20, "EquityMeanReversion": 35},
 }
 
 FOREX_ALIGNMENT: dict[Regime, dict[str, int]] = {
-    Regime.STRONG_TREND_UP:   {"ForexTrend": 95, "ForexRange": 20},
-    Regime.WEAK_TREND_UP:     {"ForexTrend": 70, "ForexRange": 40},
-    Regime.RANGING:           {"ForexTrend": 15, "ForexRange": 95},
-    Regime.WEAK_TREND_DOWN:   {"ForexTrend": 70, "ForexRange": 40},
+    Regime.STRONG_TREND_UP: {"ForexTrend": 95, "ForexRange": 20},
+    Regime.WEAK_TREND_UP: {"ForexTrend": 70, "ForexRange": 40},
+    Regime.RANGING: {"ForexTrend": 15, "ForexRange": 95},
+    Regime.WEAK_TREND_DOWN: {"ForexTrend": 70, "ForexRange": 40},
     Regime.STRONG_TREND_DOWN: {"ForexTrend": 90, "ForexRange": 15},
-    Regime.HIGH_VOLATILITY:   {"ForexTrend": 50, "ForexRange": 50},
-    Regime.UNKNOWN:           {"ForexTrend": 30, "ForexRange": 30},
+    Regime.HIGH_VOLATILITY: {"ForexTrend": 50, "ForexRange": 50},
+    Regime.UNKNOWN: {"ForexTrend": 30, "ForexRange": 30},
 }
 
 # Map asset_class -> alignment table
@@ -138,13 +162,13 @@ PARTIAL_PROFIT_TARGETS: dict[str, list[tuple[float, float, str]]] = {
 # Base max hold hours per strategy.
 # Halved in STRONG_TREND_DOWN.
 MAX_HOLD_HOURS: dict[str, float] = {
-    "CryptoInvestorV1": 168.0,       # 7 days
+    "CryptoInvestorV1": 168.0,  # 7 days
     "BollingerMeanReversion": 48.0,  # 2 days
-    "VolatilityBreakout": 72.0,      # 3 days
-    "EquityMomentum": 240.0,         # 10 days (equity holds longer)
-    "EquityMeanReversion": 120.0,    # 5 days
-    "ForexTrend": 96.0,              # 4 days
-    "ForexRange": 48.0,              # 2 days (range trades resolve fast)
+    "VolatilityBreakout": 72.0,  # 3 days
+    "EquityMomentum": 240.0,  # 10 days (equity holds longer)
+    "EquityMeanReversion": 120.0,  # 5 days
+    "ForexTrend": 96.0,  # 4 days
+    "ForexRange": 48.0,  # 2 days (range trades resolve fast)
 }
 DEFAULT_MAX_HOLD_HOURS = 96.0  # 4 days fallback
 

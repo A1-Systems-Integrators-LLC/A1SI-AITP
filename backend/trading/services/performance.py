@@ -37,7 +37,7 @@ class TradingPerformanceService:
         sells: dict[str, list] = defaultdict(list)
 
         for order in orders:
-            price = order.avg_fill_price if order.avg_fill_price else order.price
+            price = order.avg_fill_price or order.price
             if not price:
                 logger.warning("Skipping order %s with zero/null price", order.id)
                 continue

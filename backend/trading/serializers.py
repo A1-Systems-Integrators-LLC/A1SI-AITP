@@ -159,6 +159,6 @@ class OrderCreateSerializer(serializers.Serializer):
         valid_ids = {choice[0] for choice in EXCHANGE_CHOICES}
         if value not in valid_ids:
             raise serializers.ValidationError(
-                f"Invalid exchange_id '{value}'. Must be one of: {', '.join(sorted(valid_ids))}"
+                f"Invalid exchange_id '{value}'. Must be one of: {', '.join(sorted(valid_ids))}",
             )
         return value

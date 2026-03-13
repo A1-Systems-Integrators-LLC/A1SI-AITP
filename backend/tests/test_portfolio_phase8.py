@@ -1,6 +1,6 @@
 """Phase 8 — portfolio 100% coverage: models, views, analytics edge cases."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -54,7 +54,7 @@ class TestHoldingModel:
 class TestPortfolioDetailPut:
     def test_put_success(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "Original"}, format="json"
+            "/api/portfolios/", {"name": "Original"}, format="json",
         )
         pid = resp.json()["id"]
 
@@ -80,7 +80,7 @@ class TestPortfolioDetailPut:
 class TestPortfolioDetailPatch:
     def test_patch_partial(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "Original"}, format="json"
+            "/api/portfolios/", {"name": "Original"}, format="json",
         )
         pid = resp.json()["id"]
 
@@ -128,7 +128,7 @@ class TestHoldingDetailPut:
 
     def test_put_holding_not_found(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "P"}, format="json"
+            "/api/portfolios/", {"name": "P"}, format="json",
         )
         pid = resp.json()["id"]
         resp = authenticated_client.put(
@@ -143,7 +143,7 @@ class TestHoldingDetailPut:
 class TestHoldingDetailDelete:
     def test_delete_holding(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "P"}, format="json"
+            "/api/portfolios/", {"name": "P"}, format="json",
         )
         pid = resp.json()["id"]
         resp = authenticated_client.post(
@@ -162,7 +162,7 @@ class TestHoldingDetailDelete:
 
     def test_delete_holding_not_found(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "P"}, format="json"
+            "/api/portfolios/", {"name": "P"}, format="json",
         )
         pid = resp.json()["id"]
         resp = authenticated_client.delete(f"/api/portfolios/{pid}/holdings/9999/")
@@ -173,7 +173,7 @@ class TestHoldingDetailDelete:
 class TestHoldingCreateDuplicate:
     def test_duplicate_symbol_returns_409(self, authenticated_client):
         resp = authenticated_client.post(
-            "/api/portfolios/", {"name": "P"}, format="json"
+            "/api/portfolios/", {"name": "P"}, format="json",
         )
         pid = resp.json()["id"]
         authenticated_client.post(
