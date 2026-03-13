@@ -183,6 +183,7 @@ describe("Layout", () => {
     let forceUpdate: () => void;
     function Wrapper() {
       const [, setState] = useState(0);
+      // eslint-disable-next-line react-hooks/globals -- test-only force re-render
       forceUpdate = () => setState((n) => n + 1);
       return (
         <QueryClientProvider client={queryClient}>
@@ -214,6 +215,7 @@ describe("Layout", () => {
     let forceUpdate: () => void;
     function Wrapper() {
       const [, setState] = useState(0);
+      // eslint-disable-next-line react-hooks/globals -- test-only force re-render
       forceUpdate = () => setState((n) => n + 1);
       return (
         <QueryClientProvider client={queryClient}>
@@ -243,6 +245,7 @@ describe("Layout", () => {
     let forceUpdate: () => void;
     function Wrapper() {
       const [, setState] = useState(0);
+      // eslint-disable-next-line react-hooks/globals -- test-only force re-render
       forceUpdate = () => setState((n) => n + 1);
       return (
         <QueryClientProvider client={queryClient}>
@@ -272,6 +275,7 @@ describe("Layout", () => {
     let forceUpdate: () => void;
     function Wrapper() {
       const [, setState] = useState(0);
+      // eslint-disable-next-line react-hooks/globals -- test-only force re-render
       forceUpdate = () => setState((n) => n + 1);
       return (
         <QueryClientProvider client={queryClient}>

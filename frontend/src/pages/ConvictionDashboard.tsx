@@ -49,13 +49,9 @@ const SOURCE_LABELS: Record<string, string> = {
 export function ConvictionDashboard() {
   const { assetClass } = useAssetClass();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-
   useEffect(() => {
     document.title = "Conviction | A1SI-AITP";
-  }, []);
-
-  // Reset selection on asset class change
-  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset selection when asset class changes
     setSelectedSymbol(null);
   }, [assetClass]);
 
