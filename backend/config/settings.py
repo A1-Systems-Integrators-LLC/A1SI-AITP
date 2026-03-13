@@ -99,6 +99,7 @@ DATABASES = {
         "OPTIONS": {
             "timeout": 30,
         },
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -281,18 +282,21 @@ FREQTRADE_INSTANCES = [
         "config": "config.json",
         "port": 8080,
         "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:8080"),
+        "dry_run_wallet": 200.0,
     },
     {
         "name": "BollingerMeanReversion",
         "config": "config_bmr.json",
         "port": 8083,
         "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:8083"),
+        "dry_run_wallet": 200.0,
     },
     {
         "name": "VolatilityBreakout",
         "config": "config_vb.json",
         "port": 8084,
         "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:8084"),
+        "dry_run_wallet": 100.0,
     },
 ]
 
@@ -451,6 +455,41 @@ SCHEDULED_TASKS = {
         "interval_seconds": 86400,
         "params": {"timeframe": "1h"},
     },
+    "ml_predict": {
+        "name": "ML Predictions",
+        "description": "Generate ML predictions for watchlist symbols (hourly)",
+        "task_type": "ml_predict",
+        "interval_seconds": 3600,
+        "params": {"asset_class": "crypto"},
+    },
+    "ml_feedback": {
+        "name": "ML Feedback",
+        "description": "Backfill prediction outcomes and update model performance (hourly)",
+        "task_type": "ml_feedback",
+        "interval_seconds": 3600,
+        "params": {},
+    },
+    "strategy_orchestration": {
+        "name": "Strategy Orchestration",
+        "description": "Evaluate regime-strategy alignment, pause/resume strategies (every 15min)",
+        "task_type": "strategy_orchestration",
+        "interval_seconds": 900,
+        "params": {},
+    },
+    "signal_feedback": {
+        "name": "Signal Feedback",
+        "description": "Backfill signal attribution outcomes and compute source accuracy (every 1h)",
+        "task_type": "signal_feedback",
+        "interval_seconds": 3600,
+        "params": {},
+    },
+    "adaptive_weighting": {
+        "name": "Adaptive Weighting",
+        "description": "Compute adaptive weight recommendations based on trade outcomes (daily)",
+        "task_type": "adaptive_weighting",
+        "interval_seconds": 86400,
+        "params": {},
+    },
 }
 
 # ── Workflow templates ────────────────────────────────────────
@@ -512,6 +551,12 @@ WORKFLOW_TEMPLATES: dict = {
         ],
     },
 }
+
+FREQTRADE_API_URL = os.environ.get("FREQTRADE_API_URL", "")
+FREQTRADE_BMR_API_URL = os.environ.get("FREQTRADE_BMR_API_URL", "")
+FREQTRADE_VB_API_URL = os.environ.get("FREQTRADE_VB_API_URL", "")
+FREQTRADE_USERNAME = os.environ.get("FREQTRADE_USERNAME", "freqtrader")
+FREQTRADE_PASSWORD = os.environ.get("FREQTRADE_PASSWORD", "freqtrader")
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")

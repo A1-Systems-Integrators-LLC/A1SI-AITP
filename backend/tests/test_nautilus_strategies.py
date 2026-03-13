@@ -541,15 +541,11 @@ class TestRunnerDualMode:
 # ── Native Engine Tests (skip when NT not installed) ─
 
 
-try:
-    from nautilus.engine import HAS_NAUTILUS_TRADER as _HAS_NT
-except ImportError:
-    _HAS_NT = False
+from nautilus.engine import HAS_NAUTILUS_TRADER as _HAS_NT  # noqa: E402
 
-_skip_no_nt = pytest.mark.skipif(not _HAS_NT, reason="nautilus_trader not installed")
+assert _HAS_NT, "nautilus_trader must be installed — tests must not silently skip"
 
 
-@_skip_no_nt
 class TestNativeEngine:
     def test_create_engine(self):
         from nautilus.engine import create_backtest_engine

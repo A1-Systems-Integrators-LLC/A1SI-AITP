@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { mlApi, type MLModel } from "../api/ml";
+import { signalsApi } from "../api/signals";
 import { useJobPolling } from "../hooks/useJobPolling";
 import { useToast } from "../hooks/useToast";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -8,6 +9,7 @@ import { WidgetErrorFallback } from "../components/WidgetErrorFallback";
 import { ProgressBar } from "../components/ProgressBar";
 import { QueryError } from "../components/QueryError";
 import { getErrorMessage } from "../utils/errors";
+import type { MLModelPerformanceData } from "../types";
 
 export function MLModels() {
   const queryClient = useQueryClient();
@@ -19,6 +21,7 @@ export function MLModels() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [predictModelId, setPredictModelId] = useState("");
   const [predictResult, setPredictResult] = useState<string | null>(null);
+  const [perfModelId, setPerfModelId] = useState("");
 
   const { data: models, isLoading, isError: modelsError, error: modelsErr } = useQuery<MLModel[]>({
     queryKey: ["ml-models"],
@@ -44,6 +47,12 @@ export function MLModels() {
       }),
     onSuccess: (data) => setActiveJobId(data.job_id),
     onError: (err) => toast(getErrorMessage(err) || "Failed to start training", "error"),
+  });
+
+  const perfQuery = useQuery<MLModelPerformanceData>({
+    queryKey: ["ml-model-performance", perfModelId],
+    queryFn: () => signalsApi.mlModelPerformance(perfModelId),
+    enabled: !!perfModelId,
   });
 
   const predictMutation = useMutation({
@@ -195,6 +204,74 @@ export function MLModels() {
           <div className="text-3xl font-bold">{models?.length ?? 0}</div>
           <p className="text-sm text-[var(--color-text-muted)]">Trained models available</p>
         </div>
+      </div>
+
+      {/* Model Performance Widget */}
+      <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <h3 className="mb-4 text-lg font-semibold">Model Performance</h3>
+        <div className="mb-3">
+          <label htmlFor="perf-model" className="mb-1 block text-xs text-[var(--color-text-muted)]">Select Model</label>
+          <select
+            id="perf-model"
+            value={perfModelId}
+            onChange={(e) => setPerfModelId(e.target.value)}
+            className="w-full max-w-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          >
+            <option value="">Select a model...</option>
+            {models?.map((m) => (
+              <option key={m.model_id} value={m.model_id}>
+                {m.model_id} ({m.symbol})
+              </option>
+            ))}
+          </select>
+        </div>
+        {perfQuery.isLoading && perfModelId && (
+          <div className="space-y-2" data-testid="perf-skeleton">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-6 animate-pulse rounded bg-[var(--color-border)]" />
+            ))}
+          </div>
+        )}
+        {perfQuery.isError && (
+          <p className="text-sm text-[var(--color-text-muted)]">Performance data not available for this model.</p>
+        )}
+        {perfQuery.data && (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)]">Rolling Accuracy</p>
+              <p className="text-lg font-bold">{(perfQuery.data.rolling_accuracy * 100).toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)]">Total Predictions</p>
+              <p className="text-lg font-bold">{perfQuery.data.total_predictions}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)]">Correct</p>
+              <p className="text-lg font-bold text-green-400">{perfQuery.data.correct_predictions}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)]">Retrain?</p>
+              <p className={`text-lg font-bold ${perfQuery.data.retrain_recommended ? "text-yellow-400" : "text-green-400"}`}>
+                {perfQuery.data.retrain_recommended ? "Yes" : "No"}
+              </p>
+            </div>
+            {perfQuery.data.accuracy_by_regime && Object.keys(perfQuery.data.accuracy_by_regime).length > 0 && (
+              <div className="col-span-full">
+                <p className="mb-2 text-xs text-[var(--color-text-muted)]">Accuracy by Regime</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(perfQuery.data.accuracy_by_regime).map(([regime, acc]) => (
+                    <span key={regime} className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs">
+                      {regime.replace(/_/g, " ")}: <span className="font-medium">{(acc * 100).toFixed(0)}%</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {!perfModelId && (
+          <p className="text-sm text-[var(--color-text-muted)]">Select a model to view its performance metrics.</p>
+        )}
       </div>
 
       {/* Model List */}

@@ -425,12 +425,14 @@ function RegimeTimeline({ history }: { history: RegimeHistoryEntry[] }) {
 
   useEffect(() => {
     if (!containerRef.current || typeof ResizeObserver === "undefined") return;
+    /* v8 ignore start -- ResizeObserver callback not invocable in jsdom */
     const observer = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
       if (w) setWidth(w);
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
+    /* v8 ignore stop */
   }, []);
 
   const sorted = [...history].sort(

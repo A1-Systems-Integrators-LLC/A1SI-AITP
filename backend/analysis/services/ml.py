@@ -44,12 +44,17 @@ class MLService:
         except ImportError as e:
             return {"error": f"ML modules not available: {e}"}
 
-        x_feat, y_target, feature_names = build_feature_matrix(df)
+        x_feat, y_target, feature_names = build_feature_matrix(
+            df, include_temporal=True, include_volatility_regime=True,
+        )
         if len(x_feat) < 100:
             return {"error": f"Insufficient data: {len(x_feat)} rows (need >= 100)"}
 
         progress_cb(0.5, "Training model...")
-        result = train_model(x_feat, y_target, feature_names, test_ratio=test_ratio)
+        result = train_model(
+            x_feat, y_target, feature_names,
+            test_ratio=test_ratio, fit_calibration=True,
+        )
 
         progress_cb(0.8, "Saving model...")
         registry = ModelRegistry()
@@ -112,7 +117,10 @@ class MLService:
         if df.empty:
             return {"error": f"No data for {symbol} {timeframe}"}
 
-        x_feat, _y, _names = build_feature_matrix(df, config={"drop_na": True})
+        x_feat, _y, _names = build_feature_matrix(
+            df, config={"drop_na": True},
+            include_temporal=True, include_volatility_regime=True,
+        )
         if len(x_feat) == 0:
             return {"error": "No valid feature rows after NaN removal"}
 

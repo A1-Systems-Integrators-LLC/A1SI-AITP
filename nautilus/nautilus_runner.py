@@ -44,7 +44,7 @@ CONFIG_PATH = PROJECT_ROOT / "configs" / "platform_config.yaml"
 # Detect native NT availability
 try:
     from nautilus.engine import HAS_NAUTILUS_TRADER
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_NAUTILUS_TRADER = False
 
 
@@ -364,7 +364,7 @@ def run_nautilus_engine_test() -> bool:
         return False
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import argparse
 
     parser = argparse.ArgumentParser(description="NautilusTrader Runner")

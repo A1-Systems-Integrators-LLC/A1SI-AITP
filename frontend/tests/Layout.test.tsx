@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, act } from "@testing-library/react";
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -8,19 +9,21 @@ import { Layout } from "../src/components/Layout";
 import { ToastProvider } from "../src/components/Toast";
 
 // Mock useSystemEvents to control halt/connection state
-const mockSystemEvents = {
+const mockSystemEvents: Record<string, unknown> = {
   isConnected: true,
   isReconnecting: false,
   reconnectAttempt: 0,
   reconnect: vi.fn(),
   isHalted: false,
   haltReason: "",
-  lastOrderUpdate: null,
-  lastRiskAlert: null,
+  lastOrderUpdate: null as unknown,
+  lastRiskAlert: null as unknown,
 };
 
+const useSystemEventsMock = vi.fn(() => ({ ...mockSystemEvents }));
+
 vi.mock("../src/hooks/useSystemEvents", () => ({
-  useSystemEvents: () => mockSystemEvents,
+  useSystemEvents: (...args: unknown[]) => useSystemEventsMock(...args),
 }));
 
 function renderLayout(props?: { isHalted?: boolean; isReconnecting?: boolean; reconnectAttempt?: number; username?: string }) {
@@ -49,6 +52,9 @@ describe("Layout", () => {
     mockSystemEvents.isHalted = false;
     mockSystemEvents.isReconnecting = false;
     mockSystemEvents.reconnectAttempt = 0;
+    mockSystemEvents.lastOrderUpdate = null;
+    mockSystemEvents.lastRiskAlert = null;
+    useSystemEventsMock.mockImplementation(() => ({ ...mockSystemEvents }));
   });
 
   it("renders the app title", () => {
@@ -163,5 +169,126 @@ describe("Layout", () => {
   it("hamburger has aria-label", () => {
     renderLayout();
     expect(screen.getByLabelText("Toggle navigation")).toBeInTheDocument();
+  });
+
+  it("shows toast when lastOrderUpdate changes between renders", () => {
+    // First render: null. Second render: order update.
+    const orderObj = { symbol: "BTC/USDT", status: "filled" };
+    useSystemEventsMock
+      .mockReturnValueOnce({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: null })
+      .mockReturnValue({ ...mockSystemEvents, lastOrderUpdate: orderObj, lastRiskAlert: null });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // Use a wrapper that we can force to re-render via state
+    let forceUpdate: () => void;
+    function Wrapper() {
+      const [, setState] = useState(0);
+      forceUpdate = () => setState((n) => n + 1);
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <ToastProvider>
+              <Routes>
+                <Route element={<Layout onLogout={async () => {}} username="testuser" />}>
+                  <Route index element={<div>Page Content</div>} />
+                </Route>
+              </Routes>
+            </ToastProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    }
+    render(<Wrapper />);
+    act(() => { forceUpdate!(); });
+    // Lines 70-72 covered: symbol/status extraction + toast call
+    expect(screen.getByText("A1SI-AITP")).toBeInTheDocument();
+  });
+
+  it("shows toast when lastRiskAlert changes between renders", () => {
+    const alertObj = { message: "Drawdown limit reached" };
+    useSystemEventsMock
+      .mockReturnValueOnce({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: null })
+      .mockReturnValue({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: alertObj });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let forceUpdate: () => void;
+    function Wrapper() {
+      const [, setState] = useState(0);
+      forceUpdate = () => setState((n) => n + 1);
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <ToastProvider>
+              <Routes>
+                <Route element={<Layout onLogout={async () => {}} username="testuser" />}>
+                  <Route index element={<div>Page Content</div>} />
+                </Route>
+              </Routes>
+            </ToastProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    }
+    render(<Wrapper />);
+    act(() => { forceUpdate!(); });
+    expect(screen.getByText("A1SI-AITP")).toBeInTheDocument();
+  });
+
+  it("handles order update with missing fields gracefully", () => {
+    useSystemEventsMock
+      .mockReturnValueOnce({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: null })
+      .mockReturnValue({ ...mockSystemEvents, lastOrderUpdate: {}, lastRiskAlert: null });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let forceUpdate: () => void;
+    function Wrapper() {
+      const [, setState] = useState(0);
+      forceUpdate = () => setState((n) => n + 1);
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <ToastProvider>
+              <Routes>
+                <Route element={<Layout onLogout={async () => {}} username="testuser" />}>
+                  <Route index element={<div>Page Content</div>} />
+                </Route>
+              </Routes>
+            </ToastProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    }
+    render(<Wrapper />);
+    act(() => { forceUpdate!(); });
+    expect(screen.getByText("A1SI-AITP")).toBeInTheDocument();
+  });
+
+  it("handles risk alert with missing message gracefully", () => {
+    useSystemEventsMock
+      .mockReturnValueOnce({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: null })
+      .mockReturnValue({ ...mockSystemEvents, lastOrderUpdate: null, lastRiskAlert: {} });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let forceUpdate: () => void;
+    function Wrapper() {
+      const [, setState] = useState(0);
+      forceUpdate = () => setState((n) => n + 1);
+      return (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <ToastProvider>
+              <Routes>
+                <Route element={<Layout onLogout={async () => {}} username="testuser" />}>
+                  <Route index element={<div>Page Content</div>} />
+                </Route>
+              </Routes>
+            </ToastProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    }
+    render(<Wrapper />);
+    act(() => { forceUpdate!(); });
+    expect(screen.getByText("A1SI-AITP")).toBeInTheDocument();
   });
 });

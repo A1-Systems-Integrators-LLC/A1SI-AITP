@@ -208,6 +208,92 @@ def fetch_ohlcv(
 
 
 # ──────────────────────────────────────────────
+# Funding Rate Data (crypto only, free via CCXT)
+# ──────────────────────────────────────────────
+
+def fetch_funding_rates(
+    symbol: str,
+    exchange_id: str = "kraken",
+    since_days: int = 90,
+) -> pd.DataFrame:
+    """Fetch historical funding rates for a perpetual/spot pair.
+
+    Returns DataFrame with columns [funding_rate, timestamp] indexed by datetime.
+    Returns empty DataFrame if exchange doesn't support funding rates.
+    """
+    try:
+        exchange = get_exchange(exchange_id, sandbox=False)
+        exchange.load_markets()
+
+        if not exchange.has.get("fetchFundingRateHistory"):
+            logger.debug("%s does not support funding rate history", exchange_id)
+            return pd.DataFrame()
+
+        since = int((datetime.now(timezone.utc) - timedelta(days=since_days)).timestamp() * 1000)
+        rates = exchange.fetch_funding_rate_history(symbol, since=since, limit=1000)
+
+        if not rates:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rates)
+        if "timestamp" in df.columns and "fundingRate" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+            df = df.set_index("timestamp")[["fundingRate"]].rename(
+                columns={"fundingRate": "funding_rate"},
+            )
+            df = df[~df.index.duplicated(keep="last")].sort_index()
+            logger.info("Fetched %d funding rates for %s", len(df), symbol)
+            return df
+    except Exception as e:
+        logger.debug("Funding rate fetch failed for %s: %s", symbol, e)
+    return pd.DataFrame()
+
+
+def save_funding_rates(
+    df: pd.DataFrame,
+    symbol: str,
+    exchange_id: str = "kraken",
+    directory: Optional[Path] = None,
+) -> Path:
+    """Save funding rates to Parquet, merging with existing data."""
+    directory = directory or PROCESSED_DIR
+    safe_symbol = symbol.replace("/", "_")
+    path = directory / f"{exchange_id}_{safe_symbol}_funding.parquet"
+    lock_path = path.with_suffix(".parquet.lock")
+
+    with open(lock_path, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            if path.exists():
+                existing = pd.read_parquet(path)
+                df = pd.concat([existing, df])
+                df = df[~df.index.duplicated(keep="last")].sort_index()
+            tmp_path = path.with_suffix(".parquet.tmp")
+            df.to_parquet(tmp_path, engine="pyarrow", compression="snappy")
+            os.replace(tmp_path, path)
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+    return path
+
+
+def load_funding_rates(
+    symbol: str,
+    exchange_id: str = "kraken",
+    directory: Optional[Path] = None,
+) -> pd.DataFrame:
+    """Load funding rate data from Parquet."""
+    directory = directory or PROCESSED_DIR
+    safe_symbol = symbol.replace("/", "_")
+    path = directory / f"{exchange_id}_{safe_symbol}_funding.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_parquet(path)
+    except Exception:
+        return pd.DataFrame()
+
+
+# ──────────────────────────────────────────────
 # Parquet Storage
 # ──────────────────────────────────────────────
 
@@ -249,7 +335,10 @@ def save_ohlcv(
                 df = pd.concat([existing, df])
                 df = df[~df.index.duplicated(keep="last")].sort_index()
 
-            df.to_parquet(path, engine="pyarrow", compression="snappy")
+            # Atomic write: write to tmp then rename
+            tmp_path = path.with_suffix(".parquet.tmp")
+            df.to_parquet(tmp_path, engine="pyarrow", compression="snappy")
+            os.replace(tmp_path, path)
             logger.info(f"Saved {len(df)} rows to {path}")
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
@@ -822,7 +911,7 @@ def add_indicators(df: pd.DataFrame, periods: list = None) -> pd.DataFrame:
 # CLI Entry Point
 # ──────────────────────────────────────────────
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import argparse
 
     parser = argparse.ArgumentParser(description="A1SI-AITP Data Pipeline")

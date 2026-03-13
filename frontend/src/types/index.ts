@@ -749,6 +749,125 @@ export interface DailyReport {
   scanner_status?: Record<string, ScannerStatusEntry>;
 }
 
+// Signal / Conviction types
+export interface SignalComponents {
+  technical: number;
+  regime: number;
+  ml: number;
+  sentiment: number;
+  scanner: number;
+  win_rate: number;
+}
+
+export interface SignalConfidences {
+  ml: number;
+  sentiment: number;
+  regime: number;
+}
+
+export interface CompositeSignal {
+  symbol: string;
+  asset_class: AssetClass;
+  timestamp: string;
+  composite_score: number;
+  signal_label: string;
+  entry_approved: boolean;
+  position_modifier: number;
+  hard_disabled: boolean;
+  components: SignalComponents;
+  confidences: SignalConfidences;
+  sources_available: string[];
+  reasoning: string[];
+}
+
+export interface EntryCheckResponse {
+  approved: boolean;
+  score: number;
+  position_modifier: number;
+  signal_label: string;
+  hard_disabled: boolean;
+  reasoning: string[];
+}
+
+export interface StrategyStatus {
+  strategy_name: string;
+  asset_class: string;
+  regime: string;
+  alignment_score: number;
+  recommended_action: "active" | "pause" | "reduce_size";
+}
+
+export interface MLPredictionEntry {
+  prediction_id: string;
+  model_id: string;
+  symbol: string;
+  asset_class: string;
+  probability: number;
+  confidence: number;
+  direction: string;
+  regime: string;
+  actual_direction: string | null;
+  correct: boolean | null;
+  predicted_at: string;
+}
+
+export interface MLModelPerformanceData {
+  model_id: string;
+  total_predictions: number;
+  correct_predictions: number;
+  rolling_accuracy: number;
+  accuracy_by_regime: Record<string, number>;
+  retrain_recommended: boolean;
+  updated_at: string;
+}
+
+export interface SignalAttributionEntry {
+  id: string;
+  order_id: string;
+  symbol: string;
+  asset_class: string;
+  strategy: string;
+  composite_score: number;
+  ml_contribution: number;
+  sentiment_contribution: number;
+  regime_contribution: number;
+  scanner_contribution: number;
+  screen_contribution: number;
+  win_rate_contribution: number;
+  position_modifier: number;
+  entry_regime: string;
+  outcome: "win" | "loss" | "open";
+  pnl: number | null;
+  recorded_at: string;
+  resolved_at: string | null;
+}
+
+export interface SourceAccuracyData {
+  total_trades: number;
+  wins: number;
+  overall_win_rate: number;
+  window_days: number;
+  asset_class: string | null;
+  strategy: string | null;
+  sources: Record<string, {
+    win_avg: number;
+    loss_avg: number;
+    accuracy: number;
+    accuracy_difference: number;
+  }>;
+}
+
+export interface WeightRecommendation {
+  current_weights: Record<string, number>;
+  recommended_weights: Record<string, number>;
+  adjustments: Record<string, number>;
+  source_accuracy: Record<string, number>;
+  total_trades: number;
+  win_rate: number;
+  threshold_adjustment: number;
+  reasoning: string[];
+}
+
 // Paper Trading KPI types (from dashboard aggregation)
 export interface PaperTradingInstanceKPI {
   name: string;

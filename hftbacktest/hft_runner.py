@@ -167,7 +167,8 @@ def run_hft_backtest(
     return result
 
 
-if __name__ == "__main__":
+def cli_main(argv: list[str] | None = None) -> None:
+    """CLI entry point for hftbacktest runner."""
     import argparse
 
     parser = argparse.ArgumentParser(description="hftbacktest Runner")
@@ -194,7 +195,7 @@ if __name__ == "__main__":
     # Test
     sub.add_parser("test", help="Test hftbacktest basic functionality")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "convert":
         convert_ohlcv_to_hft_ticks(args.symbol, args.timeframe, args.exchange)
@@ -213,3 +214,7 @@ if __name__ == "__main__":
         print(f"Registered strategies: {strategies}")
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    cli_main()

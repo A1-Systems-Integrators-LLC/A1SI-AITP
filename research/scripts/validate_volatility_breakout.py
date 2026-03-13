@@ -31,11 +31,11 @@ from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
+if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(PROJECT_ROOT))
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
-if str(SCRIPTS_DIR) not in sys.path:
+if str(SCRIPTS_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from common.indicators.technical import (  # noqa: E402
@@ -202,5 +202,5 @@ def main():
             print("   Gate 3b failed: Strategy not robust to parameter perturbation")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

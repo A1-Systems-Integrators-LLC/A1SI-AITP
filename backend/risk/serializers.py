@@ -59,11 +59,16 @@ class TradeCheckRequestSerializer(serializers.Serializer):
     asset_class = serializers.ChoiceField(
         choices=AssetClass.choices, default=AssetClass.CRYPTO,
     )
+    composite_score = serializers.FloatField(
+        required=False, allow_null=True, min_value=0, max_value=100,
+        help_text="Conviction composite score (0-100) from SignalAggregator",
+    )
 
 
 class TradeCheckResponseSerializer(serializers.Serializer):
     approved = serializers.BooleanField()
     reason = serializers.CharField()
+    composite_score = serializers.FloatField(required=False, allow_null=True)
 
 
 class PositionSizeRequestSerializer(serializers.Serializer):
@@ -185,5 +190,6 @@ class TradeCheckLogSerializer(serializers.ModelSerializer):
             "equity_at_check",
             "drawdown_at_check",
             "open_positions_at_check",
+            "composite_score",
             "checked_at",
         ]

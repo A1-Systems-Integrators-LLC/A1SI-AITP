@@ -3,7 +3,9 @@ Job runner — dispatches sync functions to a thread pool, tracks progress in-me
 and persists job state to DB via Django ORM.
 """
 
+import json
 import logging
+import math
 import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +15,30 @@ from typing import Any
 from django.conf import settings
 
 logger = logging.getLogger("job_runner")
+
+
+def _sanitize_for_json(obj: Any) -> Any:
+    """Convert numpy/pandas types and NaN/Inf to JSON-safe Python types."""
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    # numpy scalar types
+    type_name = type(obj).__module__
+    if type_name == "numpy":
+        try:
+            if hasattr(obj, "item"):
+                val = obj.item()
+                if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                    return None
+                return val
+        except (ValueError, OverflowError):
+            return str(obj)
+    return obj
 
 
 def recover_stale_jobs() -> int:
@@ -68,9 +94,25 @@ def get_job_runner() -> "JobRunner":
     return _runner_instance
 
 
+# Critical tasks that must never be starved by long-running batch compute
+CRITICAL_TASK_TYPES = frozenset({
+    "risk_monitoring",
+    "order_sync",
+    "strategy_orchestration",
+    "regime_detection",
+    "market_scan",
+    "forex_paper_trading",
+})
+
+
 class JobRunner:
     def __init__(self, max_workers: int = 2):
+        # Batch pool for compute-heavy tasks (VBT screens, backtests, ML training)
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="job")
+        # Critical pool for safety-sensitive tasks (risk, order sync, orchestration)
+        self._critical_executor = ThreadPoolExecutor(
+            max_workers=max(2, max_workers), thread_name_prefix="critical",
+        )
 
     def submit(
         self,
@@ -92,7 +134,9 @@ class JobRunner:
             params=params,
         )
         _job_progress[job_id] = {"progress": 0.0, "progress_message": "Queued"}
-        self._executor.submit(self._run_job, job_id, run_fn, params or {})
+        # Route critical tasks to a dedicated pool so they're never blocked
+        pool = self._critical_executor if job_type in CRITICAL_TASK_TYPES else self._executor
+        pool.submit(self._run_job, job_id, run_fn, params or {})
         return job_id
 
     def _run_job(self, job_id: str, run_fn: Callable, params: dict) -> None:
@@ -143,13 +187,34 @@ class JobRunner:
 
             result = run_fn(params, progress_callback)
 
+            # Detect soft failures: executor returned {"status": "error"}
+            is_soft_failure = isinstance(result, dict) and result.get("status") == "error"
+            final_status = "failed" if is_soft_failure else "completed"
+
             _job_progress[job_id] = {"progress": 1.0, "progress_message": "Complete"}
             job = BackgroundJob.objects.get(id=job_id)
-            job.status = "completed"
+            job.status = final_status
             job.progress = 1.0
-            job.result = result
+            job.result = _sanitize_for_json(result)
+            if is_soft_failure:
+                job.error = result.get("error", "Task returned error status")
             job.completed_at = datetime.now(timezone.utc)
             job.save()
+
+            # Alert on critical task failures via Telegram
+            if is_soft_failure and job.job_type in CRITICAL_TASK_TYPES:
+                try:
+                    from core.services.notification import NotificationService
+
+                    msg = (
+                        f"<b>CRITICAL TASK FAILED</b>\n"
+                        f"Task: {job.job_type}\n"
+                        f"Error: {job.error}\n"
+                        f"Job: {job_id[:8]}"
+                    )
+                    NotificationService.send_telegram_sync(msg)
+                except Exception:
+                    logger.warning("Failed to send Telegram alert for %s", job.job_type)
 
             # Broadcast job completion
             try:
@@ -204,6 +269,38 @@ class JobRunner:
                         trades=result.get("trades"),
                         config=params,
                     )
+            # Persist ScreenResult for VBT screen jobs
+            _SCREEN_JOB_TYPES = {"scheduled_vbt_screen"}
+            if job.job_type in _SCREEN_JOB_TYPES and isinstance(result, dict):
+                from analysis.models import ScreenResult
+
+                if result.get("results") and result.get("status") == "completed":
+                    asset_class = params.get("asset_class", "crypto")
+                    for sub in result["results"]:
+                        if sub.get("status") == "completed" and sub.get("result"):
+                            sub_result = sub["result"]
+                            symbol = sub.get("symbol", sub_result.get("symbol", ""))
+                            timeframe = sub_result.get("timeframe", params.get("timeframe", ""))
+                            for strategy_name, strat_data in sub_result.get("strategies", {}).items():
+                                if "error" in strat_data:
+                                    continue
+                                try:
+                                    ScreenResult.objects.create(
+                                        job=job,
+                                        symbol=symbol,
+                                        asset_class=asset_class,
+                                        timeframe=timeframe,
+                                        strategy_name=strategy_name,
+                                        top_results=_sanitize_for_json(strat_data.get("top_results")),
+                                        summary=_sanitize_for_json(strat_data.get("summary")),
+                                        total_combinations=strat_data.get("total_combinations", 0),
+                                    )
+                                except Exception:
+                                    logger.warning(
+                                        "Failed to persist ScreenResult for %s/%s",
+                                        symbol, strategy_name, exc_info=True,
+                                    )
+
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
             _job_progress[job_id] = {"progress": 0.0, "progress_message": f"Failed: {e}"}

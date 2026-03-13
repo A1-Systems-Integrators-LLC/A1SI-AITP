@@ -315,13 +315,17 @@ class RegimeDetector:
         )
 
         # WEAK_TREND_UP: mid ADX + positive direction
+        # Gate: below ~18 ADX, directional signals are unreliable noise —
+        # scale down the weak trend score to let RANGING win instead.
+        adx_trend_gate = min(1.0, max(0.0, (adx_val - 18.0) / (cfg.adx_weak - 18.0)))
+
         scores[Regime.WEAK_TREND_UP] = (
             adx_weak_score * 0.25
             + align_abs * is_up * 0.3
             + slope_abs * is_up * 0.15
             + max(0.0, structure) * 0.1
             + (0.2 if alignment > 0 and slope > 0 else 0.0)
-        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5)  # Penalty if ADX too strong
+        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5) * adx_trend_gate
 
         # WEAK_TREND_DOWN: mid ADX + negative direction
         scores[Regime.WEAK_TREND_DOWN] = (
@@ -330,7 +334,7 @@ class RegimeDetector:
             + slope_abs * is_down * 0.15
             + max(0.0, -structure) * 0.1
             + (0.2 if alignment < 0 and slope < 0 else 0.0)
-        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5)
+        ) * (1.0 if adx_val <= cfg.adx_strong else 0.5) * adx_trend_gate
 
         # HIGH_VOLATILITY: high BB width + low ADX (directionless volatility)
         scores[Regime.HIGH_VOLATILITY] = (
@@ -341,14 +345,17 @@ class RegimeDetector:
         )
 
         # RANGING: low ADX + low slope + low alignment
-        # Penalize when there IS directional signal
-        direction_penalty = 1.0 - (align_abs * 0.5 + slope_abs * 0.3)
+        # Penalize when there IS directional signal, but soften the penalty
+        # when ADX is very low (directional signals are noise at low ADX)
+        adx_noise_factor = max(0.0, 1.0 - adx_val / 20.0)  # 1.0 at ADX=0, 0 at ADX=20
+        direction_penalty = 1.0 - (align_abs * 0.5 + slope_abs * 0.3) * (1.0 - adx_noise_factor * 0.6)
         scores[Regime.RANGING] = (
             adx_low_score * 0.3
             + (1.0 - slope_abs) * 0.15
             + (1.0 - align_abs) * 0.2
             + (1.0 - bb_norm) * 0.1
             + (0.1 if adx_val < cfg.adx_weak else 0.0)
+            + (0.15 if adx_val < 18.0 else 0.0)  # Strong bonus for very low ADX
         ) * max(0.3, direction_penalty)
 
         # UNKNOWN never wins via scoring (only from NaN path)

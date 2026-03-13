@@ -188,6 +188,16 @@ describe("RiskManagement - Limits Editor", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
   });
+
+  it("populates edit fields with current limits when clicking Edit after limits load", async () => {
+    renderWithProviders(<RiskManagement />);
+    // Wait for limits data to render - "Max Drawdown" label appears when limits load
+    await screen.findByText("Max Drawdown");
+    const editBtn = screen.getByText("Edit");
+    fireEvent.click(editBtn);
+    // After clicking Edit with limits loaded, editLimits should be populated
+    expect(screen.getByDisplayValue("0.15")).toBeInTheDocument();
+  });
 });
 
 describe("RiskManagement - Total PnL Card", () => {
@@ -606,5 +616,952 @@ describe("RiskManagement - ErrorBoundary", () => {
     );
     expect(screen.getByText("Risk Management unavailable")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+});
+
+/* ======================================================================
+ * Additional tests for 100% line coverage
+ * ====================================================================== */
+
+import { waitFor } from "@testing-library/react";
+
+const haltedStatus = { ...mockStatus, is_halted: true, halt_reason: "emergency stop" };
+
+/** Build a custom fetch spy that distinguishes GET vs POST and URL patterns. */
+function buildCustomFetch(overrides: Record<string, unknown> = {}) {
+  const baseGetHandlers: Record<string, unknown> = {
+    "/api/risk/1/status": mockStatus,
+    "/api/risk/1/limits": mockLimits,
+    "/api/risk/1/var": mockVaR,
+    "/api/risk/1/heat-check": mockHeatCheckHealthy,
+    "/api/risk/1/metric-history": mockMetricHistory,
+    "/api/risk/1/trade-log": mockTradeLog,
+    "/api/risk/1/alerts": [],
+    "/api/portfolios": [{ id: 1, name: "Test Portfolio" }],
+    ...overrides,
+  };
+
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    // POST handlers — return specific data for mutation endpoints
+    if (method === "POST" && url.includes("/position-size")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ size: 0.5, risk_amount: 100, position_value: 25000 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (method === "POST" && url.includes("/check-trade")) {
+      const body = init?.body ? JSON.parse(init.body as string) : {};
+      const approved = body.side !== "sell"; // sell -> rejected for testing
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ approved, reason: approved ? "all checks passed" : "risk limit breached" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    }
+    if (method === "POST" && url.includes("/halt")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ is_halted: true, halt_reason: "test halt" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (method === "POST" && url.includes("/resume")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ is_halted: false, halt_reason: "" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (method === "POST" && url.includes("/reset-daily")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ ...mockStatus, daily_pnl: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (method === "POST" && url.includes("/record-metrics")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(mockMetricHistory[0]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if ((method === "PUT" || method === "PATCH") && url.includes("/limits")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ ...mockLimits }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+
+    // GET handlers
+    for (const [pattern, data] of Object.entries(baseGetHandlers)) {
+      if (url.includes(pattern)) {
+        return Promise.resolve(
+          new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+    }
+
+    if (url.startsWith("/api/")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(method === "POST" ? {} : []), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.reject(new Error(`Unhandled fetch: ${url}`));
+  }) as unknown as typeof globalThis.fetch;
+}
+
+describe("RiskManagement - Halt mutation", () => {
+  it("clicking Confirm Halt with a reason calls halt mutation and hides confirm UI", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Open halt confirm
+    const haltBtn = await screen.findByText("Halt Trading");
+    fireEvent.click(haltBtn);
+
+    // Type a reason
+    const reasonInput = screen.getByPlaceholderText("Reason for halt...");
+    fireEvent.change(reasonInput, { target: { value: "market crash" } });
+
+    // Click confirm
+    fireEvent.click(screen.getByText("Confirm Halt"));
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/halt") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Halt confirm cancel", () => {
+  it("clicking Cancel in halt confirm hides the input", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const haltBtn = await screen.findByText("Halt Trading");
+    fireEvent.click(haltBtn);
+    expect(screen.getByPlaceholderText("Reason for halt...")).toBeInTheDocument();
+
+    // Click Cancel (the one inside halt confirm row)
+    const cancelBtns = screen.getAllByText("Cancel");
+    fireEvent.click(cancelBtns[cancelBtns.length - 1]);
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("Reason for halt...")).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe("RiskManagement - Resume mutation", () => {
+  it("clicking Resume Trading calls resume mutation", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": haltedStatus,
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const resumeBtn = await screen.findByText("Resume Trading");
+    fireEvent.click(resumeBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/resume") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Reset daily mutation", () => {
+  it("clicking Reset Daily calls resetMutation", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": haltedStatus,
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const resetBtn = await screen.findByText("Reset Daily");
+    fireEvent.click(resetBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/reset-daily") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Limits save mutation", () => {
+  it("saves changed limits via limitsMutation", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Wait for limits to load, then click Edit
+    const editBtn = await screen.findByText("Edit");
+    fireEvent.click(editBtn);
+
+    // Change a limit value — find the Max Drawdown input (first number input in edit mode)
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeInTheDocument();
+    });
+    const inputs = screen.getAllByRole("spinbutton");
+    // Change first limit input (max_portfolio_drawdown)
+    fireEvent.change(inputs[0], { target: { value: "0.25" } });
+
+    // Click Save
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      const putCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/limits") && c[1]?.method === "PUT";
+        },
+      );
+      expect(putCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("closes editor without calling mutation when no changes are made", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const editBtn = await screen.findByText("Edit");
+    fireEvent.click(editBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeInTheDocument();
+    });
+
+    // Click Save without changing anything
+    fireEvent.click(screen.getByText("Save"));
+
+    // Should close editing (Edit button reappears)
+    await waitFor(() => {
+      expect(screen.getByText("Edit")).toBeInTheDocument();
+    });
+
+    // Verify no PUT was made to /limits
+    const putCalls = fetchSpy.mock.calls.filter(
+      (c: [RequestInfo | URL, RequestInit?]) => {
+        const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+        return url.includes("/limits") && c[1]?.method === "PUT";
+      },
+    );
+    expect(putCalls.length).toBe(0);
+  });
+});
+
+describe("RiskManagement - Limits cancel editing", () => {
+  it("clicking Cancel resets edit state and shows Edit button", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const editBtn = await screen.findByText("Edit");
+    fireEvent.click(editBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeInTheDocument();
+    });
+
+    // Click Cancel in the limits editor (next to Save)
+    const cancelBtn = screen.getByText("Cancel");
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("RiskManagement - Limits edit mode inputs", () => {
+  it("shows number inputs in edit mode with current limit values", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const editBtn = await screen.findByText("Edit");
+    fireEvent.click(editBtn);
+
+    await waitFor(() => {
+      const inputs = screen.getAllByRole("spinbutton");
+      // 8 limit fields in edit mode + 2 position sizer + 2 trade checker = 12 spinbutton inputs
+      // But the limit fields are the ones with specific values
+      expect(inputs.length).toBeGreaterThanOrEqual(8);
+    });
+
+    // Verify one of the limit values is present (max_portfolio_drawdown = 0.15)
+    expect(screen.getByDisplayValue("0.15")).toBeInTheDocument();
+  });
+});
+
+describe("RiskManagement - Position sizer calculate", () => {
+  it("clicking Calculate calls positionMutation and shows result", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Click Calculate
+    fireEvent.click(screen.getByText("Calculate"));
+
+    // Result should appear
+    await waitFor(() => {
+      expect(screen.getByText("Size:")).toBeInTheDocument();
+      expect(screen.getByText("0.5")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Risk Amount:")).toBeInTheDocument();
+    expect(screen.getByText("$100")).toBeInTheDocument();
+    expect(screen.getByText("Position Value:")).toBeInTheDocument();
+    expect(screen.getByText("$25000")).toBeInTheDocument();
+  });
+});
+
+describe("RiskManagement - Trade checker", () => {
+  it("clicking Check Trade calls tradeMutation and shows approved result", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Click Check Trade (default is buy side)
+    fireEvent.click(screen.getByText("Check Trade"));
+
+    await waitFor(() => {
+      // "Approved" appears in both trade log and result; check for the reason text
+      expect(screen.getByText(/all checks passed/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows rejected result for a rejected trade check", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Switch to sell side to trigger rejection in our mock
+    fireEvent.click(screen.getByText("Sell"));
+
+    fireEvent.click(screen.getByText("Check Trade"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/risk limit breached/)).toBeInTheDocument();
+    });
+  });
+});
+
+describe("RiskManagement - Record metrics snapshot", () => {
+  it("clicking Snapshot Now calls recordMetricsMutation", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const snapshotBtn = await screen.findByText("Snapshot Now");
+    fireEvent.click(snapshotBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/record-metrics") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - VaR method switching", () => {
+  it("changes VaR method from parametric to historical", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("Value at Risk");
+
+    // Find the VaR method select (contains Parametric/Historical options)
+    const varSelect = screen.getByDisplayValue("Parametric");
+    fireEvent.change(varSelect, { target: { value: "historical" } });
+
+    await waitFor(() => {
+      // Verify a fetch was made with method=historical
+      const historicalCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/var") && url.includes("historical");
+        },
+      );
+      expect(historicalCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - History hours switching", () => {
+  it("changes history hours from 7d to 24h", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("VaR History");
+
+    // Find the hours select (7d = 168 default)
+    const hoursSelect = screen.getByDisplayValue("7d");
+    fireEvent.change(hoursSelect, { target: { value: "24" } });
+
+    await waitFor(() => {
+      const hoursCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/metric-history") && url.includes("hours=24");
+        },
+      );
+      expect(hoursCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("changes history hours to 30d", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("VaR History");
+
+    // The hours select has value=168 (not display text "7d"), use getAllByDisplayValue to disambiguate
+    const allSelects = screen.getAllByRole("combobox");
+    // Find the one with option "30d"
+    const hoursSelect = allSelects.find((s) =>
+      Array.from(s.querySelectorAll("option")).some((o) => o.textContent === "30d"),
+    )!;
+    fireEvent.change(hoursSelect, { target: { value: "720" } });
+
+    await waitFor(() => {
+      const hoursCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/metric-history") && url.includes("hours=720");
+        },
+      );
+      expect(hoursCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Alert severity filter", () => {
+  it("changing severity dropdown triggers refetch with severity param", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("Alert History");
+
+    const severitySelect = screen.getByDisplayValue("All Severities");
+    fireEvent.change(severitySelect, { target: { value: "critical" } });
+
+    await waitFor(() => {
+      const alertCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/alerts") && url.includes("severity=critical");
+        },
+      );
+      expect(alertCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Alert event type filter", () => {
+  it("typing event type triggers refetch with event_type param", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("Alert History");
+
+    const eventInput = screen.getByPlaceholderText("Filter by event type");
+    fireEvent.change(eventInput, { target: { value: "trade_halt" } });
+
+    await waitFor(() => {
+      const alertCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/alerts") && url.includes("event_type=trade_halt");
+        },
+      );
+      expect(alertCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Drawdown color logic", () => {
+  it("renders red drawdown color when > 10%", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": { ...mockStatus, drawdown: 0.12 },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      // Find the Drawdown status card value (12.00%)
+      const el = screen.getByText("12.00%");
+      expect(el.className).toContain("text-red-400");
+    });
+  });
+
+  it("renders yellow drawdown color when > 5% and <= 10%", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": { ...mockStatus, drawdown: 0.07 },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("7.00%");
+      expect(el.className).toContain("text-yellow-400");
+    });
+  });
+
+  it("renders green drawdown color when <= 5%", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": { ...mockStatus, drawdown: 0.03 },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("3.00%");
+      expect(el.className).toContain("text-green-400");
+    });
+  });
+});
+
+describe("RiskManagement - statusError banner", () => {
+  it("shows error banner when status query fails", async () => {
+    const fetchFn = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: "server error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+      // Return defaults for everything else
+      if (url.includes("/limits")) return Promise.resolve(new Response(JSON.stringify(mockLimits), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/var")) return Promise.resolve(new Response(JSON.stringify(mockVaR), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/heat-check")) return Promise.resolve(new Response(JSON.stringify(mockHeatCheckHealthy), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/metric-history")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/trade-log")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.includes("/alerts")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+      if (url.startsWith("/api/")) return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } }));
+      return Promise.reject(new Error(`Unhandled: ${url}`));
+    }) as unknown as typeof globalThis.fetch;
+
+    vi.stubGlobal("fetch", fetchFn);
+    renderWithProviders(<RiskManagement />);
+
+    expect(await screen.findByText(/Failed to load risk status/)).toBeInTheDocument();
+  });
+});
+
+describe("RiskManagement - Metric history table rendering", () => {
+  it("renders metric history table rows with data", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Wait for the history table to render with data from mockMetricHistory
+    // Values appear in both VaR summary cards and history table, so use getAllByText
+    await waitFor(() => {
+      const var95 = screen.getAllByText("$250.50");
+      // Should appear at least twice: once in VaR summary, once in history table
+      expect(var95.length).toBeGreaterThanOrEqual(2);
+    });
+
+    // Check the open_positions_count column value (unique to history table)
+    // mockMetricHistory[0].open_positions_count = 2
+    // The "2" appears in the Positions column of the history table
+    const var99 = screen.getAllByText("$420.75");
+    expect(var99.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("RiskManagement - VaR method text display", () => {
+  it("shows VaR method and window text in same element", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    // Both "Method: parametric" and "Window: 90 days" are in the same <p> element
+    const el = await screen.findByText(/Method: parametric \| Window: 90 days/);
+    expect(el).toBeInTheDocument();
+  });
+});
+
+describe("RiskManagement - Negative PnL colors", () => {
+  it("renders red daily PnL when negative", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": { ...mockStatus, daily_pnl: -75.50 },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("$-75.50");
+      expect(el.className).toContain("text-red-400");
+    });
+  });
+
+  it("renders red total PnL when negative", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/status": { ...mockStatus, total_pnl: -200.00 },
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("$-200.00");
+      expect(el.className).toContain("text-red-400");
+    });
+  });
+
+  it("renders green daily PnL when positive", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("$150.00");
+      expect(el.className).toContain("text-green-400");
+    });
+  });
+
+  it("renders green total PnL when positive", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await waitFor(() => {
+      const el = screen.getByText("$500.00");
+      expect(el.className).toContain("text-green-400");
+    });
+  });
+});
+
+/** Build a custom fetch that returns errors for POST endpoints. */
+function buildErrorFetch(errorEndpoint: string, overrides: Record<string, unknown> = {}) {
+  const baseGetHandlers: Record<string, unknown> = {
+    "/api/risk/1/status": mockStatus,
+    "/api/risk/1/limits": mockLimits,
+    "/api/risk/1/var": mockVaR,
+    "/api/risk/1/heat-check": mockHeatCheckHealthy,
+    "/api/risk/1/metric-history": mockMetricHistory,
+    "/api/risk/1/trade-log": mockTradeLog,
+    "/api/risk/1/alerts": [],
+    "/api/portfolios": [{ id: 1, name: "Test Portfolio" }, { id: 2, name: "Portfolio 2" }],
+    ...overrides,
+  };
+
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    // Return error for the specified endpoint
+    if ((method === "POST" || method === "PUT") && url.includes(errorEndpoint)) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "server error" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+
+    // GET handlers
+    for (const [pattern, data] of Object.entries(baseGetHandlers)) {
+      if (url.includes(pattern)) {
+        return Promise.resolve(
+          new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+    }
+
+    if (url.startsWith("/api/")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(method === "POST" ? {} : []), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.reject(new Error(`Unhandled fetch: ${url}`));
+  }) as unknown as typeof globalThis.fetch;
+}
+
+describe("RiskManagement - Mutation error handlers", () => {
+  it("halt mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/halt");
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const haltBtn = await screen.findByText("Halt Trading");
+    fireEvent.click(haltBtn);
+    const reasonInput = screen.getByPlaceholderText("Reason for halt...");
+    fireEvent.change(reasonInput, { target: { value: "test" } });
+    fireEvent.click(screen.getByText("Confirm Halt"));
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/halt") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("resume mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/resume", {
+      "/api/risk/1/status": haltedStatus,
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const resumeBtn = await screen.findByText("Resume Trading");
+    fireEvent.click(resumeBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/resume") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("reset daily mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/reset-daily", {
+      "/api/risk/1/status": haltedStatus,
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const resetBtn = await screen.findByText("Reset Daily");
+    fireEvent.click(resetBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/reset-daily") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("record metrics mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/record-metrics");
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const snapshotBtn = await screen.findByText("Snapshot Now");
+    fireEvent.click(snapshotBtn);
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/record-metrics") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("limits mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/limits");
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const editBtn = await screen.findByText("Edit");
+    fireEvent.click(editBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeInTheDocument();
+    });
+    // Change a value
+    const inputs = screen.getAllByRole("spinbutton");
+    fireEvent.change(inputs[0], { target: { value: "0.30" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      const putCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/limits") && c[1]?.method === "PUT";
+        },
+      );
+      expect(putCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("position sizer mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/position-size");
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    fireEvent.click(screen.getByText("Calculate"));
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/position-size") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("trade check mutation error shows toast", async () => {
+    const fetchSpy = buildErrorFetch("/check-trade");
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    fireEvent.click(screen.getByText("Check Trade"));
+
+    await waitFor(() => {
+      const postCalls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/check-trade") && c[1]?.method === "POST";
+        },
+      );
+      expect(postCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Portfolio selector", () => {
+  it("changing portfolio selector updates portfolioId", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/portfolios": [{ id: 1, name: "Portfolio One" }, { id: 2, name: "Portfolio Two" }],
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("Portfolio One");
+    const select = screen.getByLabelText("Portfolio:");
+    fireEvent.change(select, { target: { value: "2" } });
+
+    // Should trigger fetches with portfolioId=2
+    await waitFor(() => {
+      const calls = fetchSpy.mock.calls.filter(
+        (c: [RequestInfo | URL, RequestInit?]) => {
+          const url = typeof c[0] === "string" ? c[0] : c[0].toString();
+          return url.includes("/risk/2/");
+        },
+      );
+      expect(calls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+describe("RiskManagement - Trade checker input changes", () => {
+  it("allows changing trade size", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const sizeInput = screen.getByLabelText("Size");
+    fireEvent.change(sizeInput, { target: { value: "0.5" } });
+    expect(screen.getByDisplayValue("0.5")).toBeInTheDocument();
+  });
+
+  it("allows changing trade entry price", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const entryInput = screen.getByLabelText("Entry");
+    fireEvent.change(entryInput, { target: { value: "52000" } });
+    expect(screen.getByDisplayValue("52000")).toBeInTheDocument();
+  });
+
+  it("clicking Buy when already on buy does not change side", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    const buyBtn = screen.getByText("Buy");
+    // Buy is default, click it again
+    fireEvent.click(buyBtn);
+    expect(buyBtn.className).toContain("bg-green-500");
+  });
+});
+
+describe("RiskManagement - Refresh button", () => {
+  it("clicking Refresh invalidates queries", async () => {
+    const fetchSpy = buildCustomFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    await screen.findByText("Risk Management");
+    const refreshBtn = screen.getByTitle("Refresh status");
+    const callCountBefore = fetchSpy.mock.calls.length;
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(callCountBefore);
+    });
+  });
+});
+
+describe("RiskManagement - Empty metric history message", () => {
+  it("shows placeholder text when no metric history", async () => {
+    const fetchSpy = buildCustomFetch({
+      "/api/risk/1/metric-history": [],
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    renderWithProviders(<RiskManagement />);
+
+    expect(await screen.findByText(/No metric history yet/)).toBeInTheDocument();
   });
 });

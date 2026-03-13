@@ -178,6 +178,7 @@ class HealthView(APIView):
 
             sched = get_scheduler()
             checks["scheduler"] = {
+                "status": "ok" if sched.running else "warning",
                 "running": sched.running,
             }
         except Exception as e:
@@ -401,6 +402,33 @@ class MetricsView(APIView):
             metrics.gauge("scheduler_running", 1 if sched.running else 0)
         except Exception:
             logger.warning("Failed to snapshot scheduler metrics", exc_info=True)
+
+        # ML model count
+        try:
+            from common.ml.registry import ModelRegistry
+
+            ml_count = len(ModelRegistry().list_models())
+            metrics.gauge("ml_models_total", ml_count)
+        except Exception:
+            pass
+
+        # Orchestrator paused strategies
+        try:
+            from trading.services.strategy_orchestrator import ACTION_PAUSE, StrategyOrchestrator
+
+            orch = StrategyOrchestrator.get_instance()
+            paused = sum(1 for s in orch.get_all_states() if s.action == ACTION_PAUSE)
+            metrics.gauge("orchestrator_strategies_paused", paused)
+        except Exception:
+            pass
+
+        # Signal cache size
+        try:
+            from analysis.services.signal_service import _signal_cache
+
+            metrics.gauge("signal_cache_size", len(_signal_cache))
+        except Exception:
+            pass
 
         return HttpResponse(metrics.collect(), content_type="text/plain; charset=utf-8")
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { Dashboard } from "../src/pages/Dashboard";
 import { renderWithProviders, mockFetch } from "./helpers";
 
@@ -413,5 +413,466 @@ describe("Dashboard", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
     expect(screen.getByText("Not Installed")).toBeInTheDocument();
+  });
+
+  it("shows KPI error state when dashboard API fails", async () => {
+    const failingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/dashboard/kpis/")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      return mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText(/Failed to load dashboard data.*Network error/)).toBeInTheDocument();
+  });
+
+  it("shows negative daily P&L in red", async () => {
+    const negativeKpis = {
+      ...mockKpis,
+      risk: { daily_pnl: -50.25, drawdown: 0.1, is_halted: false },
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": negativeKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("$-50.25")).toBeInTheDocument();
+  });
+
+  it("shows opportunity panel with top opportunities", async () => {
+    const oppWithData = {
+      total_active: 2,
+      avg_score: 72.0,
+      by_type: { volume_surge: 1, breakout: 1 },
+      top_opportunities: [
+        {
+          id: 1,
+          symbol: "BTC/USDT",
+          asset_class: "crypto",
+          opportunity_type: "volume_surge",
+          score: 80,
+          detected_at: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          symbol: "AAPL/USD",
+          asset_class: "equity",
+          opportunity_type: "breakout",
+          score: 45,
+          detected_at: new Date().toISOString(),
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": oppWithData,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("volume surge")).toBeInTheDocument();
+    expect(screen.getByText("breakout")).toBeInTheDocument();
+    expect(screen.getByText("2 active opportunities | Avg score: 72")).toBeInTheDocument();
+  });
+
+  it("shows trading performance card with negative P&L", async () => {
+    const negTradingKpis = {
+      ...mockKpis,
+      trading: { total_trades: 10, win_rate: 40.0, total_pnl: -250.0, profit_factor: null },
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": negTradingKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("Trading Performance")).toBeInTheDocument();
+    expect(screen.getByText("$-250.00")).toBeInTheDocument();
+    // null profit_factor should show infinity symbol
+    expect(screen.getByText("\u221E")).toBeInTheDocument();
+  });
+
+  it("shows paper trading widget with no instances running", async () => {
+    const noInstancesKpis = {
+      ...mockKpis,
+      paper_trading: {
+        instances_running: 0,
+        total_pnl: -5.0,
+        total_pnl_pct: -1.0,
+        open_trades: 0,
+        closed_trades: 2,
+        win_rate: 50.0,
+        instances: [],
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": noInstancesKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    await screen.findByTestId("paper-trading-widget");
+    expect(screen.getByText(/No Freqtrade instances detected/)).toBeInTheDocument();
+    expect(screen.getByText("$-5.00")).toBeInTheDocument();
+    expect(screen.getByText("-1.00%")).toBeInTheDocument();
+  });
+
+  it("does not show paper trading widget when no paper_trading data", async () => {
+    const noPaperKpis = {
+      ...mockKpis,
+      paper_trading: undefined,
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": noPaperKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    await screen.findByText("Dashboard");
+    expect(screen.queryByTestId("paper-trading-widget")).not.toBeInTheDocument();
+  });
+
+  it("shows daily report system status section", async () => {
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText(/Gathering baseline data/)).toBeInTheDocument();
+    expect(screen.getByText(/Coverage: 27.8%/)).toBeInTheDocument();
+    expect(screen.getByText(/Regime: ranging/)).toBeInTheDocument();
+  });
+
+  it("shows completed job with timestamp", async () => {
+    const completedJobs = [
+      {
+        id: "job-2",
+        job_type: "data_download",
+        status: "completed",
+        progress: 1.0,
+        progress_message: "Done",
+        params: null,
+        result: null,
+        error: null,
+        started_at: "2026-02-15T10:00:00Z",
+        completed_at: "2026-02-15T10:05:00Z",
+        created_at: "2026-02-15T10:00:00Z",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": completedJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("data download")).toBeInTheDocument();
+    expect(screen.getByText("completed")).toBeInTheDocument();
+    expect(screen.getByText(/Completed/)).toBeInTheDocument();
+  });
+
+  it("shows no chart data message when OHLCV is empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": [],
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText(/No chart data available/)).toBeInTheDocument();
+  });
+
+  it("shows non-crypto empty state message for equity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": [],
+        "/api/jobs": [],
+        "/api/dashboard/kpis/": { ...mockKpis, paper_trading: undefined },
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />, { assetClass: "equity" });
+    expect(await screen.findByText("Download data to see prices")).toBeInTheDocument();
+  });
+
+  it("shows failed job status", async () => {
+    const failedJobs = [
+      {
+        id: "job-3",
+        job_type: "backtest",
+        status: "failed",
+        progress: 0,
+        progress_message: "",
+        params: null,
+        result: null,
+        error: "Something went wrong",
+        started_at: "2026-02-15T10:00:00Z",
+        completed_at: null,
+        created_at: "2026-02-15T10:00:00Z",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": failedJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("failed")).toBeInTheDocument();
+  });
+
+  it("shows not_installed framework status color", async () => {
+    const statusWithNotInstalled = {
+      ...mockPlatformStatus,
+      frameworks: [
+        ...mockPlatformStatus.frameworks,
+        { name: "TestFramework", installed: false, version: null, status: "not_installed", status_label: "Not available", details: {} },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": statusWithNotInstalled,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    // TestFramework is not in BACKTEST_FRAMEWORKS for crypto, so it won't show
+    // But CCXT always shows, so verify VectorBT shows (it is in the filter)
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("Framework Status")).toBeInTheDocument();
+  });
+
+  it("renders data sources heading as 'Data Sources' for equity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": [],
+        "/api/jobs": [],
+        "/api/market/tickers": mockEquityTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />, { assetClass: "equity" });
+    // For equity, the heading says "Data Sources" instead of "Available Exchanges"
+    expect(await screen.findByText("Equities Watchlist")).toBeInTheDocument();
+    // "Data Sources" appears both as summary card label and as section heading for equity
+    const dsMatches = screen.getAllByText("Data Sources");
+    expect(dsMatches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows daily report with system ready status", async () => {
+    const readyReport = {
+      ...mockDailyReport,
+      system_status: { days_paper_trading: 15, min_days_required: 14, readiness: "Ready for live trading", is_ready: true },
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": mockPlatformStatus,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": readyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("Ready for live trading")).toBeInTheDocument();
+  });
+
+  it("clicks refresh prices button without error", async () => {
+    renderWithProviders(<Dashboard />);
+    await screen.findByText("Crypto Watchlist");
+    const btn = screen.getByLabelText("Refresh prices");
+    fireEvent.click(btn);
+    expect(btn).toBeInTheDocument();
+  });
+
+  it("clicks refresh jobs button without error", async () => {
+    renderWithProviders(<Dashboard />);
+    const btn = screen.getByLabelText("Refresh jobs");
+    fireEvent.click(btn);
+    expect(btn).toBeInTheDocument();
+  });
+
+  it("clicks ticker button to change chart symbol", async () => {
+    renderWithProviders(<Dashboard />);
+    await screen.findByText("+2.45%");
+    // Click on ETH/USDT ticker row — find the one inside a button
+    const ethElements = screen.getAllByText("ETH/USDT");
+    const ethInButton = ethElements.find((el) => el.closest("button"));
+    expect(ethInButton).toBeTruthy();
+    fireEvent.click(ethInButton!.closest("button")!);
+    // ETH/USDT should still be visible
+    expect(ethInButton).toBeInTheDocument();
+  });
+
+  it("shows not_installed framework status color", async () => {
+    const statusWithNotInstalled = {
+      ...mockPlatformStatus,
+      frameworks: [
+        { name: "NautilusTrader", installed: false, version: null, status: "not_installed", status_label: "Not available", details: {} },
+        { name: "CCXT", installed: true, version: "4.5.40", status: "running", status_label: "kraken", details: {} },
+        { name: "VectorBT", installed: true, version: null, status: "running", status_label: "running", details: {} },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": statusWithNotInstalled,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("NautilusTrader")).toBeInTheDocument();
+    // The not_installed dot should have bg-red-400 class
+    const row = screen.getByText("NautilusTrader").closest("div.rounded-lg");
+    const dot = row!.querySelector(".bg-red-400");
+    expect(dot).toBeInTheDocument();
+  });
+
+  it("handles unknown framework status color", async () => {
+    const statusWithUnknown = {
+      ...mockPlatformStatus,
+      frameworks: [
+        { name: "CCXT", installed: true, version: "4.5.40", status: "mystery_status", status_label: "unknown state", details: {} },
+        { name: "VectorBT", installed: true, version: null, status: "running", status_label: "running", details: {} },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/platform/status": statusWithUnknown,
+        "/api/regime/current": mockRegimeStates,
+        "/api/jobs": mockJobs,
+        "/api/market/tickers": mockTickers,
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/market/news/sentiment": mockNewsSentiment,
+        "/api/market/news": mockNewsArticles,
+        "/api/dashboard/kpis/": mockKpis,
+        "/api/market/opportunities/summary/": mockOpportunitySummary,
+        "/api/market/daily-report/": mockDailyReport,
+      }),
+    );
+    renderWithProviders(<Dashboard />);
+    expect(await screen.findByText("Framework Status")).toBeInTheDocument();
+    expect(screen.getByText("unknown state")).toBeInTheDocument();
   });
 });

@@ -93,6 +93,24 @@ def broadcast_opportunity(
     })
 
 
+def broadcast_strategy_status(
+    strategy: str,
+    asset_class: str,
+    regime: str,
+    alignment: int,
+    action: str,
+) -> None:
+    """Broadcast strategy orchestrator status change (pause/resume/reduce)."""
+    _send("strategy_status", {
+        "strategy": strategy,
+        "asset_class": asset_class,
+        "regime": regime,
+        "alignment": alignment,
+        "action": action,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+    })
+
+
 def broadcast_regime_change(
     symbol: str,
     previous_regime: str,

@@ -28,7 +28,7 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
+if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(PROJECT_ROOT))
 
 logger = logging.getLogger("validation_engine")
@@ -116,7 +116,7 @@ def _run_backtest(
     if num_trades >= 2:
         try:
             trade_pnls = pf.trades.pnl.values
-            if hasattr(trade_pnls, "to_numpy"):
+            if hasattr(trade_pnls, "to_numpy"):  # pragma: no cover — VBT version-dependent
                 trade_pnls = trade_pnls.to_numpy()
             trade_pnls = np.asarray(trade_pnls, dtype=float)
             trade_pnls = trade_pnls[~np.isnan(trade_pnls)]

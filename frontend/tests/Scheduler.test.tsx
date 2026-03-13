@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { Scheduler } from "../src/pages/Scheduler";
 import { renderWithProviders, mockFetch } from "./helpers";
 
@@ -240,5 +240,179 @@ describe("Scheduler - Task Table Details", () => {
     );
     renderWithProviders(<Scheduler />);
     expect(await screen.findByText("45s")).toBeInTheDocument();
+  });
+});
+
+describe("Scheduler - Mutation Actions", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      }),
+    );
+  });
+
+  it("clicking Pause fires pauseMutation and shows toast", async () => {
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Data Refresh (Crypto)");
+    const pauseBtn = screen.getByLabelText("Pause task Data Refresh (Crypto)");
+    fireEvent.click(pauseBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Task paused")).toBeInTheDocument();
+    });
+  });
+
+  it("clicking Resume fires resumeMutation and shows toast", async () => {
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Regime Detection");
+    const resumeBtn = screen.getByLabelText("Resume task Regime Detection");
+    fireEvent.click(resumeBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Task resumed")).toBeInTheDocument();
+    });
+  });
+
+  it("clicking Trigger fires triggerMutation and shows toast with job_id", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+        "/api/scheduler/tasks/data_refresh_crypto/trigger": { status: "ok", job_id: "job-xyz" },
+      }),
+    );
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Data Refresh (Crypto)");
+    const triggerBtn = screen.getByLabelText("Trigger task Data Refresh (Crypto)");
+    fireEvent.click(triggerBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Task triggered/)).toBeInTheDocument();
+    });
+  });
+
+  it("pause mutation error shows error toast", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/pause") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Data Refresh (Crypto)");
+    const pauseBtn = screen.getByLabelText("Pause task Data Refresh (Crypto)");
+    fireEvent.click(pauseBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to pause task|fail/)).toBeInTheDocument();
+    });
+  });
+
+  it("resume mutation error shows error toast", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/resume") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Regime Detection");
+    const resumeBtn = screen.getByLabelText("Resume task Regime Detection");
+    fireEvent.click(resumeBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to resume task|fail/)).toBeInTheDocument();
+    });
+  });
+
+  it("trigger mutation error shows error toast", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/trigger") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ error: "fail" }), { status: 500 }));
+      }
+      return mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Data Refresh (Crypto)");
+    const triggerBtn = screen.getByLabelText("Trigger task Data Refresh (Crypto)");
+    fireEvent.click(triggerBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to trigger task|fail/)).toBeInTheDocument();
+    });
+  });
+
+  it("clicking Refresh button refetches tasks", async () => {
+    renderWithProviders(<Scheduler />);
+    await screen.findByText("Data Refresh (Crypto)");
+    const refreshBtn = screen.getByLabelText("Refresh task list");
+    fireEvent.click(refreshBtn);
+    // Tasks should still be visible after refresh
+    expect(screen.getByText("Data Refresh (Crypto)")).toBeInTheDocument();
+  });
+});
+
+describe("Scheduler - StatusBadge Variants", () => {
+  it("renders error status badge", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": [
+          { ...mockTasks[0], status: "error" },
+        ],
+      }),
+    );
+    renderWithProviders(<Scheduler />);
+    expect(await screen.findByText("error")).toBeInTheDocument();
+  });
+
+  it("renders unknown status badge with gray fallback", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": [
+          { ...mockTasks[0], status: "unknown" },
+        ],
+      }),
+    );
+    renderWithProviders(<Scheduler />);
+    const badge = await screen.findByText("unknown");
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain("bg-gray");
+  });
+});
+
+describe("Scheduler - formatDate", () => {
+  it("formats a valid date string", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/scheduler/status": mockStatus,
+        "/api/scheduler/tasks": mockTasks,
+      }),
+    );
+    renderWithProviders(<Scheduler />);
+    // The first task has a valid last_run_at date that should render
+    await screen.findByText("Data Refresh (Crypto)");
+    // The formatted date should not be a dash
+    const dashes = screen.getAllByText("—");
+    // Regime Detection has null last_run_at and null next_run_at (2 dashes)
+    // Data Refresh has valid dates so should not add dashes
+    expect(dashes.length).toBe(2);
   });
 });

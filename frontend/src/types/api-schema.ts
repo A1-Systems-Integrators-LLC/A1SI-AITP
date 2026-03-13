@@ -725,6 +725,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ml/models/{model_id}/performance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Model accuracy metrics and retraining recommendations. */
+        get: operations["ml_models_performance_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ml/predict/": {
         parameters: {
             query?: never;
@@ -735,6 +752,23 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ml_predict_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ml/predictions/{symbol}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Recent ML predictions for a symbol — audit trail. */
+        get: operations["ml_predictions_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1541,6 +1575,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/signals/{symbol}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Composite conviction signal for a single symbol. */
+        get: operations["signals_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{symbol}/entry-check/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Entry gate for Freqtrade — unauthenticated (internal calls). */
+        post: operations["signals_entry_check_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/accuracy/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Signal source accuracy statistics. */
+        get: operations["signals_accuracy_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/attribution/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List signal attributions with optional filters. */
+        get: operations["signals_attribution_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/attribution/{order_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single signal attribution by order_id. */
+        get: operations["signals_attribution_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/batch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Batch composite signals for multiple symbols. */
+        post: operations["signals_batch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/feedback/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Backfill outcome for a signal attribution. */
+        post: operations["signals_feedback_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/record/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record signal attribution at trade entry. */
+        post: operations["signals_record_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/strategy-status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Which strategies should be active given current regime conditions. */
+        get: operations["signals_strategy_status_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/weights/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Current and recommended signal weights based on performance. */
+        get: operations["signals_weights_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trading/cancel-all/": {
         parameters: {
             query?: never;
@@ -1817,6 +2021,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `up` - Up
+         *     * `down` - Down
+         * @enum {string}
+         */
+        ActualDirectionEnum: "up" | "down";
         AlertLog: {
             readonly id: number;
             /** Format: int64 */
@@ -1869,6 +2079,18 @@ export interface components {
             results: components["schemas"]["AuditLog"][];
             total: number;
         };
+        BackfillOutcomeRequest: {
+            order_id: string;
+            outcome: components["schemas"]["BackfillOutcomeRequestOutcomeEnum"];
+            /** Format: double */
+            pnl?: number | null;
+        };
+        /**
+         * @description * `win` - win
+         *     * `loss` - loss
+         * @enum {string}
+         */
+        BackfillOutcomeRequestOutcomeEnum: "win" | "loss";
         BacktestComparison: {
             results: components["schemas"]["BacktestResult"][];
             comparison: {
@@ -1912,6 +2134,8 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /** @enum {unknown} */
+        BlankEnum: "";
         CancelAll: {
             portfolio_id: number;
         };
@@ -1929,6 +2153,22 @@ export interface components {
             exchange_id: string;
             state: string;
             failure_count: number;
+        };
+        CompositeSignalResponse: {
+            symbol: string;
+            asset_class: string;
+            timestamp: string;
+            /** Format: double */
+            composite_score: number;
+            signal_label: string;
+            entry_approved: boolean;
+            /** Format: double */
+            position_modifier: number;
+            hard_disabled: boolean;
+            components: components["schemas"]["SignalComponents"];
+            confidences: components["schemas"]["SignalConfidences"];
+            sources_available: string[];
+            reasoning: string[];
         };
         DailyReport: {
             generated_at: string;
@@ -2119,6 +2359,27 @@ export interface components {
             checks: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * @description * `up` - Up
+         *     * `down` - Down
+         * @enum {string}
+         */
+        DirectionEnum: "up" | "down";
+        EntryCheckRequest: {
+            strategy: string;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
+        };
+        EntryCheckResponse: {
+            approved: boolean;
+            /** Format: double */
+            score: number;
+            /** Format: double */
+            position_modifier: number;
+            signal_label: string;
+            hard_disabled: boolean;
+            reasoning: string[];
         };
         EquityUpdate: {
             /** Format: double */
@@ -2339,6 +2600,22 @@ export interface components {
             exchange: string;
             created_at: string;
         };
+        MLModelPerformance: {
+            model_id: string;
+            /** Format: int64 */
+            total_predictions?: number;
+            /** Format: int64 */
+            correct_predictions?: number;
+            /**
+             * Format: double
+             * @description Rolling accuracy 0.0-1.0
+             */
+            rolling_accuracy?: number;
+            accuracy_by_regime?: unknown;
+            retrain_recommended?: boolean;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         MLPredictRequest: {
             model_id: string;
             /** @default BTC/USDT */
@@ -2349,6 +2626,25 @@ export interface components {
             exchange: string;
             /** @default 50 */
             bars: number;
+        };
+        MLPrediction: {
+            readonly prediction_id: string;
+            model_id: string;
+            symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
+            /**
+             * Format: double
+             * @description Calibrated probability 0.0-1.0
+             */
+            probability: number;
+            /** Format: double */
+            confidence?: number;
+            direction: components["schemas"]["DirectionEnum"];
+            regime?: string;
+            actual_direction?: (components["schemas"]["ActualDirectionEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            correct?: boolean | null;
+            /** Format: date-time */
+            readonly predicted_at: string;
         };
         MLPredictionResponse: {
             model_id: string;
@@ -2434,6 +2730,8 @@ export interface components {
             on_trade_rejected?: boolean;
             on_daily_summary?: boolean;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         OHLCVData: {
             timestamp: number;
             /** Format: double */
@@ -2641,6 +2939,16 @@ export interface components {
             risk_amount: number;
             /** Format: double */
             position_value: number;
+        };
+        RecordAttributionRequest: {
+            order_id: string;
+            symbol: string;
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
+            strategy: string;
+            signal_data: {
+                [key: string]: unknown;
+            };
         };
         RegimeHistoryEntry: {
             timestamp: string;
@@ -2889,6 +3197,85 @@ export interface components {
          * @enum {string}
          */
         SideEnum: "buy" | "sell";
+        SignalAttribution: {
+            readonly id: string;
+            order_id: string;
+            symbol: string;
+            asset_class?: components["schemas"]["AssetClassEnum"];
+            strategy: string;
+            /** Format: double */
+            composite_score: number;
+            /** Format: double */
+            ml_contribution?: number;
+            /** Format: double */
+            sentiment_contribution?: number;
+            /** Format: double */
+            regime_contribution?: number;
+            /** Format: double */
+            scanner_contribution?: number;
+            /** Format: double */
+            screen_contribution?: number;
+            /** Format: double */
+            win_rate_contribution?: number;
+            /** Format: double */
+            position_modifier?: number;
+            entry_regime?: string;
+            outcome?: components["schemas"]["SignalAttributionOutcomeEnum"];
+            /** Format: double */
+            pnl?: number | null;
+            /** Format: date-time */
+            readonly recorded_at: string;
+            /** Format: date-time */
+            resolved_at?: string | null;
+        };
+        /**
+         * @description * `win` - Win
+         *     * `loss` - Loss
+         *     * `open` - Open
+         * @enum {string}
+         */
+        SignalAttributionOutcomeEnum: "win" | "loss" | "open";
+        SignalBatchRequest: {
+            symbols: string[];
+            /** @default crypto */
+            asset_class: components["schemas"]["AssetClassEnum"];
+            /** @default CryptoInvestorV1 */
+            strategy_name: string;
+        };
+        SignalComponents: {
+            /** Format: double */
+            technical: number;
+            /** Format: double */
+            regime: number;
+            /** Format: double */
+            ml: number;
+            /** Format: double */
+            sentiment: number;
+            /** Format: double */
+            scanner: number;
+            /** Format: double */
+            win_rate: number;
+        };
+        SignalConfidences: {
+            /** Format: double */
+            ml: number;
+            /** Format: double */
+            sentiment: number;
+            /** Format: double */
+            regime: number;
+        };
+        SourceAccuracyResponse: {
+            total_trades: number;
+            wins: number;
+            /** Format: double */
+            overall_win_rate: number;
+            window_days: number;
+            asset_class: string | null;
+            strategy: string | null;
+            sources: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * @description * `pending` - Pending
          *     * `running` - Running
@@ -2902,6 +3289,14 @@ export interface components {
             name: string;
             framework: string;
             file_path: string;
+        };
+        StrategyStatus: {
+            strategy_name: string;
+            asset_class: string;
+            regime: string;
+            /** Format: double */
+            alignment_score: number;
+            recommended_action: string;
         };
         SymbolPerformance: {
             total_trades: number;
@@ -2979,6 +3374,11 @@ export interface components {
             drawdown_at_check?: number;
             /** Format: int64 */
             open_positions_at_check?: number;
+            /**
+             * Format: double
+             * @description Conviction composite score (0-100) from SignalAggregator
+             */
+            composite_score?: number | null;
             /** Format: date-time */
             readonly checked_at: string;
         };
@@ -2994,10 +3394,17 @@ export interface components {
             stop_loss_price?: number | null;
             /** @default crypto */
             asset_class: components["schemas"]["AssetClassEnum"];
+            /**
+             * Format: double
+             * @description Conviction composite score (0-100) from SignalAggregator
+             */
+            composite_score?: number | null;
         };
         TradeCheckResponse: {
             approved: boolean;
             reason: string;
+            /** Format: double */
+            composite_score?: number | null;
         };
         TradingPerformanceSummary: {
             total_trades: number;
@@ -3036,6 +3443,25 @@ export interface components {
             cvar_99: number;
             method: string;
             window_days: number;
+        };
+        WeightRecommendationResponse: {
+            current_weights: {
+                [key: string]: unknown;
+            };
+            recommended_weights: {
+                [key: string]: unknown;
+            };
+            adjustments: {
+                [key: string]: unknown;
+            };
+            source_accuracy: {
+                [key: string]: unknown;
+            };
+            total_trades: number;
+            /** Format: double */
+            win_rate: number;
+            threshold_adjustment: number;
+            reasoning: string[];
         };
         WorkflowCreate: {
             /** @description Workflow ID (lowercase alphanumeric + underscore) */
@@ -4295,6 +4721,27 @@ export interface operations {
             };
         };
     };
+    ml_models_performance_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MLModelPerformance"];
+                };
+            };
+        };
+    };
     ml_predict_create: {
         parameters: {
             query?: never;
@@ -4314,6 +4761,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MLPredictionResponse"];
+                };
+            };
+        };
+    };
+    ml_predictions_list: {
+        parameters: {
+            query?: {
+                /** @description Max results (default 50, max 200) */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MLPrediction"][];
                 };
             };
         };
@@ -5530,6 +6001,249 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    signals_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Asset class */
+                asset_class?: "crypto" | "equity" | "forex";
+                /** @description Strategy name */
+                strategy?: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositeSignalResponse"];
+                };
+            };
+        };
+    };
+    signals_entry_check_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryCheckRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryCheckResponse"];
+                };
+            };
+        };
+    };
+    signals_accuracy_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter by asset class */
+                asset_class?: string;
+                /** @description Filter by strategy */
+                strategy?: string;
+                /** @description Lookback days (default 30) */
+                window_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceAccuracyResponse"];
+                };
+            };
+        };
+    };
+    signals_attribution_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by asset class */
+                asset_class?: string;
+                /** @description Max results (default 50, max 200) */
+                limit?: number;
+                /** @description Filter by outcome (win/loss/open) */
+                outcome?: string;
+                /** @description Filter by strategy */
+                strategy?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalAttribution"][];
+                };
+            };
+        };
+    };
+    signals_attribution_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalAttribution"];
+                };
+            };
+        };
+    };
+    signals_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalBatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositeSignalResponse"][];
+                };
+            };
+        };
+    };
+    signals_feedback_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackfillOutcomeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalAttribution"];
+                };
+            };
+        };
+    };
+    signals_record_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordAttributionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalAttribution"];
+                };
+            };
+        };
+    };
+    signals_strategy_status_list: {
+        parameters: {
+            query?: {
+                /** @description Asset class */
+                asset_class?: "crypto" | "equity" | "forex";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyStatus"][];
+                };
+            };
+        };
+    };
+    signals_weights_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter by asset class */
+                asset_class?: string;
+                /** @description Filter by strategy */
+                strategy?: string;
+                /** @description Lookback days (default 30) */
+                window_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightRecommendationResponse"];
+                };
             };
         };
     };

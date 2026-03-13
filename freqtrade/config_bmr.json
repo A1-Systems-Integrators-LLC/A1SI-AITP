@@ -3,8 +3,8 @@
     "margin_mode": "",
     "max_open_trades": 1,
     "stake_currency": "USDT",
-    "stake_amount": "unlimited",
-    "tradable_balance_ratio": 0.90,
+    "stake_amount": 50,
+    "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,
     "dry_run_wallet": 200,
@@ -42,7 +42,13 @@
             ".*DOWN/.*",
             ".*UP/.*",
             ".*BEAR/.*",
-            ".*BULL/.*"
+            ".*BULL/.*",
+            "USDC/USDT",
+            "USDG/USDT",
+            "DAI/USDT",
+            "TUSD/USDT",
+            "PYUSD/USDT",
+            "XAUT/USDT"
         ]
     },
     "pairlists": [
@@ -81,6 +87,12 @@
     "db_url": "sqlite:///tradesv3.bmr.dryrun.sqlite",
     "bot_name": "a1si-bmr",
     "initial_state": "running",
+    "order_types": {
+        "entry": "limit",
+        "exit": "limit",
+        "stoploss": "limit",
+        "stoploss_on_exchange": true
+    },
     "force_entry_enable": false,
     "internals": {
         "process_throttle_secs": 5

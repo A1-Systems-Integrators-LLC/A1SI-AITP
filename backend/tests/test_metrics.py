@@ -84,11 +84,15 @@ class TestMetricsCollector:
         from core.services.metrics import MetricsCollector
 
         mc = MetricsCollector()
-        mc.counter_inc("test_counter", {"method": "GET"})
-        mc.counter_inc("test_counter", {"method": "GET"})
-        mc.counter_inc("test_counter", {"method": "GET"}, amount=3)
+        key = 'test_counter_isolated{method="GET"}'
+        # Clear any prior state for this key
+        with mc._data_lock:
+            mc._counters.pop(key, None)
+        mc.counter_inc("test_counter_isolated", {"method": "GET"})
+        mc.counter_inc("test_counter_isolated", {"method": "GET"})
+        mc.counter_inc("test_counter_isolated", {"method": "GET"}, amount=3)
         output = mc.collect()
-        assert 'test_counter{method="GET"} 5' in output
+        assert 'test_counter_isolated{method="GET"} 5.0' in output
 
     def test_histogram(self):
         from core.services.metrics import MetricsCollector

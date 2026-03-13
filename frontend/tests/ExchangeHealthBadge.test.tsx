@@ -125,4 +125,12 @@ describe("ExchangeHealthBadge", () => {
     const dot = await screen.findByTestId("health-dot-disconnected");
     expect(dot.className).toContain("bg-red-500");
   });
+
+  it("shows Disconnected when fetch fails (isError path)", async () => {
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("Network error")));
+    renderWithProviders(<ExchangeHealthBadge />);
+    const errorDot = await screen.findByTestId("health-dot-error");
+    expect(errorDot.className).toContain("bg-red-500");
+    expect(screen.getByText("Disconnected")).toBeInTheDocument();
+  });
 });

@@ -30,6 +30,7 @@ import { platformApi } from "../src/api/platform";
 import { jobsApi } from "../src/api/jobs";
 import { auditApi } from "../src/api/audit";
 import { newsApi } from "../src/api/news";
+import { opportunitiesApi } from "../src/api/opportunities";
 import { dashboardApi } from "../src/api/dashboard";
 import { workflowsApi } from "../src/api/workflows";
 import { schedulerApi } from "../src/api/scheduler";
@@ -558,6 +559,18 @@ describe("dataSourcesApi", () => {
     await dataSourcesApi.delete(1);
     expect(mockApi.delete).toHaveBeenCalledWith("/data-sources/1/");
   });
+
+  it("get calls GET /data-sources/:id/", async () => {
+    await dataSourcesApi.get(5);
+    expect(mockApi.get).toHaveBeenCalledWith("/data-sources/5/");
+  });
+
+  it("update calls PUT /data-sources/:id/", async () => {
+    await dataSourcesApi.update(3, { symbols: ["ETH/USDT"] });
+    expect(mockApi.put).toHaveBeenCalledWith("/data-sources/3/", {
+      symbols: ["ETH/USDT"],
+    });
+  });
 });
 
 describe("notificationsApi", () => {
@@ -658,6 +671,22 @@ describe("auditApi", () => {
     expect(mockApi.get).toHaveBeenCalledWith(
       "/audit-log/?user=admin&limit=10",
     );
+  });
+
+  it("list includes all filter params", async () => {
+    await auditApi.list({
+      action: "GET",
+      status_code: 200,
+      created_after: "2026-01-01",
+      created_before: "2026-03-01",
+      offset: 10,
+    });
+    const url = mockApi.get.mock.calls[0][0] as string;
+    expect(url).toContain("action=GET");
+    expect(url).toContain("status_code=200");
+    expect(url).toContain("created_after=2026-01-01");
+    expect(url).toContain("created_before=2026-03-01");
+    expect(url).toContain("offset=10");
   });
 });
 
@@ -827,5 +856,175 @@ describe("tradingApi (P7 additions)", () => {
   it("exchangeHealth without param calls base URL", async () => {
     await tradingApi.exchangeHealth();
     expect(mockApi.get).toHaveBeenCalledWith("/trading/exchange-health/");
+  });
+
+  it("performanceSummary includes all query params", async () => {
+    await tradingApi.performanceSummary({
+      portfolio_id: 1,
+      mode: "paper",
+      asset_class: "crypto",
+      date_from: "2026-01-01",
+      date_to: "2026-03-01",
+    });
+    const url = mockApi.get.mock.calls[0][0] as string;
+    expect(url).toContain("/trading/performance/summary/");
+    expect(url).toContain("portfolio_id=1");
+    expect(url).toContain("asset_class=crypto");
+    expect(url).toContain("date_from=2026-01-01");
+    expect(url).toContain("date_to=2026-03-01");
+  });
+});
+
+describe("newsApi (param variations)", () => {
+  it("list with symbol only", async () => {
+    await newsApi.list(undefined, "BTC/USDT");
+    expect(mockApi.get).toHaveBeenCalledWith("/market/news/?symbol=BTC/USDT");
+  });
+
+  it("sentiment without params", async () => {
+    await newsApi.sentiment();
+    expect(mockApi.get).toHaveBeenCalledWith("/market/news/sentiment/");
+  });
+
+  it("signal with hours only", async () => {
+    await newsApi.signal(undefined, 24);
+    expect(mockApi.get).toHaveBeenCalledWith("/market/news/signal/?hours=24");
+  });
+
+  it("signal with asset_class and hours", async () => {
+    await newsApi.signal("crypto", 48);
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/news/signal/?asset_class=crypto&hours=48",
+    );
+  });
+});
+
+describe("opportunitiesApi", () => {
+  it("list calls GET /market/opportunities/", async () => {
+    await opportunitiesApi.list();
+    expect(mockApi.get).toHaveBeenCalledWith("/market/opportunities/");
+  });
+
+  it("list includes params", async () => {
+    await opportunitiesApi.list({ type: "breakout", min_score: 70, asset_class: "crypto" });
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/opportunities/?type=breakout&min_score=70&asset_class=crypto",
+    );
+  });
+
+  it("summary calls GET", async () => {
+    await opportunitiesApi.summary("forex");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/opportunities/summary/?asset_class=forex",
+    );
+  });
+
+  it("dailyReport calls GET /market/daily-report/", async () => {
+    await opportunitiesApi.dailyReport();
+    expect(mockApi.get).toHaveBeenCalledWith("/market/daily-report/");
+  });
+
+  it("dailyReportHistory calls GET with limit", async () => {
+    await opportunitiesApi.dailyReportHistory(10);
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/market/daily-report/history/?limit=10",
+    );
+  });
+});
+
+describe("dataApi (quality endpoints)", () => {
+  it("quality calls GET /data/quality/", async () => {
+    await dataApi.quality();
+    expect(mockApi.get).toHaveBeenCalledWith("/data/quality/");
+  });
+
+  it("qualityDetail calls GET with symbol and timeframe", async () => {
+    await dataApi.qualityDetail("BTC/USDT", "1h");
+    expect(mockApi.get).toHaveBeenCalledWith("/data/quality/BTC_USDT/1h/");
+  });
+
+  it("qualityDetail includes exchange param", async () => {
+    await dataApi.qualityDetail("ETH/USDT", "1d", "kraken");
+    expect(mockApi.get).toHaveBeenCalledWith(
+      "/data/quality/ETH_USDT/1d/?exchange=kraken",
+    );
+  });
+});
+
+describe("portfoliosApi (analytics endpoints)", () => {
+  it("summary calls GET /portfolios/:id/summary/", async () => {
+    await portfoliosApi.summary(1);
+    expect(mockApi.get).toHaveBeenCalledWith("/portfolios/1/summary/");
+  });
+
+  it("allocation calls GET /portfolios/:id/allocation/", async () => {
+    await portfoliosApi.allocation(2);
+    expect(mockApi.get).toHaveBeenCalledWith("/portfolios/2/allocation/");
+  });
+});
+
+describe("riskApi (alert filters)", () => {
+  it("getAlerts includes date filters", async () => {
+    await riskApi.getAlerts(1, 50, {
+      created_after: "2026-01-01",
+      created_before: "2026-03-01",
+    });
+    const url = mockApi.get.mock.calls[0][0] as string;
+    expect(url).toContain("/risk/1/alerts/");
+    expect(url).toContain("created_after=2026-01-01");
+    expect(url).toContain("created_before=2026-03-01");
+  });
+});
+
+describe("schedulerApi (task endpoint)", () => {
+  it("task calls GET /scheduler/tasks/:id/", async () => {
+    await schedulerApi.task("task-42");
+    expect(mockApi.get).toHaveBeenCalledWith("/scheduler/tasks/task-42/");
+  });
+});
+
+describe("screeningApi (result endpoint)", () => {
+  it("result calls GET /screening/results/:id/", async () => {
+    await screeningApi.result(99);
+    expect(mockApi.get).toHaveBeenCalledWith("/screening/results/99/");
+  });
+
+  it("results with limit includes query param", async () => {
+    await screeningApi.results(20);
+    expect(mockApi.get).toHaveBeenCalledWith("/screening/results/?limit=20");
+  });
+});
+
+describe("workflowsApi (trigger with params)", () => {
+  it("trigger with params passes them in body", async () => {
+    await workflowsApi.trigger("wf-1", { asset_class: "crypto" });
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/workflows/wf-1/trigger/",
+      { params: { asset_class: "crypto" } },
+    );
+  });
+
+  it("runs with limit includes query param", async () => {
+    await workflowsApi.runs("wf-1", 5);
+    expect(mockApi.get).toHaveBeenCalledWith("/workflows/wf-1/runs/?limit=5");
+  });
+
+  it("run calls GET /workflow-runs/:id/", async () => {
+    await workflowsApi.run("run-42");
+    expect(mockApi.get).toHaveBeenCalledWith("/workflow-runs/run-42/");
+  });
+});
+
+describe("workflowsApi (delete and cancelRun)", () => {
+  it("delete calls DELETE /workflows/:id/", async () => {
+    await workflowsApi.delete("wf-5");
+    expect(mockApi.delete).toHaveBeenCalledWith("/workflows/wf-5/");
+  });
+
+  it("cancelRun calls POST /workflow-runs/:id/cancel/", async () => {
+    await workflowsApi.cancelRun("run-1");
+    expect(mockApi.post).toHaveBeenCalledWith(
+      "/workflow-runs/run-1/cancel/",
+    );
   });
 });

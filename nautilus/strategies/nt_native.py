@@ -36,7 +36,7 @@ try:
     from nautilus_trader.trading.strategy import Strategy
 
     HAS_NAUTILUS_TRADER = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_NAUTILUS_TRADER = False
 
 # Only define native strategies when NT is available
@@ -102,35 +102,60 @@ if HAS_NAUTILUS_TRADER:
 
             if not self._position_open:
                 if self._signal_engine.should_enter(indicators):
-                    self._enter_long(bar)
+                    # Conviction gate (delegates to signal engine)
+                    if not self._signal_engine._check_conviction_gate():
+                        return
+
+                    # Apply position modifier
+                    modifier = self._signal_engine._get_position_modifier()
+                    adjusted_size = round(self._trade_size * modifier, 8)
+                    if adjusted_size <= 0:
+                        return
+
+                    self._enter_long(bar, adjusted_size)
             else:
+                # Check conviction-based exit advisor
+                exit_tag = self._signal_engine._check_exit_advice(bar_dict)
+                if exit_tag:
+                    self._exit_position(bar)
+                    return
+
                 if self._signal_engine.should_exit(indicators):
                     self._exit_position(bar)
                 else:
-                    # Check stop loss
+                    # Check stop loss (regime-aware tightening)
                     entry = self._signal_engine.position
                     if entry:
+                        multiplier = self._signal_engine._get_stop_multiplier()
+                        effective_stop = self._signal_engine.stoploss * multiplier
                         loss_pct = (float(bar.close) / entry["entry_price"]) - 1
-                        if loss_pct <= self._signal_engine.stoploss:
+                        if loss_pct <= effective_stop:
                             self._exit_position(bar)
 
-        def _enter_long(self, bar: Bar) -> None:
+        def _enter_long(self, bar: Bar, size: float | None = None) -> None:
+            trade_size = size if size is not None else self._trade_size
             order = self.order_factory.market(
                 instrument_id=self._instrument_id,
                 order_side=OrderSide.BUY,
-                quantity=Quantity.from_str(f"{self._trade_size:.8f}"),
+                quantity=Quantity.from_str(f"{trade_size:.8f}"),
                 time_in_force=TimeInForce.IOC,
             )
             self.submit_order(order)
             self._position_open = True
-            # Track in signal engine for stop loss
+            # Track in signal engine for stop loss + exit advisor
             self._signal_engine.position = {
                 "side": "long",
                 "entry_price": float(bar.close),
-                "size": self._trade_size,
+                "size": trade_size,
                 "entry_time": pd.Timestamp(bar.ts_event, unit="ns", tz="UTC"),
             }
-            self.log.info(f"ENTER LONG at {bar.close}")
+            # Record entry regime for exit advisor
+            if len(self._bars) >= 200:
+                df = pd.DataFrame(list(self._bars))
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+                df = df.set_index("timestamp")
+                self._signal_engine._record_entry_regime(df)
+            self.log.info(f"ENTER LONG at {bar.close} (size={trade_size:.8f})")
 
         def _exit_position(self, bar: Bar) -> None:
             if not self._position_open:
@@ -229,6 +254,6 @@ if HAS_NAUTILUS_TRADER:
         "NativeForexRange": NativeForexRange,
     }
 
-else:
+else:  # pragma: no cover
     # Stubs when nautilus_trader is not installed
     NATIVE_STRATEGY_REGISTRY: dict[str, type] = {}

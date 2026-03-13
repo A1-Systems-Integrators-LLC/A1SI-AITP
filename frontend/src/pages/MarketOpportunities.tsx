@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { opportunitiesApi } from "../api/opportunities";
+import { signalsApi } from "../api/signals";
 import { QueryError } from "../components/QueryError";
-import type { AssetClass, DailyReport, MarketOpportunity, OpportunitySummary } from "../types";
+import type { AssetClass, CompositeSignal, DailyReport, MarketOpportunity, OpportunitySummary } from "../types";
 
 const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All Types" },
@@ -56,6 +57,19 @@ export function MarketOpportunities() {
     queryFn: () => opportunitiesApi.summary(acParam),
     refetchInterval: 60000,
   });
+
+  // Fetch conviction signals for displayed opportunity symbols
+  const oppSymbols = opportunities.data?.map((o) => o.symbol).filter((v, i, a) => a.indexOf(v) === i).slice(0, 20) ?? [];
+  const signalsBatch = useQuery<CompositeSignal[]>({
+    queryKey: ["opp-signals", oppSymbols.join(","), assetClassFilter],
+    queryFn: () => signalsApi.batchSignals(oppSymbols, (acParam ?? "crypto")),
+    enabled: oppSymbols.length > 0,
+    refetchInterval: 120000,
+  });
+  const signalMap = new Map<string, CompositeSignal>();
+  if (Array.isArray(signalsBatch.data)) {
+    signalsBatch.data.forEach((s) => signalMap.set(s.symbol, s));
+  }
 
   const report = useQuery<DailyReport>({
     queryKey: ["daily-report"],
@@ -244,6 +258,7 @@ export function MarketOpportunities() {
                 <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Asset</th>
                 <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Type</th>
                 <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Score</th>
+                <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Signal</th>
                 <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Details</th>
                 <th className="px-4 py-3 text-left font-medium text-[var(--color-text-muted)]">Detected</th>
               </tr>
@@ -252,7 +267,7 @@ export function MarketOpportunities() {
               {opportunities.isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-[var(--color-border)]">
-                    <td colSpan={6} className="px-4 py-3">
+                    <td colSpan={7} className="px-4 py-3">
                       <div className="h-6 animate-pulse rounded bg-[var(--color-border)]" />
                     </td>
                   </tr>
@@ -280,6 +295,26 @@ export function MarketOpportunities() {
                         <span className="font-medium">{opp.score}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const sig = signalMap.get(opp.symbol);
+                        if (!sig) return <span className="text-xs text-[var(--color-text-muted)]">--</span>;
+                        return (
+                          <span
+                            data-testid="signal-quality"
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              sig.composite_score >= 75
+                                ? "bg-green-500/20 text-green-400"
+                                : sig.composite_score >= 50
+                                  ? "bg-yellow-500/20 text-yellow-400"
+                                  : "bg-red-500/20 text-red-400"
+                            }`}
+                          >
+                            {sig.composite_score.toFixed(0)}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="max-w-xs truncate px-4 py-3 text-xs text-[var(--color-text-muted)]">
                       {(opp.details as Record<string, unknown>).reason as string ?? ""}
                     </td>
@@ -295,7 +330,7 @@ export function MarketOpportunities() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
                     No active opportunities{typeFilter ? ` of type "${typeFilter.replace(/_/g, " ")}"` : ""}.
                     Scanner runs every 15 minutes.
                   </td>

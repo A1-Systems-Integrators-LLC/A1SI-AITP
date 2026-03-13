@@ -68,8 +68,32 @@ class TaskScheduler:
         self._scheduler.start()
         self._schedule_active_tasks()
         self._running = True
-        atexit.register(self.shutdown)
+
+        # Register shutdown — if atexit fails, scheduler is already running
+        try:
+            atexit.register(self.shutdown)
+        except RuntimeError:
+            logger.warning("atexit registration failed — shutdown must be called manually")
+
         logger.info("TaskScheduler started with %d tasks", self._active_task_count())
+
+        # Bootstrap: run ML training if no models exist (deferred to avoid
+        # ThreadPoolExecutor shutdown race during early startup)
+        def _ml_bootstrap() -> None:
+            try:
+                from core.platform_bridge import ensure_platform_imports
+
+                ensure_platform_imports()
+                from common.ml.registry import ModelRegistry
+
+                registry = ModelRegistry()
+                if not registry.list_models():
+                    logger.info("No ML models found — triggering initial training")
+                    self.trigger_task("ml_training")
+            except Exception:
+                logger.warning("ML bootstrap check failed", exc_info=True)
+
+        threading.Timer(5.0, _ml_bootstrap).start()
 
         # Validate watchlist symbols against exchange in background
         threading.Thread(

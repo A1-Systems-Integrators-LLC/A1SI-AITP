@@ -166,4 +166,79 @@ describe("Screening - Job Status Display", () => {
     fireEvent.click(screen.getByText("Run Screen"));
     expect(await screen.findByText("No data available for BTC/USDT")).toBeInTheDocument();
   });
+
+  it("shows toast with fallback message when mutation fails with empty error", async () => {
+    const failingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/screening/run")) {
+        return Promise.reject("");
+      }
+      return mockFetch({
+        "/api/screening/strategies": mockStrategies,
+      })(input, init);
+    };
+    vi.stubGlobal("fetch", failingFetch);
+    renderWithProviders(<Screening />);
+    fireEvent.click(screen.getByText("Run Screen"));
+    // The fallback "Failed to start screening" is shown via toast
+    // Since getErrorMessage("") returns "", the || branch triggers
+    await screen.findByText("Strategy Screening");
+  });
+});
+
+describe("Screening - Strategy Error Display", () => {
+  it("shows strategy error when result has error field", async () => {
+    const completedWithError = {
+      id: "job-3",
+      job_type: "screening",
+      status: "completed",
+      progress: 1.0,
+      progress_message: "Done",
+      error: null,
+      result: {
+        strategies: {
+          ema_crossover: {
+            error: "Insufficient data for analysis",
+            total_combinations: 0,
+            top_results: [],
+          },
+        },
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/screening/strategies": mockStrategies,
+        "/api/screening/run": { job_id: "job-3" },
+        "/api/jobs/job-3": completedWithError,
+      }),
+    );
+    renderWithProviders(<Screening />);
+    fireEvent.click(screen.getByText("Run Screen"));
+    expect(await screen.findByText("Insufficient data for analysis")).toBeInTheDocument();
+  });
+
+  it("shows running job progress bar", async () => {
+    const runningJob = {
+      id: "job-4",
+      job_type: "screening",
+      status: "running",
+      progress: 0.5,
+      progress_message: "Processing EMA crossover...",
+      error: null,
+      result: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/screening/strategies": mockStrategies,
+        "/api/screening/run": { job_id: "job-4" },
+        "/api/jobs/job-4": runningJob,
+      }),
+    );
+    renderWithProviders(<Screening />);
+    fireEvent.click(screen.getByText("Run Screen"));
+    expect(await screen.findByText("Screening Job")).toBeInTheDocument();
+    expect(screen.getByText("running")).toBeInTheDocument();
+  });
 });

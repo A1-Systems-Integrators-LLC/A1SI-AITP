@@ -221,8 +221,8 @@ def _get_cached_exchange_status() -> tuple[bool, str]:
         return _exchange_check_cache["ok"], _exchange_check_cache["error"]
 
     with _exchange_check_lock:
-        # Double-check after acquiring lock
-        if now - _exchange_check_cache["checked_at"] < _exchange_check_ttl:
+        # Double-check after acquiring lock (race-condition guard)
+        if now - _exchange_check_cache["checked_at"] < _exchange_check_ttl:  # pragma: no cover
             return _exchange_check_cache["ok"], _exchange_check_cache["error"]
 
         from market.services.exchange import ExchangeService

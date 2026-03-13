@@ -28,9 +28,12 @@ COPY hftbacktest/ ./hftbacktest/
 # Copy backend and install deps (analysis extras add pandas/numpy/scipy/pyarrow)
 COPY backend/ ./backend/
 WORKDIR /project/backend
-RUN pip install --no-cache-dir -e ".[analysis,ml]" ta-lib
+RUN pip install --no-cache-dir -e ".[analysis,ml]" ta-lib vectorbt
 
-RUN mkdir -p /project/backend/data/logs /project/data/processed
+RUN mkdir -p /project/backend/data/logs /project/data/processed /project/models
+
+# Ensure common/, research/, nautilus/, etc. are importable from backend
+ENV PYTHONPATH="/project:${PYTHONPATH}"
 
 COPY backend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { Trading } from "../src/pages/Trading";
 import { renderWithProviders, mockFetch } from "./helpers";
 
@@ -334,5 +334,298 @@ describe("Trading - Exchange Health Badge", () => {
     );
     renderWithProviders(<Trading />);
     expect(screen.getByText("Checking...")).toBeInTheDocument();
+  });
+});
+
+describe("Trading - Performance Summary", () => {
+  it("shows performance summary cards when data has trades", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/trading/orders": mockOrders,
+        "/api/trading/performance/summary": {
+          total_trades: 20,
+          win_rate: 65.0,
+          profit_factor: 2.5,
+          total_pnl: 1234.56,
+          best_trade: 500.0,
+          worst_trade: -200.0,
+        },
+      }),
+    );
+    renderWithProviders(<Trading />);
+    await waitFor(() => {
+      expect(screen.getByText("Win Rate")).toBeInTheDocument();
+    });
+    expect(screen.getByText("65.0%")).toBeInTheDocument();
+    expect(screen.getByText("2.50")).toBeInTheDocument();
+    expect(screen.getByText("$1234.56")).toBeInTheDocument();
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("Total Trades")).toBeInTheDocument();
+    expect(screen.getByText("Profit Factor")).toBeInTheDocument();
+  });
+
+  it("shows infinity symbol when profit_factor is null", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/trading/orders": mockOrders,
+        "/api/trading/performance/summary": {
+          total_trades: 5,
+          win_rate: 100.0,
+          profit_factor: null,
+          total_pnl: 500.0,
+          best_trade: 200.0,
+          worst_trade: 50.0,
+        },
+      }),
+    );
+    renderWithProviders(<Trading />);
+    await waitFor(() => {
+      expect(screen.getByText("\u221E")).toBeInTheDocument();
+    });
+  });
+
+  it("shows negative P&L with red color", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/trading/orders": mockOrders,
+        "/api/trading/performance/summary": {
+          total_trades: 10,
+          win_rate: 30.0,
+          profit_factor: 0.5,
+          total_pnl: -500.0,
+          best_trade: 100.0,
+          worst_trade: -300.0,
+        },
+      }),
+    );
+    renderWithProviders(<Trading />);
+    await waitFor(() => {
+      expect(screen.getByText("$-500.00")).toBeInTheDocument();
+    });
+    const pnlEl = screen.getByText("$-500.00");
+    expect(pnlEl.className).toContain("text-red");
+  });
+
+  it("does not show performance cards when total_trades is 0", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/trading/orders": mockOrders,
+        "/api/trading/performance/summary": {
+          total_trades: 0,
+          win_rate: 0,
+          profit_factor: null,
+          total_pnl: 0,
+          best_trade: null,
+          worst_trade: null,
+        },
+      }),
+    );
+    renderWithProviders(<Trading />);
+    await screen.findByText("BTC/USDT");
+    expect(screen.queryByText("Win Rate")).not.toBeInTheDocument();
+  });
+});
+
+describe("Trading - WebSocket Disconnected Banner", () => {
+  it("shows disconnected banner when WS is not connected", () => {
+    // useWebSocket is mocked to return isConnected: false
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />);
+    expect(screen.getByText(/WebSocket disconnected/)).toBeInTheDocument();
+  });
+});
+
+describe("Trading - Error Message on Orders", () => {
+  it("shows error_message on orders that have it", async () => {
+    const orderWithErrorMsg = [
+      {
+        id: 4,
+        symbol: "XRP/USDT",
+        side: "buy",
+        order_type: "market",
+        amount: 50,
+        price: null,
+        avg_fill_price: null,
+        filled: 0,
+        status: "error",
+        mode: "paper",
+        reject_reason: null,
+        error_message: "Exchange timeout",
+        created_at: "2026-02-15T14:00:00Z",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": orderWithErrorMsg }),
+    );
+    renderWithProviders(<Trading />);
+    expect(await screen.findByText("Exchange timeout")).toBeInTheDocument();
+  });
+});
+
+describe("Trading - Orders Error Banner", () => {
+  it("shows orders error banner when ordersQuery fails", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/trading/orders")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "Server error" }), { status: 500 }));
+      }
+      return mockFetch({})(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Trading />);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load orders/)).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Trading - Cancel Order Mutation", () => {
+  it("clicking Cancel on an open order fires cancelMutation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockLiveOrders }),
+    );
+    renderWithProviders(<Trading />);
+    fireEvent.click(screen.getByText("Live"));
+    const cancelBtn = await screen.findByLabelText("Cancel order BTC/USDT");
+    fireEvent.click(cancelBtn);
+    await waitFor(() => {
+      expect(screen.getByText("Order cancelled")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Trading - Cancel All Mutation", () => {
+  it("confirming cancel all fires cancelAllMutation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/trading/orders": mockLiveOrders,
+        "/api/trading/cancel-all": { cancelled: 3 },
+      }),
+    );
+    renderWithProviders(<Trading />);
+    fireEvent.click(screen.getByText("Live"));
+    fireEvent.click(screen.getByText("Cancel All Orders"));
+    // Click confirm in dialog
+    const dialog = screen.getByRole("dialog");
+    const confirmBtn = dialog.querySelector("button");
+    // Find the Cancel All button in the dialog (not the Cancel button)
+    const allBtns = Array.from(dialog.querySelectorAll("button"));
+    const cancelAllBtn = allBtns.find((btn) => btn.textContent === "Cancel All");
+    if (cancelAllBtn) fireEvent.click(cancelAllBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Cancelled \d+ orders/)).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Trading - Amount Label", () => {
+  it("shows Shares label for equity asset class", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />, { assetClass: "equity" });
+    await screen.findByText("BTC/USDT");
+    // "Shares" appears in both the order table header and OrderForm
+    const sharesElements = screen.getAllByText("Shares");
+    expect(sharesElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows Lots label for forex asset class", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />, { assetClass: "forex" });
+    await screen.findByText("BTC/USDT");
+    const lotsElements = screen.getAllByText("Lots");
+    expect(lotsElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows Amount label for crypto asset class", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />);
+    await screen.findByText("BTC/USDT");
+    const amountElements = screen.getAllByText("Amount");
+    expect(amountElements.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("Trading - Uncovered Handlers", () => {
+  it("cancel mutation error shows error toast", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/cancel/") && init?.method === "POST") {
+        return Promise.reject(new Error("Cancel failed"));
+      }
+      if (url.includes("/api/trading/orders")) {
+        return Promise.resolve(new Response(JSON.stringify(mockLiveOrders), { status: 200, headers: { "Content-Type": "application/json" } }));
+      }
+      return mockFetch({})(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Trading />);
+    fireEvent.click(screen.getByText("Live"));
+    const cancelBtn = await screen.findByLabelText("Cancel order BTC/USDT");
+    fireEvent.click(cancelBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to cancel order|Cancel failed/)).toBeInTheDocument();
+    });
+  });
+
+  it("cancel all mutation error shows error toast and closes dialog", async () => {
+    const failFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/trading/cancel-all") && init?.method === "POST") {
+        return Promise.reject(new Error("Cancel all failed"));
+      }
+      return mockFetch({ "/api/trading/orders": mockLiveOrders })(input, init);
+    };
+    vi.stubGlobal("fetch", failFetch);
+    renderWithProviders(<Trading />);
+    fireEvent.click(screen.getByText("Live"));
+    fireEvent.click(screen.getByText("Cancel All Orders"));
+    const dialog = screen.getByRole("dialog");
+    const allBtns = Array.from(dialog.querySelectorAll("button"));
+    const cancelAllBtn = allBtns.find((btn) => btn.textContent === "Cancel All");
+    if (cancelAllBtn) fireEvent.click(cancelAllBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to cancel all orders|Cancel all failed/)).toBeInTheDocument();
+    });
+  });
+
+  it("typing in symbol filter updates the filter value", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />);
+    const symbolInput = screen.getByPlaceholderText("Filter by symbol...") as HTMLInputElement;
+    fireEvent.change(symbolInput, { target: { value: "ETH" } });
+    expect(symbolInput.value).toBe("ETH");
+  });
+
+  it("changing status filter updates the filter value", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({ "/api/trading/orders": mockOrders }),
+    );
+    renderWithProviders(<Trading />);
+    const statusSelect = screen.getByLabelText("Filter by status") as HTMLSelectElement;
+    fireEvent.change(statusSelect, { target: { value: "filled" } });
+    expect(statusSelect.value).toBe("filled");
   });
 });

@@ -182,3 +182,57 @@ describe("MarketAnalysis - Form Controls", () => {
     expect(timestamp.textContent).toContain("Data as of");
   });
 });
+
+describe("MarketAnalysis - Indicator Data with OHLCV", () => {
+  it("passes selected indicators to PriceChart when data is loaded", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/market/ohlcv": mockOhlcv,
+        "/api/indicators": { data: [{ timestamp: 1706745600000, sma_21: 42100, rsi_14: 55 }] },
+        "/api/regime/current": { symbol: "BTC/USDT", regime: "ranging", confidence: 0.5, adx_value: 20, bb_width_percentile: 50, ema_slope: 0, trend_alignment: 0, price_structure_score: 0, transition_probabilities: {} },
+      }),
+    );
+    renderWithProviders(<MarketAnalysis />);
+    // Wait for OHLCV to load
+    await screen.findByTestId("chart-timestamp");
+    // Select an overlay and a pane indicator to exercise filter callbacks
+    fireEvent.click(screen.getByText("sma_21"));
+    fireEvent.click(screen.getByText("rsi_14"));
+    // The indicators should still be in the DOM
+    expect(screen.getByText("sma_21")).toBeInTheDocument();
+    expect(screen.getByText("rsi_14")).toBeInTheDocument();
+  });
+});
+
+describe("MarketAnalysis - Error and Edge Cases", () => {
+  const jsonRes = (data: unknown) => Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } }));
+  const emptyRegime = { symbol: "BTC/USDT", regime: "unknown", confidence: 0, adx_value: 0, bb_width_percentile: 0, ema_slope: 0, trend_alignment: 0, price_structure_score: 0, transition_probabilities: {} };
+
+  it("shows error message when OHLCV fetch fails", async () => {
+    vi.stubGlobal("fetch", (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/market/ohlcv")) return Promise.reject(new Error("Connection refused"));
+      if (url.includes("/api/regime/current")) return jsonRes(emptyRegime);
+      if (url.includes("/api/indicators")) return jsonRes({ data: [] });
+      if (url.startsWith("/api/")) return jsonRes([]);
+      return Promise.reject(new Error(`Unhandled: ${url}`));
+    });
+    renderWithProviders(<MarketAnalysis />);
+    expect(await screen.findByText("Connection refused")).toBeInTheDocument();
+    expect(screen.getByText("Check your connection and try again")).toBeInTheDocument();
+  });
+
+  it("shows generic error message when error is not an Error instance", async () => {
+    vi.stubGlobal("fetch", (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/market/ohlcv")) return Promise.reject("string error");
+      if (url.includes("/api/regime/current")) return jsonRes(emptyRegime);
+      if (url.includes("/api/indicators")) return jsonRes({ data: [] });
+      if (url.startsWith("/api/")) return jsonRes([]);
+      return Promise.reject(new Error(`Unhandled: ${url}`));
+    });
+    renderWithProviders(<MarketAnalysis />);
+    expect(await screen.findByText("Failed to load market data")).toBeInTheDocument();
+  });
+});

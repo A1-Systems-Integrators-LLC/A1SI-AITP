@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+echo "→ Checking database directory permissions..."
+touch /project/backend/data/.write-test && rm /project/backend/data/.write-test || {
+    echo "FATAL: Cannot write to /project/backend/data/" >&2; exit 1
+}
+
 echo "→ Running migrations..."
 python manage.py migrate --run-syncdb
 
@@ -18,6 +23,9 @@ python manage.py validate_env || true
 
 echo "→ Collecting static files..."
 python manage.py collectstatic --noinput --clear 2>/dev/null
+
+echo "→ Running pre-flight checks..."
+python manage.py pilot_preflight || echo "WARNING: Pre-flight returned NO-GO (check logs)"
 
 echo "→ Starting Daphne..."
 exec "$@"

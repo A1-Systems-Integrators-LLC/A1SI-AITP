@@ -133,6 +133,7 @@ class RiskManagementService:
         size: float,
         entry_price: float,
         stop_loss_price: float | None = None,
+        composite_score: float | None = None,
     ) -> tuple[bool, str]:
         state = RiskManagementService._get_or_create_state(portfolio_id)
         limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
@@ -153,7 +154,21 @@ class RiskManagementService:
             equity_at_check=state.total_equity,
             drawdown_at_check=round(drawdown, 4),
             open_positions_at_check=len(state.open_positions or {}),
+            composite_score=composite_score,
         )
+
+        # Log ML/conviction agreement/disagreement with risk decision
+        if composite_score is not None:
+            if approved and composite_score < 55:
+                logger.warning(
+                    "Risk approved but low conviction (%.1f) for %s %s — ML disagrees",
+                    composite_score, side, symbol,
+                )
+            elif not approved and composite_score >= 75:
+                logger.info(
+                    "Risk rejected despite high conviction (%.1f) for %s %s",
+                    composite_score, side, symbol,
+                )
 
         if not approved:
             try:
@@ -249,6 +264,33 @@ class RiskManagementService:
         )
 
     @staticmethod
+    def _get_regime_risk_multiplier() -> tuple[float, str]:
+        """
+        Get adaptive risk tightening multiplier based on current market regime.
+
+        Returns (multiplier, regime_name) where multiplier < 1.0 means tighter limits.
+        STRONG_TREND_DOWN: 0.5x (50% tighter), HIGH_VOLATILITY: 0.7x (30% tighter).
+        """
+        try:
+            ensure_platform_imports()
+            from common.regime.regime_detector import RegimeDetector
+
+            detector = RegimeDetector()
+            # Use BTC/USDT as the reference symbol for crypto regime
+            regime = detector.detect("BTC/USDT")
+            regime_name = regime.get("regime", "UNKNOWN") if isinstance(regime, dict) else "UNKNOWN"
+
+            multipliers = {
+                "STRONG_TREND_DOWN": 0.5,
+                "HIGH_VOLATILITY": 0.7,
+                "WEAK_TREND_DOWN": 0.85,
+            }
+            return multipliers.get(regime_name, 1.0), regime_name
+        except Exception as e:
+            logger.warning("Regime detection failed for adaptive risk: %s", e)
+            return 1.0, "UNKNOWN"
+
+    @staticmethod
     def periodic_risk_check(portfolio_id: int) -> dict:
         """Periodic risk check — record metrics, auto-halt on limit breach, warn at 80%."""
         from core.services.metrics import timed
@@ -273,18 +315,43 @@ class RiskManagementService:
                 abs(state.daily_pnl / state.total_equity) if state.total_equity > 0 else 0.0
             )
 
+            # Adaptive risk tightening based on regime
+            regime_multiplier, regime_name = RiskManagementService._get_regime_risk_multiplier()
+            effective_daily_loss = limits_config.max_daily_loss * regime_multiplier
+            effective_drawdown = limits_config.max_portfolio_drawdown * regime_multiplier
+
             result = {
                 "status": "ok",
                 "portfolio_id": portfolio_id,
                 "drawdown": round(drawdown, 4),
             }
 
-            # Check drawdown limit
-            if drawdown >= limits_config.max_portfolio_drawdown:
+            # Log regime-based tightening when active
+            if regime_multiplier < 1.0:
+                result["regime_tightening"] = {
+                    "regime": regime_name,
+                    "multiplier": regime_multiplier,
+                    "effective_daily_loss": round(effective_daily_loss, 4),
+                    "effective_drawdown": round(effective_drawdown, 4),
+                }
+                logger.info(
+                    "Regime %s: adaptive risk tightening %.0f%% (daily_loss %.1f%%→%.1f%%, drawdown %.1f%%→%.1f%%)",
+                    regime_name,
+                    (1 - regime_multiplier) * 100,
+                    limits_config.max_daily_loss * 100,
+                    effective_daily_loss * 100,
+                    limits_config.max_portfolio_drawdown * 100,
+                    effective_drawdown * 100,
+                )
+
+            # Check drawdown limit (regime-adjusted)
+            if drawdown >= effective_drawdown:
                 reason = (
                     f"Drawdown {drawdown:.1%} exceeded limit "
-                    f"{limits_config.max_portfolio_drawdown:.1%}"
+                    f"{effective_drawdown:.1%}"
                 )
+                if regime_multiplier < 1.0:
+                    reason += f" (tightened from {limits_config.max_portfolio_drawdown:.1%} due to {regime_name})"
                 RiskManagementService.halt_trading(portfolio_id, reason)
                 try:
                     RiskManagementService.send_notification(
@@ -296,12 +363,14 @@ class RiskManagementService:
                 result["reason"] = reason
                 return result
 
-            # Check daily loss limit
-            if daily_loss_pct >= limits_config.max_daily_loss:
+            # Check daily loss limit (regime-adjusted)
+            if daily_loss_pct >= effective_daily_loss:
                 reason = (
                     f"Daily loss {daily_loss_pct:.1%} exceeded limit "
-                    f"{limits_config.max_daily_loss:.1%}"
+                    f"{effective_daily_loss:.1%}"
                 )
+                if regime_multiplier < 1.0:
+                    reason += f" (tightened from {limits_config.max_daily_loss:.1%} due to {regime_name})"
                 RiskManagementService.halt_trading(portfolio_id, reason)
                 try:
                     RiskManagementService.send_notification(
@@ -313,12 +382,14 @@ class RiskManagementService:
                 result["reason"] = reason
                 return result
 
-            # Warning at 80% of limits
-            if drawdown >= limits_config.max_portfolio_drawdown * 0.8:
+            # Warning at 80% of limits (using effective limits)
+            if drawdown >= effective_drawdown * 0.8:
                 msg = (
                     f"Drawdown warning: {drawdown:.1%} is at "
-                    f"{drawdown / limits_config.max_portfolio_drawdown:.0%} of limit"
+                    f"{drawdown / effective_drawdown:.0%} of limit"
                 )
+                if regime_multiplier < 1.0:
+                    msg += f" (tightened by {regime_name})"
                 try:
                     RiskManagementService.send_notification(
                         portfolio_id, "risk_warning", "warning", msg,

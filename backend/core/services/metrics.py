@@ -42,22 +42,55 @@ class MetricsCollector:
         with self._data_lock:
             self._histograms[key].append(value)
 
+    # Metric type annotations for Prometheus
+    _METRIC_TYPES: dict[str, tuple[str, str]] = {
+        "portfolio_equity": ("gauge", "Current portfolio equity in USD"),
+        "portfolio_drawdown": ("gauge", "Current drawdown from peak equity"),
+        "risk_halt_active": ("gauge", "1 if risk halt is active, 0 otherwise"),
+        "active_orders": ("gauge", "Number of active orders by mode"),
+        "job_queue_pending": ("gauge", "Number of pending background jobs"),
+        "job_queue_running": ("gauge", "Number of running background jobs"),
+        "circuit_breaker_state": ("gauge", "Circuit breaker state (0=closed, 0.5=half_open, 1=open)"),
+        "scheduler_running": ("gauge", "1 if scheduler is running, 0 otherwise"),
+        "ml_models_total": ("gauge", "Total number of ML models in registry"),
+        "orchestrator_strategies_paused": ("gauge", "Number of strategies currently paused"),
+        "signal_cache_size": ("gauge", "Number of cached signal computations"),
+        "orders_created_total": ("counter", "Total orders created"),
+    }
+
     def collect(self) -> str:
-        """Produce Prometheus text exposition format."""
+        """Produce Prometheus text exposition format with HELP/TYPE annotations."""
         lines = []
+        seen_bases: set[str] = set()
+
+        def _emit_annotation(key: str) -> None:
+            # Extract base metric name (before { or label)
+            base = key.split("{")[0] if "{" in key else key
+            if base not in seen_bases:
+                seen_bases.add(base)
+                info = self._METRIC_TYPES.get(base)
+                if info:
+                    lines.append(f"# HELP {base} {info[1]}")
+                    lines.append(f"# TYPE {base} {info[0]}")
+
         with self._data_lock:
             for key, value in sorted(self._gauges.items()):
+                _emit_annotation(key)
                 lines.append(f"{key} {value}")
             for key, value in sorted(self._counters.items()):
+                _emit_annotation(key)
                 lines.append(f"{key} {value}")
             for key, values in sorted(self._histograms.items()):
                 if values:
+                    base = key.split("{")[0] if "{" in key else key
+                    if base not in seen_bases:
+                        seen_bases.add(base)
+                        lines.append(f"# TYPE {base} summary")
                     sorted_vals = sorted(values)
                     count = len(sorted_vals)
                     total = sum(sorted_vals)
                     lines.append(f"{key}_count {count}")
                     lines.append(f"{key}_sum {total:.6f}")
-                    # Quantiles
                     for q in (0.5, 0.9, 0.99):
                         idx = min(int(q * count), count - 1)
                         lines.append(f'{key}{{quantile="{q}"}} {sorted_vals[idx]:.6f}')

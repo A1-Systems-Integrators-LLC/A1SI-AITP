@@ -35,6 +35,15 @@ from freqtrade.strategy import (
     IStrategy,
 )
 
+from _conviction_helpers import (
+    check_conviction,
+    check_exit_advice,
+    get_position_modifier,
+    get_regime_stop_multiplier,
+    record_entry_regime,
+    refresh_signals,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +66,7 @@ class BollingerMeanReversion(IStrategy):
         "480": 0.005,  # 0.5% after 8 hours
     }
 
-    stoploss = -0.04
+    stoploss = -0.06
     use_custom_stoploss = True
     trailing_stop = True
     trailing_stop_positive = 0.01
@@ -73,10 +82,10 @@ class BollingerMeanReversion(IStrategy):
 
     # Hyperopt parameters — aggressive defaults for high trade frequency
     buy_bb_period = IntParameter(15, 30, default=20, space="buy", optimize=True)
-    buy_bb_std = DecimalParameter(0.8, 3.0, default=1.2, decimals=1, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 50, default=45, space="buy", optimize=True)
-    buy_volume_factor = DecimalParameter(0.0, 2.5, default=0.0, decimals=1, space="buy", optimize=True)
-    buy_adx_ceiling = IntParameter(25, 60, default=55, space="buy", optimize=True)
+    buy_bb_std = DecimalParameter(0.8, 3.0, default=1.5, decimals=1, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 50, default=40, space="buy", optimize=True)
+    buy_volume_factor = DecimalParameter(0.0, 2.5, default=0.5, decimals=1, space="buy", optimize=True)
+    buy_adx_ceiling = IntParameter(25, 60, default=40, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(55, 75, default=60, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -162,6 +171,37 @@ class BollingerMeanReversion(IStrategy):
         dataframe.loc[reduce(lambda x, y: x | y, conditions), "exit_long"] = 1
         return dataframe
 
+    def bot_loop_start(self, current_time=None, **kwargs) -> None:
+        """Fetch and cache composite signals for all active pairs (every 5 min)."""
+        refresh_signals(self)
+
+    def custom_stake_amount(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_stake: float,
+        min_stake: float | None,
+        max_stake: float,
+        leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Scale position size by conviction score modifier."""
+        from freqtrade.enums import RunMode
+
+        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
+            return proposed_stake
+
+        modifier = get_position_modifier(self, pair)
+        adjusted = proposed_stake * modifier
+        effective_min = min_stake if min_stake is not None else 0.0
+        result = max(min(adjusted, max_stake), effective_min)
+        if modifier != 1.0:
+            logger.info(f"Stake adjusted {pair}: {proposed_stake:.2f} × {modifier:.2f} = {result:.2f}")
+        return result
+
     def confirm_trade_entry(
         self,
         pair: str,
@@ -174,16 +214,17 @@ class BollingerMeanReversion(IStrategy):
         side: str,
         **kwargs,
     ) -> bool:
-        """Gate trades through the backend risk API (fail-open: approve if unreachable).
+        """Gate trades through risk API + conviction system (fail-open).
 
-        In backtesting/hyperopt mode, skip the API call since the backend
-        may not be running and risk checks are not meaningful for historical sims.
+        In backtesting/hyperopt mode, skip API calls since the backend
+        may not be running and checks are not meaningful for historical sims.
         """
         from freqtrade.enums import RunMode
 
         if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
             return True
 
+        # 1. Risk gate (existing)
         try:
             import requests
 
@@ -205,14 +246,35 @@ class BollingerMeanReversion(IStrategy):
                     logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
                     return False
                 logger.info(f"Risk gate approved {pair}")
-                return True
-            logger.warning(f"Risk API returned {resp.status_code}, approving trade (fail-open)")
-            return True
+            else:
+                logger.warning(f"Risk API returned {resp.status_code}, approving (fail-open)")
         except Exception as e:
-            logger.warning(f"Risk API unreachable ({e}), approving trade (fail-open)")
-            return True
+            logger.warning(f"Risk API unreachable ({e}), approving (fail-open)")
+
+        # 2. Conviction gate
+        if not check_conviction(self, pair):
+            return False
+
+        # Record entry regime for exit advisor
+        record_entry_regime(self, pair)
+
+        return True
+
+    def custom_exit(
+        self,
+        pair: str,
+        trade,
+        current_time: datetime,
+        current_rate: float,
+        current_profit: float,
+        after_fill: bool,
+        **kwargs,
+    ) -> Optional[str]:
+        """Conviction-based exit: regime deterioration, time limits."""
+        return check_exit_advice(self, pair, trade, current_time, current_profit)
 
     def custom_stoploss(self, pair, trade, current_time, current_rate, current_profit, after_fill, **kwargs):
+        """ATR-based dynamic stop loss with regime-aware tightening."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if dataframe.empty:
             return self.stoploss
@@ -223,13 +285,16 @@ class BollingerMeanReversion(IStrategy):
         if atr == 0:
             return self.stoploss
 
-        # Tighter stop in strong trends (ADX > 35) — mean reversion is riskier
-        atr_mult = 1.2 if adx > 35 else 1.5
-        atr_stop = -(atr * atr_mult) / current_rate
+        # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)
+        regime_mult = get_regime_stop_multiplier(self, pair)
 
-        if current_profit > 0.03:
-            atr_stop = max(atr_stop, -0.015)
-        elif current_profit > 0.015:
-            atr_stop = max(atr_stop, -0.02)
+        # Tighter stop in strong trends (ADX > 35) — mean reversion is riskier
+        atr_mult = 1.5 if adx > 35 else 2.0
+        atr_stop = -(atr * atr_mult * regime_mult) / current_rate
+
+        if current_profit > 0.04:
+            atr_stop = max(atr_stop, -0.025)
+        elif current_profit > 0.02:
+            atr_stop = max(atr_stop, -0.03)
 
         return max(atr_stop, self.stoploss)

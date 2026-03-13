@@ -260,6 +260,7 @@ class RiskManager:
         stop_loss_price: float,
         risk_per_trade: Optional[float] = None,
         regime_modifier: Optional[float] = None,
+        signal_modifier: Optional[float] = None,
     ) -> float:
         """
         Calculate position size based on risk per trade.
@@ -272,6 +273,10 @@ class RiskManager:
         regime_modifier : float | None
             Optional regime-based position sizing modifier (0-1).
             Applied after max position cap. From StrategyRouter.route().position_size_modifier.
+        signal_modifier : float | None
+            Optional conviction-based position sizing modifier (0.2-1.5).
+            From SignalAggregator.compute().position_modifier.
+            Applied after regime modifier.
         """
         risk_pct = risk_per_trade or self.limits.max_single_trade_risk
         risk_amount = self.state.total_equity * risk_pct
@@ -294,6 +299,14 @@ class RiskManager:
             size *= clamped
             logger.info(
                 f"Regime modifier applied: {clamped:.2f} → adjusted size {size:.6f}"
+            )
+
+        # Apply signal/conviction modifier after regime modifier
+        if signal_modifier is not None:
+            clamped = max(0.2, min(1.5, signal_modifier))
+            size *= clamped
+            logger.info(
+                f"Signal modifier applied: {clamped:.2f} → adjusted size {size:.6f}"
             )
 
         logger.info(

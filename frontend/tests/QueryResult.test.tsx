@@ -76,4 +76,38 @@ describe("QueryResult", () => {
     const loading = screen.getByText("Loading...");
     expect(loading.tagName).toBe("SPAN");
   });
+
+  it("shows inline error as span", async () => {
+    function InlineErrorWrapper() {
+      const query = useQuery({
+        queryKey: ["test-inline-error"],
+        queryFn: () => Promise.reject(new Error("Inline failure")),
+        retry: false,
+      });
+      return (
+        <QueryResult query={query} inline>
+          {(data) => <div>{JSON.stringify(data)}</div>}
+        </QueryResult>
+      );
+    }
+
+    renderWithProviders(<InlineErrorWrapper />);
+    await waitFor(() => {
+      expect(screen.getByText("Inline failure")).toBeInTheDocument();
+    });
+    const errorSpan = screen.getByText("Inline failure");
+    expect(errorSpan.tagName).toBe("SPAN");
+  });
+
+  it("calls refetch when Retry button is clicked", async () => {
+    renderWithProviders(<ErrorWrapper />);
+    await waitFor(() => {
+      expect(screen.getByText("API is down")).toBeInTheDocument();
+    });
+
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    // Verify refetch was triggered — the query will try again
+    expect(screen.getByText("API is down")).toBeInTheDocument();
+  });
 });

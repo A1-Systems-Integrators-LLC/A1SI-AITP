@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { Workflows } from "../src/pages/Workflows";
 import { renderWithProviders, mockFetch } from "./helpers";
 
@@ -383,5 +383,174 @@ describe("Workflows - Empty State Text", () => {
     expect(
       await screen.findByText("No workflows found for this asset class."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Workflows - Enable/Disable Mutations", () => {
+  function jsonResponse(data: unknown, status = 200): Response {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  it("calls disable mutation when clicking Disable button", async () => {
+    const fetchCalls: string[] = [];
+    const mutationFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      fetchCalls.push(url);
+      if (url.includes("/disable") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ status: "disabled" }));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", mutationFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const disableBtn = await screen.findByText("Disable");
+    fireEvent.click(disableBtn);
+    await waitFor(() => {
+      expect(fetchCalls.some((u) => u.includes("/disable"))).toBe(true);
+    });
+  });
+
+  it("calls enable mutation when clicking Enable button", async () => {
+    const fetchCalls: string[] = [];
+    const mutationFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      fetchCalls.push(url);
+      if (url.includes("/enable") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ status: "enabled" }));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", mutationFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const enableBtn = await screen.findByText("Enable");
+    fireEvent.click(enableBtn);
+    await waitFor(() => {
+      expect(fetchCalls.some((u) => u.includes("/enable"))).toBe(true);
+    });
+  });
+
+  it("shows toast on successful disable", async () => {
+    const mutationFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/disable") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ status: "disabled" }));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", mutationFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const disableBtn = await screen.findByText("Disable");
+    fireEvent.click(disableBtn);
+    expect(await screen.findByText("Workflow schedule disabled")).toBeInTheDocument();
+  });
+
+  it("shows toast on successful enable", async () => {
+    const mutationFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/enable") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ status: "enabled" }));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", mutationFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const enableBtn = await screen.findByText("Enable");
+    fireEvent.click(enableBtn);
+    expect(await screen.findByText("Workflow schedule enabled")).toBeInTheDocument();
+  });
+});
+
+describe("Workflows - Step Types Descriptions", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/workflows/": mockWorkflows,
+        "/api/workflow-steps": mockStepTypes,
+      }),
+    );
+  });
+
+  it("shows all step type descriptions when expanded", async () => {
+    renderWithProviders(<Workflows />);
+    fireEvent.click(screen.getByText("Show Available Step Types"));
+    expect(await screen.findByText("Aggregate sentiment")).toBeInTheDocument();
+  });
+});
+
+describe("Workflows - Trigger Mutation", () => {
+  function jsonResponse(data: unknown, status = 200): Response {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  it("shows success toast when trigger mutation succeeds", async () => {
+    const triggerFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/trigger") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ workflow_run_id: "run-99", job_id: "job-42" }));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", triggerFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const triggerButtons = await screen.findAllByText("Trigger");
+    fireEvent.click(triggerButtons[0]);
+    expect(await screen.findByText(/Workflow triggered.*job-42/)).toBeInTheDocument();
+  });
+
+  it("shows error toast when trigger mutation fails", async () => {
+    const triggerFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/trigger") && init?.method === "POST") {
+        return Promise.reject(new Error("Trigger network error"));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", triggerFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const triggerButtons = await screen.findAllByText("Trigger");
+    fireEvent.click(triggerButtons[0]);
+    await waitFor(() => {
+      const matches = screen.getAllByText(/Trigger network error/);
+      expect(matches.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows error toast when disable mutation fails", async () => {
+    const disableFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/disable") && init?.method === "POST") {
+        return Promise.reject(new Error("Disable failed"));
+      }
+      if (url.includes("/api/workflows/")) return Promise.resolve(jsonResponse(mockWorkflows));
+      if (url.includes("/api/workflow-steps")) return Promise.resolve(jsonResponse(mockStepTypes));
+      return Promise.resolve(jsonResponse([]));
+    };
+    vi.stubGlobal("fetch", disableFetch as typeof globalThis.fetch);
+    renderWithProviders(<Workflows />);
+    const disableBtn = await screen.findByText("Disable");
+    fireEvent.click(disableBtn);
+    await waitFor(() => {
+      const matches = screen.getAllByText(/Disable failed/);
+      expect(matches.length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

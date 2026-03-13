@@ -16,7 +16,7 @@ try:
     import lightgbm as lgb
 
     HAS_LIGHTGBM = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_LIGHTGBM = False
     lgb = None  # type: ignore[assignment]
 

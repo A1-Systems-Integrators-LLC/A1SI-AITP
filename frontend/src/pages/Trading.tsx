@@ -5,13 +5,14 @@ import { useToast } from "../hooks/useToast";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { tradingApi } from "../api/trading";
+import { signalsApi } from "../api/signals";
 import { OrderForm } from "../components/OrderForm";
 import { QueryResult } from "../components/QueryResult";
 import { Pagination } from "../components/Pagination";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ExchangeHealthBadge } from "../components/ExchangeHealthBadge";
 import { getErrorMessage } from "../utils/errors";
-import type { Order, OrderStatus, TradingMode, TradingPerformanceSummary } from "../types";
+import type { Order, OrderStatus, StrategyStatus, TradingMode, TradingPerformanceSummary } from "../types";
 
 const PAGE_SIZE = 15;
 
@@ -51,6 +52,12 @@ export function Trading() {
   const { data: perfSummary } = useQuery<TradingPerformanceSummary>({
     queryKey: ["trading-performance", mode, assetClass],
     queryFn: () => tradingApi.performanceSummary({ mode, asset_class: assetClass }),
+  });
+
+  const strategyStatusQuery = useQuery<StrategyStatus[]>({
+    queryKey: ["strategy-status", assetClass],
+    queryFn: () => signalsApi.strategyStatus(assetClass),
+    refetchInterval: 60000,
   });
 
   const ordersQuery = useQuery<Order[]>({
@@ -174,6 +181,36 @@ export function Trading() {
             <p className="text-xs text-[var(--color-text-muted)]">Total Trades</p>
             <p className="text-lg font-bold">{perfSummary.total_trades}</p>
           </div>
+        </div>
+      )}
+
+      {/* Strategy Conviction Status */}
+      {strategyStatusQuery.data && strategyStatusQuery.data.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2" data-testid="strategy-status">
+          {strategyStatusQuery.data.map((s) => (
+            <div
+              key={s.strategy_name}
+              className={`flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs ${
+                s.recommended_action === "active"
+                  ? "bg-green-500/10"
+                  : s.recommended_action === "reduce_size"
+                    ? "bg-yellow-500/10"
+                    : "bg-red-500/10"
+              }`}
+            >
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  s.recommended_action === "active"
+                    ? "bg-green-400"
+                    : s.recommended_action === "reduce_size"
+                      ? "bg-yellow-400"
+                      : "bg-red-400"
+                }`}
+              />
+              <span className="font-medium">{s.strategy_name}</span>
+              <span className="text-[var(--color-text-muted)]">{s.recommended_action.replace(/_/g, " ")}</span>
+            </div>
+          ))}
         </div>
       )}
 

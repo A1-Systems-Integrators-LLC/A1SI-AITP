@@ -69,6 +69,28 @@ def _start_scheduler() -> None:
     _maybe_start_order_sync()
 
 
+def _verify_scheduler() -> None:
+    """Verify scheduler started successfully. If not, retry once."""
+    try:
+        from core.services.scheduler import get_scheduler
+
+        scheduler = get_scheduler()
+        if not scheduler.running:
+            logger.error("SCHEDULER NOT RUNNING — retrying startup")
+            try:
+                scheduler.start()
+                if scheduler.running:
+                    logger.info("Scheduler started on retry")
+                else:
+                    logger.critical(
+                        "SCHEDULER FAILED TO START — scheduled tasks will not execute"
+                    )
+            except Exception:
+                logger.critical("SCHEDULER RETRY FAILED", exc_info=True)
+    except Exception:
+        logger.critical("SCHEDULER VERIFICATION FAILED", exc_info=True)
+
+
 class CoreConfig(AppConfig):
     name = "core"
     default_auto_field = "django.db.models.BigAutoField"
@@ -85,6 +107,16 @@ class CoreConfig(AppConfig):
         if (
             getattr(settings, "SCHEDULER_ENABLED", False)
             and not getattr(settings, "TESTING", False)
-            and os.environ.get("RUN_MAIN", "true") == "true"
         ):
-            threading.Timer(2.0, _start_scheduler).start()
+            # Pre-import APScheduler in the main thread during Django startup.
+            # Python 3.12's concurrent.futures.process registers an atexit
+            # handler at import time — this fails with RuntimeError if the
+            # import first happens inside a Timer thread.
+            try:
+                import apscheduler.schedulers.background  # noqa: F401
+            except Exception:
+                pass
+
+            if os.environ.get("RUN_MAIN", "true") == "true":
+                threading.Timer(2.0, _start_scheduler).start()
+                threading.Timer(12.0, _verify_scheduler).start()

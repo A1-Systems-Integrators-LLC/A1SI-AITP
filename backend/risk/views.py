@@ -86,6 +86,7 @@ class TradeCheckView(APIView):
         ser = TradeCheckRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
+        composite_score = d.get("composite_score")
         approved, reason = RiskManagementService.check_trade(
             portfolio_id,
             d["symbol"],
@@ -93,8 +94,12 @@ class TradeCheckView(APIView):
             d["size"],
             d["entry_price"],
             d.get("stop_loss_price"),
+            composite_score=composite_score,
         )
-        return Response({"approved": approved, "reason": reason})
+        result = {"approved": approved, "reason": reason}
+        if composite_score is not None:
+            result["composite_score"] = composite_score
+        return Response(result)
 
 
 class PositionSizeView(APIView):

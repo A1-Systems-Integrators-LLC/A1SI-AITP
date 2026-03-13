@@ -35,7 +35,7 @@ try:
     from nautilus_trader.model.objects import Currency, Money, Price, Quantity
 
     HAS_NAUTILUS_TRADER = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_NAUTILUS_TRADER = False
 
 

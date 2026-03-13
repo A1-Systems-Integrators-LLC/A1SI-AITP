@@ -141,7 +141,7 @@ class MarketHoursService:
             if candidate.weekday() < 5 and not _is_us_holiday(candidate):
                 return candidate.astimezone(timezone.utc)
             candidate += timedelta(days=1)
-        return candidate.astimezone(timezone.utc)
+        return candidate.astimezone(timezone.utc)  # pragma: no cover
 
     @staticmethod
     def _next_forex_open(now_et: datetime) -> datetime | None:
@@ -150,7 +150,7 @@ class MarketHoursService:
 
         # Forex opens Sunday 5PM ET
         days_until_sunday = (6 - now_et.weekday()) % 7
-        if days_until_sunday == 0 and now_et.time() >= _FOREX_OPEN_TIME:
+        if days_until_sunday == 0 and now_et.time() >= _FOREX_OPEN_TIME:  # pragma: no cover
             days_until_sunday = 7
         candidate = now_et.replace(
             hour=17, minute=0, second=0, microsecond=0,

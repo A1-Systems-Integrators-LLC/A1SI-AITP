@@ -1034,6 +1034,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/MLModelInfo'
           description: ''
+  /api/ml/models/{model_id}/performance/:
+    get:
+      operationId: ml_models_performance_retrieve
+      description: Model accuracy metrics and retraining recommendations.
+      parameters:
+      - in: path
+        name: model_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - ML
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MLModelPerformance'
+          description: ''
   /api/ml/predict/:
     post:
       operationId: ml_predict_create
@@ -1053,6 +1074,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MLPredictionResponse'
+          description: ''
+  /api/ml/predictions/{symbol}/:
+    get:
+      operationId: ml_predictions_list
+      description: Recent ML predictions for a symbol — audit trail.
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Max results (default 50, max 200)
+      - in: path
+        name: symbol
+        schema:
+          type: string
+        required: true
+      tags:
+      - ML
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MLPrediction'
           description: ''
   /api/ml/train/:
     post:
@@ -2157,6 +2206,282 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/signals/{symbol}/:
+    get:
+      operationId: signals_retrieve
+      description: Composite conviction signal for a single symbol.
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+          enum:
+          - crypto
+          - equity
+          - forex
+        description: Asset class
+      - in: query
+        name: strategy
+        schema:
+          type: string
+        description: Strategy name
+      - in: path
+        name: symbol
+        schema:
+          type: string
+        required: true
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompositeSignalResponse'
+          description: ''
+  /api/signals/{symbol}/entry-check/:
+    post:
+      operationId: signals_entry_check_create
+      description: Entry gate for Freqtrade — unauthenticated (internal calls).
+      parameters:
+      - in: path
+        name: symbol
+        schema:
+          type: string
+        required: true
+      tags:
+      - Signals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryCheckRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryCheckResponse'
+          description: ''
+  /api/signals/accuracy/:
+    get:
+      operationId: signals_accuracy_retrieve
+      description: Signal source accuracy statistics.
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+        description: Filter by asset class
+      - in: query
+        name: strategy
+        schema:
+          type: string
+        description: Filter by strategy
+      - in: query
+        name: window_days
+        schema:
+          type: integer
+        description: Lookback days (default 30)
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceAccuracyResponse'
+          description: ''
+  /api/signals/attribution/:
+    get:
+      operationId: signals_attribution_list
+      description: List signal attributions with optional filters.
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+        description: Filter by asset class
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Max results (default 50, max 200)
+      - in: query
+        name: outcome
+        schema:
+          type: string
+        description: Filter by outcome (win/loss/open)
+      - in: query
+        name: strategy
+        schema:
+          type: string
+        description: Filter by strategy
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SignalAttribution'
+          description: ''
+  /api/signals/attribution/{order_id}/:
+    get:
+      operationId: signals_attribution_retrieve
+      description: Get a single signal attribution by order_id.
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalAttribution'
+          description: ''
+  /api/signals/batch/:
+    post:
+      operationId: signals_batch_create
+      description: Batch composite signals for multiple symbols.
+      tags:
+      - Signals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignalBatchRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompositeSignalResponse'
+          description: ''
+  /api/signals/feedback/:
+    post:
+      operationId: signals_feedback_create
+      description: Backfill outcome for a signal attribution.
+      tags:
+      - Signals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackfillOutcomeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalAttribution'
+          description: ''
+  /api/signals/record/:
+    post:
+      operationId: signals_record_create
+      description: Record signal attribution at trade entry.
+      tags:
+      - Signals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordAttributionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalAttribution'
+          description: ''
+  /api/signals/strategy-status/:
+    get:
+      operationId: signals_strategy_status_list
+      description: Which strategies should be active given current regime conditions.
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+          enum:
+          - crypto
+          - equity
+          - forex
+        description: Asset class
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategyStatus'
+          description: ''
+  /api/signals/weights/:
+    get:
+      operationId: signals_weights_retrieve
+      description: Current and recommended signal weights based on performance.
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+        description: Filter by asset class
+      - in: query
+        name: strategy
+        schema:
+          type: string
+        description: Filter by strategy
+      - in: query
+        name: window_days
+        schema:
+          type: integer
+        description: Lookback days (default 30)
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightRecommendationResponse'
+          description: ''
   /api/trading/cancel-all/:
     post:
       operationId: trading_cancel_all_create
@@ -2562,6 +2887,14 @@ paths:
           description: ''
 components:
   schemas:
+    ActualDirectionEnum:
+      enum:
+      - up
+      - down
+      type: string
+      description: |-
+        * `up` - Up
+        * `down` - Down
     AlertLog:
       type: object
       properties:
@@ -2689,6 +3022,29 @@ components:
       required:
       - results
       - total
+    BackfillOutcomeRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          maxLength: 36
+        outcome:
+          $ref: '#/components/schemas/BackfillOutcomeRequestOutcomeEnum'
+        pnl:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - order_id
+      - outcome
+    BackfillOutcomeRequestOutcomeEnum:
+      enum:
+      - win
+      - loss
+      type: string
+      description: |-
+        * `win` - win
+        * `loss` - loss
     BacktestComparison:
       type: object
       properties:
@@ -2779,6 +3135,9 @@ components:
       - strategy_name
       - symbol
       - timeframe
+    BlankEnum:
+      enum:
+      - ''
     CancelAll:
       type: object
       properties:
@@ -2826,6 +3185,52 @@ components:
       - exchange_id
       - failure_count
       - state
+    CompositeSignalResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+        asset_class:
+          type: string
+        timestamp:
+          type: string
+        composite_score:
+          type: number
+          format: double
+        signal_label:
+          type: string
+        entry_approved:
+          type: boolean
+        position_modifier:
+          type: number
+          format: double
+        hard_disabled:
+          type: boolean
+        components:
+          $ref: '#/components/schemas/SignalComponents'
+        confidences:
+          $ref: '#/components/schemas/SignalConfidences'
+        sources_available:
+          type: array
+          items:
+            type: string
+        reasoning:
+          type: array
+          items:
+            type: string
+      required:
+      - asset_class
+      - components
+      - composite_score
+      - confidences
+      - entry_approved
+      - hard_disabled
+      - position_modifier
+      - reasoning
+      - signal_label
+      - sources_available
+      - symbol
+      - timestamp
     DailyReport:
       type: object
       properties:
@@ -3234,6 +3639,52 @@ components:
       required:
       - checks
       - status
+    DirectionEnum:
+      enum:
+      - up
+      - down
+      type: string
+      description: |-
+        * `up` - Up
+        * `down` - Down
+    EntryCheckRequest:
+      type: object
+      properties:
+        strategy:
+          type: string
+          maxLength: 100
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
+      required:
+      - strategy
+    EntryCheckResponse:
+      type: object
+      properties:
+        approved:
+          type: boolean
+        score:
+          type: number
+          format: double
+        position_modifier:
+          type: number
+          format: double
+        signal_label:
+          type: string
+        hard_disabled:
+          type: boolean
+        reasoning:
+          type: array
+          items:
+            type: string
+      required:
+      - approved
+      - hard_disabled
+      - position_modifier
+      - reasoning
+      - score
+      - signal_label
     EquityUpdate:
       type: object
       properties:
@@ -3721,6 +4172,36 @@ components:
       - model_id
       - symbol
       - timeframe
+    MLModelPerformance:
+      type: object
+      properties:
+        model_id:
+          type: string
+          maxLength: 100
+        total_predictions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        correct_predictions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        rolling_accuracy:
+          type: number
+          format: double
+          description: Rolling accuracy 0.0-1.0
+        accuracy_by_regime: {}
+        retrain_recommended:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - model_id
+      - updated_at
     MLPredictRequest:
       type: object
       properties:
@@ -3742,6 +4223,52 @@ components:
           default: 50
       required:
       - model_id
+    MLPrediction:
+      type: object
+      properties:
+        prediction_id:
+          type: string
+          readOnly: true
+        model_id:
+          type: string
+          maxLength: 100
+        symbol:
+          type: string
+          maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
+        probability:
+          type: number
+          format: double
+          description: Calibrated probability 0.0-1.0
+        confidence:
+          type: number
+          format: double
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        regime:
+          type: string
+          maxLength: 30
+        actual_direction:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ActualDirectionEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        correct:
+          type: boolean
+          nullable: true
+        predicted_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - direction
+      - model_id
+      - predicted_at
+      - prediction_id
+      - probability
+      - symbol
     MLPredictionResponse:
       type: object
       properties:
@@ -3936,6 +4463,9 @@ components:
           type: boolean
       required:
       - portfolio_id
+    NullEnum:
+      enum:
+      - null
     OHLCVData:
       type: object
       properties:
@@ -4408,6 +4938,30 @@ components:
       - position_value
       - risk_amount
       - size
+    RecordAttributionRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          maxLength: 36
+        symbol:
+          type: string
+          maxLength: 20
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
+        strategy:
+          type: string
+          maxLength: 100
+        signal_data:
+          type: object
+          additionalProperties: {}
+      required:
+      - order_id
+      - signal_data
+      - strategy
+      - symbol
     RegimeHistoryEntry:
       type: object
       properties:
@@ -4946,6 +5500,174 @@ components:
       description: |-
         * `buy` - buy
         * `sell` - sell
+    SignalAttribution:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        order_id:
+          type: string
+          maxLength: 36
+        symbol:
+          type: string
+          maxLength: 20
+        asset_class:
+          $ref: '#/components/schemas/AssetClassEnum'
+        strategy:
+          type: string
+          maxLength: 100
+        composite_score:
+          type: number
+          format: double
+        ml_contribution:
+          type: number
+          format: double
+        sentiment_contribution:
+          type: number
+          format: double
+        regime_contribution:
+          type: number
+          format: double
+        scanner_contribution:
+          type: number
+          format: double
+        screen_contribution:
+          type: number
+          format: double
+        win_rate_contribution:
+          type: number
+          format: double
+        position_modifier:
+          type: number
+          format: double
+        entry_regime:
+          type: string
+          maxLength: 30
+        outcome:
+          $ref: '#/components/schemas/SignalAttributionOutcomeEnum'
+        pnl:
+          type: number
+          format: double
+          nullable: true
+        recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - composite_score
+      - id
+      - order_id
+      - recorded_at
+      - strategy
+      - symbol
+    SignalAttributionOutcomeEnum:
+      enum:
+      - win
+      - loss
+      - open
+      type: string
+      description: |-
+        * `win` - Win
+        * `loss` - Loss
+        * `open` - Open
+    SignalBatchRequest:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items:
+            type: string
+            maxLength: 20
+          maxItems: 50
+          minItems: 1
+        asset_class:
+          allOf:
+          - $ref: '#/components/schemas/AssetClassEnum'
+          default: crypto
+        strategy_name:
+          type: string
+          default: CryptoInvestorV1
+          maxLength: 100
+      required:
+      - symbols
+    SignalComponents:
+      type: object
+      properties:
+        technical:
+          type: number
+          format: double
+        regime:
+          type: number
+          format: double
+        ml:
+          type: number
+          format: double
+        sentiment:
+          type: number
+          format: double
+        scanner:
+          type: number
+          format: double
+        win_rate:
+          type: number
+          format: double
+      required:
+      - ml
+      - regime
+      - scanner
+      - sentiment
+      - technical
+      - win_rate
+    SignalConfidences:
+      type: object
+      properties:
+        ml:
+          type: number
+          format: double
+        sentiment:
+          type: number
+          format: double
+        regime:
+          type: number
+          format: double
+      required:
+      - ml
+      - regime
+      - sentiment
+    SourceAccuracyResponse:
+      type: object
+      properties:
+        total_trades:
+          type: integer
+        wins:
+          type: integer
+        overall_win_rate:
+          type: number
+          format: double
+        window_days:
+          type: integer
+        asset_class:
+          type: string
+          nullable: true
+        strategy:
+          type: string
+          nullable: true
+        sources:
+          type: object
+          additionalProperties: {}
+      required:
+      - asset_class
+      - overall_win_rate
+      - sources
+      - strategy
+      - total_trades
+      - window_days
+      - wins
     Status1b7Enum:
       enum:
       - pending
@@ -4973,6 +5695,26 @@ components:
       - file_path
       - framework
       - name
+    StrategyStatus:
+      type: object
+      properties:
+        strategy_name:
+          type: string
+        asset_class:
+          type: string
+        regime:
+          type: string
+        alignment_score:
+          type: number
+          format: double
+        recommended_action:
+          type: string
+      required:
+      - alignment_score
+      - asset_class
+      - recommended_action
+      - regime
+      - strategy_name
     SymbolPerformance:
       type: object
       properties:
@@ -5114,6 +5856,11 @@ components:
           maximum: 9223372036854775807
           minimum: -9223372036854775808
           format: int64
+        composite_score:
+          type: number
+          format: double
+          nullable: true
+          description: Conviction composite score (0-100) from SignalAggregator
         checked_at:
           type: string
           format: date-time
@@ -5155,6 +5902,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/AssetClassEnum'
           default: crypto
+        composite_score:
+          type: number
+          format: double
+          maximum: 100
+          minimum: 0
+          nullable: true
+          description: Conviction composite score (0-100) from SignalAggregator
       required:
       - entry_price
       - side
@@ -5167,6 +5921,10 @@ components:
           type: boolean
         reason:
           type: string
+        composite_score:
+          type: number
+          format: double
+          nullable: true
       required:
       - approved
       - reason
@@ -5248,6 +6006,41 @@ components:
       - var_95
       - var_99
       - window_days
+    WeightRecommendationResponse:
+      type: object
+      properties:
+        current_weights:
+          type: object
+          additionalProperties: {}
+        recommended_weights:
+          type: object
+          additionalProperties: {}
+        adjustments:
+          type: object
+          additionalProperties: {}
+        source_accuracy:
+          type: object
+          additionalProperties: {}
+        total_trades:
+          type: integer
+        win_rate:
+          type: number
+          format: double
+        threshold_adjustment:
+          type: integer
+        reasoning:
+          type: array
+          items:
+            type: string
+      required:
+      - adjustments
+      - current_weights
+      - reasoning
+      - recommended_weights
+      - source_accuracy
+      - threshold_adjustment
+      - total_trades
+      - win_rate
     WorkflowCreate:
       type: object
       properties:

@@ -519,7 +519,8 @@ def walk_forward_validate(
             }
         }
 
-        # Phase 2: Evaluate best params on OOS test data
+        # Phase 2: Evaluate IS-best params on OOS test data
+        # Run full sweep on OOS, then extract only the IS-best param combo
         try:
             oos_results = screen_fn(test_df, fees)
         except Exception as e:
@@ -531,8 +532,22 @@ def walk_forward_validate(
             oos_return = 0.0
             oos_drawdown = 0.0
         else:
-            # Find matching params in OOS results, or take the best OOS result
-            oos_best = oos_results.iloc[0]
+            # Match IS-best params in OOS results (not the OOS-best!)
+            param_cols = [
+                col for col in best_params
+                if col in oos_results.columns
+            ]
+            oos_match = oos_results
+            for col in param_cols:
+                oos_match = oos_match[oos_match[col] == best_params[col]]
+
+            if not oos_match.empty:
+                oos_best = oos_match.iloc[0]
+            else:
+                # Exact match not found — use closest by param distance
+                logger.debug("Split %d: no exact OOS param match, using closest", i + 1)
+                oos_best = oos_results.iloc[0]  # fallback to best OOS
+
             oos_sharpe = float(oos_best.get("sharpe_ratio", 0))
             oos_return = float(oos_best.get("total_return", 0))
             oos_drawdown = float(oos_best.get("max_drawdown", 0))
@@ -720,7 +735,7 @@ def run_full_screen(
 # CLI
 # ──────────────────────────────────────────────
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import argparse
 
     parser = argparse.ArgumentParser(description="VectorBT Strategy Screener")

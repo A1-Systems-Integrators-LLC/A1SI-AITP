@@ -1,34 +1,51 @@
-"""Analysis views — jobs, backtest, screening, data pipeline, ML, workflows."""
+"""Analysis views — jobs, backtest, screening, data pipeline, ML, workflows, signals."""
 
 import csv
 
 from django.http import HttpResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from analysis.models import BackgroundJob, BacktestResult, ScreenResult, Workflow, WorkflowRun
+from analysis.models import (
+    BackgroundJob,
+    BacktestResult,
+    MLModelPerformance,
+    MLPrediction,
+    ScreenResult,
+    SignalAttribution,
+    Workflow,
+    WorkflowRun,
+)
 from analysis.serializers import (
     BacktestComparisonSerializer,
     BacktestRequestSerializer,
     BacktestResultSerializer,
+    CompositeSignalResponseSerializer,
     DataDownloadRequestSerializer,
     DataFileInfoSerializer,
     DataGenerateSampleRequestSerializer,
     DataQualityReportSerializer,
     DataQualitySummarySerializer,
+    EntryCheckRequestSerializer,
+    EntryCheckResponseSerializer,
     JobAcceptedSerializer,
     JobCancelResponseSerializer,
     JobSerializer,
     MLModelInfoSerializer,
+    MLModelPerformanceSerializer,
     MLPredictionResponseSerializer,
+    MLPredictionSerializer,
     MLPredictRequestSerializer,
     MLTrainRequestSerializer,
     ScreenRequestSerializer,
     ScreenResultSerializer,
+    SignalBatchRequestSerializer,
     StrategyInfoSerializer,
+    StrategyStatusSerializer,
     WorkflowCreateSerializer,
     WorkflowDetailSerializer,
     WorkflowListSerializer,
@@ -36,6 +53,11 @@ from analysis.serializers import (
     WorkflowRunListSerializer,
     WorkflowScheduleResponseSerializer,
     WorkflowTriggerResponseSerializer,
+    BackfillOutcomeRequestSerializer,
+    RecordAttributionRequestSerializer,
+    SignalAttributionSerializer,
+    SourceAccuracyResponseSerializer,
+    WeightRecommendationResponseSerializer,
 )
 from core.utils import safe_int as _safe_int
 
@@ -739,3 +761,379 @@ class WorkflowStepTypesView(APIView):
         from analysis.services.step_registry import get_step_types
 
         return Response(get_step_types())
+
+
+# ── Signal views ─────────────────────────────────────────────
+
+
+class SignalDetailView(APIView):
+    """Composite conviction signal for a single symbol."""
+
+    @extend_schema(
+        responses=CompositeSignalResponseSerializer,
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter(
+                "asset_class", str, description="Asset class",
+                enum=["crypto", "equity", "forex"],
+            ),
+            OpenApiParameter("strategy", str, description="Strategy name"),
+        ],
+    )
+    def get(self, request: Request, symbol: str) -> Response:
+        from analysis.services.signal_service import SignalService
+
+        real_symbol = symbol.replace("-", "/")
+        asset_class = request.query_params.get("asset_class", "crypto")
+        strategy = request.query_params.get("strategy", "CryptoInvestorV1")
+
+        try:
+            signal = SignalService.get_signal(real_symbol, asset_class, strategy)
+            return Response(signal)
+        except Exception as e:
+            return Response(
+                {"error": f"Signal computation failed: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class SignalBatchView(APIView):
+    """Batch composite signals for multiple symbols."""
+
+    @extend_schema(
+        request=SignalBatchRequestSerializer,
+        responses=CompositeSignalResponseSerializer(many=True),
+        tags=["Signals"],
+    )
+    def post(self, request: Request) -> Response:
+        from analysis.services.signal_service import SignalService
+
+        ser = SignalBatchRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        results = SignalService.get_signals_batch(
+            symbols=data["symbols"],
+            asset_class=data.get("asset_class", "crypto"),
+            strategy_name=data.get("strategy_name", "CryptoInvestorV1"),
+        )
+        return Response(results)
+
+
+class EntryCheckView(APIView):
+    """Entry gate for Freqtrade — unauthenticated (internal calls)."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=EntryCheckRequestSerializer,
+        responses=EntryCheckResponseSerializer,
+        tags=["Signals"],
+    )
+    def post(self, request: Request, symbol: str) -> Response:
+        from analysis.services.signal_service import SignalService
+
+        real_symbol = symbol.replace("-", "/")
+        strategy = request.data.get("strategy", "CryptoInvestorV1")
+        asset_class = request.data.get("asset_class", "crypto")
+
+        try:
+            rec = SignalService.get_entry_recommendation(
+                real_symbol, strategy, asset_class,
+            )
+            return Response(rec)
+        except Exception as e:
+            # Fail-open: approve on error (consistent with risk gate pattern)
+            return Response({
+                "approved": True,
+                "score": 0.0,
+                "position_modifier": 1.0,
+                "reasoning": [f"Signal service error (fail-open): {e}"],
+                "signal_label": "unknown",
+                "hard_disabled": False,
+            })
+
+
+class StrategyStatusView(APIView):
+    """Which strategies should be active given current regime conditions."""
+
+    @extend_schema(
+        responses=StrategyStatusSerializer(many=True),
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter(
+                "asset_class", str, description="Asset class",
+                enum=["crypto", "equity", "forex"],
+            ),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        asset_class = request.query_params.get("asset_class", "crypto")
+
+        # Prefer orchestrator persisted state (updated every 15min by scheduled task)
+        try:
+            from trading.services.strategy_orchestrator import StrategyOrchestrator
+
+            orchestrator = StrategyOrchestrator.get_instance()
+            states = orchestrator.get_all_states()
+            results = [
+                {
+                    "strategy_name": s.strategy,
+                    "asset_class": s.asset_class,
+                    "regime": s.regime,
+                    "alignment_score": s.alignment,
+                    "recommended_action": s.action,
+                }
+                for s in states
+                if s.asset_class == asset_class
+            ]
+            if results:
+                return Response(results)
+        except Exception:
+            pass
+
+        # Fallback: compute fresh (before first orchestrator run)
+        from core.platform_bridge import ensure_platform_imports
+
+        strategy_map = {
+            "crypto": ["CryptoInvestorV1", "BollingerMeanReversion", "VolatilityBreakout"],
+            "equity": ["EquityMomentum", "EquityMeanReversion"],
+            "forex": ["ForexTrend", "ForexRange"],
+        }
+
+        strategies = strategy_map.get(asset_class, strategy_map["crypto"])
+        results = []
+
+        try:
+            ensure_platform_imports()
+            from common.regime.regime_detector import RegimeDetector
+            from common.signals.constants import ALIGNMENT_TABLES
+
+            detector = RegimeDetector()
+            rep_symbols = {
+                "crypto": "BTC/USDT",
+                "equity": "SPY",
+                "forex": "EUR/USD",
+            }
+            sym = rep_symbols.get(asset_class, "BTC/USDT")
+            state = detector.detect(sym, asset_class=asset_class)
+
+            table = ALIGNMENT_TABLES.get(asset_class, ALIGNMENT_TABLES["crypto"])
+            regime_row = table.get(state.regime, {})
+
+            for strat in strategies:
+                alignment = regime_row.get(strat, 50)
+                if alignment <= 10:
+                    action = "pause"
+                elif alignment <= 30:
+                    action = "reduce_size"
+                else:
+                    action = "active"
+
+                results.append({
+                    "strategy_name": strat,
+                    "asset_class": asset_class,
+                    "regime": state.regime.value,
+                    "alignment_score": alignment,
+                    "recommended_action": action,
+                })
+        except Exception:
+            for strat in strategies:
+                results.append({
+                    "strategy_name": strat,
+                    "asset_class": asset_class,
+                    "regime": "unknown",
+                    "alignment_score": 50,
+                    "recommended_action": "active",
+                })
+
+        return Response(results)
+
+
+# ── ML Prediction tracking views ─────────────────────────────
+
+
+class MLPredictionListView(APIView):
+    """Recent ML predictions for a symbol — audit trail."""
+
+    @extend_schema(
+        responses=MLPredictionSerializer(many=True),
+        tags=["ML"],
+        parameters=[
+            OpenApiParameter("limit", int, description="Max results (default 50, max 200)"),
+        ],
+    )
+    def get(self, request: Request, symbol: str) -> Response:
+        real_symbol = symbol.replace("-", "/")
+        limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
+        preds = MLPrediction.objects.filter(symbol=real_symbol).order_by("-predicted_at")[:limit]
+        return Response(MLPredictionSerializer(preds, many=True).data)
+
+
+class MLModelPerformanceView(APIView):
+    """Model accuracy metrics and retraining recommendations."""
+
+    @extend_schema(responses=MLModelPerformanceSerializer, tags=["ML"])
+    def get(self, request: Request, model_id: str) -> Response:
+        try:
+            perf = MLModelPerformance.objects.get(model_id=model_id)
+        except MLModelPerformance.DoesNotExist:
+            return Response(
+                {"error": "Model performance data not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(MLModelPerformanceSerializer(perf).data)
+
+
+# ── Signal Attribution & Feedback views ──────────────────────────────
+
+
+class SignalAttributionListView(APIView):
+    """List signal attributions with optional filters."""
+
+    @extend_schema(
+        responses=SignalAttributionSerializer(many=True),
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter("asset_class", str, description="Filter by asset class"),
+            OpenApiParameter("strategy", str, description="Filter by strategy"),
+            OpenApiParameter("outcome", str, description="Filter by outcome (win/loss/open)"),
+            OpenApiParameter("limit", int, description="Max results (default 50, max 200)"),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        qs = SignalAttribution.objects.all()
+        asset_class = request.query_params.get("asset_class")
+        strategy = request.query_params.get("strategy")
+        outcome = request.query_params.get("outcome")
+        limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
+
+        if asset_class:
+            qs = qs.filter(asset_class=asset_class)
+        if strategy:
+            qs = qs.filter(strategy=strategy)
+        if outcome and outcome in ("win", "loss", "open"):
+            qs = qs.filter(outcome=outcome)
+
+        return Response(SignalAttributionSerializer(qs[:limit], many=True).data)
+
+
+class SignalAttributionDetailView(APIView):
+    """Get a single signal attribution by order_id."""
+
+    @extend_schema(responses=SignalAttributionSerializer, tags=["Signals"])
+    def get(self, request: Request, order_id: str) -> Response:
+        attr = SignalAttribution.objects.filter(order_id=order_id).first()
+        if attr is None:
+            return Response(
+                {"error": "Attribution not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(SignalAttributionSerializer(attr).data)
+
+
+class SignalRecordView(APIView):
+    """Record signal attribution at trade entry."""
+
+    @extend_schema(
+        request=RecordAttributionRequestSerializer,
+        responses=SignalAttributionSerializer,
+        tags=["Signals"],
+    )
+    def post(self, request: Request) -> Response:
+        ser = RecordAttributionRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from analysis.services.signal_feedback import SignalFeedbackService
+
+        result = SignalFeedbackService.record_attribution(
+            order_id=ser.validated_data["order_id"],
+            symbol=ser.validated_data["symbol"],
+            asset_class=ser.validated_data["asset_class"],
+            strategy=ser.validated_data["strategy"],
+            signal_data=ser.validated_data["signal_data"],
+        )
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class SignalFeedbackView(APIView):
+    """Backfill outcome for a signal attribution."""
+
+    @extend_schema(
+        request=BackfillOutcomeRequestSerializer,
+        responses=SignalAttributionSerializer,
+        tags=["Signals"],
+    )
+    def post(self, request: Request) -> Response:
+        ser = BackfillOutcomeRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        attr = SignalAttribution.objects.filter(
+            order_id=ser.validated_data["order_id"],
+        ).first()
+        if attr is None:
+            return Response(
+                {"error": "Attribution not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from django.utils import timezone as tz
+
+        attr.outcome = ser.validated_data["outcome"]
+        attr.pnl = ser.validated_data.get("pnl")
+        attr.resolved_at = tz.now()
+        attr.save(update_fields=["outcome", "pnl", "resolved_at"])
+        return Response(SignalAttributionSerializer(attr).data)
+
+
+class SignalAccuracyView(APIView):
+    """Signal source accuracy statistics."""
+
+    @extend_schema(
+        responses=SourceAccuracyResponseSerializer,
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter("asset_class", str, description="Filter by asset class"),
+            OpenApiParameter("strategy", str, description="Filter by strategy"),
+            OpenApiParameter("window_days", int, description="Lookback days (default 30)"),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        from analysis.services.signal_feedback import SignalFeedbackService
+
+        asset_class = request.query_params.get("asset_class")
+        strategy = request.query_params.get("strategy")
+        window_days = _safe_int(request.query_params.get("window_days"), 30, max_val=365)
+
+        result = SignalFeedbackService.get_source_accuracy(
+            asset_class=asset_class,
+            strategy=strategy,
+            window_days=window_days,
+        )
+        return Response(result)
+
+
+class SignalWeightsView(APIView):
+    """Current and recommended signal weights based on performance."""
+
+    @extend_schema(
+        responses=WeightRecommendationResponseSerializer,
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter("asset_class", str, description="Filter by asset class"),
+            OpenApiParameter("strategy", str, description="Filter by strategy"),
+            OpenApiParameter("window_days", int, description="Lookback days (default 30)"),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        from analysis.services.signal_feedback import SignalFeedbackService
+
+        asset_class = request.query_params.get("asset_class")
+        strategy = request.query_params.get("strategy")
+        window_days = _safe_int(request.query_params.get("window_days"), 30, max_val=365)
+
+        result = SignalFeedbackService.get_weight_recommendations(
+            asset_class=asset_class,
+            strategy=strategy,
+            window_days=window_days,
+        )
+        return Response(result)

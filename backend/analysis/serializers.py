@@ -3,7 +3,10 @@ from rest_framework import serializers
 from analysis.models import (
     BackgroundJob,
     BacktestResult,
+    MLModelPerformance,
+    MLPrediction,
     ScreenResult,
+    SignalAttribution,
     Workflow,
     WorkflowRun,
     WorkflowStep,
@@ -364,3 +367,144 @@ class WorkflowRunDetailSerializer(serializers.ModelSerializer):
             "job_id", "step_runs",
             "started_at", "completed_at", "created_at",
         ]
+
+
+# ── Signal & ML tracking serializers ──────────────────────────
+
+
+class SignalComponentsSerializer(serializers.Serializer):
+    technical = serializers.FloatField()
+    regime = serializers.FloatField()
+    ml = serializers.FloatField()
+    sentiment = serializers.FloatField()
+    scanner = serializers.FloatField()
+    win_rate = serializers.FloatField()
+
+
+class SignalConfidencesSerializer(serializers.Serializer):
+    ml = serializers.FloatField()
+    sentiment = serializers.FloatField()
+    regime = serializers.FloatField()
+
+
+class CompositeSignalResponseSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    asset_class = serializers.CharField()
+    timestamp = serializers.CharField()
+    composite_score = serializers.FloatField()
+    signal_label = serializers.CharField()
+    entry_approved = serializers.BooleanField()
+    position_modifier = serializers.FloatField()
+    hard_disabled = serializers.BooleanField()
+    components = SignalComponentsSerializer()
+    confidences = SignalConfidencesSerializer()
+    sources_available = serializers.ListField(child=serializers.CharField())
+    reasoning = serializers.ListField(child=serializers.CharField())
+
+
+class SignalBatchRequestSerializer(serializers.Serializer):
+    symbols = serializers.ListField(
+        child=serializers.CharField(max_length=20),
+        min_length=1,
+        max_length=50,
+    )
+    asset_class = serializers.ChoiceField(
+        choices=AssetClass.choices, default=AssetClass.CRYPTO,
+    )
+    strategy_name = serializers.CharField(default="CryptoInvestorV1", max_length=100)
+
+
+class EntryCheckRequestSerializer(serializers.Serializer):
+    strategy = serializers.CharField(max_length=100)
+    asset_class = serializers.ChoiceField(
+        choices=AssetClass.choices, default=AssetClass.CRYPTO,
+    )
+
+
+class EntryCheckResponseSerializer(serializers.Serializer):
+    approved = serializers.BooleanField()
+    score = serializers.FloatField()
+    position_modifier = serializers.FloatField()
+    signal_label = serializers.CharField()
+    hard_disabled = serializers.BooleanField()
+    reasoning = serializers.ListField(child=serializers.CharField())
+
+
+class StrategyStatusSerializer(serializers.Serializer):
+    strategy_name = serializers.CharField()
+    asset_class = serializers.CharField()
+    regime = serializers.CharField()
+    alignment_score = serializers.FloatField()
+    recommended_action = serializers.CharField()
+
+
+class MLPredictionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MLPrediction
+        fields = [
+            "prediction_id", "model_id", "symbol", "asset_class",
+            "probability", "confidence", "direction", "regime",
+            "actual_direction", "correct", "predicted_at",
+        ]
+
+
+class MLModelPerformanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MLModelPerformance
+        fields = [
+            "model_id", "total_predictions", "correct_predictions",
+            "rolling_accuracy", "accuracy_by_regime",
+            "retrain_recommended", "updated_at",
+        ]
+
+
+# ── Signal Attribution serializers ───────────────────────────────────
+
+
+class SignalAttributionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SignalAttribution
+        fields = [
+            "id", "order_id", "symbol", "asset_class", "strategy",
+            "composite_score", "ml_contribution", "sentiment_contribution",
+            "regime_contribution", "scanner_contribution", "screen_contribution",
+            "win_rate_contribution", "position_modifier", "entry_regime",
+            "outcome", "pnl", "recorded_at", "resolved_at",
+        ]
+
+
+class RecordAttributionRequestSerializer(serializers.Serializer):
+    order_id = serializers.CharField(max_length=36)
+    symbol = serializers.CharField(max_length=20)
+    asset_class = serializers.ChoiceField(
+        choices=AssetClass.choices, default=AssetClass.CRYPTO,
+    )
+    strategy = serializers.CharField(max_length=100)
+    signal_data = serializers.DictField()
+
+
+class BackfillOutcomeRequestSerializer(serializers.Serializer):
+    order_id = serializers.CharField(max_length=36)
+    outcome = serializers.ChoiceField(choices=["win", "loss"])
+    pnl = serializers.FloatField(required=False, allow_null=True)
+
+
+class SourceAccuracyResponseSerializer(serializers.Serializer):
+    total_trades = serializers.IntegerField()
+    wins = serializers.IntegerField()
+    overall_win_rate = serializers.FloatField()
+    window_days = serializers.IntegerField()
+    asset_class = serializers.CharField(allow_null=True)
+    strategy = serializers.CharField(allow_null=True)
+    sources = serializers.DictField()
+
+
+class WeightRecommendationResponseSerializer(serializers.Serializer):
+    current_weights = serializers.DictField()
+    recommended_weights = serializers.DictField()
+    adjustments = serializers.DictField()
+    source_accuracy = serializers.DictField()
+    total_trades = serializers.IntegerField()
+    win_rate = serializers.FloatField()
+    threshold_adjustment = serializers.IntegerField()
+    reasoning = serializers.ListField(child=serializers.CharField())

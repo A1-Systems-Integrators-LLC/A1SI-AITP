@@ -5,14 +5,16 @@ export default defineConfig({
   timeout: 60_000,
   retries: 1,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173",
     headless: true,
     screenshot: "only-on-failure",
   },
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
+        command: "npm run dev",
+        url: "http://localhost:5173",
+        reuseExistingServer: true,
+        timeout: 30_000,
+      },
 });

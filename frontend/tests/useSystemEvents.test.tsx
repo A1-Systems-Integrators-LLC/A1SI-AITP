@@ -160,6 +160,135 @@ describe("useSystemEvents", () => {
     });
   });
 
+  it("processes news_update event with articles", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    lastWebSocketResult.lastMessage = {
+      type: "news_update",
+      data: { articles_fetched: 5, asset_class: "crypto" },
+    };
+
+    renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["news-articles"],
+    });
+  });
+
+  it("processes news_update event with zero articles (no toast)", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    lastWebSocketResult.lastMessage = {
+      type: "news_update",
+      data: { articles_fetched: 0, asset_class: "crypto" },
+    };
+
+    renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["news-articles"],
+    });
+  });
+
+  it("processes sentiment_update event", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    lastWebSocketResult.lastMessage = {
+      type: "sentiment_update",
+      data: {},
+    };
+
+    renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["news-sentiment"],
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["sentiment-signal"],
+    });
+  });
+
+  it("processes scheduler_event completed", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    const schedulerData = { task_name: "data_refresh", status: "completed" };
+
+    lastWebSocketResult.lastMessage = {
+      type: "scheduler_event",
+      data: schedulerData,
+    };
+
+    const { result } = renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(result.current.lastSchedulerEvent).toEqual(schedulerData);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["recent-jobs"],
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["scheduler-tasks"],
+    });
+  });
+
+  it("processes scheduler_event failed", () => {
+    const { Wrapper } = createWrapper();
+
+    lastWebSocketResult.lastMessage = {
+      type: "scheduler_event",
+      data: { task_name: "ml_training", status: "failed" },
+    };
+
+    const { result } = renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(result.current.lastSchedulerEvent).toEqual({
+      task_name: "ml_training",
+      status: "failed",
+    });
+  });
+
+  it("processes regime_change event", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    const regimeData = {
+      symbol: "BTC/USDT",
+      previous_regime: "TRENDING_UP",
+      new_regime: "HIGH_VOLATILITY",
+    };
+
+    lastWebSocketResult.lastMessage = {
+      type: "regime_change",
+      data: regimeData,
+    };
+
+    const { result } = renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(result.current.lastRegimeChange).toEqual(regimeData);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["regime-overview"],
+    });
+  });
+
+  it("processes opportunity_alert event", () => {
+    const { Wrapper, queryClient } = createWrapper();
+
+    lastWebSocketResult.lastMessage = {
+      type: "opportunity_alert",
+      data: {
+        symbol: "ETH/USDT",
+        opportunity_type: "volume_surge",
+        score: 85,
+      },
+    };
+
+    renderHook(() => useSystemEvents(), { wrapper: Wrapper });
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["opportunities"],
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["opportunity-summary"],
+    });
+  });
+
   it("updates state when message changes", () => {
     const { Wrapper } = createWrapper();
 

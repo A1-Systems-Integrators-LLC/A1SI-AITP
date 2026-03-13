@@ -64,6 +64,8 @@ test.describe("Smoke tests", () => {
       "/ml",
       "/scheduler",
       "/workflows",
+      "/opportunities",
+      "/conviction",
       "/settings",
     ];
     for (const route of routes) {

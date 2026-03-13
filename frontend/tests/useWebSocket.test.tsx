@@ -277,6 +277,39 @@ describe("useWebSocket", () => {
     expect(MockWebSocket.instances[0].close).toHaveBeenCalled();
   });
 
+  it("closes socket if unmounted during onopen", () => {
+    const { unmount } = renderHook(() =>
+      useWebSocket("/ws/test/", { reconnect: false }),
+    );
+
+    // Unmount before the socket opens
+    unmount();
+
+    // Now trigger onopen — the hook should close the socket immediately
+    act(() => {
+      MockWebSocket.instances[0].simulateOpen();
+    });
+
+    expect(MockWebSocket.instances[0].close).toHaveBeenCalled();
+  });
+
+  it("manual reconnect resets state and reconnects", () => {
+    const { result } = renderHook(() => useWebSocket("/ws/test/"));
+
+    // Open then close to create a reconnect attempt
+    act(() => {
+      MockWebSocket.instances[0].simulateOpen();
+    });
+
+    // Call manual reconnect
+    act(() => {
+      result.current.reconnect();
+    });
+
+    // Should have created a new WebSocket (the reconnect call invokes connect)
+    expect(MockWebSocket.instances.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("does not reconnect after unmount", () => {
     const { unmount } = renderHook(() =>
       useWebSocket("/ws/test/", { reconnect: true }),

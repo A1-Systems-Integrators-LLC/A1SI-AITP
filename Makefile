@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full
+.PHONY: setup dev test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -140,12 +140,14 @@ docker-restart:
 	@echo "→ Restarting containers..."
 	$(MAKE) docker-down
 	$(MAKE) docker-up
+	$(MAKE) smoke-test
 
 docker-deploy:
 	@echo "→ Full deploy: build + restart + verify..."
 	$(MAKE) docker-build
 	$(MAKE) docker-down
 	$(MAKE) docker-up
+	$(MAKE) smoke-test
 	@echo "✓ Deploy complete"
 
 docker-deploy-clean:
@@ -153,6 +155,7 @@ docker-deploy-clean:
 	$(MAKE) docker-build-clean
 	$(MAKE) docker-down
 	$(MAKE) docker-up
+	$(MAKE) smoke-test
 	@echo "✓ Clean deploy complete"
 
 docker-logs:
@@ -186,8 +189,8 @@ ci: lint typecheck check-schema-freshness test audit
 harden:
 	@echo "→ Hardening file permissions..."
 	@test -f .env && chmod 600 .env || true
-	@chmod 700 $(BACKEND_DIR)/data
-	@mkdir -p $(BACKEND_DIR)/data/logs && chmod 700 $(BACKEND_DIR)/data/logs
+	@chmod 770 $(BACKEND_DIR)/data
+	@mkdir -p $(BACKEND_DIR)/data/logs && chmod 770 $(BACKEND_DIR)/data/logs
 	@test -d $(BACKEND_DIR)/certs && chmod 700 $(BACKEND_DIR)/certs || true
 	@echo "→ Checking required env vars..."
 	@test -f .env && grep -q '^DJANGO_SECRET_KEY=' .env && echo "  DJANGO_SECRET_KEY ✓" || echo "  WARNING: DJANGO_SECRET_KEY not set"
@@ -227,6 +230,12 @@ clean-data:
 	bash scripts/clean_data.sh
 
 # ── Pilot ──────────────────────────────────────────────────
+
+smoke-test:
+	@bash scripts/smoke_test.sh
+
+verify: smoke-test pilot-preflight test-e2e
+	@echo "✓ Full operational verification passed"
 
 pilot-preflight:
 	$(MANAGE) pilot_preflight

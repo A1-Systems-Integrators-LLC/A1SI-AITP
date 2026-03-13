@@ -17,7 +17,7 @@ try:
     import lightgbm as lgb
 
     HAS_LIGHTGBM = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_LIGHTGBM = False
     lgb = None  # type: ignore[assignment]
 
@@ -63,6 +63,7 @@ def train_model(
     feature_names: list[str],
     params: dict | None = None,
     test_ratio: float = 0.2,
+    fit_calibration: bool = False,
 ) -> dict:
     """Train a LightGBM classifier and return model + metadata.
 
@@ -72,9 +73,12 @@ def train_model(
         feature_names: Column names for features.
         params: LightGBM parameters (overrides defaults).
         test_ratio: Fraction of data for time-series test split.
+        fit_calibration: If True, fit Platt scaling on test set and include
+            calibration params in metadata.
 
     Returns:
         dict with keys: model, metrics, metadata, feature_importance.
+        If fit_calibration=True, metadata includes 'calibration' dict.
 
     Raises:
         ImportError: If lightgbm is not installed.
@@ -133,6 +137,18 @@ def train_model(
         "feature_names": feature_names,
         "test_ratio": test_ratio,
     }
+
+    # Optionally fit Platt scaling calibration on test set
+    if fit_calibration:
+        try:
+            from common.ml.calibration import PredictionCalibrator
+
+            calibrator = PredictionCalibrator()
+            a, b = calibrator.fit(y_pred_proba, y_test.values)
+            metadata["calibration"] = {"a": a, "b": b}
+            logger.info("Calibration fitted: a=%.6f, b=%.6f", a, b)
+        except Exception as e:
+            logger.warning("Calibration fitting failed: %s", e)
 
     logger.info(
         "Training complete: accuracy=%.4f, precision=%.4f, f1=%.4f",

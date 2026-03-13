@@ -100,6 +100,10 @@ class TradeCheckLog(models.Model):
     equity_at_check = models.FloatField(default=0.0)
     drawdown_at_check = models.FloatField(default=0.0)
     open_positions_at_check = models.IntegerField(default=0)
+    composite_score = models.FloatField(
+        null=True, blank=True,
+        help_text="Conviction composite score (0-100) from SignalAggregator",
+    )
     checked_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

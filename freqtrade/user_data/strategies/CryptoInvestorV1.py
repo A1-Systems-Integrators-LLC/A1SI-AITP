@@ -41,6 +41,15 @@ from freqtrade.strategy import (
     merge_informative_pair,
 )
 
+from _conviction_helpers import (
+    check_conviction,
+    check_exit_advice,
+    get_position_modifier,
+    get_regime_stop_multiplier,
+    record_entry_regime,
+    refresh_signals,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +80,7 @@ class CryptoInvestorV1(IStrategy):
     }
 
     # ── Stop loss ──
-    stoploss = -0.05  # -5% hard stop loss (ATR-based custom stop is primary)
+    stoploss = -0.07  # -7% hard stop loss (ATR-based custom stop is primary)
     use_custom_stoploss = True
 
     # ── Trailing stop ──
@@ -96,7 +105,7 @@ class CryptoInvestorV1(IStrategy):
     buy_ema_slow = IntParameter(50, 300, default=100, space="buy", optimize=True)
     buy_rsi_threshold = IntParameter(25, 55, default=45, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(65, 90, default=75, space="sell", optimize=True)
-    atr_multiplier = DecimalParameter(1.5, 3.5, default=2.0, decimals=1, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.5, 4.0, default=2.5, decimals=1, space="buy", optimize=True)
 
     # ── Informative pairs ──
     def informative_pairs(self):
@@ -166,22 +175,28 @@ class CryptoInvestorV1(IStrategy):
         # Required: RSI pullback (core signal)
         rsi_pullback = dataframe["rsi"] < self.buy_rsi_threshold.value
 
+        # Required: minimal trend filter — EMA-21 above EMA-50 OR EMA-50 rising
+        # Prevents counter-trend entries in WEAK_TREND_DOWN
+        ema_directional = (
+            (dataframe[f"ema_{self.buy_ema_fast.value}"] > dataframe[f"ema_{self.buy_ema_slow.value}"])
+            | (dataframe[f"ema_{self.buy_ema_slow.value}"] > dataframe[f"ema_{self.buy_ema_slow.value}"].shift(5))
+        )
+
         # Confirmation signals — need at least ONE
         macd_improving = (
             (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
             | (dataframe["macd"] > dataframe["macdsignal"])
         )
-        near_bb_lower = dataframe["close"] < dataframe["bb_mid"]
-        volume_spike = dataframe["volume_ratio"] > 0.8
+        volume_spike = dataframe["volume_ratio"] > 1.0
 
-        any_confirmation = macd_improving | near_bb_lower | volume_spike
+        any_confirmation = macd_improving | volume_spike
 
         # Basic filters
         has_volume = dataframe["volume"] > 0
         not_overbought = dataframe["rsi"] > 10  # not in freefall
 
         dataframe.loc[
-            rsi_pullback & any_confirmation & has_volume & not_overbought,
+            rsi_pullback & ema_directional & any_confirmation & has_volume & not_overbought,
             "enter_long",
         ] = 1
 
@@ -209,6 +224,37 @@ class CryptoInvestorV1(IStrategy):
 
         return dataframe
 
+    def bot_loop_start(self, current_time=None, **kwargs) -> None:
+        """Fetch and cache composite signals for all active pairs (every 5 min)."""
+        refresh_signals(self)
+
+    def custom_stake_amount(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_stake: float,
+        min_stake: float | None,
+        max_stake: float,
+        leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Scale position size by conviction score modifier."""
+        from freqtrade.enums import RunMode
+
+        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
+            return proposed_stake
+
+        modifier = get_position_modifier(self, pair)
+        adjusted = proposed_stake * modifier
+        effective_min = min_stake if min_stake is not None else 0.0
+        result = max(min(adjusted, max_stake), effective_min)
+        if modifier != 1.0:
+            logger.info(f"Stake adjusted {pair}: {proposed_stake:.2f} × {modifier:.2f} = {result:.2f}")
+        return result
+
     def custom_stoploss(
         self,
         pair: str,
@@ -220,10 +266,11 @@ class CryptoInvestorV1(IStrategy):
         **kwargs,
     ) -> float:
         """
-        ATR-based dynamic stop loss.
+        ATR-based dynamic stop loss with regime-aware tightening.
 
         - Initial: 2x ATR below entry
         - Tightens as profit increases
+        - Further tightened in unfavorable regimes
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
 
@@ -236,14 +283,17 @@ class CryptoInvestorV1(IStrategy):
         if atr == 0:
             return self.stoploss
 
-        # ATR-based stop distance
-        atr_stop = -(atr * float(self.atr_multiplier.value)) / current_rate
+        # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)
+        regime_mult = get_regime_stop_multiplier(self, pair)
+
+        # ATR-based stop distance, tightened by regime
+        atr_stop = -(atr * float(self.atr_multiplier.value) * regime_mult) / current_rate
 
         # Tighten stop as profit increases
-        if current_profit > 0.06:
-            atr_stop = max(atr_stop, -0.02)  # Tighten to -2%
-        elif current_profit > 0.03:
+        if current_profit > 0.08:
             atr_stop = max(atr_stop, -0.03)  # Tighten to -3%
+        elif current_profit > 0.05:
+            atr_stop = max(atr_stop, -0.04)  # Tighten to -4%
 
         return max(atr_stop, self.stoploss)
 
@@ -257,7 +307,13 @@ class CryptoInvestorV1(IStrategy):
         after_fill: bool,
         **kwargs,
     ) -> Optional[str]:
-        """Custom exit logic for specific conditions."""
+        """Custom exit logic: conviction advisor + trend/stale checks."""
+        # 1. Conviction-based exit (regime deterioration, time limits)
+        exit_tag = check_exit_advice(self, pair, trade, current_time, current_profit)
+        if exit_tag:
+            return exit_tag
+
+        # 2. Technical exit checks
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
 
         if dataframe.empty:
@@ -292,16 +348,17 @@ class CryptoInvestorV1(IStrategy):
         side: str,
         **kwargs,
     ) -> bool:
-        """Gate trades through the backend risk API (fail-open: approve if unreachable).
+        """Gate trades through risk API + conviction system (fail-open).
 
-        In backtesting/hyperopt mode, skip the API call since the backend
-        may not be running and risk checks are not meaningful for historical sims.
+        In backtesting/hyperopt mode, skip API calls since the backend
+        may not be running and checks are not meaningful for historical sims.
         """
         from freqtrade.enums import RunMode
 
         if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
             return True
 
+        # 1. Risk gate (existing)
         try:
             import requests
 
@@ -323,9 +380,16 @@ class CryptoInvestorV1(IStrategy):
                     logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
                     return False
                 logger.info(f"Risk gate approved {pair}")
-                return True
-            logger.warning(f"Risk API returned {resp.status_code}, approving trade (fail-open)")
-            return True
+            else:
+                logger.warning(f"Risk API returned {resp.status_code}, approving (fail-open)")
         except Exception as e:
-            logger.warning(f"Risk API unreachable ({e}), approving trade (fail-open)")
-            return True
+            logger.warning(f"Risk API unreachable ({e}), approving (fail-open)")
+
+        # 2. Conviction gate
+        if not check_conviction(self, pair):
+            return False
+
+        # Record entry regime for exit advisor
+        record_entry_regime(self, pair)
+
+        return True

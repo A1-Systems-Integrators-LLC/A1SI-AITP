@@ -137,4 +137,45 @@ describe("NewsFeed", () => {
     renderWithProviders(<NewsFeed />);
     expect(await screen.findByText("75% conv.")).toBeInTheDocument();
   });
+
+  it("shows days ago for articles older than 24 hours", async () => {
+    const oldArticle = {
+      ...mockArticles[0],
+      article_id: "old1",
+      published_at: new Date(Date.now() - 48 * 3600000).toISOString(), // 2 days ago
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "/api/market/news/sentiment": mockSentiment,
+        "/api/market/news/signal": mockSignal,
+        "/api/market/news": [oldArticle],
+      }),
+    );
+    renderWithProviders(<NewsFeed />);
+    expect(await screen.findByText("2d ago")).toBeInTheDocument();
+  });
+
+  it("calls fetch and invalidates queries on refresh", async () => {
+    // Use a factory that creates fresh Response objects each time
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<NewsFeed />);
+    const user = (await import("@testing-library/user-event")).default.setup();
+
+    const refreshBtn = screen.getByTitle("Fetch latest news");
+    await user.click(refreshBtn);
+
+    // handleRefresh calls newsApi.fetch which triggers a POST
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/market/news/fetch"),
+      expect.anything(),
+    );
+  });
 });

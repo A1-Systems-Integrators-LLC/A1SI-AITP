@@ -1,6 +1,6 @@
 """
 Tests for the ML pipeline: features, trainer, registry, and backend service.
-Skips training/registry tests when lightgbm is not installed.
+All framework dependencies (lightgbm, etc.) are required — tests FAIL if missing.
 """
 
 import sys
@@ -21,7 +21,7 @@ from common.ml.features import (  # noqa: E402, I001
     compute_target,
 )
 from common.ml.registry import ModelRegistry  # noqa: E402
-from common.ml.trainer import HAS_LIGHTGBM, time_series_split  # noqa: E402
+from common.ml.trainer import time_series_split  # noqa: E402
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -203,7 +203,6 @@ class TestTimeSeriesSplit:
         assert len(set(x_train.index) & set(x_test.index)) == 0
 
 
-@pytest.mark.skipif(not HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestTrainModel:
     def test_train_returns_model_and_metrics(self, ohlcv_df):
         from common.ml.trainer import train_model
@@ -264,7 +263,6 @@ class TestModelRegistry:
         assert registry.delete_model("nonexistent") is False
 
 
-@pytest.mark.skipif(not HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestModelRegistryWithModel:
     def test_save_and_list(self, ohlcv_df, tmp_models_dir):
         from common.ml.trainer import train_model

@@ -9,7 +9,7 @@ import pandas as pd
 
 # Ensure project root is on path for common.* imports
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
+if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from common.regime.regime_detector import RegimeDetector, RegimeState

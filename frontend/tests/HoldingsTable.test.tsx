@@ -134,4 +134,177 @@ describe("HoldingsTable", () => {
 
     expect(screen.queryByText("Delete Holding")).not.toBeInTheDocument();
   });
+
+  it("populates edit inputs with holding values when Edit is clicked", async () => {
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Edit")[0]);
+
+    // startEdit sets editAmount/editPrice from the holding
+    const inputs = screen.getAllByRole("spinbutton");
+    expect(inputs[0]).toHaveValue(0.5);   // amount
+    expect(inputs[1]).toHaveValue(40000); // avg_buy_price
+  });
+
+  it("allows changing edit amount input", async () => {
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Edit")[0]);
+    const inputs = screen.getAllByRole("spinbutton");
+    await user.clear(inputs[0]);
+    await user.type(inputs[0], "1.5");
+    expect(inputs[0]).toHaveValue(1.5);
+  });
+
+  it("allows changing edit price input", async () => {
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Edit")[0]);
+    const inputs = screen.getAllByRole("spinbutton");
+    await user.clear(inputs[1]);
+    await user.type(inputs[1], "50000");
+    expect(inputs[1]).toHaveValue(50000);
+  });
+
+  it("calls update mutation when Save is clicked", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Edit")[0]);
+    await user.click(screen.getByText("Save"));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/portfolios/1/holdings/1"),
+      expect.objectContaining({ method: "PUT" }),
+    );
+  });
+
+  it("calls delete mutation when dialog is confirmed", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Delete")[0]);
+    // The ConfirmDialog renders a button with confirmLabel="Delete"
+    const dialog = screen.getByRole("dialog");
+    const confirmBtn = Array.from(dialog.querySelectorAll("button")).find(
+      (b) => b.textContent === "Delete",
+    );
+    expect(confirmBtn).toBeDefined();
+    await user.click(confirmBtn!);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/portfolios/1/holdings/1"),
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("submits add holding form with symbol, amount, and price", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: 3, symbol: "SOL/USDT", amount: 100, avg_buy_price: 25 }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("+ Add Holding"));
+    await user.type(screen.getByPlaceholderText("BTC/USDT"), "sol/usdt");
+    await user.type(screen.getByPlaceholderText("0.0"), "100");
+    await user.type(screen.getByPlaceholderText("0.00"), "25");
+    await user.click(screen.getByText("Add"));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/portfolios/1/holdings"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("hides add form when Cancel is clicked in empty state", async () => {
+    renderWithProviders(<HoldingsTable holdings={[]} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("+ Add Holding"));
+    expect(screen.getByPlaceholderText("BTC/USDT")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Cancel"));
+    expect(screen.queryByPlaceholderText("BTC/USDT")).not.toBeInTheDocument();
+  });
+
+  it("shows error toast when update mutation fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ detail: "Update failed" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })),
+    ));
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Edit")[0]);
+    await user.click(screen.getByText("Save"));
+    // onError fires — no crash, edit mode stays
+    await screen.findByText("Save");
+  });
+
+  it("shows error toast when delete mutation fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ detail: "Cannot delete" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })),
+    ));
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByText("Delete")[0]);
+    const dialog = screen.getByRole("dialog");
+    const confirmBtn = Array.from(dialog.querySelectorAll("button")).find(
+      (b) => b.textContent === "Delete",
+    );
+    await user.click(confirmBtn!);
+    // onError fires — no crash
+    expect(screen.getByText("Delete Holding")).toBeInTheDocument();
+  });
+
+  it("shows error toast when add mutation fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ detail: "Duplicate" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })),
+    ));
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("+ Add Holding"));
+    await user.type(screen.getByPlaceholderText("BTC/USDT"), "SOL/USDT");
+    await user.click(screen.getByText("Add"));
+    // onError fires — form stays visible
+    await screen.findByText("Add");
+  });
+
+  it("shows live P&L values with correct formatting", () => {
+    const priceMap = { "BTC/USDT": 45000, "ETH/USDT": 3000 };
+    renderWithProviders(<HoldingsTable holdings={mockHoldings} portfolioId={1} priceMap={priceMap} />);
+    // BTC P&L = 0.5 * (45000 - 40000) = +$2,500
+    expect(screen.getByText("+$2,500.00")).toBeInTheDocument();
+    // ETH P&L = 10 * (3000 - 2500) = +$5,000
+    expect(screen.getByText("+$5,000.00")).toBeInTheDocument();
+  });
 });

@@ -268,6 +268,25 @@ describe("API Client", () => {
       }
     });
 
+    it("ApiError fieldErrors parses string values", async () => {
+      mockFetchResponse({
+        ok: false,
+        status: 400,
+        statusText: "Bad Request",
+        json: () => Promise.resolve({ name: "This field is required." }),
+      });
+
+      try {
+        await api.get("/test/");
+        expect.fail("should have thrown");
+      } catch (err) {
+        const { ApiError: ApiErrorClass } = await import("../src/api/client");
+        expect(err).toBeInstanceOf(ApiErrorClass);
+        const fieldErrors = (err as InstanceType<typeof ApiErrorClass>).fieldErrors;
+        expect(fieldErrors.name).toBe("This field is required.");
+      }
+    });
+
     it("ApiError fieldErrors empty for non-object body", async () => {
       mockFetchResponse({
         ok: false,

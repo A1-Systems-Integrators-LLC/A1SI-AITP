@@ -29,8 +29,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - backend-data:/project/backend/data
-      - market-data:/project/data
+      - ./backend/data:/project/backend/data
+      - ./data:/project/data
+      - ./models:/project/models
     init: true
     restart: unless-stopped
     logging:
@@ -81,6 +82,4 @@ services:
         condition: service_healthy
 
 volumes:
-  backend-data:
-  market-data:
   nginx-logs:

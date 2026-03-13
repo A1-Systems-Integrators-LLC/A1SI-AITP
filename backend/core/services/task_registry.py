@@ -34,9 +34,10 @@ def _run_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, 
     if not symbols:
         return {"status": "skipped", "reason": f"No {asset_class} watchlist configured"}
 
+    # Download all watchlist symbols (no cap — scheduler handles rate limiting)
     progress_cb(0.1, f"Refreshing {len(symbols)} {asset_class} symbols")
     results = download_watchlist(
-        symbols=symbols[:50],
+        symbols=symbols,
         timeframes=None,
         asset_class=asset_class,
     )
@@ -231,16 +232,99 @@ def _run_workflow(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]
     return execute_workflow(params, progress_cb)
 
 
+def _sync_freqtrade_equity() -> dict[str, Any]:
+    """Read Freqtrade profit API and update RiskState equity."""
+    import requests
+    from django.conf import settings
+
+    ft_urls = [
+        getattr(settings, "FREQTRADE_API_URL", ""),
+        getattr(settings, "FREQTRADE_BMR_API_URL", ""),
+        getattr(settings, "FREQTRADE_VB_API_URL", ""),
+    ]
+    # Fall back to instance configs if top-level settings not set
+    if not any(ft_urls):
+        for inst in getattr(settings, "FREQTRADE_INSTANCES", []):
+            url = inst.get("url", "")
+            if url:
+                ft_urls.append(url)
+
+    ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
+    ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
+
+    total_pnl = 0.0
+    instance_results = []
+    for url in ft_urls:
+        if not url:
+            continue
+        try:
+            resp = requests.get(
+                f"{url}/api/v1/profit",
+                auth=(ft_user, ft_pass),
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            pnl = data.get("profit_all_coin", 0.0)
+            total_pnl += pnl
+            instance_results.append({"url": url, "pnl": pnl, "status": "ok"})
+        except Exception as e:
+            logger.warning("Freqtrade equity sync failed for %s: %s", url, e)
+            instance_results.append({"url": url, "status": "error", "error": str(e)})
+
+    # Update RiskState with actual equity and daily P&L
+    # Sum actual Freqtrade wallet sizes (not the inflated platform initial_capital)
+    from django.conf import settings as django_settings
+
+    # Each Freqtrade instance has its own dry_run_wallet config:
+    # CIV1: $200, BMR: $200, VB: $100 = $500 total
+    # Pull from FREQTRADE_INSTANCES or use the known paper trading capital
+    ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
+    wallet_total = sum(inst.get("dry_run_wallet", 0) for inst in ft_instances)
+    initial_capital = wallet_total if wallet_total > 0 else 500.0
+    current_equity = initial_capital + total_pnl
+
+    from portfolio.models import Portfolio
+    from risk.models import RiskState
+    from risk.services.risk import RiskManagementService
+
+    portfolios = Portfolio.objects.all()
+    for portfolio in portfolios:
+        RiskManagementService.update_equity(portfolio.id, current_equity)
+        # Also update daily_pnl from the equity delta since daily reset
+        try:
+            state = RiskState.objects.get(portfolio_id=portfolio.id)
+            state.daily_pnl = current_equity - state.daily_start_equity
+            state.save(update_fields=["daily_pnl"])
+        except RiskState.DoesNotExist:
+            pass
+
+    return {
+        "total_pnl": total_pnl,
+        "equity_updated": True,
+        "instances": instance_results,
+    }
+
+
 def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
     """Run periodic risk monitoring across all portfolios."""
-    progress_cb(0.1, "Checking portfolio risk")
+    # Sync Freqtrade equity before risk checks
+    progress_cb(0.1, "Syncing Freqtrade equity")
+    sync_result = None
+    try:
+        sync_result = _sync_freqtrade_equity()
+        logger.info("Equity synced: total_pnl=$%.2f", sync_result.get("total_pnl", 0))
+    except Exception as e:
+        logger.error("Freqtrade equity sync failed: %s", e)
+
+    progress_cb(0.3, "Checking portfolio risk")
     try:
         from portfolio.models import Portfolio
         from risk.services.risk import RiskManagementService
 
         portfolios = list(Portfolio.objects.values_list("id", flat=True))
         if not portfolios:
-            return {"status": "completed", "message": "No portfolios"}
+            return {"status": "completed", "message": "No portfolios", "equity_sync": sync_result}
 
         results = []
         for i, pid in enumerate(portfolios):
@@ -250,9 +334,14 @@ def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[st
             except Exception as e:
                 logger.error("Risk check failed for portfolio %s: %s", pid, e)
                 results.append({"portfolio_id": pid, "status": "error", "error": str(e)})
-            progress_cb(0.1 + 0.8 * (i + 1) / len(portfolios), f"Checked portfolio {pid}")
+            progress_cb(0.3 + 0.6 * (i + 1) / len(portfolios), f"Checked portfolio {pid}")
 
-        return {"status": "completed", "portfolios_checked": len(portfolios), "results": results}
+        return {
+            "status": "completed",
+            "portfolios_checked": len(portfolios),
+            "results": results,
+            "equity_sync": sync_result,
+        }
     except Exception as e:
         logger.error("Risk monitoring failed: %s", e)
         return {"status": "error", "error": str(e)}
@@ -561,6 +650,323 @@ def _run_hft_backtest(params: dict, progress_cb: ProgressCallback) -> dict[str, 
     }
 
 
+def _run_ml_predict(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Batch ML predictions for watchlist symbols, store MLPrediction records."""
+    from core.platform_bridge import ensure_platform_imports, get_platform_config
+
+    progress_cb(0.1, "Starting ML predictions")
+    asset_class = params.get("asset_class", "crypto")
+
+    ensure_platform_imports()
+    config = get_platform_config()
+    data_cfg = config.get("data", {})
+    watchlist_key = {
+        "crypto": "watchlist", "equity": "equity_watchlist", "forex": "forex_watchlist",
+    }.get(asset_class, "watchlist")
+    symbols = data_cfg.get(watchlist_key, [])[:20]
+
+    if not symbols:
+        return {"status": "skipped", "reason": f"No {asset_class} watchlist"}
+
+    results = []
+    for i, symbol in enumerate(symbols):
+        try:
+            from analysis.services.signal_service import SignalService
+
+            ml_prob, ml_conf = SignalService._get_ml_prediction(symbol, asset_class)
+            if ml_prob is not None:
+                from analysis.models import MLPrediction
+
+                direction = "up" if ml_prob >= 0.5 else "down"
+                regime_state = SignalService._get_regime_state(symbol, asset_class)
+                regime_name = regime_state.regime.value if regime_state else ""
+
+                MLPrediction.objects.create(
+                    model_id=params.get("model_id", "auto"),
+                    symbol=symbol,
+                    asset_class=asset_class,
+                    probability=ml_prob,
+                    confidence=ml_conf or 0.0,
+                    direction=direction,
+                    regime=regime_name,
+                )
+                results.append({"symbol": symbol, "status": "predicted", "probability": ml_prob})
+            else:
+                results.append({"symbol": symbol, "status": "no_model"})
+        except Exception as e:
+            logger.warning("ML predict failed for %s: %s", symbol, e)
+            results.append({"symbol": symbol, "status": "error", "error": str(e)})
+        progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Predicted {i + 1}/{len(symbols)}")
+
+    predicted = sum(1 for r in results if r["status"] == "predicted")
+    return {
+        "status": "completed", "predicted": predicted,
+        "total": len(results), "results": results,
+    }
+
+
+def _run_ml_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Backfill prediction outcomes and update model performance metrics."""
+    from django.utils import timezone as tz
+
+    progress_cb(0.1, "Backfilling ML prediction outcomes")
+
+    # Find predictions without outcomes (up to 24h old)
+    from datetime import timedelta
+
+    from analysis.models import MLModelPerformance, MLPrediction
+
+    cutoff = tz.now() - timedelta(hours=24)
+    unresolved = MLPrediction.objects.filter(
+        correct__isnull=True, predicted_at__gte=cutoff,
+    )[:200]
+
+    filled = 0
+    for pred in unresolved:
+        try:
+            from core.platform_bridge import ensure_platform_imports
+
+            ensure_platform_imports()
+            from common.data_pipeline.pipeline import load_ohlcv
+
+            df = load_ohlcv(pred.symbol, "1h", asset_class=pred.asset_class)
+            if df is not None and len(df) >= 2:
+                last_close = float(df["close"].iloc[-1])
+                prev_close = float(df["close"].iloc[-2])
+                actual = "up" if last_close >= prev_close else "down"
+                pred.actual_direction = actual
+                pred.correct = pred.direction == actual
+                pred.save(update_fields=["actual_direction", "correct"])
+                filled += 1
+        except Exception as e:
+            logger.warning("Feedback backfill failed for %s: %s", pred.symbol, e)
+
+    progress_cb(0.5, f"Backfilled {filled} outcomes")
+
+    # Update model performance aggregates
+    model_ids = MLPrediction.objects.filter(
+        correct__isnull=False,
+    ).values_list("model_id", flat=True).distinct()[:50]
+
+    updated = 0
+    for model_id in model_ids:
+        preds = MLPrediction.objects.filter(model_id=model_id, correct__isnull=False)
+        total = preds.count()
+        correct = preds.filter(correct=True).count()
+        accuracy = correct / total if total > 0 else 0.0
+
+        # Accuracy by regime
+        regime_acc = {}
+        for regime_name in preds.values_list("regime", flat=True).distinct():
+            if not regime_name:
+                continue
+            r_preds = preds.filter(regime=regime_name)
+            r_total = r_preds.count()
+            r_correct = r_preds.filter(correct=True).count()
+            regime_acc[regime_name] = round(r_correct / r_total, 3) if r_total > 0 else 0.0
+
+        perf, _ = MLModelPerformance.objects.update_or_create(
+            model_id=model_id,
+            defaults={
+                "total_predictions": total,
+                "correct_predictions": correct,
+                "rolling_accuracy": round(accuracy, 4),
+                "accuracy_by_regime": regime_acc,
+                "retrain_recommended": total >= 50 and accuracy < 0.52,
+            },
+        )
+        updated += 1
+
+    progress_cb(0.9, f"Updated {updated} model performance records")
+    return {"status": "completed", "outcomes_filled": filled, "models_updated": updated}
+
+
+def _run_ml_retrain(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Retrain ML models flagged by the feedback loop."""
+    from analysis.models import MLModelPerformance
+
+    progress_cb(0.1, "Checking for models needing retraining")
+    flagged = list(
+        MLModelPerformance.objects.filter(
+            retrain_recommended=True,
+        ).values_list("model_id", flat=True)
+    )
+
+    if not flagged:
+        return {"status": "completed", "retrained": 0, "reason": "No models flagged for retraining"}
+
+    retrained = 0
+    for i, model_id in enumerate(flagged[:5]):  # Max 5 retrains per run
+        try:
+            from analysis.services.ml import MLService
+
+            # Extract symbol from model_id pattern (symbol_timeframe_exchange_timestamp)
+            parts = model_id.split("_")
+            symbol = parts[0] if parts else "BTC/USDT"
+            timeframe = parts[1] if len(parts) > 1 else "1h"
+            exchange = parts[2] if len(parts) > 2 else "kraken"
+
+            train_params = {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "exchange": exchange,
+                "test_ratio": 0.2,
+            }
+            MLService.train(
+                train_params,
+                lambda p, m, _i=i: progress_cb(
+                    0.1 + 0.8 * (_i + p) / len(flagged), m,
+                ),
+            )
+            # Clear retrain flag
+            MLModelPerformance.objects.filter(model_id=model_id).update(
+                retrain_recommended=False,
+            )
+            retrained += 1
+        except Exception as e:
+            logger.warning("ML retrain failed for %s: %s", model_id, e)
+        progress_cb(0.1 + 0.8 * (i + 1) / len(flagged), f"Retrained {i + 1}/{len(flagged)}")
+
+    return {"status": "completed", "retrained": retrained, "flagged": len(flagged)}
+
+
+def _run_conviction_audit(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Log conviction scores and compute rolling accuracy for audit."""
+    from core.platform_bridge import ensure_platform_imports, get_platform_config
+
+    progress_cb(0.1, "Running conviction audit")
+    asset_class = params.get("asset_class", "crypto")
+
+    ensure_platform_imports()
+    config = get_platform_config()
+    data_cfg = config.get("data", {})
+    watchlist_key = {
+        "crypto": "watchlist", "equity": "equity_watchlist", "forex": "forex_watchlist",
+    }.get(asset_class, "watchlist")
+    symbols = data_cfg.get(watchlist_key, [])[:10]
+
+    if not symbols:
+        return {"status": "skipped", "reason": f"No {asset_class} watchlist"}
+
+    audit_results = []
+    for i, symbol in enumerate(symbols):
+        try:
+            from analysis.services.signal_service import SignalService
+
+            signal = SignalService.get_signal(symbol, asset_class)
+            audit_results.append({
+                "symbol": symbol,
+                "score": signal["composite_score"],
+                "label": signal["signal_label"],
+                "approved": signal["entry_approved"],
+                "sources": signal["sources_available"],
+            })
+        except Exception as e:
+            logger.warning("Conviction audit failed for %s: %s", symbol, e)
+            audit_results.append({"symbol": symbol, "error": str(e)})
+        progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Audited {i + 1}/{len(symbols)}")
+
+    avg_score = 0.0
+    scored = [r for r in audit_results if "score" in r]
+    if scored:
+        avg_score = sum(r["score"] for r in scored) / len(scored)
+
+    return {
+        "status": "completed",
+        "asset_class": asset_class,
+        "symbols_audited": len(audit_results),
+        "average_score": round(avg_score, 1),
+        "results": audit_results,
+    }
+
+
+def _run_strategy_orchestration(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Check regime alignment for all strategies and set pause/active flags.
+
+    Delegates to StrategyOrchestrator service which persists state,
+    logs transitions to AlertLog, broadcasts via WS, and notifies Telegram.
+    """
+    from trading.services.strategy_orchestrator import StrategyOrchestrator
+
+    progress_cb(0.1, "Evaluating strategy-regime alignment")
+
+    asset_classes = params.get("asset_classes", ["crypto", "equity", "forex"])
+    orchestrator = StrategyOrchestrator.get_instance()
+    all_results = orchestrator.evaluate(asset_classes=asset_classes)
+
+    progress_cb(0.9, "Evaluation complete")
+
+    paused = sum(1 for r in all_results if r["action"] == "pause")
+    transitioned = sum(1 for r in all_results if r.get("transitioned", False))
+    return {
+        "status": "completed",
+        "strategies_evaluated": len(all_results),
+        "paused": paused,
+        "transitioned": transitioned,
+        "results": all_results,
+    }
+
+
+def _run_signal_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Backfill signal attribution outcomes and compute source accuracy."""
+    progress_cb(0.1, "Backfilling signal attribution outcomes")
+
+    from analysis.services.signal_feedback import SignalFeedbackService
+
+    window_hours = params.get("window_hours", 24)
+    backfill_result = SignalFeedbackService.backfill_outcomes(window_hours=window_hours)
+    progress_cb(0.5, f"Backfilled {backfill_result.get('resolved', 0)} outcomes")
+
+    accuracy = SignalFeedbackService.get_source_accuracy(
+        asset_class=params.get("asset_class"),
+        window_days=params.get("window_days", 30),
+    )
+    progress_cb(0.8, "Computed source accuracy")
+
+    return {
+        "status": "completed",
+        "backfill": backfill_result,
+        "accuracy": accuracy,
+    }
+
+
+def _run_adaptive_weighting(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Compute and log adaptive weight recommendations."""
+    progress_cb(0.1, "Computing adaptive weight recommendations")
+
+    from analysis.services.signal_feedback import SignalFeedbackService
+
+    asset_class = params.get("asset_class")
+    strategy = params.get("strategy")
+    window_days = params.get("window_days", 30)
+
+    result = SignalFeedbackService.get_weight_recommendations(
+        asset_class=asset_class,
+        strategy=strategy,
+        window_days=window_days,
+    )
+
+    progress_cb(0.9, "Weight recommendations computed")
+
+    if "error" in result:
+        return {"status": "failed", "error": result["error"]}
+
+    logger.info(
+        "Adaptive weights: win_rate=%.2f threshold_adj=%d recommended=%s",
+        result.get("win_rate", 0),
+        result.get("threshold_adjustment", 0),
+        result.get("recommended_weights", {}),
+    )
+
+    return {
+        "status": "completed",
+        "win_rate": result.get("win_rate"),
+        "threshold_adjustment": result.get("threshold_adjustment"),
+        "recommended_weights": result.get("recommended_weights"),
+        "reasoning": result.get("reasoning"),
+    }
+
+
 TASK_REGISTRY: dict[str, TaskExecutor] = {
     "data_refresh": _run_data_refresh,
     "regime_detection": _run_regime_detection,
@@ -577,4 +983,11 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "forex_paper_trading": _run_forex_paper_trading,
     "nautilus_backtest": _run_nautilus_backtest,
     "hft_backtest": _run_hft_backtest,
+    "ml_predict": _run_ml_predict,
+    "ml_feedback": _run_ml_feedback,
+    "ml_retrain": _run_ml_retrain,
+    "conviction_audit": _run_conviction_audit,
+    "strategy_orchestration": _run_strategy_orchestration,
+    "signal_feedback": _run_signal_feedback,
+    "adaptive_weighting": _run_adaptive_weighting,
 }
