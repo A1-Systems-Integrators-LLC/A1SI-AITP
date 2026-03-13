@@ -12,6 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
+pytest.importorskip("nautilus_trader", reason="nautilus_trader not installed")
+
 from nautilus.strategies.nt_native import (
     HAS_NAUTILUS_TRADER,
     NativeEquityMeanReversion,

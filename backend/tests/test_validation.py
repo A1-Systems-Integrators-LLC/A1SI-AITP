@@ -9,6 +9,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
+
+pytest.importorskip("vectorbt", reason="vectorbt not installed")
 
 # Ensure project root and scripts directory on sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

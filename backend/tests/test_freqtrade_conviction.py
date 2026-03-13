@@ -19,6 +19,8 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+pytest.importorskip("talib", reason="talib not installed")
+
 # Ensure freqtrade strategies are importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))

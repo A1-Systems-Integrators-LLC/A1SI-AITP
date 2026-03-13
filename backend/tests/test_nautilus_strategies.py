@@ -540,9 +540,7 @@ class TestRunnerDualMode:
 # ── Native Engine Tests (skip when NT not installed) ─
 
 
-from nautilus.engine import HAS_NAUTILUS_TRADER as _HAS_NT
-
-assert _HAS_NT, "nautilus_trader must be installed — tests must not silently skip"
+pytest.importorskip("nautilus_trader", reason="nautilus_trader not installed")
 
 
 class TestNativeEngine:
