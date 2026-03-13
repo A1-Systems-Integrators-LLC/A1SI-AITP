@@ -27,9 +27,19 @@ python manage.py collectstatic --noinput --clear 2>/dev/null
 echo "→ Running pre-flight checks..."
 python manage.py pilot_preflight || echo "WARNING: Pre-flight returned NO-GO (check logs)"
 
-echo "→ Checkpointing WAL (clean start)..."
+echo "→ Closing all DB connections and checkpointing WAL..."
 python -c "
-import sqlite3, os
+import sqlite3, os, gc
+# Force close any lingering Django connections from startup commands
+try:
+    from django.db import connections
+    for conn in connections.all():
+        conn.close()
+except Exception:
+    pass
+gc.collect()
+
+# Checkpoint and truncate WAL so Daphne starts with a clean slate
 db = os.path.join('/project/backend/data', 'a1si_aitp.db')
 if os.path.exists(db):
     conn = sqlite3.connect(db)

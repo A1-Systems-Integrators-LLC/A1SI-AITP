@@ -99,6 +99,11 @@ DATABASES = {
             "timeout": 30,
         },
         "CONN_HEALTH_CHECKS": True,
+        # Persistent connections: avoid constant open/close which causes
+        # WAL file descriptor churn and "disk I/O error" under Docker bind mounts.
+        # None = keep connections open indefinitely (single-user desktop app).
+        # In tests, use default (0) to avoid connection leaks between tests.
+        "CONN_MAX_AGE": 0 if TESTING else None,
     },
 }
 
