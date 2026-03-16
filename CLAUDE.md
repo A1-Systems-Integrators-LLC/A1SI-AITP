@@ -16,7 +16,7 @@ A1SI-AITP — Full-stack crypto investment platform with portfolio tracking, mar
 ## Architecture
 
 - **Monorepo**: `backend/` + `frontend/` (web app) alongside platform modules (`common/`, `research/`, `nautilus/`, `freqtrade/`)
-- **Database**: SQLite with WAL mode — single-user desktop deployment
+- **Database**: SQLite with DELETE journal mode — single-user desktop deployment
 - **Auth**: Django session-based authentication, CSRF protection, DRF SessionAuthentication + IsAuthenticated defaults
 - **ASGI**: Django Channels + Daphne server, async views for ccxt exchange calls
 - **Django apps**: core (auth, health, platform), portfolio, trading, market, risk, analysis
@@ -73,6 +73,12 @@ python run.py nautilus test           # Test NautilusTrader engine
 ## Memory
 
 After completing any task that changes code, tests, dependencies, or architecture, **always update the memory file** at `~/.claude/projects/-home-rredmer-Dev-Portfolio-A1SI-AITP/memory/MEMORY.md` (and `next-steps.md` if roadmap items changed). Keep test counts, implementation status, and dependency notes current.
+
+## Critical Rules — DO NOT VIOLATE
+
+- **NEVER use SQLite WAL mode.** The database MUST use DELETE journal mode (`PRAGMA journal_mode=DELETE`). WAL mode is incompatible with Docker virtiofs bind mounts — the SHM file uses mmap which virtiofs cannot handle across processes, causing stale file descriptors, "disk I/O error" on all queries, and database corruption. This destroyed the production database three times in March 2026. The DELETE mode pragma is enforced in `core/apps.py`, asserted in `docker-entrypoint.sh` at startup, and verified by regression tests. If you change any of these, you will break the system.
+- **NEVER tell the user the system is fixed without providing curl/test evidence.** Verify endpoints return HTTP 200 with valid JSON before claiming anything works.
+- **NEVER modify SQLite PRAGMAs without testing under Docker bind mounts.** Any PRAGMA change must be verified with the container running, not just in local pytest (which uses `:memory:`).
 
 ## Conventions
 
