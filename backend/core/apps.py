@@ -11,10 +11,16 @@ logger = logging.getLogger("scheduler")
 
 
 def _set_sqlite_pragmas(sender, connection, **kwargs):
-    """Enable WAL mode and tune SQLite for performance."""
+    """Tune SQLite for performance.
+
+    Uses DELETE journal mode (SQLite default) instead of WAL.
+    WAL mode is incompatible with Docker virtiofs bind mounts — the shared
+    memory file (SHM) uses mmap which virtiofs doesn't handle correctly
+    across processes, causing stale file descriptors and 'disk I/O error'.
+    """
     if connection.vendor == "sqlite":
         cursor = connection.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA journal_mode=DELETE;")
         cursor.execute("PRAGMA synchronous=NORMAL;")
 
 

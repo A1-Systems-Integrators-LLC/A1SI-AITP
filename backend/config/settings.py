@@ -370,7 +370,7 @@ SCHEDULED_TASKS = {
     },
     "db_maintenance": {
         "name": "Database Maintenance",
-        "description": "SQLite WAL checkpoint",
+        "description": "SQLite integrity check",
         "task_type": "db_maintenance",
         "interval_seconds": 86400,
         "params": {},

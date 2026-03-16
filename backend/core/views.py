@@ -225,19 +225,16 @@ class HealthView(APIView):
         except Exception as e:
             checks["job_queue"] = {"status": "error", "detail": str(e)}
 
-        # WAL check
+        # Journal mode check
         try:
-            import os
+            from django.db import connection as db_conn
 
-            db_path = str(django_settings.DATABASES["default"]["NAME"])
-            wal_path = db_path + "-wal"
-            wal_size_mb = os.path.getsize(wal_path) / (1024**2) if os.path.exists(wal_path) else 0
-            checks["wal"] = {
-                "status": "ok" if wal_size_mb < 100 else "warning",
-                "size_mb": round(wal_size_mb, 2),
-            }
+            with db_conn.cursor() as cur:
+                cur.execute("PRAGMA journal_mode")
+                mode = cur.fetchone()[0]
+            checks["journal"] = {"status": "ok", "mode": mode}
         except Exception as e:
-            checks["wal"] = {"status": "error", "detail": str(e)}
+            checks["journal"] = {"status": "error", "detail": str(e)}
 
         overall = "ok" if all(
             c.get("status", "ok") == "ok" for c in checks.values() if isinstance(c, dict)

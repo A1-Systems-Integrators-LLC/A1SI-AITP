@@ -74,7 +74,7 @@ class TestTaskRegistryRiskMonitoring:
 
 class TestTaskRegistryDbMaintenance:
     @pytest.mark.django_db
-    def test_db_maintenance_executor_runs_checkpoint(self):
+    def test_db_maintenance_executor_runs_integrity_check(self):
         executor = TASK_REGISTRY["db_maintenance"]
         progress_calls = []
 
@@ -83,16 +83,15 @@ class TestTaskRegistryDbMaintenance:
 
         result = executor({}, progress_cb)
         assert result["status"] == "completed"
-        assert "wal_checkpoint" in result
+        assert result["integrity"] == "ok"
+        assert "journal_mode" in result
 
     @pytest.mark.django_db
-    def test_db_maintenance_returns_wal_stats(self):
+    def test_db_maintenance_returns_journal_mode(self):
         executor = TASK_REGISTRY["db_maintenance"]
         result = executor({}, lambda p, m: None)
-        wal = result["wal_checkpoint"]
-        assert "busy" in wal
-        assert "log" in wal
-        assert "checkpointed" in wal
+        assert result["journal_mode"] in ("delete", "wal", "truncate", "memory")
+        assert result["integrity"] == "ok"
 
     def test_db_maintenance_in_registry(self):
         assert "db_maintenance" in TASK_REGISTRY

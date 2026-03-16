@@ -93,7 +93,7 @@ def _check_data_freshness() -> CheckResult:
 
 
 def _check_database() -> CheckResult:
-    """Check SQLite WAL mode and integrity."""
+    """Check SQLite journal mode and integrity."""
     from django.db import connection
 
     with connection.cursor() as cursor:
@@ -111,7 +111,7 @@ def _check_database() -> CheckResult:
     return {
         "name": "Database Health",
         "status": "pass",
-        "detail": f"WAL={mode}, integrity=ok",
+        "detail": f"journal={mode}, integrity=ok",
     }
 
 

@@ -6,6 +6,10 @@ touch /project/backend/data/.write-test && rm /project/backend/data/.write-test 
     echo "FATAL: Cannot write to /project/backend/data/" >&2; exit 1
 }
 
+# Remove any stale WAL/SHM files from previous WAL-mode runs.
+# We now use DELETE journal mode which doesn't create these files.
+rm -f /project/backend/data/a1si_aitp.db-wal /project/backend/data/a1si_aitp.db-shm 2>/dev/null || true
+
 echo "→ Running migrations..."
 python manage.py migrate --run-syncdb
 
@@ -28,19 +32,11 @@ echo "→ Running pre-flight checks..."
 python manage.py pilot_preflight || echo "WARNING: Pre-flight returned NO-GO (check logs)"
 
 echo "→ Closing startup DB connections..."
-python -c "
-# Close Django connections from startup commands (migrate, collectstatic, etc.)
-# so Daphne starts with a clean connection slate.
-# NOTE: Do NOT run PRAGMA wal_checkpoint(TRUNCATE) here or anywhere.
-# TRUNCATE changes the WAL file inode under Docker virtiofs bind mounts,
-# which causes 'disk I/O error' on all connections that opened the old inode.
-try:
-    from django.db import connections
-    for conn in connections.all():
-        conn.close()
-    print('  Startup connections closed')
-except Exception:
-    pass
+python manage.py shell -c "
+from django.db import connections
+for conn in connections.all():
+    conn.close()
+print('  Startup connections closed')
 " || true
 
 echo "→ Starting Daphne..."

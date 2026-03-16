@@ -343,21 +343,21 @@ def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[st
 
 
 def _run_db_maintenance(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Run SQLite WAL checkpoint to prevent unbounded WAL growth.
+    """Run SQLite maintenance: integrity check and optimize.
 
-    Uses PASSIVE mode (not TRUNCATE) to avoid changing the WAL file inode.
-    TRUNCATE under Docker virtiofs bind mounts causes stale file descriptors
-    in the Daphne process, leading to "disk I/O error" on all subsequent queries.
+    No WAL checkpoint needed — using DELETE journal mode (not WAL)
+    because WAL is incompatible with Docker virtiofs bind mounts.
     """
     from django.db import connection
 
-    progress_cb(0.1, "Running WAL checkpoint")
+    progress_cb(0.1, "Running integrity check")
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA wal_checkpoint(PASSIVE)")
-        row = cursor.fetchone()
-        wal_result = {"busy": row[0], "log": row[1], "checkpointed": row[2]}
-    progress_cb(0.9, "Checkpoint complete")
-    return {"status": "completed", "wal_checkpoint": wal_result}
+        cursor.execute("PRAGMA integrity_check")
+        result = cursor.fetchone()[0]
+        cursor.execute("PRAGMA journal_mode")
+        mode = cursor.fetchone()[0]
+    progress_cb(0.9, "Maintenance complete")
+    return {"status": "completed", "integrity": result, "journal_mode": mode}
 
 
 def _run_vbt_screen(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:

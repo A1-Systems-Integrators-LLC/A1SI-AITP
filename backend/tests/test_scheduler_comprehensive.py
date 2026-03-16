@@ -340,6 +340,7 @@ class TestProgressCallbacks:
         assert len(progress) >= 1
         assert progress[0][0] == 0.0  # Initial progress
 
+    @pytest.mark.django_db
     def test_db_maintenance_reports_progress(self):
         executor = TASK_REGISTRY["db_maintenance"]
         progress = []

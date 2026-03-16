@@ -252,11 +252,11 @@ class TestMetricsInstrumentation:
         data = resp.json()
         assert data["status"] == "degraded"
 
-    def test_health_detailed_wal_warning_threshold(self, authenticated_client):
+    def test_health_detailed_journal_mode(self, authenticated_client):
         resp = authenticated_client.get("/api/health/?detailed=true")
         data = resp.json()
-        # With test DB, WAL should be small -> "ok"
-        assert data["checks"]["wal"]["status"] == "ok"
+        assert data["checks"]["journal"]["status"] == "ok"
+        assert "mode" in data["checks"]["journal"]
 
     def test_docker_healthcheck_format_matches_grep(self, authenticated_client):
         """The grep in docker-compose expects '"status":"ok"' in the response."""
@@ -265,12 +265,12 @@ class TestMetricsInstrumentation:
         # When all checks are healthy, "status":"ok" should appear
         assert '"status"' in body
 
-    def test_health_detailed_includes_wal(self, authenticated_client):
+    def test_health_detailed_includes_journal(self, authenticated_client):
         resp = authenticated_client.get("/api/health/?detailed=true")
         assert resp.status_code == 200
         data = resp.json()
-        assert "wal" in data["checks"]
-        assert "size_mb" in data["checks"]["wal"]
+        assert "journal" in data["checks"]
+        assert "mode" in data["checks"]["journal"]
 
     def test_scheduled_task_config_exists(self):
         from django.conf import settings

@@ -524,11 +524,11 @@ class TestHealthCheck:
         checks = resp.json()["checks"]
         assert "job_queue" in checks
 
-    def test_detailed_health_includes_wal(self, client):
-        """Detailed health includes WAL size check."""
+    def test_detailed_health_includes_journal(self, client):
+        """Detailed health includes journal mode check."""
         resp = client.get("/api/health/?detailed=true")
         checks = resp.json()["checks"]
-        assert "wal" in checks
+        assert "journal" in checks
 
     def test_detailed_health_all_subsystems(self, client):
         """All 7 subsystem keys are present in detailed health."""
@@ -542,7 +542,7 @@ class TestHealthCheck:
             "circuit_breakers",
             "channel_layer",
             "job_queue",
-            "wal",
+            "journal",
         }
         assert expected.issubset(set(checks.keys()))
 
