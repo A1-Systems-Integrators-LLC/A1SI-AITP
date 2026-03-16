@@ -1532,7 +1532,7 @@ class TestHealthView:
         assert "circuit_breakers" in checks
         assert "channel_layer" in checks
         assert "job_queue" in checks
-        assert "wal" in checks
+        assert "journal" in checks
 
     def test_detailed_health_database_error(self):
         with patch("django.db.connection.cursor", side_effect=RuntimeError("db error")):
@@ -2284,7 +2284,7 @@ class TestPilotPreflightUncoveredLines:
 
         with patch("django.db.connection.cursor") as mock_cursor:
             ctx = mock_cursor.return_value.__enter__.return_value
-            ctx.fetchone.side_effect = [("wal",), ("error: corruption",)]
+            ctx.fetchone.side_effect = [("delete",), ("error: corruption",)]
             result = _check_database()
         assert result["status"] == "fail"
 
@@ -3131,11 +3131,11 @@ class TestHealthViewExceptionBranches:
         assert resp.status_code == 200
         assert resp.data["checks"]["job_queue"]["status"] == "error"
 
-    def test_detailed_health_wal_exception(self):
-        with patch("os.path.exists", side_effect=RuntimeError("fail")):
+    def test_detailed_health_journal_exception(self):
+        with patch("django.db.connection.cursor", side_effect=RuntimeError("fail")):
             resp = self.client.get("/api/health/?detailed=true")
         assert resp.status_code == 200
-        assert resp.data["checks"]["wal"]["status"] == "error"
+        assert resp.data["checks"]["journal"]["status"] == "error"
 
     def test_detailed_health_breaker_exception(self):
         with patch("market.services.circuit_breaker.get_all_breakers", side_effect=RuntimeError):
