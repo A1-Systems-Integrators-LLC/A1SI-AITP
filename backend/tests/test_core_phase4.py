@@ -3592,3 +3592,55 @@ class TestFrameworkStatusEdgeCases:
         vbt = next(f for f in result if f["name"] == "VectorBT")
         assert vbt["installed"] is False
         assert vbt["status_label"] == "Not installed"
+
+
+# ── 4h timeframe data collection ─────────────────────────────
+
+
+class TestDataRefresh4hTimeframe:
+    """Tests for 4h timeframe data collection tasks."""
+
+    def test_4h_crypto_task_in_scheduled_tasks(self):
+        from django.conf import settings
+
+        assert "data_refresh_crypto_4h" in settings.SCHEDULED_TASKS
+        task = settings.SCHEDULED_TASKS["data_refresh_crypto_4h"]
+        assert task["params"]["timeframe"] == "4h"
+        assert task["params"]["asset_class"] == "crypto"
+        assert task["interval_seconds"] == 14400
+
+    def test_4h_forex_task_in_scheduled_tasks(self):
+        from django.conf import settings
+
+        assert "data_refresh_forex_4h" in settings.SCHEDULED_TASKS
+        task = settings.SCHEDULED_TASKS["data_refresh_forex_4h"]
+        assert task["params"]["timeframe"] == "4h"
+        assert task["params"]["asset_class"] == "forex"
+
+    def test_data_refresh_passes_timeframe_to_download(self):
+        from core.services.task_registry import _run_data_refresh
+
+        config = {"data": {"watchlist": ["BTC/USDT"]}}
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("core.platform_bridge.get_platform_config", return_value=config),
+            patch("common.data_pipeline.pipeline.download_watchlist", return_value={}) as mock_dl,
+        ):
+            _run_data_refresh({"asset_class": "crypto", "timeframe": "4h"}, lambda *a: None)
+            mock_dl.assert_called_once()
+            kw = mock_dl.call_args
+            assert kw.kwargs.get("timeframes") == ["4h"] or kw[1].get("timeframes") == ["4h"]
+
+    def test_data_refresh_no_timeframe_passes_none(self):
+        from core.services.task_registry import _run_data_refresh
+
+        config = {"data": {"watchlist": ["BTC/USDT"]}}
+        with (
+            patch("core.platform_bridge.ensure_platform_imports"),
+            patch("core.platform_bridge.get_platform_config", return_value=config),
+            patch("common.data_pipeline.pipeline.download_watchlist", return_value={}) as mock_dl,
+        ):
+            _run_data_refresh({"asset_class": "crypto"}, lambda *a: None)
+            mock_dl.assert_called_once()
+            kw = mock_dl.call_args
+            assert kw.kwargs.get("timeframes") is None or kw[1].get("timeframes") is None

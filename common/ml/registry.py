@@ -71,11 +71,29 @@ class ModelRegistry:
         model_dir = self.models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save model — LightGBM 4.x removed save_model from sklearn API;
-        # use the underlying Booster instead.
+        # Save model
         model_path = model_dir / "model.txt"
-        booster = getattr(model, "booster_", model)
-        booster.save_model(str(model_path))
+        model_format = "lightgbm"
+
+        # Check if XGBoost model
+        try:
+            import xgboost as _xgb
+
+            if isinstance(model, _xgb.XGBClassifier):
+                model_path = model_dir / "model.json"
+                # Use underlying Booster to avoid sklearn wrapper issues
+                xgb_booster = model.get_booster()
+                xgb_booster.save_model(str(model_path))
+                model_format = "xgboost"
+            else:
+                # LightGBM 4.x removed save_model from sklearn API;
+                # use the underlying Booster instead.
+                booster = getattr(model, "booster_", model)
+                booster.save_model(str(model_path))
+        except ImportError:
+            # xgboost not installed — must be LightGBM
+            booster = getattr(model, "booster_", model)
+            booster.save_model(str(model_path))
 
         # Save manifest
         manifest = {
@@ -84,6 +102,7 @@ class ModelRegistry:
             "symbol": symbol,
             "timeframe": timeframe,
             "label": label,
+            "model_format": model_format,
             "metrics": metrics,
             "metadata": metadata,
             "feature_importance": feature_importance,
@@ -115,11 +134,25 @@ class ModelRegistry:
         if not model_dir.exists():
             raise FileNotFoundError(f"Model not found: {model_id}")
 
-        model_path = model_dir / "model.txt"
         manifest_path = model_dir / "manifest.json"
-
-        booster = lgb.Booster(model_file=str(model_path))
         manifest = json.loads(manifest_path.read_text())
+
+        model_format = manifest.get("model_format", "lightgbm")
+
+        if model_format == "xgboost":
+            try:
+                import xgboost as _xgb
+
+                model_path = model_dir / "model.json"
+                clf = _xgb.XGBClassifier()
+                clf.load_model(str(model_path))
+                return clf, manifest
+            except ImportError as err:
+                raise ImportError("xgboost required to load this model") from err
+
+        # LightGBM load
+        model_path = model_dir / "model.txt"
+        booster = lgb.Booster(model_file=str(model_path))
 
         # Wrap raw Booster in LGBMClassifier so callers can use
         # predict_proba(). LightGBM 4.x save_model() strips the sklearn
@@ -131,7 +164,13 @@ class ModelRegistry:
         clf.fitted_ = True
         clf._n_features = booster.num_feature()
         clf._n_classes = 2  # binary classifier
-        clf._le = type("LabelEncoder", (), {"classes_": np.array([0, 1])})()
+        classes = np.array([0, 1])
+        clf._le = type(
+            "LabelEncoder", (), {
+                "classes_": classes,
+                "inverse_transform": lambda self, y: classes[y],
+            },
+        )()
 
         return clf, manifest
 

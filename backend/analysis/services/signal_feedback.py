@@ -8,6 +8,7 @@ import logging
 from datetime import timedelta
 from typing import Any
 
+import requests
 from django.utils import timezone as tz
 
 from core.platform_bridge import ensure_platform_imports
@@ -110,6 +111,85 @@ class SignalFeedbackService:
 
         logger.info("Backfilled %d attribution outcomes", resolved)
         return {"resolved": resolved, "checked": len(open_attrs)}
+
+    @staticmethod
+    def backfill_from_freqtrade(window_hours: int = 24) -> dict[str, Any]:
+        """Backfill ML prediction outcomes from Freqtrade closed trades.
+
+        Queries all Freqtrade instances for recently closed trades, then matches
+        them to MLPrediction records by symbol and time proximity.
+
+        Args:
+            window_hours: How far back to look for closed trades.
+
+        Returns:
+            Dict with matched, unmatched, and error counts.
+        """
+        from django.conf import settings
+
+        from analysis.models import MLPrediction
+
+        ft_instances = getattr(settings, "FREQTRADE_INSTANCES", [])
+        ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
+        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
+
+        matched = 0
+        unmatched = 0
+        errors = 0
+
+        for instance in ft_instances:
+            url = instance.get("url", "")
+            if not url:
+                continue
+
+            try:
+                resp = requests.get(
+                    f"{url}/api/v1/trades",
+                    auth=(ft_user, ft_pass),
+                    params={"limit": 50},
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                trades = data.get("trades", [])
+
+                for trade in trades:
+                    if not trade.get("close_date"):
+                        continue  # Still open
+
+                    symbol = trade.get("pair", "")
+                    profit_ratio = trade.get("profit_ratio", 0.0)
+                    actual_direction = "up" if profit_ratio > 0 else "down"
+
+                    # Find matching MLPrediction by symbol within window
+                    cutoff = tz.now() - timedelta(hours=window_hours)
+                    prediction = (
+                        MLPrediction.objects.filter(
+                            symbol=symbol,
+                            correct__isnull=True,
+                            predicted_at__gte=cutoff,
+                        )
+                        .order_by("-predicted_at")
+                        .first()
+                    )
+
+                    if prediction:
+                        prediction.actual_direction = actual_direction
+                        prediction.correct = prediction.direction == actual_direction
+                        prediction.save(update_fields=["actual_direction", "correct"])
+                        matched += 1
+                    else:
+                        unmatched += 1
+
+            except Exception as e:
+                logger.warning("Freqtrade trade fetch failed for %s: %s", url, e)
+                errors += 1
+
+        logger.info(
+            "Freqtrade backfill: matched=%d, unmatched=%d, errors=%d",
+            matched, unmatched, errors,
+        )
+        return {"matched": matched, "unmatched": unmatched, "errors": errors}
 
     @staticmethod
     def get_source_accuracy(

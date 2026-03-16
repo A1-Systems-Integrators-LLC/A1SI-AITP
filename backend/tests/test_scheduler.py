@@ -73,7 +73,7 @@ class TestTaskSchedulerService:
         assert ScheduledTask.objects.filter(id="news_fetch").exists()
         assert ScheduledTask.objects.filter(id="market_scan_crypto").exists()
         assert ScheduledTask.objects.filter(id="market_scan_forex").exists()
-        assert ScheduledTask.objects.count() == 26
+        assert ScheduledTask.objects.count() == 30
 
     def test_sync_updates_existing(self):
         ScheduledTask.objects.create(
@@ -99,7 +99,7 @@ class TestTaskSchedulerService:
         scheduler._sync_tasks_to_db()
         status = scheduler.get_status()
         assert status["running"] is False
-        assert status["total_tasks"] == 26
+        assert status["total_tasks"] == 30
 
     def test_pause_task(self):
         ScheduledTask.objects.create(
@@ -192,6 +192,7 @@ class TestTaskRegistry:
             "ml_predict", "ml_feedback", "ml_retrain",
             "conviction_audit", "strategy_orchestration",
             "signal_feedback", "adaptive_weighting",
+            "economic_calendar", "funding_rate_refresh",
         }
         assert expected == set(TASK_REGISTRY.keys())
 

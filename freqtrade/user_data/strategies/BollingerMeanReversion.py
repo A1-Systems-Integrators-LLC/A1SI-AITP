@@ -86,15 +86,26 @@ class BollingerMeanReversion(IStrategy):
     sell_rsi_threshold = IntParameter(55, 75, default=60, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        from freqtrade.enums import RunMode
 
-        # Bollinger Bands (multiple periods for optimization)
-        for period in [15, 20, 25, 30]:
-            for std in [1.0, 1.2, 1.5, 2.0, 2.5, 3.0]:
-                suffix = f"_{period}_{str(std).replace('.', '')}"
-                bollinger = ta.BBANDS(dataframe, timeperiod=period, nbdevup=std, nbdevdn=std)
-                dataframe[f"bb_upper{suffix}"] = bollinger["upperband"]
-                dataframe[f"bb_mid{suffix}"] = bollinger["middleband"]
-                dataframe[f"bb_lower{suffix}"] = bollinger["lowerband"]
+        # Full BB grid only needed for hyperopt optimization
+        if self.dp and self.dp.runmode == RunMode.HYPEROPT:
+            for period in [15, 20, 25, 30]:
+                for std in [1.0, 1.2, 1.5, 2.0, 2.5, 3.0]:
+                    suffix = f"_{period}_{str(std).replace('.', '')}"
+                    bollinger = ta.BBANDS(dataframe, timeperiod=period, nbdevup=std, nbdevdn=std)
+                    dataframe[f"bb_upper{suffix}"] = bollinger["upperband"]
+                    dataframe[f"bb_mid{suffix}"] = bollinger["middleband"]
+                    dataframe[f"bb_lower{suffix}"] = bollinger["lowerband"]
+        else:
+            # Compute only the selected BB params (saves 95% CPU outside hyperopt)
+            period = self.buy_bb_period.value
+            std = float(self.buy_bb_std.value)
+            suffix = f"_{period}_{str(std).replace('.', '')}"
+            bollinger = ta.BBANDS(dataframe, timeperiod=period, nbdevup=std, nbdevdn=std)
+            dataframe[f"bb_upper{suffix}"] = bollinger["upperband"]
+            dataframe[f"bb_mid{suffix}"] = bollinger["middleband"]
+            dataframe[f"bb_lower{suffix}"] = bollinger["lowerband"]
 
         # RSI
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)

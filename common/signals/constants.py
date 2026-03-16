@@ -10,8 +10,9 @@ DEFAULT_WEIGHTS: dict[str, float] = {
     "regime": 0.25,
     "ml": 0.20,
     "sentiment": 0.10,
-    "scanner": 0.10,
+    "scanner": 0.05,
     "win_rate": 0.05,
+    "funding": 0.05,
 }
 
 # ── Entry thresholds ─────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify
+.PHONY: setup dev test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -251,6 +251,11 @@ pilot-status-json:
 
 pilot-status-full:
 	$(MANAGE) pilot_status --days 14
+
+# ── Monitoring ────────────────────────────────────────────────
+
+monitoring:
+	docker compose --profile monitoring up -d
 
 # ── Clean ──────────────────────────────────────────────────
 

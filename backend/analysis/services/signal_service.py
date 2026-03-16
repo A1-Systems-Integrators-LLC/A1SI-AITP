@@ -15,16 +15,56 @@ from core.platform_bridge import ensure_platform_imports
 
 logger = logging.getLogger(__name__)
 
-# Thread-safe signal cache with TTL
+# Thread-safe signal cache with regime-aware TTL
 _signal_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _signal_cache_lock = threading.Lock()
-SIGNAL_CACHE_TTL = 60  # seconds
+_signal_cache_order: list[str] = []  # LRU order tracking
+SIGNAL_CACHE_MAX_SIZE = 500
+
+# Regime-aware TTL mapping (seconds)
+SIGNAL_CACHE_TTL_MAP = {
+    "HIGH_VOLATILITY": 30,
+    "STRONG_TREND_DOWN": 30,
+    "STRONG_TREND_UP": 60,
+    "WEAK_TREND_UP": 60,
+    "WEAK_TREND_DOWN": 60,
+    "RANGING": 120,
+    "UNKNOWN": 60,
+}
+SIGNAL_CACHE_TTL_DEFAULT = 60  # seconds
+
+# Cache statistics
+_cache_hits = 0
+_cache_misses = 0
 
 
 def clear_signal_cache() -> None:
     """Clear the signal cache (for testing)."""
+    global _cache_hits, _cache_misses
     with _signal_cache_lock:
         _signal_cache.clear()
+        _signal_cache_order.clear()
+        _cache_hits = 0
+        _cache_misses = 0
+
+
+def get_cache_stats() -> dict[str, int]:
+    """Return cache hit/miss statistics."""
+    return {"hits": _cache_hits, "misses": _cache_misses, "size": len(_signal_cache)}
+
+
+def _get_cache_ttl(regime: str | None = None) -> int:
+    """Get TTL based on current regime."""
+    if regime:
+        return SIGNAL_CACHE_TTL_MAP.get(regime, SIGNAL_CACHE_TTL_DEFAULT)
+    return SIGNAL_CACHE_TTL_DEFAULT
+
+
+def _evict_lru() -> None:
+    """Evict least-recently-used entries when cache exceeds max size. Must hold lock."""
+    while len(_signal_cache) > SIGNAL_CACHE_MAX_SIZE and _signal_cache_order:
+        oldest_key = _signal_cache_order.pop(0)
+        _signal_cache.pop(oldest_key, None)
 
 
 class SignalService:
@@ -292,14 +332,24 @@ class SignalService:
         """Compute composite signal for a symbol/strategy pair.
 
         Returns a dict with all signal components and the composite score.
-        Uses a 60s TTL cache to avoid redundant computation.
+        Uses a regime-aware TTL cache to avoid redundant computation.
         """
+        global _cache_hits, _cache_misses
         cache_key = f"{symbol}:{asset_class}:{strategy_name}"
         now = time.monotonic()
         with _signal_cache_lock:
             cached = _signal_cache.get(cache_key)
-            if cached and (now - cached[0]) < SIGNAL_CACHE_TTL:
-                return cached[1]
+            if cached:
+                cached_regime = cached[1].get("_regime")
+                ttl = _get_cache_ttl(cached_regime)
+                if (now - cached[0]) < ttl:
+                    _cache_hits += 1
+                    # Move to end of LRU order
+                    if cache_key in _signal_cache_order:
+                        _signal_cache_order.remove(cache_key)
+                    _signal_cache_order.append(cache_key)
+                    return cached[1]
+            _cache_misses += 1
 
         aggregator = cls._get_aggregator()
 
@@ -349,8 +399,15 @@ class SignalService:
             "sources_available": signal.sources_available,
             "reasoning": signal.reasoning,
         }
+        # Store regime for TTL lookup
+        regime_name = regime_state.regime.value if regime_state else None
+        result["_regime"] = regime_name
         with _signal_cache_lock:
             _signal_cache[cache_key] = (time.monotonic(), result)
+            if cache_key in _signal_cache_order:
+                _signal_cache_order.remove(cache_key)
+            _signal_cache_order.append(cache_key)
+            _evict_lru()
         return result
 
     @classmethod

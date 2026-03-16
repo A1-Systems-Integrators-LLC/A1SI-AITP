@@ -91,21 +91,40 @@ TEMPLATES = [
 ]
 
 # ── Database ──────────────────────────────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data" / "a1si_aitp.db",
-        "OPTIONS": {
-            "timeout": 30,
+USE_POSTGRES = os.environ.get("USE_POSTGRES", "false").lower() in ("true", "1", "yes")
+
+if USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "a1si_aitp"),
+            "USER": os.environ.get("POSTGRES_USER", "a1si"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": 0 if TESTING else 600,
+            "CONN_HEALTH_CHECKS": True,
+            "OPTIONS": {
+                "connect_timeout": 10,
+            },
         },
-        "CONN_HEALTH_CHECKS": True,
-        # Persistent connections: avoid constant open/close which causes
-        # WAL file descriptor churn and "disk I/O error" under Docker bind mounts.
-        # None = keep connections open indefinitely (single-user desktop app).
-        # In tests, use default (0) to avoid connection leaks between tests.
-        "CONN_MAX_AGE": 0 if TESTING else None,
-    },
-}
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "data" / "a1si_aitp.db",
+            "OPTIONS": {
+                "timeout": 30,
+            },
+            "CONN_HEALTH_CHECKS": True,
+            # Persistent connections: avoid constant open/close which causes
+            # WAL file descriptor churn and "disk I/O error" under Docker bind mounts.
+            # None = keep connections open indefinitely (single-user desktop app).
+            # In tests, use default (0) to avoid connection leaks between tests.
+            "CONN_MAX_AGE": 0 if TESTING else None,
+        },
+    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -333,6 +352,20 @@ SCHEDULED_TASKS = {
         "interval_seconds": 3600,
         "params": {"asset_class": "forex"},
     },
+    "data_refresh_crypto_4h": {
+        "name": "Crypto 4h Data Refresh",
+        "description": "Refresh 4h OHLCV for crypto watchlist",
+        "task_type": "data_refresh",
+        "interval_seconds": 14400,
+        "params": {"asset_class": "crypto", "timeframe": "4h"},
+    },
+    "data_refresh_forex_4h": {
+        "name": "Forex 4h Data Refresh",
+        "description": "Refresh 4h OHLCV for forex watchlist",
+        "task_type": "data_refresh",
+        "interval_seconds": 14400,
+        "params": {"asset_class": "forex", "timeframe": "4h"},
+    },
     "regime_detection": {
         "name": "Regime Detection",
         "description": "Crypto regime detection",
@@ -493,6 +526,20 @@ SCHEDULED_TASKS = {
         "task_type": "adaptive_weighting",
         "interval_seconds": 86400,
         "params": {},
+    },
+    "economic_calendar": {
+        "name": "Economic Calendar Check",
+        "description": "Check for upcoming high-impact economic events",
+        "task_type": "economic_calendar",
+        "interval_seconds": 86400,
+        "params": {},
+    },
+    "funding_rate_refresh": {
+        "name": "Funding Rate Refresh",
+        "description": "Fetch latest funding rates for crypto pairs",
+        "task_type": "funding_rate_refresh",
+        "interval_seconds": 28800,
+        "params": {"asset_class": "crypto"},
     },
 }
 

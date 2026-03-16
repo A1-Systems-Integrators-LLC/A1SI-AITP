@@ -753,6 +753,33 @@ def check_ohlc_integrity(df: pd.DataFrame) -> list[dict]:
     return violations
 
 
+def forward_fill_gaps(df: pd.DataFrame, max_gap_bars: int = 3) -> pd.DataFrame:
+    """Forward-fill small gaps in OHLCV data.
+
+    Only fills gaps of up to `max_gap_bars` consecutive NaN/missing rows.
+    Larger gaps are left as-is (they need re-download, not interpolation).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        OHLCV DataFrame with DatetimeIndex
+    max_gap_bars : int
+        Maximum consecutive missing bars to forward-fill (default 3)
+
+    Returns
+    -------
+    pd.DataFrame with small gaps filled
+    """
+    if df.empty:
+        return df
+
+    filled = df.ffill(limit=max_gap_bars)
+    filled_count = df.isna().sum().sum() - filled.isna().sum().sum()
+    if filled_count > 0:
+        logger.info("Forward-filled %d values (max_gap=%d bars)", int(filled_count), max_gap_bars)
+    return filled
+
+
 def validate_data(
     symbol: str,
     timeframe: str,

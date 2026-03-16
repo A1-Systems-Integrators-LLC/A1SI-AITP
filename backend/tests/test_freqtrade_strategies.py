@@ -312,10 +312,10 @@ class TestBollingerMeanReversionIndicators:
 
     def test_populate_indicators_adds_bollinger_grid(self):
         result = self.strategy.populate_indicators(self.df.copy(), {"pair": "BTC/USDT"})
-        # Should have BB for multiple periods and std devs
-        assert "bb_upper_20_12" in result.columns
-        assert "bb_lower_20_20" in result.columns
-        assert "bb_mid_25_15" in result.columns
+        # Outside hyperopt, only the selected BB params are computed (default: period=20, std=1.5)
+        assert "bb_upper_20_15" in result.columns
+        assert "bb_lower_20_15" in result.columns
+        assert "bb_mid_20_15" in result.columns
 
     def test_populate_indicators_adds_rsi_adx(self):
         result = self.strategy.populate_indicators(self.df.copy(), {"pair": "BTC/USDT"})
@@ -327,6 +327,69 @@ class TestBollingerMeanReversionIndicators:
         result = self.strategy.populate_indicators(self.df.copy(), {"pair": "BTC/USDT"})
         assert "stoch_k" in result.columns
         assert "stoch_d" in result.columns
+
+
+class TestBollingerMeanReversionBBOptimization:
+    """Tests for BB computation optimization (hyperopt vs non-hyperopt)."""
+
+    def test_non_hyperopt_computes_only_selected_bb(self):
+        """Outside hyperopt, only the selected period/std BB columns exist."""
+        from freqtrade.enums import RunMode
+        strategy = _make_strategy(BollingerMeanReversion)
+        strategy.dp.runmode = RunMode.DRY_RUN
+        df = _make_ohlcv(300, "down")
+        result = strategy.populate_indicators(df.copy(), {"pair": "BTC/USDT"})
+        # Default: period=20, std=1.5 → suffix _20_15
+        assert "bb_upper_20_15" in result.columns
+        assert "bb_mid_20_15" in result.columns
+        assert "bb_lower_20_15" in result.columns
+        # Other combos should NOT exist
+        assert "bb_upper_25_20" not in result.columns
+        assert "bb_upper_15_10" not in result.columns
+
+    def test_hyperopt_computes_full_bb_grid(self):
+        """In hyperopt mode, all 24 BB combos are computed."""
+        from freqtrade.enums import RunMode
+        strategy = _make_strategy(BollingerMeanReversion)
+        strategy.dp.runmode = RunMode.HYPEROPT
+        df = _make_ohlcv(300, "down")
+        result = strategy.populate_indicators(df.copy(), {"pair": "BTC/USDT"})
+        # All combos should exist
+        for period in [15, 20, 25, 30]:
+            for std in [1.0, 1.2, 1.5, 2.0, 2.5, 3.0]:
+                suffix = f"_{period}_{str(std).replace('.', '')}"
+                assert f"bb_upper{suffix}" in result.columns
+
+    def test_dp_none_uses_selected_bb_only(self):
+        """If dp is None (edge case), compute only selected BB."""
+        strategy = _make_strategy(BollingerMeanReversion)
+        strategy.dp = None
+        df = _make_ohlcv(300, "down")
+        result = strategy.populate_indicators(df.copy(), {"pair": "BTC/USDT"})
+        assert "bb_upper_20_15" in result.columns
+        assert "bb_upper_25_20" not in result.columns
+
+    def test_backtest_mode_uses_selected_bb_only(self):
+        """Backtest mode should also use only selected BB (not full grid)."""
+        from freqtrade.enums import RunMode
+        strategy = _make_strategy(BollingerMeanReversion)
+        strategy.dp.runmode = RunMode.BACKTEST
+        df = _make_ohlcv(300, "down")
+        result = strategy.populate_indicators(df.copy(), {"pair": "BTC/USDT"})
+        assert "bb_upper_20_15" in result.columns
+        assert "bb_upper_30_30" not in result.columns
+
+    def test_entry_exit_work_with_optimized_indicators(self):
+        """Entry and exit signals work correctly with optimized BB computation."""
+        from freqtrade.enums import RunMode
+        strategy = _make_strategy(BollingerMeanReversion)
+        strategy.dp.runmode = RunMode.DRY_RUN
+        df = _make_ohlcv(300, "down")
+        df = strategy.populate_indicators(df, {"pair": "BTC/USDT"})
+        df = strategy.populate_entry_trend(df, {"pair": "BTC/USDT"})
+        df = strategy.populate_exit_trend(df, {"pair": "BTC/USDT"})
+        assert "enter_long" in df.columns
+        assert "exit_long" in df.columns
 
 
 class TestBollingerMeanReversionSignals:

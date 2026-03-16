@@ -67,6 +67,7 @@ class SignalAggregator:
     - sentiment: news-based signal
     - scanner: market opportunity score
     - win_rate: historical performance for this strategy
+    - funding: funding rate contrarian signal (crypto only)
     """
 
     def __init__(
@@ -187,6 +188,16 @@ class SignalAggregator:
             available.append("win_rate")
             result.screen_score = sources["win_rate"]
 
+        # Funding rate signal (crypto only)
+        if asset_class == "crypto":
+            try:
+                funding_score = self._score_funding_rate(symbol)
+                if funding_score is not None:
+                    sources["funding"] = _clamp(funding_score)
+                    available.append("funding")
+            except Exception:
+                pass
+
         result.sources_available = available
 
         # ── 3. Compute weighted score with redistribution ────────────────
@@ -197,6 +208,24 @@ class SignalAggregator:
             return result
 
         composite = self._weighted_score(sources, available)
+
+        # BTC dominance modifier (crypto only, ~+-5 points)
+        _dom_reason: str | None = None
+        if asset_class == "crypto":
+            try:
+                from common.market_data.coingecko import get_dominance_signal
+
+                dom_signal = get_dominance_signal()
+                dom_modifier = dom_signal.get("modifier", 0)
+                if dom_modifier != 0:
+                    composite = _clamp(composite + dom_modifier)
+                    _dom_reason = (
+                        f"BTC dominance: {dom_signal['regime_label']}"
+                        f" ({dom_signal['dominance']:.1f}%, {dom_modifier:+d})"
+                    )
+            except Exception:
+                pass  # Graceful fallback
+
         result.composite_score = round(composite, 1)
 
         # ── 4. Derive outputs ────────────────────────────────────────────
@@ -211,6 +240,19 @@ class SignalAggregator:
             regime,
             effective_threshold,
         )
+        if _dom_reason:
+            result.reasoning.insert(0, _dom_reason)
+
+        # Economic calendar modifier (forex only)
+        if asset_class == "forex":
+            try:
+                from common.calendar.economic_events import get_position_modifier as cal_modifier
+                cal_mod = cal_modifier(symbol=symbol, asset_class=asset_class)
+                if cal_mod < 1.0:
+                    result.position_modifier *= cal_mod
+                    result.reasoning.insert(0, f"Economic calendar: position scaled by {cal_mod}")
+            except Exception:
+                pass  # Graceful fallback
 
         logger.info(
             "Signal %s %s %s: score=%.1f approved=%s modifier=%.2f sources=%s",
@@ -224,6 +266,35 @@ class SignalAggregator:
         )
 
         return result
+
+    def _score_funding_rate(self, symbol: str) -> float | None:
+        """Score funding rate as a contrarian signal (crypto only).
+
+        High positive funding rate = market overleveraged long = bearish signal (score < 50)
+        High negative funding rate = market overleveraged short = bullish signal (score > 50)
+        Near zero = neutral (score ~50)
+
+        Returns:
+            Score 0-100, or None if data unavailable.
+        """
+        try:
+            from common.data_pipeline.pipeline import load_funding_rates
+
+            df = load_funding_rates(symbol)
+            if df is None or df.empty:
+                return None
+
+            # Use latest funding rate
+            latest_rate = float(df["funding_rate"].iloc[-1])
+
+            # Normalize: funding rates typically range from -0.1% to +0.1%
+            # Map to 0-100 score (contrarian: high positive = low score)
+            # -0.001 -> 75 (bullish), 0 -> 50, +0.001 -> 25 (bearish)
+            score = 50 - (latest_rate * 25000)  # Scale factor for typical rates
+            return max(0, min(100, score))
+
+        except Exception:
+            return None
 
     # ── Private helpers ──────────────────────────────────────────────────
 

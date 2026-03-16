@@ -196,9 +196,24 @@ class ModelEnsemble:
                 if HAS_LIGHTGBM and isinstance(model, lgb.Booster):
                     raw = model.predict(features)
                     prob = float(np.array(raw).flat[-1])
-                else:
-                    proba = model.predict_proba(features)  # type: ignore[union-attr]
-                    prob = float(proba[-1, 1]) if proba.ndim == 2 else float(proba[-1])
+                    probabilities.append(prob)
+                    accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                    continue
+                # Check for XGBoost model
+                try:
+                    import xgboost as _xgb
+
+                    if isinstance(model, _xgb.XGBClassifier):
+                        proba = model.predict_proba(features)
+                        prob = float(proba[-1, 1]) if proba.ndim == 2 else float(proba[-1])
+                        probabilities.append(prob)
+                        accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                        continue
+                except ImportError:
+                    pass
+                # Generic sklearn-compatible model (LGBMClassifier, etc.)
+                proba = model.predict_proba(features)  # type: ignore[union-attr]
+                prob = float(proba[-1, 1]) if proba.ndim == 2 else float(proba[-1])
                 probabilities.append(prob)
                 accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
             except Exception as e:

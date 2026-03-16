@@ -45,10 +45,12 @@ class TestRegistryCompleteness:
         "strategy_orchestration",
         "signal_feedback",
         "adaptive_weighting",
+        "economic_calendar",
+        "funding_rate_refresh",
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 22
+        assert len(TASK_REGISTRY) == 24
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES

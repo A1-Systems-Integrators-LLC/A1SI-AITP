@@ -973,7 +973,7 @@ class TestTaskExecutors:
     def test_registry_total_count(self):
         from core.services.task_registry import TASK_REGISTRY
 
-        assert len(TASK_REGISTRY) == 22  # 15 base + 5 IEB + 2 feedback
+        assert len(TASK_REGISTRY) == 24  # 15 base + 5 IEB + 2 feedback + 2 new
 
 
 # ══════════════════════════════════════════════════════

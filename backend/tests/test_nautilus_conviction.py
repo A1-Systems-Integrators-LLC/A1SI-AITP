@@ -146,6 +146,7 @@ class TestConvictionGate:
         strategy = _make_strategy(mode="live")
         signal = {"approved": False, "score": 30.0, "signal_label": "avoid"}
         strategy._signals["BTC/USDT"] = signal
+        strategy._last_signal_fetch = time.monotonic()
         assert strategy._check_conviction_gate() is False
 
     def test_cached_signal_used_within_interval(self):

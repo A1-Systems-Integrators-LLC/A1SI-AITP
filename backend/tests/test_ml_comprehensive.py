@@ -196,10 +196,10 @@ class TestLightGBM4xCompat:
             symbol="TEST/USDT",
             timeframe="1h",
         )
-        loaded_booster, manifest = tmp_registry.load_model(model_id)
+        loaded_clf, manifest = tmp_registry.load_model(model_id)
 
-        # Loaded model is a raw Booster — use .predict() directly
-        loaded_proba = loaded_booster.predict(X_sample)
+        # Loaded model is an LGBMClassifier wrapper — use predict_proba
+        loaded_proba = loaded_clf.predict_proba(X_sample)[:, 1]
         np.testing.assert_allclose(orig_proba, loaded_proba, atol=1e-6)
 
     def test_saved_model_file_is_text_format(self, trained_result, tmp_registry):

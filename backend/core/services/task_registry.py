@@ -35,10 +35,13 @@ def _run_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, 
         return {"status": "skipped", "reason": f"No {asset_class} watchlist configured"}
 
     # Download all watchlist symbols (no cap — scheduler handles rate limiting)
-    progress_cb(0.1, f"Refreshing {len(symbols)} {asset_class} symbols")
+    timeframe = params.get("timeframe")
+    timeframes = [timeframe] if timeframe else None
+    tf_label = f" ({timeframe})" if timeframe else ""
+    progress_cb(0.1, f"Refreshing {len(symbols)} {asset_class} symbols{tf_label}")
     results = download_watchlist(
         symbols=symbols,
-        timeframes=None,
+        timeframes=timeframes,
         asset_class=asset_class,
     )
     progress_cb(0.9, "Data refresh complete")
@@ -153,7 +156,7 @@ def _run_order_sync(params: dict, progress_cb: ProgressCallback) -> dict[str, An
 
 
 def _run_data_quality(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Run full data quality validation across all data files."""
+    """Run full data quality validation and auto-remediate stale data."""
     from core.platform_bridge import ensure_platform_imports
 
     ensure_platform_imports()
@@ -177,11 +180,68 @@ def _run_data_quality(params: dict, progress_cb: ProgressCallback) -> dict[str, 
                     f"{r.symbol}/{r.timeframe}: {', '.join(r.issues_summary)}",
                 )
 
-        progress_cb(0.9, f"Validated {len(reports)} files")
+        # Auto-remediation: refresh stale symbols (capped at 20)
+        stale_symbols = []
+        for r in reports:
+            if r.is_stale and r.symbol:
+                stale_symbols.append({
+                    "symbol": r.symbol,
+                    "timeframe": r.timeframe,
+                    "exchange": r.exchange,
+                })
+
+        remediated = 0
+        if stale_symbols:
+            progress_cb(0.5, f"Auto-remediating {min(len(stale_symbols), 20)} stale symbols")
+            from common.data_pipeline.pipeline import download_watchlist
+
+            # Group by asset class for efficient download
+            stale_by_class: dict[str, list[str]] = {}
+            for item in stale_symbols[:20]:  # Cap at 20
+                # Infer asset class from exchange
+                ac = _infer_asset_class(item["symbol"], item.get("exchange", ""))
+                stale_by_class.setdefault(ac, []).append(item["symbol"])
+
+            for ac, symbols in stale_by_class.items():
+                try:
+                    results = download_watchlist(
+                        symbols=symbols,
+                        timeframes=None,
+                        asset_class=ac,
+                    )
+                    remediated += sum(
+                        1 for v in results.values()
+                        if isinstance(v, dict) and v.get("status") == "ok"
+                    )
+                except Exception as e:
+                    logger.warning("Auto-remediation failed for %s: %s", ac, e)
+
+        summary["remediated"] = remediated
+        progress_cb(0.9, f"Validated {len(reports)} files, remediated {remediated}")
         return {"status": "completed", "quality_summary": summary}
     except Exception as e:
         logger.error("Data quality check failed: %s", e)
         return {"status": "error", "error": str(e)}
+
+
+def _infer_asset_class(symbol: str, exchange: str = "") -> str:
+    """Infer asset class from symbol format and exchange."""
+    if exchange == "yfinance":
+        # Forex pairs have / and are currency pairs
+        if "/" in symbol and len(symbol.split("/")[0]) == 3 and len(symbol.split("/")[1]) == 3:
+            return "forex"
+        return "equity"
+    if "USDT" in symbol or "USD" in symbol.split("/")[-1:][0] if "/" in symbol else "":
+        return "crypto"
+    # Default based on symbol format
+    if "/" in symbol:
+        base, quote = symbol.split("/", 1)
+        if base in ("EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF") or quote in (
+            "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF",
+        ):
+            return "forex"
+        return "crypto"
+    return "equity"
 
 
 def _run_news_fetch(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
@@ -959,6 +1019,15 @@ def _run_signal_feedback(params: dict, progress_cb: ProgressCallback) -> dict[st
     backfill_result = SignalFeedbackService.backfill_outcomes(window_hours=window_hours)
     progress_cb(0.5, f"Backfilled {backfill_result.get('resolved', 0)} outcomes")
 
+    # Also backfill from Freqtrade paper trades
+    ft_backfill = {"matched": 0, "errors": 0}
+    try:
+        ft_backfill = SignalFeedbackService.backfill_from_freqtrade(
+            window_hours=window_hours,
+        )
+    except Exception as e:
+        logger.warning("Freqtrade backfill failed: %s", e)
+
     accuracy = SignalFeedbackService.get_source_accuracy(
         asset_class=params.get("asset_class"),
         window_days=params.get("window_days", 30),
@@ -968,6 +1037,7 @@ def _run_signal_feedback(params: dict, progress_cb: ProgressCallback) -> dict[st
     return {
         "status": "completed",
         "backfill": backfill_result,
+        "freqtrade_backfill": ft_backfill,
         "accuracy": accuracy,
     }
 
@@ -1009,6 +1079,54 @@ def _run_adaptive_weighting(params: dict, progress_cb: ProgressCallback) -> dict
     }
 
 
+def _run_economic_calendar(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Check for upcoming high-impact economic events."""
+    progress_cb(0.1, "Checking economic calendar")
+    try:
+        from core.platform_bridge import ensure_platform_imports
+        ensure_platform_imports()
+        from common.calendar.economic_events import get_upcoming_events
+        events = get_upcoming_events(hours=24)
+        progress_cb(0.9, f"Found {len(events)} upcoming events")
+        return {"status": "completed", "events": events, "count": len(events)}
+    except Exception as e:
+        logger.warning("Economic calendar check failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+def _run_funding_rate_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Fetch and store funding rates for crypto watchlist."""
+    from core.platform_bridge import ensure_platform_imports, get_platform_config
+
+    ensure_platform_imports()
+    progress_cb(0.1, "Fetching funding rates")
+
+    try:
+        from common.data_pipeline.pipeline import fetch_funding_rates, save_funding_rates
+
+        config = get_platform_config()
+        symbols = config.get("data", {}).get("watchlist", [])[:20]
+
+        if not symbols:
+            return {"status": "skipped", "reason": "No crypto watchlist"}
+
+        fetched = 0
+        for i, symbol in enumerate(symbols):
+            try:
+                rates = fetch_funding_rates(symbol)
+                if rates is not None and not rates.empty:
+                    save_funding_rates(rates, symbol)
+                    fetched += 1
+            except Exception as e:
+                logger.warning("Funding rate fetch failed for %s: %s", symbol, e)
+            progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Fetched {i + 1}/{len(symbols)}")
+
+        return {"status": "completed", "fetched": fetched, "total": len(symbols)}
+    except Exception as e:
+        logger.error("Funding rate refresh failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
 TASK_REGISTRY: dict[str, TaskExecutor] = {
     "data_refresh": _run_data_refresh,
     "regime_detection": _run_regime_detection,
@@ -1032,4 +1150,6 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "strategy_orchestration": _run_strategy_orchestration,
     "signal_feedback": _run_signal_feedback,
     "adaptive_weighting": _run_adaptive_weighting,
+    "economic_calendar": _run_economic_calendar,
+    "funding_rate_refresh": _run_funding_rate_refresh,
 }
