@@ -118,10 +118,22 @@ class ModelRegistry:
         model_path = model_dir / "model.txt"
         manifest_path = model_dir / "manifest.json"
 
-        model = lgb.Booster(model_file=str(model_path))
+        booster = lgb.Booster(model_file=str(model_path))
         manifest = json.loads(manifest_path.read_text())
 
-        return model, manifest
+        # Wrap raw Booster in LGBMClassifier so callers can use
+        # predict_proba(). LightGBM 4.x save_model() strips the sklearn
+        # wrapper, so we reconstruct it here.
+        import numpy as np
+
+        clf = lgb.LGBMClassifier()
+        clf._Booster = booster
+        clf.fitted_ = True
+        clf._n_features = booster.num_feature()
+        clf._n_classes = 2  # binary classifier
+        clf._le = type("LabelEncoder", (), {"classes_": np.array([0, 1])})()
+
+        return clf, manifest
 
     def list_models(self) -> list[dict]:
         """List all models with summary metadata.
