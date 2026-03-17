@@ -114,15 +114,15 @@ class TestStateManagement:
         assert orchestrator.get_size_modifier("CryptoInvestorV1", "crypto") == 1.0
 
     def test_classify_action_pause(self, orchestrator):
-        assert orchestrator._classify_action(15) == ACTION_PAUSE
         assert orchestrator._classify_action(5) == ACTION_PAUSE
+        assert orchestrator._classify_action(3) == ACTION_PAUSE
 
     def test_classify_action_reduce(self, orchestrator):
-        assert orchestrator._classify_action(40) == ACTION_REDUCE_SIZE
         assert orchestrator._classify_action(20) == ACTION_REDUCE_SIZE
+        assert orchestrator._classify_action(10) == ACTION_REDUCE_SIZE
 
     def test_classify_action_active(self, orchestrator):
-        assert orchestrator._classify_action(41) == ACTION_ACTIVE
+        assert orchestrator._classify_action(21) == ACTION_ACTIVE
         assert orchestrator._classify_action(95) == ACTION_ACTIVE
 
 
@@ -145,7 +145,7 @@ class TestEvaluate:
             "crypto": {
                 mock_state.regime: {
                     "CryptoInvestorV1": 95,
-                    "BollingerMeanReversion": 30,
+                    "BollingerMeanReversion": 15,
                     "VolatilityBreakout": 60,
                 },
             },

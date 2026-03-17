@@ -101,16 +101,63 @@ class TestDominanceSignal:
         assert result["regime_label"] == "alt_season"
 
 
+def _patch_crypto_modifiers():
+    """Context manager stack that mocks all crypto-only modifier sources.
+
+    The aggregator applies BTC dominance, Fear & Greed, Reddit sentiment,
+    CoinGecko trending, and funding rate modifiers for crypto. Tests that
+    want to isolate a single modifier must suppress the others.
+    """
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    # Fear & Greed — no modifier
+    stack.enter_context(
+        patch(
+            "common.market_data.fear_greed.get_fear_greed_signal",
+            return_value={"value": 50, "classification": "neutral", "modifier": 0},
+        ),
+    )
+    # Reddit sentiment — no modifier
+    stack.enter_context(
+        patch(
+            "common.data_pipeline.reddit_adapter.fetch_reddit_sentiment",
+            return_value={"score": 0.0, "post_count": 0, "modifier": 0},
+        ),
+    )
+    # CoinGecko trending — no modifier
+    stack.enter_context(
+        patch(
+            "common.market_data.coingecko.get_trending_modifier",
+            return_value=0,
+        ),
+    )
+    # Funding rate — unavailable
+    stack.enter_context(
+        patch(
+            "common.data_pipeline.pipeline.load_funding_rates",
+            return_value=None,
+        ),
+    )
+    return stack
+
+
 class TestAggregatorIntegration:
     def test_btc_dominance_applies_to_crypto(self):
         from common.signals.aggregator import SignalAggregator
 
         agg = SignalAggregator()
 
-        with patch(
-            "common.market_data.coingecko.get_dominance_signal",
-            return_value={"dominance": 60.0, "regime_label": "btc_dominant", "modifier": -5},
-        ):
+        with _patch_crypto_modifiers() as stack:
+            dom_val = {
+                "dominance": 60.0, "regime_label": "btc_dominant", "modifier": -5,
+            }
+            stack.enter_context(
+                patch(
+                    "common.market_data.coingecko.get_dominance_signal",
+                    return_value=dom_val,
+                ),
+            )
             result = agg.compute(
                 symbol="BTC/USDT",
                 asset_class="crypto",
@@ -140,10 +187,13 @@ class TestAggregatorIntegration:
 
         agg = SignalAggregator()
 
-        with patch(
-            "common.market_data.coingecko.get_dominance_signal",
-            return_value={"dominance": 35.0, "regime_label": "alt_season", "modifier": 5},
-        ):
+        with _patch_crypto_modifiers() as stack:
+            stack.enter_context(
+                patch(
+                    "common.market_data.coingecko.get_dominance_signal",
+                    return_value={"dominance": 35.0, "regime_label": "alt_season", "modifier": 5},
+                ),
+            )
             result = agg.compute(
                 symbol="ETH/USDT",
                 asset_class="crypto",
@@ -157,10 +207,13 @@ class TestAggregatorIntegration:
 
         agg = SignalAggregator()
 
-        with patch(
-            "common.market_data.coingecko.get_dominance_signal",
-            return_value={"dominance": 50.0, "regime_label": "neutral", "modifier": 0},
-        ):
+        with _patch_crypto_modifiers() as stack:
+            stack.enter_context(
+                patch(
+                    "common.market_data.coingecko.get_dominance_signal",
+                    return_value={"dominance": 50.0, "regime_label": "neutral", "modifier": 0},
+                ),
+            )
             result = agg.compute(
                 symbol="BTC/USDT",
                 asset_class="crypto",
@@ -176,10 +229,13 @@ class TestAggregatorIntegration:
 
         agg = SignalAggregator()
 
-        with patch(
-            "common.market_data.coingecko.get_dominance_signal",
-            side_effect=Exception("API down"),
-        ):
+        with _patch_crypto_modifiers() as stack:
+            stack.enter_context(
+                patch(
+                    "common.market_data.coingecko.get_dominance_signal",
+                    side_effect=Exception("API down"),
+                ),
+            )
             result = agg.compute(
                 symbol="BTC/USDT",
                 asset_class="crypto",
