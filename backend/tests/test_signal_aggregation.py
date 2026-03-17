@@ -642,10 +642,19 @@ class TestSignalAggregatorCompute:
     @pytest.fixture(autouse=True)
     def _mock_external_modifiers(self):
         """Patch out external API modifiers so compute() tests are deterministic."""
+        dom = {"modifier": 0, "regime_label": "neutral", "dominance": 50.0}
+        fng = {
+            "modifier": 0, "classification": "Neutral",
+            "value": 50, "score": 50,
+        }
+        reddit = {"score": 0, "post_count": 0, "modifier": 0}
         with (
-            patch("common.market_data.coingecko.get_dominance_signal", return_value={"modifier": 0, "regime_label": "neutral", "dominance": 50.0}),
-            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value={"modifier": 0, "classification": "Neutral", "value": 50, "score": 50}),
-            patch("common.data_pipeline.reddit_adapter.fetch_reddit_sentiment", return_value={"score": 0, "post_count": 0, "modifier": 0}),
+            patch("common.market_data.coingecko.get_dominance_signal", return_value=dom),
+            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value=fng),
+            patch(
+                "common.data_pipeline.reddit_adapter.fetch_reddit_sentiment",
+                return_value=reddit,
+            ),
             patch("common.market_data.coingecko.get_trending_modifier", return_value=0),
         ):
             yield
@@ -857,10 +866,19 @@ class TestSignalAggregatorCooldown:
 class TestSignalAggregatorWeightRedistribution:
     @pytest.fixture(autouse=True)
     def _mock_external_modifiers(self):
+        dom = {"modifier": 0, "regime_label": "neutral", "dominance": 50.0}
+        fng = {
+            "modifier": 0, "classification": "Neutral",
+            "value": 50, "score": 50,
+        }
+        reddit = {"score": 0, "post_count": 0, "modifier": 0}
         with (
-            patch("common.market_data.coingecko.get_dominance_signal", return_value={"modifier": 0, "regime_label": "neutral", "dominance": 50.0}),
-            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value={"modifier": 0, "classification": "Neutral", "value": 50, "score": 50}),
-            patch("common.data_pipeline.reddit_adapter.fetch_reddit_sentiment", return_value={"score": 0, "post_count": 0, "modifier": 0}),
+            patch("common.market_data.coingecko.get_dominance_signal", return_value=dom),
+            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value=fng),
+            patch(
+                "common.data_pipeline.reddit_adapter.fetch_reddit_sentiment",
+                return_value=reddit,
+            ),
             patch("common.market_data.coingecko.get_trending_modifier", return_value=0),
         ):
             yield

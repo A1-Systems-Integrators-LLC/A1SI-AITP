@@ -143,6 +143,7 @@ class TestModelRegistryNoLightGBM:
     def test_load_model_no_lightgbm(self, tmp_path):
         """load_model raises ImportError for lightgbm format without lightgbm."""
         import json
+
         from common.ml.registry import ModelRegistry
 
         registry = ModelRegistry(models_dir=tmp_path)
