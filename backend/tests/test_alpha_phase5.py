@@ -26,6 +26,14 @@ CONFIGS_DIR = PROJECT_ROOT / "freqtrade"
 if str(STRATEGIES_DIR) not in sys.path:
     sys.path.insert(0, str(STRATEGIES_DIR))
 
+# Skip strategy tests if TA-Lib or freqtrade not installed (CI)
+_has_talib = importlib.util.find_spec("talib") is not None
+_has_freqtrade = importlib.util.find_spec("freqtrade") is not None
+_skip_no_talib = pytest.mark.skipif(
+    not (_has_talib and _has_freqtrade),
+    reason="Requires talib + freqtrade (not in CI)",
+)
+
 STRATEGY_NAMES = [
     "MomentumShort", "GridDCA", "MomentumScalper15m",
     "SentimentEventTrader", "TrendReversal",
@@ -74,6 +82,7 @@ def _make_strategy(name: str):
 # Strategy class attribute tests
 # ===================================================================
 
+@_skip_no_talib
 class TestMomentumShortAttributes:
     def test_imports(self):
         assert _import_strategy("MomentumShort") is not None
@@ -107,6 +116,7 @@ class TestMomentumShortAttributes:
         ) == 2.0
 
 
+@_skip_no_talib
 class TestGridDCAAttributes:
     def test_imports(self):
         assert _import_strategy("GridDCA") is not None
@@ -130,6 +140,7 @@ class TestGridDCAAttributes:
         ) == 2.0
 
 
+@_skip_no_talib
 class TestMomentumScalper15mAttributes:
     def test_imports(self):
         assert _import_strategy("MomentumScalper15m") is not None
@@ -147,6 +158,7 @@ class TestMomentumScalper15mAttributes:
         assert roi["45"] == 0.003
 
 
+@_skip_no_talib
 class TestSentimentEventTraderAttributes:
     def test_imports(self):
         assert _import_strategy("SentimentEventTrader") is not None
@@ -168,6 +180,7 @@ class TestSentimentEventTraderAttributes:
         assert "sentiment_score" in df.columns
 
 
+@_skip_no_talib
 class TestTrendReversalAttributes:
     def test_imports(self):
         assert _import_strategy("TrendReversal") is not None
@@ -197,6 +210,7 @@ class TestTrendReversalAttributes:
 # Populate indicators / entry / exit tests
 # ===================================================================
 
+@_skip_no_talib
 class TestMomentumShortSignals:
     @pytest.fixture()
     def strategy(self):
@@ -221,6 +235,7 @@ class TestMomentumShortSignals:
         assert (df["exit_long"] == 0).all()
 
 
+@_skip_no_talib
 class TestGridDCASignals:
     @pytest.fixture()
     def strategy(self):
@@ -299,6 +314,7 @@ class TestGridDCASignals:
         assert result is None
 
 
+@_skip_no_talib
 class TestMomentumScalper15mSignals:
     @pytest.fixture()
     def strategy(self):
@@ -328,6 +344,7 @@ class TestMomentumScalper15mSignals:
         assert "exit_short" in df.columns
 
 
+@_skip_no_talib
 class TestSentimentEventTraderSignals:
     @pytest.fixture()
     def strategy(self):
@@ -380,6 +397,7 @@ class TestSentimentEventTraderSignals:
         assert result is None
 
 
+@_skip_no_talib
 class TestTrendReversalSignals:
     @pytest.fixture()
     def strategy(self):
@@ -414,6 +432,7 @@ class TestTrendReversalSignals:
 # Conviction integration tests
 # ===================================================================
 
+@_skip_no_talib
 class TestConvictionIntegration:
     """All 5 strategies should have conviction helper methods."""
 
@@ -448,6 +467,7 @@ class TestConvictionIntegration:
 # Custom stoploss tests
 # ===================================================================
 
+@_skip_no_talib
 class TestCustomStoploss:
     @pytest.fixture()
     def _mock_dp(self):
@@ -681,6 +701,7 @@ class TestAlignmentMatrices:
 # Strategy file existence tests
 # ===================================================================
 
+@_skip_no_talib
 class TestStrategyFiles:
     @pytest.mark.parametrize("name", STRATEGY_NAMES)
     def test_strategy_file_exists(self, name):

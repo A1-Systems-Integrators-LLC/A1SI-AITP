@@ -4,15 +4,23 @@ Covers: VADER scorer, FinBERT mock pipeline, sentiment signal rescoring,
 weight rebalance, watchlist adjuster.
 """
 
+import importlib.util
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
 
+_skip_no_vader = pytest.mark.skipif(
+    importlib.util.find_spec("vaderSentiment") is None,
+    reason="vaderSentiment not installed (CI)",
+)
 
 # ── VADER Scorer ────────────────────────────────────────────────────────────
 
 
+@_skip_no_vader
 class TestVADERScorer:
     """Tests for VADER-enhanced scorer.py."""
 

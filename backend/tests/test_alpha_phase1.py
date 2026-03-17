@@ -21,6 +21,8 @@ class TestFuturesConfig:
         self.configs = {}
         for name in ["config.json", "config_bmr.json", "config_vb.json"]:
             path = self.CONFIG_DIR / name
+            if not path.exists():
+                pytest.skip(f"{name} not found (gitignored)")
             with open(path) as f:
                 self.configs[name] = json.load(f)
 
