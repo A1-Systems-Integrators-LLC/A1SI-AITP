@@ -3,15 +3,15 @@
     "margin_mode": "isolated",
     "max_open_trades": 3,
     "stake_currency": "USDT",
-    "stake_amount": 80,
+    "stake_amount": 50,
     "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,
-    "dry_run_wallet": 300,
+    "dry_run_wallet": 200,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
-        "entry": 10,
-        "exit": 10,
+        "entry": 5,
+        "exit": 5,
         "exit_timeout_count": 0,
         "unit": "minutes"
     },
@@ -56,10 +56,10 @@
     "pairlists": [
         {
             "method": "VolumePairList",
-            "number_assets": 8,
+            "number_assets": 5,
             "sort_key": "quoteVolume",
             "min_value": 0,
-            "refresh_period": 1800
+            "refresh_period": 900
         },
         {
             "method": "AgeFilter",
@@ -67,7 +67,7 @@
         },
         {
             "method": "SpreadFilter",
-            "max_spread_ratio": 0.005
+            "max_spread_ratio": 0.003
         }
     ],
     "telegram": {
@@ -78,16 +78,16 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "0.0.0.0",
-        "listen_port": 8083,
+        "listen_port": 8087,
         "verbosity": "error",
         "enable_openapi": true,
-        "jwt_secret_key": "change_me_bmr",
+        "jwt_secret_key": "change_me_scalp",
         "CORS_origins": ["http://localhost:3000"],
         "username": "freqtrader",
         "password": "freqtrader"
     },
-    "db_url": "sqlite:///tradesv3.bmr.dryrun.sqlite",
-    "bot_name": "a1si-bmr",
+    "db_url": "sqlite:///tradesv3.scalp.dryrun.sqlite",
+    "bot_name": "a1si-momentum-scalper",
     "initial_state": "running",
     "order_types": {
         "entry": "limit",
@@ -97,7 +97,7 @@
     },
     "force_entry_enable": false,
     "internals": {
-        "process_throttle_secs": 5
+        "process_throttle_secs": 3
     },
     "user_data_dir": "/home/rredmer/Dev/Portfolio/A1SI-AITP/freqtrade/user_data"
 }

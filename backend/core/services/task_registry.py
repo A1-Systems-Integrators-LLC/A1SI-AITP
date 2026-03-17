@@ -1079,6 +1079,71 @@ def _run_adaptive_weighting(params: dict, progress_cb: ProgressCallback) -> dict
     }
 
 
+def _run_fear_greed_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Refresh Fear & Greed Index data."""
+    progress_cb(0.1, "Fetching Fear & Greed Index")
+    try:
+        from core.platform_bridge import ensure_platform_imports
+        ensure_platform_imports()
+        from common.market_data.fear_greed import get_fear_greed_signal
+        signal = get_fear_greed_signal()
+        progress_cb(0.9, f"Fear & Greed: {signal.get('label', 'unknown')}")
+        return {"status": "completed", "signal": signal}
+    except Exception as e:
+        logger.warning("Fear & Greed refresh failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+def _run_reddit_sentiment_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Refresh Reddit crypto sentiment data."""
+    progress_cb(0.1, "Fetching Reddit sentiment")
+    try:
+        from core.platform_bridge import ensure_platform_imports
+        ensure_platform_imports()
+        from common.data_pipeline.reddit_adapter import fetch_reddit_sentiment
+        result = fetch_reddit_sentiment()
+        progress_cb(0.9, f"Reddit: {result.get('post_count', 0)} posts scored")
+        return {"status": "completed", "sentiment": result}
+    except Exception as e:
+        logger.warning("Reddit sentiment refresh failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+def _run_coingecko_trending_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Refresh CoinGecko trending coins + DeFi data."""
+    progress_cb(0.1, "Fetching CoinGecko trending + DeFi data")
+    try:
+        from core.platform_bridge import ensure_platform_imports
+        ensure_platform_imports()
+        from common.market_data.coingecko import fetch_global_defi_data, fetch_trending_coins
+        trending = fetch_trending_coins()
+        defi = fetch_global_defi_data()
+        progress_cb(0.9, f"Trending: {len(trending or [])} coins")
+        return {
+            "status": "completed",
+            "trending_count": len(trending or []),
+            "defi_data": defi,
+        }
+    except Exception as e:
+        logger.warning("CoinGecko trending refresh failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
+def _run_macro_data_refresh(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Refresh FRED macro economic data."""
+    progress_cb(0.1, "Fetching FRED macro data")
+    try:
+        from core.platform_bridge import ensure_platform_imports
+        ensure_platform_imports()
+        from common.market_data.fred_adapter import fetch_macro_snapshot
+        snapshot = fetch_macro_snapshot()
+        progress_cb(0.9, f"Macro score: {snapshot.get('macro_score', 'N/A')}")
+        return {"status": "completed", "snapshot": snapshot}
+    except Exception as e:
+        logger.warning("FRED macro data refresh failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
 def _run_economic_calendar(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
     """Check for upcoming high-impact economic events."""
     progress_cb(0.1, "Checking economic calendar")
@@ -1152,4 +1217,8 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "adaptive_weighting": _run_adaptive_weighting,
     "economic_calendar": _run_economic_calendar,
     "funding_rate_refresh": _run_funding_rate_refresh,
+    "fear_greed_refresh": _run_fear_greed_refresh,
+    "reddit_sentiment_refresh": _run_reddit_sentiment_refresh,
+    "coingecko_trending_refresh": _run_coingecko_trending_refresh,
+    "macro_data_refresh": _run_macro_data_refresh,
 }

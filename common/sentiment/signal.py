@@ -2,10 +2,15 @@
 
 Produces actionable trading signals from per-article sentiment scores.
 DB-agnostic: takes list[dict] article data, not ORM querysets.
+
+Scorer cascade: FinBERT (best) → VADER (good) → keyword (fallback).
 """
 
+import logging
 import math
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # ── Half-life per asset class (hours) ─────────────────────
 HALF_LIVES: dict[str, float] = {
@@ -110,11 +115,65 @@ def _compute_term_multiplier(text: str, asset_class: str) -> float:
     return best
 
 
+def _rescore_articles(articles: list[dict]) -> list[dict]:
+    """Re-score articles using best available NLP model.
+
+    Cascade: FinBERT → VADER → original keyword score.
+    Only re-scores if a better scorer is available.
+    """
+    if not articles:
+        return articles
+
+    # Try FinBERT first
+    try:
+        from common.sentiment.finbert import is_available, score_batch
+
+        if is_available():
+            texts = [
+                f"{a.get('title', '')} {a.get('summary', '')}"
+                for a in articles
+            ]
+            results = score_batch(texts)
+            rescored = []
+            for art, result in zip(articles, results, strict=True):
+                art_copy = dict(art)
+                if result is not None:
+                    art_copy["sentiment_score"] = result.sentiment
+                    art_copy["scorer"] = "finbert"
+                rescored.append(art_copy)
+            logger.debug("Re-scored %d articles with FinBERT", len(rescored))
+            return rescored
+    except Exception:
+        pass
+
+    # Try VADER
+    try:
+        from common.sentiment.scorer import has_vader, score_text
+
+        if has_vader():
+            rescored = []
+            for art in articles:
+                art_copy = dict(art)
+                text = f"{art.get('title', '')} {art.get('summary', '')}"
+                score, _ = score_text(text)
+                art_copy["sentiment_score"] = score
+                art_copy["scorer"] = "vader"
+                rescored.append(art_copy)
+            logger.debug("Re-scored %d articles with VADER", len(rescored))
+            return rescored
+    except Exception:
+        pass
+
+    # Fallback: use existing scores
+    return articles
+
+
 def compute_signal(
     articles: list[dict],
     asset_class: str = "crypto",
     half_life: float | None = None,
     conviction_threshold: int | None = None,
+    rescore: bool = True,
 ) -> SentimentSignal:
     """Compute aggregate sentiment signal from article data.
 
@@ -124,8 +183,14 @@ def compute_signal(
         - title: str
         - summary: str (optional)
 
+    Args:
+        rescore: If True, re-score articles with best available NLP model.
+
     Returns a SentimentSignal with trading-relevant metrics.
     """
+    if rescore:
+        articles = _rescore_articles(articles)
+
     hl = half_life if half_life is not None else HALF_LIVES.get(asset_class, 6.0)
     ct = (
         conviction_threshold

@@ -23,6 +23,17 @@ except ImportError:  # pragma: no cover
     HAS_LIGHTGBM = False
     lgb = None  # type: ignore[assignment]
 
+try:
+    import torch
+
+    from common.ml.lstm_model import LSTMPredictor
+
+    HAS_TORCH = True
+except ImportError:  # pragma: no cover
+    HAS_TORCH = False
+    torch = None  # type: ignore[assignment]
+    LSTMPredictor = None  # type: ignore[assignment, misc]
+
 MAX_ENSEMBLE_SIZE = 5
 
 
@@ -193,6 +204,23 @@ class ModelEnsemble:
 
         for model, manifest in self._models:
             try:
+                # LSTM (torch) model
+                if HAS_TORCH and isinstance(model, LSTMPredictor):
+                    # LSTM needs (batch, seq_len, features) tensor
+                    feat_arr = np.asarray(features, dtype=np.float32)
+                    if feat_arr.ndim == 2:
+                        seq_len = manifest.get("metadata", {}).get("seq_len", feat_arr.shape[0])
+                        # Use last seq_len rows
+                        seq = feat_arr[-seq_len:] if feat_arr.shape[0] >= seq_len else feat_arr
+                        x_tensor = torch.tensor(seq, dtype=torch.float32).unsqueeze(0)
+                        prob = model.predict_proba(x_tensor)
+                    else:
+                        prob = model.predict_proba(
+                            torch.tensor(feat_arr, dtype=torch.float32).unsqueeze(0)
+                        )
+                    probabilities.append(prob)
+                    accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                    continue
                 if HAS_LIGHTGBM and isinstance(model, lgb.Booster):
                     raw = model.predict(features)
                     prob = float(np.array(raw).flat[-1])

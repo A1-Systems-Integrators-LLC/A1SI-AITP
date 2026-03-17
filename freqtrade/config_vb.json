@@ -1,13 +1,13 @@
 {
-    "trading_mode": "spot",
-    "margin_mode": "",
-    "max_open_trades": 1,
+    "trading_mode": "futures",
+    "margin_mode": "isolated",
+    "max_open_trades": 3,
     "stake_currency": "USDT",
-    "stake_amount": 30,
+    "stake_amount": 80,
     "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,
-    "dry_run_wallet": 100,
+    "dry_run_wallet": 300,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
         "entry": 10,
@@ -34,7 +34,9 @@
         "name": "kraken",
         "key": "",
         "secret": "",
-        "ccxt_config": {},
+        "ccxt_config": {
+            "defaultType": "swap"
+        },
         "ccxt_sync_config": {},
         "ccxt_async_config": {},
         "pair_whitelist": [],

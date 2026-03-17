@@ -96,6 +96,7 @@ class SignalAggregator:
         sentiment_conviction: float | None = None,
         scanner_score: float | None = None,
         win_rate: float | None = None,
+        macro_score: float | None = None,
     ) -> CompositeSignal:
         """Compute composite conviction signal.
 
@@ -198,6 +199,11 @@ class SignalAggregator:
             except Exception:
                 pass
 
+        # Macro data (FRED: VIX, yield curve, fed funds, DXY)
+        if macro_score is not None:
+            sources["macro"] = _clamp(macro_score)
+            available.append("macro")
+
         result.sources_available = available
 
         # ── 3. Compute weighted score with redistribution ────────────────
@@ -226,6 +232,53 @@ class SignalAggregator:
             except Exception:
                 pass  # Graceful fallback
 
+        # Fear & Greed contrarian modifier (crypto only, ~+-10 points)
+        _fg_reason: str | None = None
+        if asset_class == "crypto":
+            try:
+                from common.market_data.fear_greed import get_fear_greed_signal
+
+                fg = get_fear_greed_signal()
+                fg_mod = fg.get("modifier", 0)
+                if fg_mod != 0:
+                    composite = _clamp(composite + fg_mod)
+                    _fg_reason = (
+                        f"Fear & Greed: {fg.get('classification', 'unknown')}"
+                        f" (value={fg['value']}, {fg_mod:+d})"
+                    )
+            except Exception:
+                pass
+
+        # Reddit sentiment modifier (crypto only, ~+-5 points)
+        _reddit_reason: str | None = None
+        if asset_class == "crypto":
+            try:
+                from common.data_pipeline.reddit_adapter import fetch_reddit_sentiment
+
+                reddit = fetch_reddit_sentiment()
+                reddit_mod = reddit.get("modifier", 0)
+                if reddit_mod != 0:
+                    composite = _clamp(composite + reddit_mod)
+                    _reddit_reason = (
+                        f"Reddit sentiment: {reddit['score']:+.2f}"
+                        f" ({reddit['post_count']} posts, {reddit_mod:+d})"
+                    )
+            except Exception:
+                pass
+
+        # Trending coin modifier (crypto only, +3 points)
+        _trending_reason: str | None = None
+        if asset_class == "crypto":
+            try:
+                from common.market_data.coingecko import get_trending_modifier
+
+                trending_mod = get_trending_modifier(symbol)
+                if trending_mod > 0:
+                    composite = _clamp(composite + trending_mod)
+                    _trending_reason = f"Trending on CoinGecko (+{trending_mod})"
+            except Exception:
+                pass
+
         result.composite_score = round(composite, 1)
 
         # ── 4. Derive outputs ────────────────────────────────────────────
@@ -242,6 +295,12 @@ class SignalAggregator:
         )
         if _dom_reason:
             result.reasoning.insert(0, _dom_reason)
+        if _fg_reason:
+            result.reasoning.insert(0, _fg_reason)
+        if _reddit_reason:
+            result.reasoning.insert(0, _reddit_reason)
+        if _trending_reason:
+            result.reasoning.insert(0, _trending_reason)
 
         # Economic calendar modifier (forex only)
         if asset_class == "forex":

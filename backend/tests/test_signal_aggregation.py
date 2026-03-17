@@ -3,6 +3,7 @@
 import threading
 import time
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 from common.regime.regime_detector import Regime, RegimeState
@@ -154,12 +155,13 @@ class TestConstants:
             for regime in Regime:
                 assert regime in table, f"Missing {regime} in {asset_class}"
 
-    def test_crypto_alignment_hard_disable_zero(self):
-        assert CRYPTO_ALIGNMENT[Regime.STRONG_TREND_DOWN]["CryptoInvestorV1"] == 0
-        assert CRYPTO_ALIGNMENT[Regime.STRONG_TREND_DOWN]["VolatilityBreakout"] == 0
+    def test_crypto_alignment_std_nonzero(self):
+        """With shorts enabled, STD alignment is nonzero for all strategies."""
+        assert CRYPTO_ALIGNMENT[Regime.STRONG_TREND_DOWN]["CryptoInvestorV1"] > 0
+        assert CRYPTO_ALIGNMENT[Regime.STRONG_TREND_DOWN]["VolatilityBreakout"] > 0
 
-    def test_equity_alignment_momentum_disabled_in_downtrend(self):
-        assert EQUITY_ALIGNMENT[Regime.STRONG_TREND_DOWN]["EquityMomentum"] == 0
+    def test_equity_alignment_momentum_in_downtrend(self):
+        assert EQUITY_ALIGNMENT[Regime.STRONG_TREND_DOWN]["EquityMomentum"] > 0
 
     def test_forex_alignment_has_both_strategies(self):
         for regime in Regime:
@@ -167,15 +169,12 @@ class TestConstants:
             assert "ForexTrend" in row
             assert "ForexRange" in row
 
-    def test_hard_disable_set(self):
-        assert (Regime.STRONG_TREND_DOWN, "CryptoInvestorV1") in HARD_DISABLE
-        assert (Regime.STRONG_TREND_DOWN, "VolatilityBreakout") in HARD_DISABLE
-        assert (Regime.STRONG_TREND_DOWN, "EquityMomentum") in HARD_DISABLE
-        # BMR should NOT be hard-disabled
-        assert (Regime.STRONG_TREND_DOWN, "BollingerMeanReversion") not in HARD_DISABLE
+    def test_hard_disable_empty(self):
+        """With shorts enabled, no strategies are hard-disabled."""
+        assert len(HARD_DISABLE) == 0
 
     def test_conviction_threshold_crypto_default(self):
-        assert get_conviction_threshold("crypto") == 55
+        assert get_conviction_threshold("crypto") == 40
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -607,23 +606,22 @@ class TestScorerMap:
 
 
 class TestSignalAggregatorHardDisable:
-    def test_civ1_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
+    """With shorts enabled, no strategies are hard-disabled in any regime."""
+
+    def test_civ1_not_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             regime_state=regime_bearish, technical_score=90,
         )
-        assert sig.hard_disabled is True
-        assert sig.entry_approved is False
-        assert sig.composite_score == 0.0
-        assert sig.signal_label == LABEL_AVOID
+        assert sig.hard_disabled is False
+        assert sig.composite_score > 0.0
 
-    def test_vb_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
+    def test_vb_not_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
             "BTC/USDT", "crypto", "VolatilityBreakout",
             regime_state=regime_bearish, technical_score=85,
         )
-        assert sig.hard_disabled is True
-        assert sig.entry_approved is False
+        assert sig.hard_disabled is False
 
     def test_bmr_not_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
@@ -632,15 +630,26 @@ class TestSignalAggregatorHardDisable:
         )
         assert sig.hard_disabled is False
 
-    def test_equity_momentum_blocked_in_downtrend(self, aggregator, regime_bearish):
+    def test_equity_momentum_not_blocked_in_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
             "AAPL", "equity", "EquityMomentum",
             regime_state=regime_bearish, technical_score=80,
         )
-        assert sig.hard_disabled is True
+        assert sig.hard_disabled is False
 
 
 class TestSignalAggregatorCompute:
+    @pytest.fixture(autouse=True)
+    def _mock_external_modifiers(self):
+        """Patch out external API modifiers so compute() tests are deterministic."""
+        with (
+            patch("common.market_data.coingecko.get_dominance_signal", return_value={"modifier": 0, "regime_label": "neutral", "dominance": 50.0}),
+            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value={"modifier": 0, "classification": "Neutral", "value": 50, "score": 50}),
+            patch("common.data_pipeline.reddit_adapter.fetch_reddit_sentiment", return_value={"score": 0, "post_count": 0, "modifier": 0}),
+            patch("common.market_data.coingecko.get_trending_modifier", return_value=0),
+        ):
+            yield
+
     def test_all_sources_strong_buy(self, aggregator, regime_bullish):
         sig = aggregator.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
@@ -704,30 +713,30 @@ class TestSignalAggregatorCompute:
         assert "regime" in sig.sources_available
 
     def test_position_modifier_tiers(self, aggregator):
-        # Crypto threshold=55: strong_buy=75, buy=65, cautious_buy=55
-        # Score >= 75 -> 1.0
-        sig75 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=80,
+        # Crypto threshold=40: strong_buy=60, buy=50, cautious_buy=40
+        # Score >= 60 -> 1.0
+        sig60 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=65,
         )
-        assert sig75.position_modifier == 1.0
+        assert sig60.position_modifier == 1.0
 
-        # Score 65-74 -> 0.7
-        sig65 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=70,
+        # Score 50-59 -> 0.7
+        sig50 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=55,
         )
-        assert sig65.position_modifier == 0.7
+        assert sig50.position_modifier == 0.7
 
-        # Score 55-64 -> 0.4
-        sig55 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=60,
-        )
-        assert sig55.position_modifier == 0.4
-
-        # Score < 55 -> 0.0
+        # Score 40-49 -> 0.4
         sig40 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=40,
+            "X", "crypto", "CryptoInvestorV1", technical_score=45,
         )
-        assert sig40.position_modifier == 0.0
+        assert sig40.position_modifier == 0.4
+
+        # Score < 40 -> 0.0
+        sig30 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=30,
+        )
+        assert sig30.position_modifier == 0.0
 
     def test_sentiment_conversion(self, aggregator):
         # sentiment_signal of -1 -> score 0, +1 -> score 100, 0 -> 50
@@ -846,6 +855,16 @@ class TestSignalAggregatorCooldown:
 
 
 class TestSignalAggregatorWeightRedistribution:
+    @pytest.fixture(autouse=True)
+    def _mock_external_modifiers(self):
+        with (
+            patch("common.market_data.coingecko.get_dominance_signal", return_value={"modifier": 0, "regime_label": "neutral", "dominance": 50.0}),
+            patch("common.market_data.fear_greed.get_fear_greed_signal", return_value={"modifier": 0, "classification": "Neutral", "value": 50, "score": 50}),
+            patch("common.data_pipeline.reddit_adapter.fetch_reddit_sentiment", return_value={"score": 0, "post_count": 0, "modifier": 0}),
+            patch("common.market_data.coingecko.get_trending_modifier", return_value=0),
+        ):
+            yield
+
     def test_single_source_gets_full_weight(self, aggregator):
         sig = aggregator.compute(
             "X", "crypto", "CIV1",
@@ -859,9 +878,9 @@ class TestSignalAggregatorWeightRedistribution:
             technical_score=80,
             scanner_score=60,
         )
-        # tech weight = 0.30, scanner weight = 0.05
-        # Redistributed: tech = 0.30/0.35 = 6/7, scanner = 0.05/0.35 = 1/7
-        expected = 80 * (0.30 / 0.35) + 60 * (0.05 / 0.35)
+        # tech weight = 0.22, scanner weight = 0.05
+        # Redistributed: tech = 0.22/0.27, scanner = 0.05/0.27
+        expected = 80 * (0.22 / 0.27) + 60 * (0.05 / 0.27)
         assert abs(sig.composite_score - expected) < 0.5
 
     def test_custom_weights(self):

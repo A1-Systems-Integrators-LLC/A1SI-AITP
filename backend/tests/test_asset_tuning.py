@@ -73,28 +73,28 @@ class TestAssetClassConfig:
 class TestGetConfig:
     def test_crypto_config(self):
         cfg = get_config("crypto")
-        assert cfg.conviction_threshold == 55
+        assert cfg.conviction_threshold == 40
         assert cfg.regime_cooldown_bars == 6
         assert cfg.max_hold_multiplier == 1.0
         assert cfg.volume_weight_bonus == 1.0
 
     def test_equity_config(self):
         cfg = get_config("equity")
-        assert cfg.conviction_threshold == 65
+        assert cfg.conviction_threshold == 50
         assert cfg.regime_cooldown_bars == 3
         assert cfg.max_hold_multiplier == 2.0
         assert cfg.volume_weight_bonus == 1.3
 
     def test_forex_config(self):
         cfg = get_config("forex")
-        assert cfg.conviction_threshold == 60
+        assert cfg.conviction_threshold == 45
         assert cfg.regime_cooldown_bars == 4
         assert cfg.max_hold_multiplier == 0.7
         assert cfg.volume_weight_bonus == 0.5
 
     def test_unknown_asset_class_defaults_to_crypto(self):
         cfg = get_config("commodities")
-        assert cfg.conviction_threshold == 55
+        assert cfg.conviction_threshold == 40
         assert cfg is get_config("crypto")
 
 
@@ -105,16 +105,16 @@ class TestGetConfig:
 
 class TestGetConvictionThreshold:
     def test_crypto_threshold(self):
-        assert get_conviction_threshold("crypto") == 55
+        assert get_conviction_threshold("crypto") == 40
 
     def test_equity_threshold(self):
-        assert get_conviction_threshold("equity") == 65
+        assert get_conviction_threshold("equity") == 50
 
     def test_forex_threshold(self):
-        assert get_conviction_threshold("forex") == 60
+        assert get_conviction_threshold("forex") == 45
 
     def test_unknown_falls_back_to_crypto(self):
-        assert get_conviction_threshold("bonds") == 55
+        assert get_conviction_threshold("bonds") == 40
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -206,42 +206,42 @@ class TestGetSessionAdjustment:
 
 
 class TestAggregatorAssetClassThresholds:
-    def test_equity_threshold_rejects_score_60(self):
-        """Equity threshold is 65; score of 60 should be rejected (would pass crypto at 55)."""
+    def test_equity_threshold_rejects_score_45(self):
+        """Equity threshold is 50; score of 45 should be rejected."""
         agg = SignalAggregator()
         sig = agg.compute(
             "AAPL", "equity", "EquityMomentum",
-            technical_score=60,
+            technical_score=45,
         )
         assert not sig.entry_approved
-        assert sig.conviction_threshold == 65
+        assert sig.conviction_threshold == 50
 
-    def test_crypto_threshold_approves_score_60(self):
-        """Crypto threshold is 55; score of 60 should be approved."""
+    def test_crypto_threshold_approves_score_45(self):
+        """Crypto threshold is 40; score of 45 should be approved."""
         agg = SignalAggregator()
         sig = agg.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
-            technical_score=60,
+            technical_score=45,
         )
         assert sig.entry_approved
-        assert sig.conviction_threshold == 55
+        assert sig.conviction_threshold == 40
 
     def test_forex_threshold_between_crypto_and_equity(self):
-        """Forex threshold is 60 (minus session adjustment).
-        Score of 62 approved; score well below effective threshold rejected.
+        """Forex threshold is 45 (minus session adjustment).
+        Score of 50 approved; score well below effective threshold rejected.
         """
         agg = SignalAggregator()
         sig_pass = agg.compute(
             "EUR/USD", "forex", "ForexTrend",
-            technical_score=62,
+            technical_score=50,
         )
         assert sig_pass.entry_approved
 
         # Use score clearly below any possible effective threshold
-        # (base 60, session adj can lower to 50, so 45 is always rejected)
+        # (base 45, session adj can lower to 35, so 30 is always rejected)
         sig_fail = agg.compute(
             "EUR/USD", "forex", "ForexTrend",
-            technical_score=45,
+            technical_score=30,
         )
         assert not sig_fail.entry_approved
 
@@ -251,7 +251,7 @@ class TestAggregatorAssetClassThresholds:
             "AAPL", "equity", "EquityMomentum",
             technical_score=80,
         )
-        assert sig.conviction_threshold == 65
+        assert sig.conviction_threshold == 50
         assert sig.session_adjustment == 0
 
     def test_volume_weight_bonus_equity(self):

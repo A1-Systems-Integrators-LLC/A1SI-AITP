@@ -277,7 +277,7 @@ data:
 # ──────────────────────────────────────────────
 freqtrade:
   dry_run: true
-  trading_mode: "spot"
+  trading_mode: "futures"
   stake_currency: "USDT"
   stake_amount: "unlimited"
   tradable_balance_ratio: 0.99
@@ -439,11 +439,14 @@ vectorbt:
 # Risk management (global)
 # ──────────────────────────────────────────────
 risk_management:
-  max_portfolio_drawdown: 0.15  # 15% max drawdown → halt all trading
-  max_single_trade_risk: 0.02   # 2% of portfolio per trade
-  max_daily_loss: 0.05          # 5% daily loss limit
+  max_portfolio_drawdown: 0.40  # 40% max drawdown — aggressive $500 risk capital
+  max_single_trade_risk: 0.08   # 8% of portfolio per trade (leveraged)
+  max_daily_loss: 0.15          # 15% daily loss limit
   max_correlation: 0.7          # Max correlation between concurrent positions
   min_paper_trade_days: 14      # Minimum paper trading before live
+  max_leverage: 5.0             # Kraken futures isolated margin cap
+  max_position_size_pct: 0.35   # 35% of portfolio per position
+  min_risk_reward: 1.0          # 1:1 minimum R:R
 
 # ──────────────────────────────────────────────
 # Per-asset-class risk overrides
@@ -457,9 +460,9 @@ equity:
 forex:
   risk:
     stoploss: -0.02
-    max_leverage: 1.0
-    max_position_size_pct: 0.10
-    max_daily_loss: 0.04
+    max_leverage: 5.0
+    max_position_size_pct: 0.35
+    max_daily_loss: 0.15
 
 # ──────────────────────────────────────────────
 # hftbacktest configuration (Tier 4 — HFT)

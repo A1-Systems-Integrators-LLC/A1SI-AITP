@@ -529,9 +529,9 @@ SCHEDULED_TASKS = {
     },
     "economic_calendar": {
         "name": "Economic Calendar Check",
-        "description": "Check for upcoming high-impact economic events",
+        "description": "Check for upcoming high-impact economic events (ForexFactory + static fallback)",
         "task_type": "economic_calendar",
-        "interval_seconds": 86400,
+        "interval_seconds": 14400,
         "params": {},
     },
     "funding_rate_refresh": {
@@ -540,6 +540,34 @@ SCHEDULED_TASKS = {
         "task_type": "funding_rate_refresh",
         "interval_seconds": 28800,
         "params": {"asset_class": "crypto"},
+    },
+    "fear_greed_refresh": {
+        "name": "Fear & Greed Index Refresh",
+        "description": "Fetch Fear & Greed Index for contrarian crypto signals",
+        "task_type": "fear_greed_refresh",
+        "interval_seconds": 3600,
+        "params": {},
+    },
+    "reddit_sentiment_refresh": {
+        "name": "Reddit Sentiment Refresh",
+        "description": "Scrape crypto subreddits for sentiment scoring",
+        "task_type": "reddit_sentiment_refresh",
+        "interval_seconds": 1800,
+        "params": {},
+    },
+    "coingecko_trending_refresh": {
+        "name": "CoinGecko Trending Refresh",
+        "description": "Fetch trending coins and DeFi market data",
+        "task_type": "coingecko_trending_refresh",
+        "interval_seconds": 1800,
+        "params": {},
+    },
+    "macro_data_refresh": {
+        "name": "FRED Macro Data Refresh",
+        "description": "Fetch Fed Funds, yield curve, VIX, DXY from FRED",
+        "task_type": "macro_data_refresh",
+        "interval_seconds": 14400,
+        "params": {},
     },
 }
 

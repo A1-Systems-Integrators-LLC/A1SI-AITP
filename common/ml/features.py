@@ -300,6 +300,66 @@ def add_volatility_regime_features(df: pd.DataFrame) -> pd.DataFrame:
     return feat
 
 
+def add_cross_asset_features(
+    df: pd.DataFrame,
+    reference_df: pd.DataFrame | None = None,
+    asset_class: str = "crypto",
+    window: int = 20,
+) -> pd.DataFrame:
+    """Add cross-asset correlation and lead-lag features.
+
+    Uses a reference asset to compute:
+    - Rolling correlation (20-bar)
+    - Lead-lag returns (reference leads by 1-4 bars)
+    - Relative strength (asset return / reference return)
+
+    Reference assets by class:
+    - crypto: BTC/USDT (for alt coins)
+    - equity: SPY (S&P 500 proxy)
+    - forex: DXY proxy (via USD index)
+
+    Args:
+        df: OHLCV DataFrame for the target asset.
+        reference_df: OHLCV DataFrame for reference asset. None = skip.
+        asset_class: Used only for labeling.
+        window: Rolling window for correlation.
+
+    Returns:
+        DataFrame with cross-asset feature columns.
+    """
+    feat = pd.DataFrame(index=df.index)
+
+    if reference_df is None or reference_df.empty:
+        # No reference data available — fill with neutral values
+        feat["cross_corr"] = 0.0
+        feat["cross_lead1_return"] = 0.0
+        feat["cross_lead2_return"] = 0.0
+        feat["relative_strength"] = 0.0
+        return feat
+
+    # Align reference to target index via forward-fill
+    ref_close = reference_df["close"].reindex(df.index, method="ffill")
+
+    # Target and reference returns
+    target_ret = df["close"].pct_change()
+    ref_ret = ref_close.pct_change()
+
+    # Rolling correlation
+    feat["cross_corr"] = target_ret.rolling(window, min_periods=5).corr(ref_ret)
+
+    # Lead-lag: reference returns from 1 and 2 bars ago
+    # (reference leads → shifted reference returns predict current moves)
+    feat["cross_lead1_return"] = ref_ret.shift(1)
+    feat["cross_lead2_return"] = ref_ret.shift(2)
+
+    # Relative strength: cumulative ratio over window
+    cum_target = target_ret.rolling(window, min_periods=5).sum()
+    cum_ref = ref_ret.rolling(window, min_periods=5).sum()
+    feat["relative_strength"] = cum_target - cum_ref
+
+    return feat
+
+
 def build_feature_matrix(
     df: pd.DataFrame,
     config: dict | None = None,
@@ -313,6 +373,9 @@ def build_feature_matrix(
     include_volatility_regime: bool = False,
     include_regime: bool = False,
     include_sentiment: bool = False,
+    include_cross_asset: bool = False,
+    reference_df: pd.DataFrame | None = None,
+    asset_class: str = "crypto",
 ) -> tuple[pd.DataFrame, pd.Series, list[str]]:
     """Full pipeline: OHLCV → feature matrix + target.
 
@@ -363,6 +426,10 @@ def build_feature_matrix(
     if include_volatility_regime:
         vol_feat = add_volatility_regime_features(df)
         parts.append(vol_feat)
+
+    if include_cross_asset:
+        cross_feat = add_cross_asset_features(df, reference_df, asset_class)
+        parts.append(cross_feat)
 
     # Funding rate features (crypto only, optional)
     if cfg.get("include_funding_rate", False):

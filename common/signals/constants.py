@@ -6,13 +6,14 @@ from common.regime.regime_detector import Regime
 # Must sum to 1.0.  When a source is unavailable its weight is
 # redistributed proportionally to the remaining sources.
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "technical": 0.30,
-    "regime": 0.25,
+    "technical": 0.22,
+    "regime": 0.18,
     "ml": 0.20,
-    "sentiment": 0.10,
+    "sentiment": 0.22,
     "scanner": 0.05,
-    "win_rate": 0.05,
+    "win_rate": 0.03,
     "funding": 0.05,
+    "macro": 0.05,
 }
 
 # ── Entry thresholds ─────────────────────────────────────────────────────────
@@ -39,32 +40,71 @@ CRYPTO_ALIGNMENT: dict[Regime, dict[str, int]] = {
         "CryptoInvestorV1": 95,
         "BollingerMeanReversion": 25,
         "VolatilityBreakout": 85,
+        "MomentumShort": 10,
+        "GridDCA": 15,
+        "MomentumScalper15m": 80,
+        "SentimentEventTrader": 70,
+        "TrendReversal": 20,
     },
     Regime.WEAK_TREND_UP: {
         "CryptoInvestorV1": 70,
         "BollingerMeanReversion": 55,
         "VolatilityBreakout": 15,
+        "MomentumShort": 20,
+        "GridDCA": 40,
+        "MomentumScalper15m": 60,
+        "SentimentEventTrader": 55,
+        "TrendReversal": 35,
     },
-    Regime.RANGING: {"CryptoInvestorV1": 15, "BollingerMeanReversion": 95, "VolatilityBreakout": 5},
+    Regime.RANGING: {
+        "CryptoInvestorV1": 15,
+        "BollingerMeanReversion": 95,
+        "VolatilityBreakout": 5,
+        "MomentumShort": 30,
+        "GridDCA": 95,  # Grid thrives in ranging
+        "MomentumScalper15m": 40,
+        "SentimentEventTrader": 50,
+        "TrendReversal": 45,
+    },
     Regime.WEAK_TREND_DOWN: {
         "CryptoInvestorV1": 10,
         "BollingerMeanReversion": 75,
         "VolatilityBreakout": 5,
+        "MomentumShort": 70,
+        "GridDCA": 50,
+        "MomentumScalper15m": 35,
+        "SentimentEventTrader": 55,
+        "TrendReversal": 60,
     },
     Regime.STRONG_TREND_DOWN: {
-        "CryptoInvestorV1": 0,
+        "CryptoInvestorV1": 60,  # Shorts thrive in strong downtrends
         "BollingerMeanReversion": 45,
-        "VolatilityBreakout": 0,
+        "VolatilityBreakout": 55,  # Breakdown shorts
+        "MomentumShort": 90,  # Short-only excels here
+        "GridDCA": 20,
+        "MomentumScalper15m": 50,
+        "SentimentEventTrader": 65,
+        "TrendReversal": 60,  # Catches bottoms
     },
     Regime.HIGH_VOLATILITY: {
         "CryptoInvestorV1": 25,
         "BollingerMeanReversion": 65,
         "VolatilityBreakout": 70,
+        "MomentumShort": 60,
+        "GridDCA": 30,
+        "MomentumScalper15m": 55,
+        "SentimentEventTrader": 75,  # Sentiment spikes in HV
+        "TrendReversal": 70,  # Reversals happen in HV
     },
     Regime.UNKNOWN: {
         "CryptoInvestorV1": 20,
         "BollingerMeanReversion": 45,
         "VolatilityBreakout": 10,
+        "MomentumShort": 25,
+        "GridDCA": 35,
+        "MomentumScalper15m": 30,
+        "SentimentEventTrader": 40,
+        "TrendReversal": 25,
     },
 }
 
@@ -73,7 +113,7 @@ EQUITY_ALIGNMENT: dict[Regime, dict[str, int]] = {
     Regime.WEAK_TREND_UP: {"EquityMomentum": 75, "EquityMeanReversion": 45},
     Regime.RANGING: {"EquityMomentum": 20, "EquityMeanReversion": 90},
     Regime.WEAK_TREND_DOWN: {"EquityMomentum": 10, "EquityMeanReversion": 65},
-    Regime.STRONG_TREND_DOWN: {"EquityMomentum": 0, "EquityMeanReversion": 35},
+    Regime.STRONG_TREND_DOWN: {"EquityMomentum": 50, "EquityMeanReversion": 35},
     Regime.HIGH_VOLATILITY: {"EquityMomentum": 25, "EquityMeanReversion": 55},
     Regime.UNKNOWN: {"EquityMomentum": 20, "EquityMeanReversion": 35},
 }
@@ -97,11 +137,8 @@ ALIGNMENT_TABLES: dict[str, dict[Regime, dict[str, int]]] = {
 
 # ── Hard-disable rules ───────────────────────────────────────────────────────
 # (regime, strategy) pairs that instantly reject regardless of other scores.
-HARD_DISABLE: set[tuple[Regime, str]] = {
-    (Regime.STRONG_TREND_DOWN, "CryptoInvestorV1"),
-    (Regime.STRONG_TREND_DOWN, "VolatilityBreakout"),
-    (Regime.STRONG_TREND_DOWN, "EquityMomentum"),
-}
+# Cleared: with shorts enabled, all strategies can profit in any regime.
+HARD_DISABLE: set[tuple[Regime, str]] = set()
 
 # ── Regime change cooldown ───────────────────────────────────────────────────
 # REGIME_COOLDOWN_BARS moved to per-asset-class config in asset_tuning.py
@@ -157,6 +194,26 @@ PARTIAL_PROFIT_TARGETS: dict[str, list[tuple[float, float, str]]] = {
         (0.01, 1 / 2, "FxRange 1/2 at 1%"),
         (0.02, 3 / 4, "FxRange 3/4 at 2%"),
     ],
+    "MomentumShort": [
+        (0.03, 1 / 3, "MShort 1/3 at 3%"),
+        (0.05, 1 / 2, "MShort 1/2 at 5%"),
+    ],
+    "GridDCA": [
+        (0.015, 1 / 2, "Grid 1/2 at 1.5%"),
+        (0.025, 3 / 4, "Grid 3/4 at 2.5%"),
+    ],
+    "MomentumScalper15m": [
+        (0.005, 1 / 2, "Scalp 1/2 at 0.5%"),
+        (0.008, 3 / 4, "Scalp 3/4 at 0.8%"),
+    ],
+    "SentimentEventTrader": [
+        (0.03, 1 / 3, "Sent 1/3 at 3%"),
+        (0.05, 1 / 2, "Sent 1/2 at 5%"),
+    ],
+    "TrendReversal": [
+        (0.04, 1 / 3, "TRev 1/3 at 4%"),
+        (0.07, 1 / 2, "TRev 1/2 at 7%"),
+    ],
 }
 
 # ── Time-based exit ──────────────────────────────────────────────────────────
@@ -170,6 +227,11 @@ MAX_HOLD_HOURS: dict[str, float] = {
     "EquityMeanReversion": 120.0,  # 5 days
     "ForexTrend": 96.0,  # 4 days
     "ForexRange": 48.0,  # 2 days (range trades resolve fast)
+    "MomentumShort": 48.0,  # 2 days (short momentum resolves fast)
+    "GridDCA": 72.0,  # 3 days (grid needs time to mean-revert)
+    "MomentumScalper15m": 12.0,  # 12 hours (scalper exits fast)
+    "SentimentEventTrader": 48.0,  # 2 days (sentiment events are short-lived)
+    "TrendReversal": 120.0,  # 5 days (reversals need time to develop)
 }
 DEFAULT_MAX_HOLD_HOURS = 96.0  # 4 days fallback
 

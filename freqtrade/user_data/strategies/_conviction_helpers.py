@@ -48,7 +48,9 @@ SIGNAL_REFRESH_INTERVAL = 300  # 5 minutes
 SIGNAL_MAX_AGE = 900  # 15 minutes
 
 
-def fetch_signal(api_url: str, pair: str, strategy_name: str) -> dict[str, Any] | None:
+def fetch_signal(
+    api_url: str, pair: str, strategy_name: str, side: str = "long",
+) -> dict[str, Any] | None:
     """Fetch composite signal from entry-check API.
 
     Returns the API response dict or None on failure.
@@ -59,7 +61,7 @@ def fetch_signal(api_url: str, pair: str, strategy_name: str) -> dict[str, Any] 
         symbol_url = pair.replace("/", "-")
         resp = requests.post(
             f"{api_url}/api/signals/{symbol_url}/entry-check/",
-            json={"strategy": strategy_name, "asset_class": "crypto"},
+            json={"strategy": strategy_name, "asset_class": "crypto", "side": side},
             timeout=5,
         )
         if resp.status_code == 200:
@@ -240,11 +242,23 @@ def get_position_modifier(strategy: Any, pair: str) -> float:
     """Get position size modifier from cached signal.
 
     Returns 1.0 (full size) if no signal available.
+    Multiplied by profit reinvestment stake multiplier when available.
     """
+    modifier = 1.0
     signal = getattr(strategy, "_signals", {}).get(pair)
     if signal:
-        return signal.get("position_modifier", 1.0)
-    return 1.0
+        modifier = signal.get("position_modifier", 1.0)
+
+    # Scale by profit reinvestment tracker
+    try:
+        from common.risk.profit_tracker import ProfitTracker
+
+        tracker = ProfitTracker.get_instance()
+        modifier *= tracker.get_stake_multiplier()
+    except Exception:
+        pass  # fail-open
+
+    return modifier
 
 
 def check_exit_advice(

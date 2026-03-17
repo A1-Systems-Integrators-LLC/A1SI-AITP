@@ -19,6 +19,14 @@ except ImportError:  # pragma: no cover
     HAS_LIGHTGBM = False
     lgb = None  # type: ignore[assignment]
 
+try:
+    from common.ml.lstm_model import LSTMPredictor
+
+    HAS_LSTM = True
+except ImportError:  # pragma: no cover
+    HAS_LSTM = False
+    LSTMPredictor = None  # type: ignore[assignment, misc]
+
 # Default models directory — relative to project root
 DEFAULT_MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "models"
 
@@ -50,7 +58,7 @@ class ModelRegistry:
         """Save a trained model and its metadata.
 
         Args:
-            model: Trained LGBMClassifier.
+            model: Trained model (LGBMClassifier, XGBClassifier, or LSTMPredictor).
             metrics: Training metrics dict.
             metadata: Training metadata dict.
             feature_importance: Feature importance scores.
@@ -62,38 +70,39 @@ class ModelRegistry:
             model_id string.
 
         """
-        if not HAS_LIGHTGBM:
-            raise ImportError("lightgbm required to save models")
-
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         model_id = f"{ts}_{symbol.replace('/', '')}_{timeframe}" if symbol else ts
 
         model_dir = self.models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save model
+        # Save model — detect type
         model_path = model_dir / "model.txt"
         model_format = "lightgbm"
 
-        # Check if XGBoost model
-        try:
-            import xgboost as _xgb
+        # LSTM (torch) model
+        if HAS_LSTM and isinstance(model, LSTMPredictor):
+            model_path = model_dir / "model.pt"
+            model.save(model_path)
+            model_format = "lstm"
+        else:
+            if not HAS_LIGHTGBM:
+                raise ImportError("lightgbm required to save tree models")
+            # Check if XGBoost model
+            try:
+                import xgboost as _xgb
 
-            if isinstance(model, _xgb.XGBClassifier):
-                model_path = model_dir / "model.json"
-                # Use underlying Booster to avoid sklearn wrapper issues
-                xgb_booster = model.get_booster()
-                xgb_booster.save_model(str(model_path))
-                model_format = "xgboost"
-            else:
-                # LightGBM 4.x removed save_model from sklearn API;
-                # use the underlying Booster instead.
+                if isinstance(model, _xgb.XGBClassifier):
+                    model_path = model_dir / "model.json"
+                    xgb_booster = model.get_booster()
+                    xgb_booster.save_model(str(model_path))
+                    model_format = "xgboost"
+                else:
+                    booster = getattr(model, "booster_", model)
+                    booster.save_model(str(model_path))
+            except ImportError:
                 booster = getattr(model, "booster_", model)
                 booster.save_model(str(model_path))
-        except ImportError:
-            # xgboost not installed — must be LightGBM
-            booster = getattr(model, "booster_", model)
-            booster.save_model(str(model_path))
 
         # Save manifest
         manifest = {
@@ -120,16 +129,16 @@ class ModelRegistry:
             model_id: The model identifier.
 
         Returns:
-            Tuple of (LGBMClassifier, manifest dict).
+            Tuple of (model, manifest dict). Model type depends on format:
+            - lightgbm: LGBMClassifier
+            - xgboost: XGBClassifier
+            - lstm: LSTMPredictor
 
         Raises:
             FileNotFoundError: If model_id doesn't exist.
-            ImportError: If lightgbm not installed.
+            ImportError: If required library not installed.
 
         """
-        if not HAS_LIGHTGBM:
-            raise ImportError("lightgbm required to load models")
-
         model_dir = self.models_dir / model_id
         if not model_dir.exists():
             raise FileNotFoundError(f"Model not found: {model_id}")
@@ -138,6 +147,13 @@ class ModelRegistry:
         manifest = json.loads(manifest_path.read_text())
 
         model_format = manifest.get("model_format", "lightgbm")
+
+        # LSTM (torch) model
+        if model_format == "lstm":
+            if not HAS_LSTM:
+                raise ImportError("torch required to load LSTM models")
+            model_path = model_dir / "model.pt"
+            return LSTMPredictor.load(model_path), manifest
 
         if model_format == "xgboost":
             try:
@@ -151,6 +167,9 @@ class ModelRegistry:
                 raise ImportError("xgboost required to load this model") from err
 
         # LightGBM load
+        if not HAS_LIGHTGBM:
+            raise ImportError("lightgbm required to load models")
+
         model_path = model_dir / "model.txt"
         booster = lgb.Booster(model_file=str(model_path))
 

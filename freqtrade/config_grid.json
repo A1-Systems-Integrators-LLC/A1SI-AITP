@@ -1,13 +1,13 @@
 {
     "trading_mode": "futures",
     "margin_mode": "isolated",
-    "max_open_trades": 3,
+    "max_open_trades": 5,
     "stake_currency": "USDT",
-    "stake_amount": 80,
+    "stake_amount": 40,
     "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,
-    "dry_run_wallet": 300,
+    "dry_run_wallet": 200,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
         "entry": 10,
@@ -78,16 +78,16 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "0.0.0.0",
-        "listen_port": 8083,
+        "listen_port": 8086,
         "verbosity": "error",
         "enable_openapi": true,
-        "jwt_secret_key": "change_me_bmr",
+        "jwt_secret_key": "change_me_grid",
         "CORS_origins": ["http://localhost:3000"],
         "username": "freqtrader",
         "password": "freqtrader"
     },
-    "db_url": "sqlite:///tradesv3.bmr.dryrun.sqlite",
-    "bot_name": "a1si-bmr",
+    "db_url": "sqlite:///tradesv3.grid.dryrun.sqlite",
+    "bot_name": "a1si-grid-dca",
     "initial_state": "running",
     "order_types": {
         "entry": "limit",

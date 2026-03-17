@@ -927,8 +927,8 @@ class TestEndToEndConvictionPipeline:
         adj = feedback.compute_weight_adjustments()
         assert adj.total_trades <= 1
 
-    def test_pipeline_with_hard_disable(self):
-        """Test that hard-disabled regime blocks entry."""
+    def test_pipeline_with_strong_downtrend(self):
+        """Test that STD regime allows entry with shorts enabled."""
         from common.signals.aggregator import SignalAggregator
         from common.signals.constants import Regime
 
@@ -942,11 +942,11 @@ class TestEndToEndConvictionPipeline:
             asset_class="crypto",
             strategy_name="CryptoInvestorV1",
             regime_state=mock_state,
+            technical_score=80,
         )
 
-        assert signal.hard_disabled is True
-        assert signal.entry_approved is False
-        assert signal.position_modifier == 0.0
+        assert signal.hard_disabled is False
+        assert signal.composite_score > 0.0
 
     def test_pipeline_exit_regime_deterioration(self):
         """Test exit advice when regime deteriorates."""

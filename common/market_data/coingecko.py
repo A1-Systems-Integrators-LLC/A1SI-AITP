@@ -79,7 +79,116 @@ def get_dominance_signal(dominance: float | None = None) -> dict:
         return {"dominance": dominance, "regime_label": "neutral", "modifier": 0}
 
 
+def fetch_trending_coins() -> list[dict] | None:
+    """Fetch trending coins from CoinGecko.
+
+    Returns:
+        List of trending coin dicts with id, name, symbol, market_cap_rank.
+        None on failure.
+    """
+    cache_key = "trending"
+    now = time.monotonic()
+
+    with _cache_lock:
+        cached = _dominance_cache.get(cache_key)
+        if cached and (now - cached[0]) < CACHE_TTL:
+            return cached[1]
+
+    try:
+        resp = requests.get(
+            "https://api.coingecko.com/api/v3/search/trending",
+            timeout=10,
+            headers={"Accept": "application/json"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        coins = []
+        for item in data.get("coins", []):
+            coin = item.get("item", {})
+            coins.append({
+                "id": coin.get("id"),
+                "name": coin.get("name"),
+                "symbol": coin.get("symbol", "").upper(),
+                "market_cap_rank": coin.get("market_cap_rank"),
+            })
+
+        with _cache_lock:
+            _dominance_cache[cache_key] = (time.monotonic(), coins)
+
+        logger.info("Trending coins: %s", [c["symbol"] for c in coins[:5]])
+        return coins
+
+    except Exception as e:
+        logger.warning("Failed to fetch trending coins: %s", e)
+        return None
+
+
+def get_trending_modifier(symbol: str) -> int:
+    """Return +3 composite score modifier if symbol is trending on CoinGecko.
+
+    Args:
+        symbol: Trading pair (e.g., "BTC/USDT").
+
+    Returns:
+        +3 if trending, 0 otherwise.
+    """
+    coins = fetch_trending_coins()
+    if not coins:
+        return 0
+
+    # Extract base symbol from pair
+    base = symbol.split("/")[0].upper() if "/" in symbol else symbol.upper()
+    trending_symbols = {c["symbol"] for c in coins}
+
+    if base in trending_symbols:
+        return 3
+    return 0
+
+
+def fetch_global_defi_data() -> dict | None:
+    """Fetch global DeFi market data from CoinGecko.
+
+    Returns:
+        Dict with defi_market_cap, eth_market_cap, defi_dominance, top_coin.
+        None on failure.
+    """
+    cache_key = "defi_global"
+    now = time.monotonic()
+
+    with _cache_lock:
+        cached = _dominance_cache.get(cache_key)
+        if cached and (now - cached[0]) < CACHE_TTL:
+            return cached[1]
+
+    try:
+        resp = requests.get(
+            "https://api.coingecko.com/api/v3/global/decentralized_finance_defi",
+            timeout=10,
+            headers={"Accept": "application/json"},
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", {})
+
+        result = {
+            "defi_market_cap": float(raw.get("defi_market_cap", 0)),
+            "eth_market_cap": float(raw.get("eth_market_cap", 0)),
+            "defi_dominance": float(raw.get("defi_dominance", 0)),
+            "top_coin_name": raw.get("top_coin_name"),
+        }
+
+        with _cache_lock:
+            _dominance_cache[cache_key] = (time.monotonic(), result)
+
+        logger.info("DeFi dominance: %.1f%%", result["defi_dominance"])
+        return result
+
+    except Exception as e:
+        logger.warning("Failed to fetch global DeFi data: %s", e)
+        return None
+
+
 def clear_cache() -> None:
-    """Clear the dominance cache (for testing)."""
+    """Clear all CoinGecko caches (for testing)."""
     with _cache_lock:
         _dominance_cache.clear()

@@ -46,7 +46,7 @@ class BollingerMeanReversion(IStrategy):
 
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = False
+    can_short = True
     # Warm-up: BB period up to 30, plus RSI/ADX/ATR 14 — need at least 30 candles.
     startup_candle_count = 50
 
@@ -84,6 +84,22 @@ class BollingerMeanReversion(IStrategy):
     )
     buy_adx_ceiling = IntParameter(25, 60, default=40, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(55, 75, default=60, space="sell", optimize=True)
+
+    def leverage(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_leverage: float,
+        max_leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Dynamic leverage: base 3x, scaled by conviction modifier, capped at 5x."""
+        modifier = get_position_modifier(self, pair)
+        lev = min(3.0 * modifier, 5.0)
+        return min(lev, max_leverage)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         from freqtrade.enums import RunMode
@@ -161,6 +177,20 @@ class BollingerMeanReversion(IStrategy):
             conditions.append(dataframe["volume_ratio"] > vol_factor)
 
         dataframe.loc[reduce(lambda x, y: x & y, conditions), "enter_long"] = 1
+
+        # ── Short entry: price above upper BB + RSI overbought + volume spike ──
+        short_conditions = [
+            dataframe["close"] > dataframe[f"bb_upper{bb_suffix}"],
+            dataframe["rsi"] > (100 - self.buy_rsi_threshold.value),  # Mirror oversold
+            dataframe["adx"] < self.buy_adx_ceiling.value,
+            dataframe["rsi"] < 95,
+            dataframe["volume"] > 0,
+        ]
+        if vol_factor > 0:
+            short_conditions.append(dataframe["volume_ratio"] > vol_factor)
+
+        dataframe.loc[reduce(lambda x, y: x & y, short_conditions), "enter_short"] = 1
+
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -178,6 +208,14 @@ class BollingerMeanReversion(IStrategy):
 
         # Exit on either condition
         dataframe.loc[reduce(lambda x, y: x | y, conditions), "exit_long"] = 1
+
+        # ── Short exit: price drops to middle band OR RSI oversold ──
+        short_exit_conditions = [
+            dataframe["close"] < dataframe[f"bb_mid{bb_suffix}"],
+            dataframe["rsi"] < (100 - self.sell_rsi_threshold.value),
+        ]
+        dataframe.loc[reduce(lambda x, y: x | y, short_exit_conditions), "exit_short"] = 1
+
         return dataframe
 
     def bot_loop_start(self, current_time=None, **kwargs) -> None:

@@ -1319,6 +1319,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/risk/{portfolio_id}/profit-tracking/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /api/risk/{portfolio_id}/profit-tracking/ — profit reinvestment state. */
+        get: operations["risk_profit_tracking_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/risk/{portfolio_id}/record-metrics/": {
         parameters: {
             query?: never;
@@ -5672,6 +5689,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PositionSizeResponse"];
                 };
+            };
+        };
+    };
+    risk_profit_tracking_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -53,7 +53,7 @@ class CryptoInvestorV1(IStrategy):
     # ── Strategy metadata ──
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = False
+    can_short = True
     # Warm-up: need at least buy_ema_slow (100) candles for indicators to be valid.
     startup_candle_count = 150
 
@@ -100,6 +100,22 @@ class CryptoInvestorV1(IStrategy):
     # ── Informative pairs ──
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
+
+    def leverage(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_leverage: float,
+        max_leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
+        """Dynamic leverage: base 3x, scaled by conviction modifier, capped at 5x."""
+        modifier = get_position_modifier(self, pair)
+        lev = min(3.0 * modifier, 5.0)
+        return min(lev, max_leverage)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Calculate all technical indicators."""
@@ -191,6 +207,23 @@ class CryptoInvestorV1(IStrategy):
             "enter_long",
         ] = 1
 
+        # ── Short entry: EMA bearish alignment + RSI overbought + MACD declining ──
+        ema_bearish = (
+            (dataframe[ema_fast] < dataframe[ema_slow])
+            | (dataframe[ema_slow] < dataframe[ema_slow].shift(5))
+        )
+        rsi_overbought = dataframe["rsi"] > 60
+        macd_declining = (
+            (dataframe["macdhist"] < dataframe["macdhist"].shift(1))
+            | (dataframe["macd"] < dataframe["macdsignal"])
+        )
+        not_oversold = dataframe["rsi"] < 90
+
+        dataframe.loc[
+            ema_bearish & rsi_overbought & macd_declining & has_volume & not_oversold,
+            "enter_short",
+        ] = 1
+
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -211,6 +244,15 @@ class CryptoInvestorV1(IStrategy):
                 reduce(lambda x, y: x | y, conditions) | exit_trend_break,
                 "exit_long",
             ] = 1
+
+        # ── Short exit: RSI oversold OR price crosses above fast EMA ──
+        exit_short_rsi = dataframe["rsi"] < 30
+        exit_short_trend = (
+            (dataframe["close"] > dataframe[f"ema_{self.buy_ema_fast.value}"])
+            & (dataframe["close"].shift(1) <= dataframe[f"ema_{self.buy_ema_fast.value}"].shift(1))
+        )
+
+        dataframe.loc[exit_short_rsi | exit_short_trend, "exit_short"] = 1
 
         return dataframe
 

@@ -61,8 +61,8 @@ class StrategyOrchestrator:
     }
 
     # Alignment thresholds
-    PAUSE_THRESHOLD = 15
-    REDUCE_THRESHOLD = 40
+    PAUSE_THRESHOLD = 5
+    REDUCE_THRESHOLD = 20
 
     # Persistence path for state snapshot
     _STATE_FILE = Path(__file__).resolve().parents[2] / "data" / "orchestrator_state.json"

@@ -233,3 +233,17 @@ class RiskLimitHistoryView(APIView):
             qs = qs.filter(field_name=field)
         entries = qs.order_by("-changed_at")[:limit]
         return Response(RiskLimitChangeSerializer(entries, many=True).data)
+
+
+class ProfitTrackingView(APIView):
+    """GET /api/risk/{portfolio_id}/profit-tracking/ — profit reinvestment state."""
+
+    @extend_schema(tags=["Risk"])
+    def get(self, request: Request, portfolio_id: int) -> Response:
+        try:
+            from common.risk.profit_tracker import ProfitTracker
+
+            tracker = ProfitTracker.get_instance()
+            return Response(tracker.get_summary())
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

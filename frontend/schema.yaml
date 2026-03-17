@@ -1909,6 +1909,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/PositionSizeResponse'
           description: ''
+  /api/risk/{portfolio_id}/profit-tracking/:
+    get:
+      operationId: risk_profit_tracking_retrieve
+      description: GET /api/risk/{portfolio_id}/profit-tracking/ — profit reinvestment
+        state.
+      parameters:
+      - in: path
+        name: portfolio_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Risk
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/risk/{portfolio_id}/record-metrics/:
     post:
       operationId: risk_record_metrics_create

@@ -27,7 +27,7 @@ class AssetClassConfig:
 
 ASSET_CONFIGS: dict[str, AssetClassConfig] = {
     "crypto": AssetClassConfig(
-        conviction_threshold=55,  # Same as previous global default
+        conviction_threshold=40,  # Aggressive: lower bar for more entries
         regime_cooldown_bars=6,
         max_hold_multiplier=1.0,
         volume_weight_bonus=1.0,
@@ -35,7 +35,7 @@ ASSET_CONFIGS: dict[str, AssetClassConfig] = {
         session_bonus={},  # 24/7, no session bonuses
     ),
     "equity": AssetClassConfig(
-        conviction_threshold=65,  # Higher bar — fewer but higher-quality entries
+        conviction_threshold=50,  # Lowered from 65 for more entries
         regime_cooldown_bars=3,  # Faster adaptation (less volatile)
         max_hold_multiplier=2.0,  # Hold longer (daily bars, slower moves)
         volume_weight_bonus=1.3,  # Volume is more reliable signal
@@ -43,7 +43,7 @@ ASSET_CONFIGS: dict[str, AssetClassConfig] = {
         session_bonus={},  # Only trades during NYSE hours (already enforced)
     ),
     "forex": AssetClassConfig(
-        conviction_threshold=60,  # Moderate bar
+        conviction_threshold=45,  # Lowered from 60 for more entries
         regime_cooldown_bars=4,
         max_hold_multiplier=0.7,  # Shorter holds (faster-moving)
         volume_weight_bonus=0.5,  # Tick volume less reliable

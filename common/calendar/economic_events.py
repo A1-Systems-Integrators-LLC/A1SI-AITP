@@ -1,13 +1,23 @@
-"""Economic Calendar — static recurring event schedule for forex position sizing.
+"""Economic Calendar — dynamic + static event schedule for forex position sizing.
 
-Tracks FOMC, NFP, ECB, and other high-impact events that cause extreme forex volatility.
-Uses static schedules (no external API dependency).
+Primary: ForexFactory JSON feed (https://nfs.faireconomy.media/ff_calendar_thisweek.json).
+Fallback: static FOMC/ECB/NFP dates when feed unavailable.
+Thread-safe with 4-hour cache.
 """
 
 import logging
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 
+import requests
+
 logger = logging.getLogger(__name__)
+
+_ff_cache: dict[str, tuple[float, list]] = {}
+_ff_cache_lock = threading.Lock()
+FF_CACHE_TTL = 14400  # 4 hours
+FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 
 # Impact levels
 HIGH_IMPACT = "high"
@@ -87,11 +97,78 @@ def _get_nfp_dates(year: int) -> list[datetime]:
     return [_get_first_friday(year, m) for m in range(1, 13)]
 
 
+def fetch_forexfactory_events() -> list[dict]:
+    """Fetch this week's events from ForexFactory JSON feed.
+
+    Returns:
+        List of event dicts with: title, country, date, impact, forecast, previous.
+        Empty list on failure.
+    """
+    cache_key = "ff_events"
+    now_mono = time.monotonic()
+
+    with _ff_cache_lock:
+        cached = _ff_cache.get(cache_key)
+        if cached and (now_mono - cached[0]) < FF_CACHE_TTL:
+            return cached[1]
+
+    try:
+        resp = requests.get(FF_URL, timeout=10)
+        resp.raise_for_status()
+        events = resp.json()
+
+        # Normalize events
+        result = []
+        for ev in events:
+            impact = ev.get("impact", "").lower()
+            if impact not in ("high", "medium"):
+                continue  # Skip low-impact events
+
+            result.append({
+                "name": ev.get("title", "Unknown"),
+                "impact": HIGH_IMPACT if impact == "high" else MEDIUM_IMPACT,
+                "country": ev.get("country", ""),
+                "date_str": ev.get("date", ""),
+                "affected_currencies": [ev.get("country", "").upper()],
+            })
+
+        with _ff_cache_lock:
+            _ff_cache[cache_key] = (time.monotonic(), result)
+
+        logger.info("Fetched %d high/medium-impact ForexFactory events", len(result))
+        return result
+
+    except Exception as e:
+        logger.warning("ForexFactory feed failed, using static calendar: %s", e)
+        return []
+
+
+def clear_ff_cache() -> None:
+    """Clear the ForexFactory cache (for testing)."""
+    with _ff_cache_lock:
+        _ff_cache.clear()
+
+
+def _parse_ff_date(date_str: str) -> datetime | None:
+    """Parse ForexFactory date string to datetime."""
+    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S", "%b %d, %Y"):
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
 def get_upcoming_events(
     hours: int = 4,
     now: datetime | None = None,
 ) -> list[dict]:
     """Get economic events within the next N hours.
+
+    Primary: ForexFactory live feed. Fallback: static FOMC/ECB/NFP dates.
 
     Args:
         hours: Look-ahead window in hours.
@@ -106,7 +183,23 @@ def get_upcoming_events(
     window_end = now + timedelta(hours=hours)
     events = []
 
-    # Check FOMC dates
+    # Try ForexFactory live feed first
+    ff_events = fetch_forexfactory_events()
+    if ff_events:
+        for ev in ff_events:
+            dt = _parse_ff_date(ev.get("date_str", ""))
+            if dt and now <= dt <= window_end:
+                events.append({
+                    "name": ev["name"],
+                    "impact": ev["impact"],
+                    "time": dt.isoformat(),
+                    "affected_currencies": ev.get("affected_currencies", []),
+                    "hours_until": (dt - now).total_seconds() / 3600,
+                })
+        if events:
+            return events
+
+    # Fallback: static FOMC dates
     for dt in FOMC_DATES:
         if now <= dt <= window_end:
             events.append({
@@ -117,7 +210,7 @@ def get_upcoming_events(
                 "hours_until": (dt - now).total_seconds() / 3600,
             })
 
-    # Check ECB dates
+    # Fallback: static ECB dates
     for dt in ECB_DATES:
         if now <= dt <= window_end:
             events.append({
@@ -128,7 +221,7 @@ def get_upcoming_events(
                 "hours_until": (dt - now).total_seconds() / 3600,
             })
 
-    # Check NFP dates
+    # Fallback: static NFP dates
     for year in (now.year, now.year + 1):
         for dt in _get_nfp_dates(year):
             if now <= dt <= window_end:

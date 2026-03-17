@@ -7,6 +7,7 @@ from risk.views import (
     HeatCheckView,
     MetricHistoryView,
     PositionSizeView,
+    ProfitTrackingView,
     RecordMetricsView,
     ResetDailyView,
     ResumeTradingView,
@@ -49,5 +50,10 @@ urlpatterns = [
         "risk/<int:portfolio_id>/limit-history/",
         RiskLimitHistoryView.as_view(),
         name="risk-limit-history",
+    ),
+    path(
+        "risk/<int:portfolio_id>/profit-tracking/",
+        ProfitTrackingView.as_view(),
+        name="risk-profit-tracking",
     ),
 ]

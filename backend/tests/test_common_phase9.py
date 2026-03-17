@@ -141,15 +141,23 @@ class TestModelRegistryNoLightGBM:
             )
 
     def test_load_model_no_lightgbm(self, tmp_path):
-        """Line 111: load_model raises ImportError."""
+        """load_model raises ImportError for lightgbm format without lightgbm."""
+        import json
         from common.ml.registry import ModelRegistry
 
         registry = ModelRegistry(models_dir=tmp_path)
+        # Create a fake model directory with lightgbm format manifest
+        model_dir = tmp_path / "test_model"
+        model_dir.mkdir()
+        (model_dir / "manifest.json").write_text(
+            json.dumps({"model_format": "lightgbm", "model_id": "test_model"})
+        )
+        (model_dir / "model.txt").write_text("fake")
         with (
             patch("common.ml.registry.HAS_LIGHTGBM", False),
             pytest.raises(ImportError, match="lightgbm required"),
         ):
-            registry.load_model("some_model_id")
+            registry.load_model("test_model")
 
 
 class TestModelRegistryListModels:

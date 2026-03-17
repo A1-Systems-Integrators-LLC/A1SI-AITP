@@ -47,10 +47,14 @@ class TestRegistryCompleteness:
         "adaptive_weighting",
         "economic_calendar",
         "funding_rate_refresh",
+        "fear_greed_refresh",
+        "reddit_sentiment_refresh",
+        "coingecko_trending_refresh",
+        "macro_data_refresh",
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 24
+        assert len(TASK_REGISTRY) == 28
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES
