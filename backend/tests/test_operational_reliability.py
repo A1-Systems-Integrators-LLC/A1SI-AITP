@@ -393,9 +393,9 @@ class TestFreqtradeEquitySync:
 
             result = _sync_freqtrade_equity()
 
-        # Should have used instance URLs (3 instances in settings)
+        # Should have used instance URLs (all instances in settings)
         assert result["equity_updated"] is True
-        assert len(result["instances"]) == 3
+        assert len(result["instances"]) == len(settings_mod.FREQTRADE_INSTANCES)
 
 
 class TestRiskMonitoringWithSync:

@@ -321,6 +321,41 @@ FREQTRADE_INSTANCES = [
         "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:8084"),
         "dry_run_wallet": 100.0,
     },
+    {
+        "name": "MomentumShort",
+        "config": "config_short.json",
+        "port": 8085,
+        "url": os.environ.get("FREQTRADE_SHORT_API_URL", "http://127.0.0.1:8085"),
+        "dry_run_wallet": 200.0,
+    },
+    {
+        "name": "GridDCA",
+        "config": "config_grid.json",
+        "port": 8086,
+        "url": os.environ.get("FREQTRADE_GRID_API_URL", "http://127.0.0.1:8086"),
+        "dry_run_wallet": 200.0,
+    },
+    {
+        "name": "MomentumScalper15m",
+        "config": "config_scalp.json",
+        "port": 8087,
+        "url": os.environ.get("FREQTRADE_SCALP_API_URL", "http://127.0.0.1:8087"),
+        "dry_run_wallet": 200.0,
+    },
+    {
+        "name": "SentimentEventTrader",
+        "config": "config_sentiment.json",
+        "port": 8088,
+        "url": os.environ.get("FREQTRADE_SENTIMENT_API_URL", "http://127.0.0.1:8088"),
+        "dry_run_wallet": 200.0,
+    },
+    {
+        "name": "TrendReversal",
+        "config": "config_reversal.json",
+        "port": 8089,
+        "url": os.environ.get("FREQTRADE_REVERSAL_API_URL", "http://127.0.0.1:8089"),
+        "dry_run_wallet": 200.0,
+    },
 ]
 
 # ── Scheduler ────────────────────────────────────────────────
@@ -634,6 +669,11 @@ WORKFLOW_TEMPLATES: dict = {
 FREQTRADE_API_URL = os.environ.get("FREQTRADE_API_URL", "")
 FREQTRADE_BMR_API_URL = os.environ.get("FREQTRADE_BMR_API_URL", "")
 FREQTRADE_VB_API_URL = os.environ.get("FREQTRADE_VB_API_URL", "")
+FREQTRADE_SHORT_API_URL = os.environ.get("FREQTRADE_SHORT_API_URL", "")
+FREQTRADE_GRID_API_URL = os.environ.get("FREQTRADE_GRID_API_URL", "")
+FREQTRADE_SCALP_API_URL = os.environ.get("FREQTRADE_SCALP_API_URL", "")
+FREQTRADE_SENTIMENT_API_URL = os.environ.get("FREQTRADE_SENTIMENT_API_URL", "")
+FREQTRADE_REVERSAL_API_URL = os.environ.get("FREQTRADE_REVERSAL_API_URL", "")
 FREQTRADE_USERNAME = os.environ.get("FREQTRADE_USERNAME", "freqtrader")
 FREQTRADE_PASSWORD = os.environ.get("FREQTRADE_PASSWORD", "freqtrader")
 
