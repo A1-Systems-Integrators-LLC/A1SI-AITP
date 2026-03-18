@@ -5,6 +5,7 @@ unknown regimes, asset-class routing, sentiment modifier scaling,
 flat/NaN data, and technical indicator edge cases.
 """
 
+import importlib.util
 import sys
 import threading
 from datetime import datetime, timezone
@@ -13,6 +14,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+
+_skip_no_vader = pytest.mark.skipif(
+    importlib.util.find_spec("vaderSentiment") is None,
+    reason="vaderSentiment not installed (CI)",
+)
 
 # Ensure project root is on sys.path for common.* imports
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -138,18 +144,21 @@ class TestSentimentScorerEdgeCases:
         # 3 positive + 3 negative should roughly cancel
         assert abs(score) < 0.5
 
+    @_skip_no_vader
     def test_negator_flips_positive(self):
         """'not great' should score lower than 'great'."""
         pos_score, _ = score_text("great")
         neg_score, _ = score_text("not great")
         assert neg_score < pos_score
 
+    @_skip_no_vader
     def test_negator_flips_negative(self):
         """'not terrible' should flip negative to positive."""
         neg_score, _ = score_text("terrible")
         flipped_score, _ = score_text("not terrible")
         assert flipped_score > neg_score
 
+    @_skip_no_vader
     def test_intensifier_amplifies(self):
         """'extremely good' should score higher than plain 'good' in diluted text."""
         # Use enough filler words so the score doesn't saturate at 1.0

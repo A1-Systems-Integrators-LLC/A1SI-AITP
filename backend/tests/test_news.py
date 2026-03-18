@@ -1,9 +1,15 @@
 """Tests for news/sentiment system — model, adapter, scorer, service, and API."""
 
+import importlib.util
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
+
+_skip_no_vader = pytest.mark.skipif(
+    importlib.util.find_spec("vaderSentiment") is None,
+    reason="vaderSentiment not installed (CI)",
+)
 
 from market.models import NewsArticle
 
@@ -44,6 +50,7 @@ class TestSentimentScorer:
         assert score == 0.0
         assert label == "neutral"
 
+    @_skip_no_vader
     def test_negation(self):
         from common.sentiment.scorer import score_text
 
@@ -51,6 +58,7 @@ class TestSentimentScorer:
         score_negated, _ = score_text("This is not a great outcome")
         assert score_negated < score_no_neg
 
+    @_skip_no_vader
     def test_intensifier(self):
         from common.sentiment.scorer import score_text
 
