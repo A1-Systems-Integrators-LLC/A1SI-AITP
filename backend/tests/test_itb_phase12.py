@@ -928,7 +928,7 @@ class TestEndToEndConvictionPipeline:
         assert adj.total_trades <= 1
 
     def test_pipeline_with_strong_downtrend(self):
-        """Test that STD regime allows entry with shorts enabled."""
+        """Test that STD regime hard-disables CIV1 (no shorts)."""
         from common.signals.aggregator import SignalAggregator
         from common.signals.constants import Regime
 
@@ -945,8 +945,8 @@ class TestEndToEndConvictionPipeline:
             technical_score=80,
         )
 
-        assert signal.hard_disabled is False
-        assert signal.composite_score > 0.0
+        # CIV1 + STRONG_TREND_DOWN is now in HARD_DISABLE set
+        assert signal.hard_disabled is True
 
     def test_pipeline_exit_regime_deterioration(self):
         """Test exit advice when regime deteriorates."""

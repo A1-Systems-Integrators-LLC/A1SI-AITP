@@ -302,14 +302,24 @@ def check_exit_advice(
             current_regime_state=current_state,
             entry_time=trade.open_date_utc,
             current_time=current_time,
-            current_profit_pct=current_profit * 100,
+            current_profit_pct=current_profit,
         )
 
         if advice.should_exit:
+            # Freqtrade custom_exit cannot do partial closes — only exit
+            # when the advisor recommends a full exit (partial_pct >= 1.0)
+            # or a non-partial reason (regime deterioration, time exit).
+            if 0 < advice.partial_pct < 1.0:
+                logger.info(
+                    f"Exit advisor: {pair} — partial exit suggested "
+                    f"({advice.partial_pct:.0%}) but Freqtrade cannot "
+                    f"partially close — skipping (reason: {advice.reason})",
+                )
+                return None
             tag = f"conviction_{advice.reason.replace(' ', '_')[:30]}"
             logger.info(
                 f"Exit advisor: {pair} — {advice.reason} "
-                f"(urgency={advice.urgency}, partial={advice.partial_pct})",
+                f"(urgency={advice.urgency})",
             )
             return tag
     except Exception as e:

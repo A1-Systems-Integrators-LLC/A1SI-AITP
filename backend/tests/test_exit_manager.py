@@ -124,7 +124,7 @@ class TestRegimeDeterioration:
         assert advice.partial_pct == 0.0  # Full exit
 
     def test_civ1_strong_up_to_strong_down_at_loss(self):
-        """CIV1 in bad regime but at loss → don't exit, monitor."""
+        """CIV1 in bad regime at loss → cut loss when alignment drop > 40."""
         advice = advise_exit(
             symbol="BTC/USDT",
             strategy_name="CryptoInvestorV1",
@@ -135,9 +135,10 @@ class TestRegimeDeterioration:
             current_time=NOW,
             current_profit_pct=-0.02,
         )
-        assert advice.should_exit is False
-        assert "at loss" in advice.reason
-        assert advice.urgency == URGENCY_MONITOR
+        # Alignment drop is 85 (90→5), well above the 40 cut-loss threshold
+        assert advice.should_exit is True
+        assert "cut loss" in advice.reason
+        assert advice.urgency == URGENCY_IMMEDIATE
 
     def test_small_regime_change_no_exit(self):
         """CIV1 STRONG_TREND_UP → WEAK_TREND_UP: alignment drop < threshold."""
@@ -228,7 +229,7 @@ class TestRegimeDeterioration:
         assert advice.should_exit is False
 
     def test_zero_profit_boundary(self):
-        """At exactly breakeven (0.0), regime deterioration should NOT exit."""
+        """At breakeven with large alignment drop (>40), should cut loss / exit."""
         advice = advise_exit(
             symbol="BTC/USDT",
             strategy_name="CryptoInvestorV1",
@@ -239,7 +240,9 @@ class TestRegimeDeterioration:
             current_time=NOW,
             current_profit_pct=0.0,
         )
-        assert advice.should_exit is False
+        # Alignment drop 85 (90→5) > 40 threshold → exit even at breakeven
+        assert advice.should_exit is True
+        assert "cut loss" in advice.reason
 
 
 # ─── Partial Profit Taking ────────────────────────────────────────────────────

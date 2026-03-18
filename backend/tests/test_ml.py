@@ -121,7 +121,6 @@ class TestAddReturnFeatures:
         ret = add_return_features(ohlcv_df)
         assert "return_1" in ret.columns
         assert "return_10" in ret.columns
-        assert "log_return_5" in ret.columns
         assert "hl_range_pct" in ret.columns
 
     def test_custom_periods(self, ohlcv_df):

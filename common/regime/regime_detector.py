@@ -67,7 +67,7 @@ class RegimeState:
 
 
 _ASSET_CLASS_CONFIG: dict[str, dict] = {
-    "crypto": {"adx_strong": 40.0, "adx_weak": 25.0, "bb_high_vol_pct": 80.0},
+    "crypto": {"adx_strong": 32.0, "adx_weak": 20.0, "bb_high_vol_pct": 80.0},
     "equity": {"adx_strong": 35.0, "adx_weak": 20.0, "bb_high_vol_pct": 70.0},
     "forex": {"adx_strong": 35.0, "adx_weak": 20.0, "bb_high_vol_pct": 65.0},
 }

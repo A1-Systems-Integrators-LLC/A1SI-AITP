@@ -70,7 +70,7 @@ class TestComputeSignal:
         articles = [
             {"sentiment_score": 0.5, "age_hours": 0.0, "title": "Bull market", "summary": ""},
         ]
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         assert result.signal > 0
         assert result.signal_label == "bullish"
         assert result.article_count == 1
@@ -98,7 +98,7 @@ class TestComputeSignal:
             {"sentiment_score": 0.8, "age_hours": 0.0, "title": "New", "summary": ""},
             {"sentiment_score": -0.8, "age_hours": 48.0, "title": "Old", "summary": ""},
         ]
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         # Recent positive should outweigh old negative due to decay
         assert result.signal > 0
 
@@ -133,7 +133,7 @@ class TestComputeSignal:
             {"sentiment_score": 0.8, "age_hours": 0.5, "title": "X", "summary": ""}
             for _ in range(20)
         ]
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         assert result.position_modifier > 1.0
         assert result.position_modifier <= 1.2
 
@@ -143,7 +143,7 @@ class TestComputeSignal:
             {"sentiment_score": -0.8, "age_hours": 0.5, "title": "X", "summary": ""}
             for _ in range(20)
         ]
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         assert result.position_modifier < 1.0
         assert result.position_modifier >= 0.8
 
@@ -172,8 +172,8 @@ class TestComputeSignal:
             },
             {"sentiment_score": -0.5, "age_hours": 1.0, "title": "Bad news", "summary": ""},
         ]
-        plain_result = compute_signal(plain_articles, "crypto")
-        term_result = compute_signal(term_articles, "crypto")
+        plain_result = compute_signal(plain_articles, "crypto", rescore=False)
+        term_result = compute_signal(term_articles, "crypto", rescore=False)
         # Term-boosted positive should shift signal more positive
         assert term_result.signal > plain_result.signal
 
@@ -183,8 +183,8 @@ class TestComputeSignal:
             {"sentiment_score": 0.8, "age_hours": 1.0, "title": "Recent", "summary": ""},
             {"sentiment_score": -0.3, "age_hours": 20.0, "title": "Old", "summary": ""},
         ]
-        crypto_result = compute_signal(articles, "crypto")  # half_life=6
-        equity_result = compute_signal(articles, "equity")  # half_life=12
+        crypto_result = compute_signal(articles, "crypto", rescore=False)  # half_life=6
+        equity_result = compute_signal(articles, "equity", rescore=False)  # half_life=12
         # Equity has longer half-life: old negative article decays less → lower signal
         # Both should still be positive (recent dominates), but differ
         assert crypto_result.signal != equity_result.signal
@@ -195,8 +195,8 @@ class TestComputeSignal:
             {"sentiment_score": 0.8, "age_hours": 1.0, "title": "New", "summary": ""},
             {"sentiment_score": -0.5, "age_hours": 12.0, "title": "Old", "summary": ""},
         ]
-        result_short = compute_signal(articles, "crypto", half_life=3.0)
-        result_long = compute_signal(articles, "crypto", half_life=24.0)
+        result_short = compute_signal(articles, "crypto", half_life=3.0, rescore=False)
+        result_long = compute_signal(articles, "crypto", half_life=24.0, rescore=False)
         # Shorter half-life → old negative decays more → more positive signal
         assert result_short.signal > result_long.signal
 

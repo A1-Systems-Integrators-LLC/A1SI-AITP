@@ -906,6 +906,7 @@ class StrategyStatusView(APIView):
 
         try:
             ensure_platform_imports()
+            from common.data_pipeline.pipeline import load_ohlcv
             from common.regime.regime_detector import RegimeDetector
             from common.signals.constants import ALIGNMENT_TABLES
 
@@ -916,7 +917,11 @@ class StrategyStatusView(APIView):
                 "forex": "EUR/USD",
             }
             sym = rep_symbols.get(asset_class, "BTC/USDT")
-            state = detector.detect(sym, asset_class=asset_class)
+            exchange_id = "yfinance" if asset_class in ("equity", "forex") else "kraken"
+            df = load_ohlcv(sym, "1h", exchange_id)
+            if df is None or df.empty:
+                raise ValueError(f"No data for {sym}")
+            state = detector.detect(df)
 
             table = ALIGNMENT_TABLES.get(asset_class, ALIGNMENT_TABLES["crypto"])
             regime_row = table.get(state.regime, {})

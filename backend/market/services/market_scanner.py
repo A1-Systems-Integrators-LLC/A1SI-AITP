@@ -403,8 +403,11 @@ class MarketScannerService:
         if macd_df.empty or len(macd_df) < 3:
             return None
 
-        hist_col = "histogram" if "histogram" in macd_df.columns else "hist"
-        if hist_col not in macd_df.columns:
+        hist_col = next(
+            (c for c in ("macd_hist", "histogram", "hist") if c in macd_df.columns),
+            None,
+        )
+        if hist_col is None:
             return None
 
         curr_hist = float(macd_df[hist_col].iloc[-1])

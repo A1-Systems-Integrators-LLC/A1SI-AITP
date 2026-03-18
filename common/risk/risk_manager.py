@@ -333,64 +333,82 @@ class RiskManager:
 
         Returns (approved, reason) tuple.
         """
-        # Check halt status
-        if self.state.is_halted:
-            return False, f"Trading halted: {self.state.halt_reason}"
+        with self._lock:
+            # Check halt status
+            if self.state.is_halted:
+                return False, f"Trading halted: {self.state.halt_reason}"
 
-        # Check market hours for equity/forex
-        if asset_class in ("equity", "forex"):
-            try:
-                from common.market_hours.sessions import MarketHoursService
+            # Check market hours for equity/forex
+            if asset_class in ("equity", "forex"):
+                try:
+                    from common.market_hours.sessions import MarketHoursService
 
-                if not MarketHoursService.is_market_open(asset_class):
-                    session_info = MarketHoursService.get_session_info(asset_class)
-                    next_open = session_info.get("next_open", "unknown")
-                    return False, (f"Market closed for {asset_class}. Next open: {next_open}")
-            except ImportError:
-                logger.warning("market_hours module not available, skipping hours check")
-
-        # Check max open positions
-        if len(self.state.open_positions) >= self.limits.max_open_positions:
-            return False, f"Max open positions reached ({self.limits.max_open_positions})"
-
-        # Check if already in this position
-        if symbol in self.state.open_positions:
-            return False, f"Already have open position in {symbol}"
-
-        # Check position size vs portfolio
-        trade_value = size * entry_price
-        position_pct = trade_value / self.state.total_equity
-        if position_pct > self.limits.max_position_size_pct:
-            return False, (
-                f"Position too large: {position_pct:.2%} > {self.limits.max_position_size_pct:.2%}"
-            )
-
-        # Check risk/reward if stop loss provided
-        if stop_loss_price:
-            price_risk = abs(entry_price - stop_loss_price)
-            trade_risk = price_risk / entry_price
-            if trade_risk > self.limits.max_single_trade_risk * 2:
-                return False, f"Stop loss too wide: {trade_risk:.2%} risk per unit"
-
-            # Check min risk/reward ratio: reject if stop is so wide that
-            # achieving min_risk_reward requires an unrealistic price move (>15%)
-            if price_risk > 0:
-                required_profit_pct = trade_risk * self.limits.min_risk_reward
-                if required_profit_pct > 0.15:
-                    return False, (
-                        f"Risk/reward unfavorable: stop at {trade_risk:.2%} "
-                        f"requires {required_profit_pct:.1%} profit for "
-                        f"{self.limits.min_risk_reward}:1 R:R"
+                    if not MarketHoursService.is_market_open(asset_class):
+                        session_info = MarketHoursService.get_session_info(asset_class)
+                        next_open = session_info.get("next_open", "unknown")
+                        return False, (
+                            f"Market closed for {asset_class}. Next open: {next_open}"
+                        )
+                except ImportError:
+                    logger.warning(
+                        "market_hours module not available, skipping hours check"
                     )
 
-        # Check correlation with existing positions
-        corr_ok, corr_reason = self._check_correlation(symbol)
-        if not corr_ok:
-            return False, corr_reason
+            # Check daily loss proactively
+            if self.state.total_equity > 0 and self.state.daily_start_equity > 0:
+                daily_change = (
+                    self.state.total_equity - self.state.daily_start_equity
+                ) / self.state.daily_start_equity
+                if daily_change <= -self.limits.max_daily_loss:
+                    return False, (
+                        f"Daily loss limit reached: {daily_change:.2%}"
+                        f" <= -{self.limits.max_daily_loss:.2%}"
+                    )
 
-        # All checks passed
-        logger.info(f"Trade approved: {side} {size:.6f} {symbol} @ {entry_price}")
-        return True, "approved"
+            # Check max open positions
+            if len(self.state.open_positions) >= self.limits.max_open_positions:
+                return False, (
+                    f"Max open positions reached ({self.limits.max_open_positions})"
+                )
+
+            # Check if already in this position
+            if symbol in self.state.open_positions:
+                return False, f"Already have open position in {symbol}"
+
+            # Check position size vs portfolio
+            trade_value = size * entry_price
+            position_pct = trade_value / self.state.total_equity
+            if position_pct > self.limits.max_position_size_pct:
+                return False, (
+                    f"Position too large: {position_pct:.2%}"
+                    f" > {self.limits.max_position_size_pct:.2%}"
+                )
+
+            # Check risk/reward if stop loss provided
+            if stop_loss_price:
+                price_risk = abs(entry_price - stop_loss_price)
+                trade_risk = price_risk / entry_price
+                if trade_risk > self.limits.max_single_trade_risk * 2:
+                    return False, f"Stop loss too wide: {trade_risk:.2%} risk per unit"
+
+                # Check min risk/reward ratio
+                if price_risk > 0:
+                    required_profit_pct = trade_risk * self.limits.min_risk_reward
+                    if required_profit_pct > 0.15:
+                        return False, (
+                            f"Risk/reward unfavorable: stop at {trade_risk:.2%} "
+                            f"requires {required_profit_pct:.1%} profit for "
+                            f"{self.limits.min_risk_reward}:1 R:R"
+                        )
+
+            # Check correlation with existing positions
+            corr_ok, corr_reason = self._check_correlation(symbol)
+            if not corr_ok:
+                return False, corr_reason
+
+            # All checks passed
+            logger.info(f"Trade approved: {side} {size:.6f} {symbol} @ {entry_price}")
+            return True, "approved"
 
     def _check_correlation(self, symbol: str) -> tuple[bool, str]:
         """Check if new symbol is too correlated with existing positions."""

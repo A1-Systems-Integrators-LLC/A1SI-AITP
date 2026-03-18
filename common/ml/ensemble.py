@@ -201,13 +201,30 @@ class ModelEnsemble:
 
         probabilities = []
         accuracies = []
+        successful_model_ids = []
 
-        for model, manifest in self._models:
+        for i, (model, manifest) in enumerate(self._models):
             try:
+                # Align feature columns to match training feature names
+                expected_features = manifest.get("metadata", {}).get("feature_names")
+                if expected_features and isinstance(features, pd.DataFrame):
+                    missing = set(expected_features) - set(features.columns)
+                    if missing:
+                        logger.warning(
+                            "Model %s missing %d features: %s — skipping",
+                            self._model_ids[i],
+                            len(missing),
+                            list(missing)[:5],
+                        )
+                        continue
+                    aligned = features[expected_features]
+                else:
+                    aligned = features
+
                 # LSTM (torch) model
                 if HAS_TORCH and isinstance(model, LSTMPredictor):
                     # LSTM needs (batch, seq_len, features) tensor
-                    feat_arr = np.asarray(features, dtype=np.float32)
+                    feat_arr = np.asarray(aligned, dtype=np.float32)
                     if feat_arr.ndim == 2:
                         seq_len = manifest.get("metadata", {}).get("seq_len", feat_arr.shape[0])
                         # Use last seq_len rows
@@ -220,30 +237,34 @@ class ModelEnsemble:
                         )
                     probabilities.append(prob)
                     accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                    successful_model_ids.append(self._model_ids[i])
                     continue
                 if HAS_LIGHTGBM and isinstance(model, lgb.Booster):
-                    raw = model.predict(features)
+                    raw = model.predict(aligned)
                     prob = float(np.array(raw).flat[-1])
                     probabilities.append(prob)
                     accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                    successful_model_ids.append(self._model_ids[i])
                     continue
                 # Check for XGBoost model
                 try:
                     import xgboost as _xgb
 
                     if isinstance(model, _xgb.XGBClassifier):
-                        proba = model.predict_proba(features)
+                        proba = model.predict_proba(aligned)
                         prob = float(proba[-1, 1]) if proba.ndim == 2 else float(proba[-1])
                         probabilities.append(prob)
                         accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                        successful_model_ids.append(self._model_ids[i])
                         continue
                 except ImportError:
                     pass
                 # Generic sklearn-compatible model (LGBMClassifier, etc.)
-                proba = model.predict_proba(features)  # type: ignore[union-attr]
+                proba = model.predict_proba(aligned)  # type: ignore[union-attr]
                 prob = float(proba[-1, 1]) if proba.ndim == 2 else float(proba[-1])
                 probabilities.append(prob)
                 accuracies.append(manifest.get("metrics", {}).get("accuracy", 0.5))
+                successful_model_ids.append(self._model_ids[i])
             except Exception as e:
                 logger.warning("Ensemble model prediction failed: %s", e)
 
@@ -272,7 +293,7 @@ class ModelEnsemble:
             direction=direction,
             agreement_ratio=round(agreement_ratio, 4),
             model_count=len(probabilities),
-            model_ids=list(self._model_ids[: len(probabilities)]),
+            model_ids=successful_model_ids,
             individual_probabilities=[round(p, 4) for p in probabilities],
             mode=self._mode,
         )

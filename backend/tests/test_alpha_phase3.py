@@ -238,21 +238,21 @@ class TestPhase3Weights:
         from common.signals.constants import DEFAULT_WEIGHTS
         assert abs(sum(DEFAULT_WEIGHTS.values()) - 1.0) < 0.001
 
-    def test_sentiment_weight_is_022(self):
+    def test_sentiment_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["sentiment"] == 0.22
+        assert DEFAULT_WEIGHTS["sentiment"] == 0.10
 
-    def test_technical_weight_is_022(self):
+    def test_technical_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["technical"] == 0.22
+        assert DEFAULT_WEIGHTS["technical"] == 0.35
 
-    def test_regime_weight_is_018(self):
+    def test_regime_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["regime"] == 0.18
+        assert DEFAULT_WEIGHTS["regime"] == 0.25
 
-    def test_ml_weight_unchanged(self):
+    def test_ml_weight_disabled(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["ml"] == 0.20
+        assert DEFAULT_WEIGHTS["ml"] == 0.08
 
 
 # ── Watchlist Adjuster ──────────────────────────────────────────────────────

@@ -779,7 +779,7 @@ class TestTaskExecutors:
 
         import pandas as pd
 
-        mock_df = pd.DataFrame({"close": [100.0, 105.0]})
+        mock_df = pd.DataFrame({"close": [100.0, 101.0, 102.0, 103.0, 105.0]})
         with (
             patch("core.platform_bridge.ensure_platform_imports"),
             patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df),
@@ -803,7 +803,7 @@ class TestTaskExecutors:
 
         import pandas as pd
 
-        mock_df = pd.DataFrame({"close": [105.0, 100.0]})
+        mock_df = pd.DataFrame({"close": [105.0, 104.0, 103.0, 102.0, 100.0]})
         with (
             patch("core.platform_bridge.ensure_platform_imports"),
             patch("common.data_pipeline.pipeline.load_ohlcv", return_value=mock_df),
@@ -954,7 +954,9 @@ class TestTaskExecutors:
             )
             assert result["status"] == "completed"
             for r in result["results"]:
-                assert r["action"] == "active"
+                # On error, existing state is preserved (not reset to active)
+                assert r["changed"] is False
+                assert "error" in r
 
     def test_registry_has_new_executors(self):
         from core.services.task_registry import TASK_REGISTRY

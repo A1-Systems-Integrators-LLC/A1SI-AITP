@@ -169,12 +169,12 @@ class TestConstants:
             assert "ForexTrend" in row
             assert "ForexRange" in row
 
-    def test_hard_disable_empty(self):
-        """With shorts enabled, no strategies are hard-disabled."""
-        assert len(HARD_DISABLE) == 0
+    def test_hard_disable_populated(self):
+        """In spot mode, several regime-strategy pairs are hard-disabled."""
+        assert len(HARD_DISABLE) >= 4
 
     def test_conviction_threshold_crypto_default(self):
-        assert get_conviction_threshold("crypto") == 40
+        assert get_conviction_threshold("crypto") == 55
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -606,15 +606,21 @@ class TestScorerMap:
 
 
 class TestSignalAggregatorHardDisable:
-    """With shorts enabled, no strategies are hard-disabled in any regime."""
+    """Spot mode: certain regime-strategy combos are hard-disabled."""
 
-    def test_civ1_not_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
+    def test_civ1_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             regime_state=regime_bearish, technical_score=90,
         )
-        assert sig.hard_disabled is False
-        assert sig.composite_score > 0.0
+        assert sig.hard_disabled is True
+
+    def test_civ1_blocked_in_ranging(self, aggregator, regime_ranging):
+        sig = aggregator.compute(
+            "BTC/USDT", "crypto", "CryptoInvestorV1",
+            regime_state=regime_ranging, technical_score=90,
+        )
+        assert sig.hard_disabled is True
 
     def test_vb_not_blocked_in_strong_downtrend(self, aggregator, regime_bearish):
         sig = aggregator.compute(
@@ -673,8 +679,9 @@ class TestSignalAggregatorCompute:
         )
         assert sig.composite_score >= 75
         assert sig.entry_approved is True
-        assert sig.signal_label == LABEL_STRONG_BUY
-        assert sig.position_modifier == 1.0
+        # Score ~87 with threshold 55: very_strong_buy tier (offset 25)
+        assert sig.signal_label == "very_strong_buy"
+        assert sig.position_modifier == 1.2
         assert len(sig.sources_available) == 6
 
     def test_all_sources_weak(self, aggregator, regime_unknown):
@@ -707,7 +714,8 @@ class TestSignalAggregatorCompute:
         )
         # With only technical, it gets full weight (redistributed)
         assert sig.composite_score == 80.0
-        assert sig.entry_approved is True
+        # Single source: entry NOT approved (min 2 sources required)
+        assert sig.entry_approved is False
         assert "technical" in sig.sources_available
         assert len(sig.sources_available) == 1
 
@@ -722,30 +730,37 @@ class TestSignalAggregatorCompute:
         assert "regime" in sig.sources_available
 
     def test_position_modifier_tiers(self, aggregator):
-        # Crypto threshold=40: strong_buy=60, buy=50, cautious_buy=40
-        # Score >= 60 -> 1.0
+        # Crypto threshold=55: very_strong_buy=80(1.2), strong_buy=70(1.0),
+        # buy=60(0.7), cautious_buy=55(0.5)
+        # Score >= 80 -> 1.2
+        sig80 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=85,
+        )
+        assert sig80.position_modifier == 1.2
+
+        # Score 70-79 -> 1.0
+        sig70 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=75,
+        )
+        assert sig70.position_modifier == 1.0
+
+        # Score 60-69 -> 0.7
         sig60 = aggregator.compute(
             "X", "crypto", "CryptoInvestorV1", technical_score=65,
         )
-        assert sig60.position_modifier == 1.0
+        assert sig60.position_modifier == 0.7
 
-        # Score 50-59 -> 0.7
-        sig50 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=55,
+        # Score 55-59 -> 0.5
+        sig55 = aggregator.compute(
+            "X", "crypto", "CryptoInvestorV1", technical_score=57,
         )
-        assert sig50.position_modifier == 0.7
+        assert sig55.position_modifier == 0.5
 
-        # Score 40-49 -> 0.4
+        # Score < 55 -> 0.0
         sig40 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=45,
+            "X", "crypto", "CryptoInvestorV1", technical_score=40,
         )
-        assert sig40.position_modifier == 0.4
-
-        # Score < 40 -> 0.0
-        sig30 = aggregator.compute(
-            "X", "crypto", "CryptoInvestorV1", technical_score=30,
-        )
-        assert sig30.position_modifier == 0.0
+        assert sig40.position_modifier == 0.0
 
     def test_sentiment_conversion(self, aggregator):
         # sentiment_signal of -1 -> score 0, +1 -> score 100, 0 -> 50
@@ -820,46 +835,59 @@ class TestSignalAggregatorRegimeAlignment:
 
 
 class TestSignalAggregatorCooldown:
+    @pytest.fixture(autouse=True)
+    def _mock_external(self):
+        with (
+            patch("common.market_data.fear_greed.get_fear_greed_signal",
+                  return_value={
+                      "modifier": 0, "classification": "Neutral",
+                      "value": 50, "score": 50,
+                  }),
+            patch("common.market_data.coingecko.get_dominance_signal",
+                  return_value={"modifier": 0, "regime_label": "neutral", "dominance": 50.0}),
+            patch("common.data_pipeline.reddit_adapter.fetch_reddit_sentiment",
+                  return_value={"score": 0, "post_count": 0, "modifier": 0}),
+            patch("common.market_data.coingecko.get_trending_modifier", return_value=0),
+        ):
+            yield
+
     def test_first_call_no_penalty(self, aggregator, regime_bullish):
         sig = aggregator.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             regime_state=regime_bullish,
         )
-        # First call — no cooldown penalty
+        # First call — no cooldown penalty. CIV1+STU alignment=95
         raw = 95 * 0.9 + 50 * 0.1
         assert abs(sig.regime_score - raw) < 1.0
 
     def test_regime_change_triggers_cooldown(self, aggregator, regime_bullish, regime_ranging):
-        # First call sets the regime
+        # Use VB since CIV1+RANGING is hard-disabled
         aggregator.compute(
-            "BTC/USDT", "crypto", "CryptoInvestorV1",
+            "BTC/USDT", "crypto", "VolatilityBreakout",
             regime_state=regime_bullish,
         )
-        # Regime change triggers cooldown
         sig = aggregator.compute(
-            "BTC/USDT", "crypto", "CryptoInvestorV1",
+            "BTC/USDT", "crypto", "VolatilityBreakout",
             regime_state=regime_ranging,
         )
-        # Should be penalised by REGIME_COOLDOWN_PENALTY
-        raw = 15 * 0.7 + 50 * 0.3  # CIV1 in RANGING
+        # VB in RANGING alignment=5, confidence=0.7
+        raw = 5 * 0.7 + 50 * 0.3
         expected = raw * REGIME_COOLDOWN_PENALTY
         assert abs(sig.regime_score - expected) < 1.0
 
     def test_cooldown_wears_off(self, aggregator, regime_bullish, regime_ranging):
-        # Set initial regime
         cooldown_bars = get_config("crypto").regime_cooldown_bars
         aggregator.compute(
-            "BTC/USDT", "crypto", "CryptoInvestorV1",
+            "BTC/USDT", "crypto", "VolatilityBreakout",
             regime_state=regime_bullish,
         )
-        # Trigger regime change
         for _ in range(cooldown_bars + 1):
             sig = aggregator.compute(
-                "BTC/USDT", "crypto", "CryptoInvestorV1",
+                "BTC/USDT", "crypto", "VolatilityBreakout",
                 regime_state=regime_ranging,
             )
         # After cooldown bars, penalty should be gone
-        raw = 15 * 0.7 + 50 * 0.3
+        raw = 5 * 0.7 + 50 * 0.3
         assert abs(sig.regime_score - raw) < 1.0
 
 
@@ -896,9 +924,9 @@ class TestSignalAggregatorWeightRedistribution:
             technical_score=80,
             scanner_score=60,
         )
-        # tech weight = 0.22, scanner weight = 0.05
-        # Redistributed: tech = 0.22/0.27, scanner = 0.05/0.27
-        expected = 80 * (0.22 / 0.27) + 60 * (0.05 / 0.27)
+        # tech weight = 0.35, scanner weight = 0.05
+        # Redistributed: tech = 0.35/0.40, scanner = 0.05/0.40
+        expected = 80 * (0.35 / 0.40) + 60 * (0.05 / 0.40)
         assert abs(sig.composite_score - expected) < 0.5
 
     def test_custom_weights(self):
@@ -913,28 +941,35 @@ class TestSignalAggregatorWeightRedistribution:
 
 
 class TestSignalAggregatorLabels:
-    """Labels are now relative to conviction threshold (default crypto = 55)."""
+    """Labels relative to conviction threshold. Tiers: +25/+15/+5/+0."""
+
+    def test_very_strong_buy(self, aggregator):
+        # threshold(55) + 25 = 80
+        assert aggregator._label(80, 55) == "very_strong_buy"
 
     def test_strong_buy(self, aggregator):
-        # threshold + 20 = 75
-        assert aggregator._label(80, 55) == LABEL_STRONG_BUY
+        # threshold(55) + 15 = 70
+        assert aggregator._label(70, 55) == LABEL_STRONG_BUY
 
     def test_buy(self, aggregator):
-        # threshold + 10 = 65
-        assert aggregator._label(70, 55) == LABEL_BUY
+        # threshold(55) + 5 = 60
+        assert aggregator._label(60, 55) == LABEL_BUY
 
     def test_cautious_buy(self, aggregator):
-        # threshold + 0 = 55
-        assert aggregator._label(60, 55) == LABEL_CAUTIOUS_BUY
+        # threshold(55) + 0 = 55
+        assert aggregator._label(55, 55) == LABEL_CAUTIOUS_BUY
 
     def test_avoid(self, aggregator):
         assert aggregator._label(40, 55) == LABEL_AVOID
 
-    def test_boundary_75(self, aggregator):
-        assert aggregator._label(75, 55) == LABEL_STRONG_BUY
+    def test_boundary_80(self, aggregator):
+        assert aggregator._label(80, 55) == "very_strong_buy"
 
-    def test_boundary_65(self, aggregator):
-        assert aggregator._label(65, 55) == LABEL_BUY
+    def test_boundary_70(self, aggregator):
+        assert aggregator._label(70, 55) == LABEL_STRONG_BUY
+
+    def test_boundary_60(self, aggregator):
+        assert aggregator._label(60, 55) == LABEL_BUY
 
     def test_boundary_55(self, aggregator):
         assert aggregator._label(55, 55) == LABEL_CAUTIOUS_BUY
@@ -943,11 +978,12 @@ class TestSignalAggregatorLabels:
         assert aggregator._label(54, 55) == LABEL_AVOID
 
     def test_equity_threshold_shifts_labels(self, aggregator):
-        # Equity threshold = 65, so strong_buy = 85, buy = 75, cautious_buy = 65
-        assert aggregator._label(85, 65) == LABEL_STRONG_BUY
-        assert aggregator._label(75, 65) == LABEL_BUY
-        assert aggregator._label(65, 65) == LABEL_CAUTIOUS_BUY
-        assert aggregator._label(64, 65) == LABEL_AVOID
+        # Equity threshold = 60: very_strong=85, strong=75, buy=65, cautious=60
+        assert aggregator._label(85, 60) == "very_strong_buy"
+        assert aggregator._label(75, 60) == LABEL_STRONG_BUY
+        assert aggregator._label(65, 60) == LABEL_BUY
+        assert aggregator._label(60, 60) == LABEL_CAUTIOUS_BUY
+        assert aggregator._label(59, 60) == LABEL_AVOID
 
 
 class TestSignalAggregatorReasoning:
@@ -1056,9 +1092,10 @@ class TestSignalAggregatorIntegration:
         assert sig.asset_class == "crypto"
         assert 0 <= sig.composite_score <= 100
         assert sig.signal_label in {
-            LABEL_STRONG_BUY, LABEL_BUY, LABEL_CAUTIOUS_BUY, LABEL_NEUTRAL, LABEL_AVOID,
+            "very_strong_buy", LABEL_STRONG_BUY, LABEL_BUY,
+            LABEL_CAUTIOUS_BUY, LABEL_NEUTRAL, LABEL_AVOID,
         }
-        assert 0 <= sig.position_modifier <= 1.0
+        assert 0 <= sig.position_modifier <= 1.2
         assert len(sig.reasoning) > 0
         assert len(sig.sources_available) == 6
 

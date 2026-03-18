@@ -43,20 +43,23 @@ class SignalFeedbackService:
         from analysis.models import SignalAttribution
 
         components = signal_data.get("components", {})
+        # Extract regime name from the cached _regime key or confidences
+        entry_regime = signal_data.get("_regime", "") or ""
         attr = SignalAttribution.objects.create(
             order_id=order_id,
             symbol=symbol,
             asset_class=asset_class,
             strategy=strategy,
             composite_score=signal_data.get("composite_score", 0.0),
+            technical_contribution=components.get("technical", 0.0),
             ml_contribution=components.get("ml", 0.0),
             sentiment_contribution=components.get("sentiment", 0.0),
             regime_contribution=components.get("regime", 0.0),
             scanner_contribution=components.get("scanner", 0.0),
-            screen_contribution=components.get("win_rate", 0.0),
+            screen_contribution=components.get("scanner", 0.0),
             win_rate_contribution=components.get("win_rate", 0.0),
             position_modifier=signal_data.get("position_modifier", 1.0),
-            entry_regime=signal_data.get("components", {}).get("regime_name", ""),
+            entry_regime=entry_regime,
         )
         logger.info("Signal attribution recorded: order=%s symbol=%s", order_id[:8], symbol)
         return {
@@ -220,7 +223,7 @@ class SignalFeedbackService:
         win_rate = wins / total if total > 0 else 0.0
 
         # Per-source average scores for wins vs losses
-        sources = ["ml", "sentiment", "regime", "scanner", "screen", "win_rate"]
+        sources = ["technical", "ml", "sentiment", "regime", "scanner", "win_rate"]
         source_stats: dict[str, Any] = {}
 
         for src in sources:
@@ -297,26 +300,40 @@ def _compute_pnl(order) -> float | None:
     """Compute P&L for a filled order by finding the matching closing order.
 
     Looks for a corresponding filled order on the opposite side for the same
-    symbol. Returns None if no matching close order is found.
+    symbol. Excludes orders already matched to other attributions to avoid
+    cross-contamination between trades.
     """
     try:
         from trading.models import Order
+
+        from analysis.models import SignalAttribution
 
         if not order.avg_fill_price or order.avg_fill_price <= 0:
             return None
 
         close_side = "sell" if order.side == "buy" else "buy"
-        close_order = (
-            Order.objects.filter(
-                symbol=order.symbol,
-                side=close_side,
-                status="filled",
-                portfolio_id=order.portfolio_id,
-                filled_at__gte=order.filled_at or order.timestamp,
-            )
-            .order_by("filled_at")
-            .first()
+
+        # Find already-matched order IDs to exclude them
+        already_matched = set(
+            SignalAttribution.objects.filter(
+                outcome__in=["win", "loss"],
+            ).values_list("order_id", flat=True)
         )
+
+        close_candidates = Order.objects.filter(
+            symbol=order.symbol,
+            side=close_side,
+            status="filled",
+            portfolio_id=order.portfolio_id,
+            filled_at__gte=order.filled_at or order.timestamp,
+        ).order_by("filled_at")
+
+        close_order = None
+        for candidate in close_candidates[:10]:
+            if str(candidate.id) not in already_matched:
+                close_order = candidate
+                break
+
         if close_order is None or not close_order.avg_fill_price:
             return None
 
@@ -347,11 +364,11 @@ def _load_tracker_from_db(
 
     for attr in qs[:500]:
         contributions = {
+            "technical": attr.technical_contribution,
             "ml": attr.ml_contribution,
             "sentiment": attr.sentiment_contribution,
             "regime": attr.regime_contribution,
             "scanner": attr.scanner_contribution,
-            "screen": attr.screen_contribution,
             "win_rate": attr.win_rate_contribution,
         }
         tracker.record_entry(

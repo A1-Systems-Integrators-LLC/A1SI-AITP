@@ -277,7 +277,7 @@ data:
 # ──────────────────────────────────────────────
 freqtrade:
   dry_run: true
-  trading_mode: "futures"
+  trading_mode: "spot"
   stake_currency: "USDT"
   stake_amount: "unlimited"
   tradable_balance_ratio: 0.99

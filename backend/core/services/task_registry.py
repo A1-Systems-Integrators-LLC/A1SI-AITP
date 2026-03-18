@@ -131,9 +131,16 @@ def _run_order_sync(params: dict, progress_cb: ProgressCallback) -> dict[str, An
     for i, order in enumerate(pending):
         # Timeout stuck SUBMITTED orders
         if order.status == OrderStatus.SUBMITTED and order.created_at < cutoff:
-            order.status = OrderStatus.ERROR
-            order.error_message = "Order sync timeout: no exchange confirmation"
-            order.save(update_fields=["status", "error_message"])
+            try:
+                order.transition_to(
+                    OrderStatus.ERROR,
+                    error_message="Order sync timeout: no exchange confirmation",
+                )
+            except (ValueError, Exception) as e:
+                logger.warning("Transition failed for stuck order %s: %s", order.id, e)
+                order.status = OrderStatus.ERROR
+                order.error_message = "Order sync timeout: no exchange confirmation"
+                order.save(update_fields=["status", "error_message"])
             timed_out += 1
             continue
 
@@ -343,14 +350,44 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
     from risk.models import RiskState
     from risk.services.risk import RiskManagementService
 
-    portfolios = Portfolio.objects.all()
+    # Sync open positions from Freqtrade instances
+    open_positions: dict[str, dict] = {}
+    for url in ft_urls:
+        if not url:
+            continue
+        try:
+            resp = requests.get(
+                f"{url}/api/v1/status",
+                auth=(ft_user, ft_pass),
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                trades = resp.json()
+                for trade in trades:
+                    pair = trade.get("pair", "")
+                    if pair:
+                        open_positions[pair] = {
+                            "side": "buy",
+                            "size": trade.get("amount", 0),
+                            "entry_price": trade.get("open_rate", 0),
+                            "value": trade.get("stake_amount", 0),
+                        }
+        except Exception as e:
+            logger.debug("Failed to fetch open trades from %s: %s", url, e)
+
+    # Only update crypto portfolios — equity/forex have separate tracking
+    portfolios = Portfolio.objects.filter(asset_class="crypto")
+    if not portfolios.exists():
+        # Fallback: update all portfolios if none are tagged crypto
+        portfolios = Portfolio.objects.all()
     for portfolio in portfolios:
         RiskManagementService.update_equity(portfolio.id, current_equity)
-        # Also update daily_pnl from the equity delta since daily reset
+        # Also update daily_pnl and open_positions
         try:
             state = RiskState.objects.get(portfolio_id=portfolio.id)
             state.daily_pnl = current_equity - state.daily_start_equity
-            state.save(update_fields=["daily_pnl"])
+            state.open_positions = open_positions
+            state.save(update_fields=["daily_pnl", "open_positions"])
         except RiskState.DoesNotExist:
             pass
 
@@ -358,6 +395,7 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
         "total_pnl": total_pnl,
         "equity_updated": True,
         "instances": instance_results,
+        "open_positions_count": len(open_positions),
     }
 
 
@@ -822,10 +860,14 @@ def _run_ml_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, A
             ensure_platform_imports()
             from common.data_pipeline.pipeline import load_ohlcv
 
-            df = load_ohlcv(pred.symbol, "1h", asset_class=pred.asset_class)
-            if df is not None and len(df) >= 2:
+            exchange_id = {
+                "equity": "yfinance",
+                "forex": "yfinance",
+            }.get(pred.asset_class, "kraken")
+            df = load_ohlcv(pred.symbol, "1h", exchange_id=exchange_id)
+            if df is not None and len(df) >= 4:
                 last_close = float(df["close"].iloc[-1])
-                prev_close = float(df["close"].iloc[-2])
+                prev_close = float(df["close"].iloc[-4])
                 actual = "up" if last_close >= prev_close else "down"
                 pred.actual_direction = actual
                 pred.correct = pred.direction == actual
@@ -1070,12 +1112,27 @@ def _run_adaptive_weighting(params: dict, progress_cb: ProgressCallback) -> dict
         result.get("recommended_weights", {}),
     )
 
+    # Apply recommended weights to DEFAULT_WEIGHTS so they take effect
+    recommended = result.get("recommended_weights", {})
+    if recommended and result.get("total_trades", 0) >= 10:
+        try:
+            ensure_platform_imports()
+            from common.signals.constants import DEFAULT_WEIGHTS
+
+            for source, weight in recommended.items():
+                if source in DEFAULT_WEIGHTS:
+                    DEFAULT_WEIGHTS[source] = weight
+            logger.info("Applied adaptive weights to DEFAULT_WEIGHTS: %s", recommended)
+        except Exception as e:
+            logger.warning("Failed to apply adaptive weights: %s", e)
+
     return {
         "status": "completed",
         "win_rate": result.get("win_rate"),
         "threshold_adjustment": result.get("threshold_adjustment"),
         "recommended_weights": result.get("recommended_weights"),
         "reasoning": result.get("reasoning"),
+        "applied": bool(recommended and result.get("total_trades", 0) >= 10),
     }
 
 

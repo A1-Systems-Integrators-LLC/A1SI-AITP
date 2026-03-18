@@ -29,10 +29,21 @@ class RegimeService:
         symbols: list[str] | None = None,
     ) -> None:
         self.detector = detector or RegimeDetector()
+        self._asset_class_detectors: dict[str, RegimeDetector] = {}
         self.router = router or StrategyRouter()
         self.symbols = symbols or list(DEFAULT_SYMBOLS)
         self._cache: dict[str, tuple[RegimeState, datetime]] = {}
         self._history: dict[str, list[tuple[RegimeState, datetime]]] = {}
+
+    def _get_detector(self, asset_class: str) -> RegimeDetector:
+        """Get or create a RegimeDetector with per-asset-class thresholds."""
+        if asset_class == "crypto":
+            return self.detector
+        if asset_class not in self._asset_class_detectors:
+            self._asset_class_detectors[asset_class] = RegimeDetector(
+                asset_class=asset_class,
+            )
+        return self._asset_class_detectors[asset_class]
 
     def get_current_regime(self, symbol: str) -> dict | None:
         df = self._load_data(symbol)
@@ -42,7 +53,8 @@ class RegimeService:
                 return self._state_to_dict(symbol, state, ts)
             return None
 
-        state = self.detector.detect(df)
+        asset_class = self._guess_asset_class(symbol)
+        state = self._get_detector(asset_class).detect(df)
         now = datetime.now(timezone.utc)
         self._cache[symbol] = (state, now)
 
@@ -152,16 +164,24 @@ class RegimeService:
     def _guess_asset_class(symbol: str) -> str:
         """Guess asset class from symbol format."""
         s = symbol.upper()
-        # Forex pairs: EUR/USD, GBP/JPY etc.
-        forex_currencies = {"EUR", "USD", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"}
         parts = s.split("/")
+        # Forex pairs: both sides are known currency codes
+        forex_currencies = {
+            "EUR", "USD", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD",
+            "SEK", "NOK", "DKK", "SGD", "HKD", "ZAR", "MXN", "TRY",
+            "PLN", "CZK", "HUF", "INR",
+        }
         if len(parts) == 2 and parts[0] in forex_currencies and parts[1] in forex_currencies:
             return "forex"
         # Common crypto quote currencies
         crypto_quotes = {"USDT", "USDC", "BTC", "ETH", "BUSD", "BNB"}
         if len(parts) == 2 and parts[1] in crypto_quotes:
             return "crypto"
-        # Default: equity for stock-like symbols, crypto otherwise
+        # Equity: BASE/USD where BASE is NOT a crypto or forex currency
+        # e.g., AAPL/USD, SPY/USD
+        if len(parts) == 2 and parts[1] == "USD" and parts[0] not in forex_currencies:
+            return "equity"
+        # No slash: plain ticker like AAPL
         if "/" not in symbol:
             return "equity"
         return "crypto"

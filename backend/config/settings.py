@@ -529,7 +529,7 @@ SCHEDULED_TASKS = {
     },
     "economic_calendar": {
         "name": "Economic Calendar Check",
-        "description": "Check for upcoming high-impact economic events (ForexFactory + static fallback)",
+        "description": "Check for upcoming high-impact economic events",
         "task_type": "economic_calendar",
         "interval_seconds": 14400,
         "params": {},

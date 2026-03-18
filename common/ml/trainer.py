@@ -314,7 +314,25 @@ def train_model(
 
     # Train
     if model_type == "xgboost":
-        xgb_params = {**DEFAULT_XGB_PARAMS, **(params or {})}
+        # Use tuned params if Optuna ran, otherwise merge defaults with user params
+        if tune_result and model_params:
+            # Map tuned LightGBM params to XGBoost equivalents where possible
+            xgb_params = {**DEFAULT_XGB_PARAMS}
+            param_map = {
+                "learning_rate": "learning_rate",
+                "n_estimators": "n_estimators",
+                "max_depth": "max_depth",
+                "min_child_weight": "min_child_weight",
+                "subsample": "subsample",
+                "colsample_bytree": "colsample_bytree",
+                "reg_alpha": "reg_alpha",
+                "reg_lambda": "reg_lambda",
+            }
+            for lgb_key, xgb_key in param_map.items():
+                if lgb_key in model_params:
+                    xgb_params[xgb_key] = model_params[lgb_key]
+        else:
+            xgb_params = {**DEFAULT_XGB_PARAMS, **(params or {})}
         model = xgb.XGBClassifier(**xgb_params)
         model.fit(x_train, y_train, eval_set=[(x_test, y_test)], verbose=False)
     else:
@@ -324,6 +342,7 @@ def train_model(
             x_train,
             y_train,
             eval_set=[(x_test, y_test)],
+            callbacks=[lgb.early_stopping(20)],
         )
 
     # Evaluate on test set

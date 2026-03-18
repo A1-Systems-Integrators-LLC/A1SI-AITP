@@ -1,4 +1,4 @@
-"""Tests for Phase 1 — Alpha Maximization: Futures, Shorts, Thresholds, Profit Tracker."""
+"""Tests for Freqtrade Config & Strategy Validation (Spot Mode, Profitability Overhaul)."""
 
 import json
 from pathlib import Path
@@ -11,10 +11,16 @@ import pytest
 # ──────────────────────────────────────────────
 
 
-class TestFuturesConfig:
-    """Verify all 3 Freqtrade configs are set to futures mode."""
+class TestSpotConfig:
+    """Verify all 3 Freqtrade configs use spot mode (profitability overhaul)."""
 
     CONFIG_DIR = Path(__file__).resolve().parents[2] / "freqtrade"
+
+    EXPECTED = {
+        "config.json": {"wallet": 500, "stake": 60, "trades": 2},
+        "config_bmr.json": {"wallet": 400, "stake": 50, "trades": 2},
+        "config_vb.json": {"wallet": 300, "stake": 40, "trades": 1},
+    }
 
     @pytest.fixture(autouse=True)
     def _load_configs(self):
@@ -27,29 +33,29 @@ class TestFuturesConfig:
                 self.configs[name] = json.load(f)
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_trading_mode_futures(self, name):
-        assert self.configs[name]["trading_mode"] == "futures"
+    def test_trading_mode_spot(self, name):
+        assert self.configs[name]["trading_mode"] == "spot"
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_margin_mode_isolated(self, name):
-        assert self.configs[name]["margin_mode"] == "isolated"
+    def test_no_margin_mode(self, name):
+        assert "margin_mode" not in self.configs[name]
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_max_open_trades_3(self, name):
-        assert self.configs[name]["max_open_trades"] == 3
+    def test_max_open_trades(self, name):
+        assert self.configs[name]["max_open_trades"] == self.EXPECTED[name]["trades"]
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_stake_amount_80(self, name):
-        assert self.configs[name]["stake_amount"] == 80
+    def test_stake_amount(self, name):
+        assert self.configs[name]["stake_amount"] == self.EXPECTED[name]["stake"]
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_dry_run_wallet_300(self, name):
-        assert self.configs[name]["dry_run_wallet"] == 300
+    def test_dry_run_wallet(self, name):
+        assert self.configs[name]["dry_run_wallet"] == self.EXPECTED[name]["wallet"]
 
     @pytest.mark.parametrize("name", ["config.json", "config_bmr.json", "config_vb.json"])
-    def test_ccxt_default_type_swap(self, name):
+    def test_no_swap_default_type(self, name):
         ccxt_config = self.configs[name]["exchange"]["ccxt_config"]
-        assert ccxt_config.get("defaultType") == "swap"
+        assert ccxt_config.get("defaultType") != "swap"
 
 
 # ──────────────────────────────────────────────
@@ -57,69 +63,28 @@ class TestFuturesConfig:
 # ──────────────────────────────────────────────
 
 
-class TestShortSellingEnabled:
-    """Verify can_short=True and short entry/exit logic in strategies."""
+class TestLongOnlyStrategies:
+    """Verify strategies are long-only (no shorts, no leverage)."""
 
-    def test_civ1_can_short(self):
-        """CryptoInvestorV1 has can_short = True."""
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/CryptoInvestorV1.py"
-        )
-        content = strategy_path.read_text()
-        assert "can_short = True" in content
+    STRATEGIES = ["CryptoInvestorV1.py", "BollingerMeanReversion.py", "VolatilityBreakout.py"]
+    STRATEGY_DIR = (
+        Path(__file__).resolve().parents[2] / "freqtrade/user_data/strategies"
+    )
 
-    def test_bmr_can_short(self):
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/BollingerMeanReversion.py"
-        )
-        content = strategy_path.read_text()
-        assert "can_short = True" in content
+    @pytest.mark.parametrize("name", STRATEGIES)
+    def test_can_short_false(self, name):
+        content = (self.STRATEGY_DIR / name).read_text()
+        assert "can_short = False" in content
 
-    def test_vb_can_short(self):
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/VolatilityBreakout.py"
-        )
-        content = strategy_path.read_text()
-        assert "can_short = True" in content
+    @pytest.mark.parametrize("name", STRATEGIES)
+    def test_no_enter_short_signal(self, name):
+        content = (self.STRATEGY_DIR / name).read_text()
+        assert '"enter_short"' not in content
 
-    def test_civ1_has_enter_short(self):
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/CryptoInvestorV1.py"
-        )
-        content = strategy_path.read_text()
-        assert '"enter_short"' in content
-        assert '"exit_short"' in content
-
-    def test_bmr_has_enter_short(self):
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/BollingerMeanReversion.py"
-        )
-        content = strategy_path.read_text()
-        assert '"enter_short"' in content
-        assert '"exit_short"' in content
-
-    def test_vb_has_enter_short(self):
-        strategy_path = (
-            Path(__file__).resolve().parents[2]
-            / "freqtrade/user_data/strategies/VolatilityBreakout.py"
-        )
-        content = strategy_path.read_text()
-        assert '"enter_short"' in content
-        assert '"exit_short"' in content
-
-    def test_all_strategies_have_leverage_method(self):
-        for name in ["CryptoInvestorV1.py", "BollingerMeanReversion.py", "VolatilityBreakout.py"]:
-            path = (
-                Path(__file__).resolve().parents[2]
-                / f"freqtrade/user_data/strategies/{name}"
-            )
-            content = path.read_text()
-            assert "def leverage(" in content, f"{name} missing leverage() method"
+    @pytest.mark.parametrize("name", STRATEGIES)
+    def test_no_leverage_method(self, name):
+        content = (self.STRATEGY_DIR / name).read_text()
+        assert "def leverage(" not in content
 
 
 # ──────────────────────────────────────────────
@@ -128,27 +93,27 @@ class TestShortSellingEnabled:
 
 
 class TestConvictionThresholds:
-    """Verify lowered conviction thresholds."""
+    """Verify raised conviction thresholds (profitability overhaul)."""
 
-    def test_crypto_threshold_40(self):
+    def test_crypto_threshold_55(self):
         from common.signals.asset_tuning import ASSET_CONFIGS
 
-        assert ASSET_CONFIGS["crypto"].conviction_threshold == 40
+        assert ASSET_CONFIGS["crypto"].conviction_threshold == 55
 
-    def test_equity_threshold_50(self):
+    def test_equity_threshold_60(self):
         from common.signals.asset_tuning import ASSET_CONFIGS
 
-        assert ASSET_CONFIGS["equity"].conviction_threshold == 50
+        assert ASSET_CONFIGS["equity"].conviction_threshold == 60
 
-    def test_forex_threshold_45(self):
+    def test_forex_threshold_55(self):
         from common.signals.asset_tuning import ASSET_CONFIGS
 
-        assert ASSET_CONFIGS["forex"].conviction_threshold == 45
+        assert ASSET_CONFIGS["forex"].conviction_threshold == 55
 
-    def test_hard_disable_empty(self):
+    def test_hard_disable_populated(self):
         from common.signals.constants import HARD_DISABLE
 
-        assert len(HARD_DISABLE) == 0
+        assert len(HARD_DISABLE) >= 4
 
     def test_std_alignment_nonzero_crypto(self):
         from common.regime.regime_detector import Regime
@@ -166,17 +131,17 @@ class TestConvictionThresholds:
 
 
 class TestOrchestratorThresholds:
-    """Verify lowered orchestrator thresholds."""
+    """Verify raised orchestrator thresholds (profitability overhaul)."""
 
-    def test_pause_threshold_5(self):
+    def test_pause_threshold_15(self):
         from trading.services.strategy_orchestrator import StrategyOrchestrator
 
-        assert StrategyOrchestrator.PAUSE_THRESHOLD == 5
+        assert StrategyOrchestrator.PAUSE_THRESHOLD == 15
 
-    def test_reduce_threshold_20(self):
+    def test_reduce_threshold_35(self):
         from trading.services.strategy_orchestrator import StrategyOrchestrator
 
-        assert StrategyOrchestrator.REDUCE_THRESHOLD == 20
+        assert StrategyOrchestrator.REDUCE_THRESHOLD == 35
 
 
 # ──────────────────────────────────────────────
@@ -213,8 +178,8 @@ class TestRiskLimitConfig:
     def test_min_risk_reward_1(self):
         assert self.config["risk_management"]["min_risk_reward"] == 1.0
 
-    def test_futures_trading_mode(self):
-        assert self.config["freqtrade"]["trading_mode"] == "futures"
+    def test_spot_trading_mode(self):
+        assert self.config["freqtrade"]["trading_mode"] == "spot"
 
 
 # ──────────────────────────────────────────────

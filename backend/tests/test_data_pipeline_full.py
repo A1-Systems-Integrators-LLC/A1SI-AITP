@@ -543,8 +543,9 @@ class TestDownloadWatchlistEdgeCases:
         results = download_watchlist(
             symbols=["AAPL/USD"], timeframes=None, asset_class="equity",
         )
-        # Equity default is ["1d"]
-        assert len(results) == 1
+        # Equity default is ["1h", "1d"]
+        assert len(results) == 2
+        assert "AAPL/USD_1h" in results
         assert "AAPL/USD_1d" in results
 
     @patch("common.data_pipeline.pipeline.fetch_ohlcv_multi")

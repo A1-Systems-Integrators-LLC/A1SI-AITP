@@ -251,7 +251,7 @@ class TestAddAllIndicators:
 class TestRegimeDetector:
     def test_config_for_asset_class_crypto(self):
         config = config_for_asset_class("crypto")
-        assert config.adx_strong == 40
+        assert config.adx_strong == 32
 
     def test_config_for_asset_class_equity(self):
         config = config_for_asset_class("equity")
@@ -305,7 +305,7 @@ class TestRegimeDetector:
     def test_detector_asset_class(self):
         d1 = RegimeDetector(asset_class="crypto")
         d2 = RegimeDetector(asset_class="equity")
-        assert d1.config.adx_strong == 40
+        assert d1.config.adx_strong == 32
         assert d2.config.adx_strong == 35
 
 
@@ -444,7 +444,8 @@ class TestSentimentSignal:
             {"sentiment_score": 0.8, "title": "Bitcoin Surges",
              "summary": "", "published_at": datetime.now(tz=timezone.utc)},
         ]
-        sig = compute_signal(articles, "crypto")
+        # rescore=False to use the provided sentiment_score directly
+        sig = compute_signal(articles, "crypto", rescore=False)
         assert sig.signal > 0
 
     def test_compute_signal_bearish(self):
@@ -452,7 +453,7 @@ class TestSentimentSignal:
             {"sentiment_score": -0.8, "title": "Crash",
              "summary": "", "published_at": datetime.now(tz=timezone.utc)},
         ]
-        sig = compute_signal(articles, "crypto")
+        sig = compute_signal(articles, "crypto", rescore=False)
         assert sig.signal < 0
 
     def test_position_modifier_bounds(self):
@@ -462,7 +463,7 @@ class TestSentimentSignal:
              "summary": "", "published_at": datetime.now(tz=timezone.utc)}
             for _ in range(50)
         ]
-        sig = compute_signal(articles_bull, "crypto")
+        sig = compute_signal(articles_bull, "crypto", rescore=False)
         assert 0.8 <= sig.position_modifier <= 1.2
 
         articles_bear = [
@@ -470,7 +471,7 @@ class TestSentimentSignal:
              "summary": "", "published_at": datetime.now(tz=timezone.utc)}
             for _ in range(50)
         ]
-        sig = compute_signal(articles_bear, "crypto")
+        sig = compute_signal(articles_bear, "crypto", rescore=False)
         assert 0.8 <= sig.position_modifier <= 1.2
 
     def test_signal_label_thresholds(self):

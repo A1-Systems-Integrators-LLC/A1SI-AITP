@@ -61,8 +61,8 @@ class StrategyOrchestrator:
     }
 
     # Alignment thresholds
-    PAUSE_THRESHOLD = 5
-    REDUCE_THRESHOLD = 20
+    PAUSE_THRESHOLD = 15
+    REDUCE_THRESHOLD = 35
 
     # Persistence path for state snapshot
     _STATE_FILE = Path(__file__).resolve().parents[2] / "data" / "orchestrator_state.json"
@@ -152,6 +152,14 @@ class StrategyOrchestrator:
             return 0.5
         return 1.0
 
+    @staticmethod
+    def _load_regime_data(symbol: str, asset_class: str):
+        """Load OHLCV DataFrame for regime detection."""
+        from common.data_pipeline.pipeline import load_ohlcv
+
+        exchange_id = "yfinance" if asset_class in ("equity", "forex") else "kraken"
+        return load_ohlcv(symbol, "1h", exchange_id)
+
     def evaluate(
         self,
         asset_classes: list[str] | None = None,
@@ -179,7 +187,10 @@ class StrategyOrchestrator:
                 from common.signals.constants import ALIGNMENT_TABLES
 
                 detector = RegimeDetector()
-                state = detector.detect(sym, asset_class=asset_class)
+                df = self._load_regime_data(sym, asset_class)
+                if df is None or df.empty:
+                    raise ValueError(f"No OHLCV data for {sym}")
+                state = detector.detect(df)
                 table = ALIGNMENT_TABLES.get(asset_class, ALIGNMENT_TABLES["crypto"])
                 regime_row = table.get(state.regime, {})
 
@@ -192,12 +203,31 @@ class StrategyOrchestrator:
                     all_results.append(result)
 
             except Exception as e:
-                logger.warning("Strategy orchestration failed for %s: %s", asset_class, e)
+                logger.error("Strategy orchestration failed for %s: %s", asset_class, e)
+                # Preserve existing state on error — do NOT un-pause strategies.
+                # If no prior state exists (first run), default to active.
                 for strat in strategies:
-                    result = self._update_strategy(
-                        strat, asset_class, "unknown", 50, ACTION_ACTIVE,
-                    )
-                    all_results.append(result)
+                    key = self._state_key(strat, asset_class)
+                    existing = self._states.get(key)
+                    if existing:
+                        # Keep whatever state was already set
+                        all_results.append({
+                            "strategy": strat,
+                            "asset_class": asset_class,
+                            "regime": existing.regime,
+                            "alignment": existing.alignment,
+                            "action": existing.action,
+                            "changed": False,
+                            "error": str(e),
+                        })
+                    else:
+                        # First run, no prior state — safe to default active
+                        result = self._update_strategy(
+                            strat, asset_class, "unknown", 50, ACTION_ACTIVE,
+                        )
+                        result["error"] = str(e)
+                        result["changed"] = False
+                        all_results.append(result)
 
         return all_results
 

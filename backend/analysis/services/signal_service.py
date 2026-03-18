@@ -74,22 +74,34 @@ class SignalService:
     then feeds them into the aggregator for composite scoring.
     """
 
-    @staticmethod
-    def _get_aggregator():
-        ensure_platform_imports()
-        from common.signals.aggregator import SignalAggregator
+    _aggregator_instance = None
+    _aggregator_lock = threading.Lock()
 
-        return SignalAggregator()
+    @classmethod
+    def _get_aggregator(cls):
+        if cls._aggregator_instance is None:
+            with cls._aggregator_lock:
+                if cls._aggregator_instance is None:
+                    ensure_platform_imports()
+                    from common.signals.aggregator import SignalAggregator
+
+                    cls._aggregator_instance = SignalAggregator()
+        return cls._aggregator_instance
 
     @staticmethod
     def _get_regime_state(symbol: str, asset_class: str):
         """Fetch current regime state for a symbol."""
         try:
             ensure_platform_imports()
+            from common.data_pipeline.pipeline import load_ohlcv
             from common.regime.regime_detector import RegimeDetector
 
             detector = RegimeDetector()
-            return detector.detect(symbol, asset_class=asset_class)
+            exchange_id = "yfinance" if asset_class in ("equity", "forex") else "kraken"
+            df = load_ohlcv(symbol, "1h", exchange_id)
+            if df is None or df.empty:
+                return None
+            return detector.detect(df)
         except Exception as e:
             logger.warning("Regime detection unavailable for %s: %s", symbol, e)
             return None
@@ -209,7 +221,8 @@ class SignalService:
                 vb_technical_score,
             )
 
-            df = load_ohlcv(symbol, "1h", asset_class=asset_class)
+            source = "yfinance" if asset_class in ("equity", "forex") else "kraken"
+            df = load_ohlcv(symbol, "1h", source)
             if df is None or len(df) < 100:
                 return None
 

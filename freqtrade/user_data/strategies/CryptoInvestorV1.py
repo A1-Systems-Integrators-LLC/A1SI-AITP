@@ -53,7 +53,7 @@ class CryptoInvestorV1(IStrategy):
     # ── Strategy metadata ──
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = True
+    can_short = False
     # Warm-up: need at least buy_ema_slow (100) candles for indicators to be valid.
     startup_candle_count = 150
 
@@ -63,20 +63,20 @@ class CryptoInvestorV1(IStrategy):
 
     # ── ROI table (aggressive: take profits faster) ──
     minimal_roi = {
-        "0": 0.05,     # 5% ROI target
-        "60": 0.03,    # 3% after 1 hour
-        "240": 0.02,   # 2% after 4 hours
-        "720": 0.005,  # 0.5% after 12 hours
+        "0": 0.10,
+        "120": 0.06,
+        "480": 0.03,
+        "1440": 0.015,
     }
 
     # ── Stop loss ──
-    stoploss = -0.07  # -7% hard stop loss (ATR-based custom stop is primary)
+    stoploss = -0.07
     use_custom_stoploss = True
 
     # ── Trailing stop ──
     trailing_stop = True
-    trailing_stop_positive = 0.015
-    trailing_stop_positive_offset = 0.035
+    trailing_stop_positive = 0.02
+    trailing_stop_positive_offset = 0.04
     trailing_only_offset_is_reached = True
 
     # ── Order settings ──
@@ -84,7 +84,7 @@ class CryptoInvestorV1(IStrategy):
         "entry": "limit",
         "exit": "limit",
         "stoploss": "market",
-        "stoploss_on_exchange": False,
+        "stoploss_on_exchange": True,
     }
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
 
@@ -93,29 +93,13 @@ class CryptoInvestorV1(IStrategy):
     # Run hyperopt (--epochs 200) on recent kraken data to further optimize.
     buy_ema_fast = IntParameter(10, 80, default=21, space="buy", optimize=True)
     buy_ema_slow = IntParameter(50, 300, default=100, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 55, default=45, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 55, default=42, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(65, 90, default=75, space="sell", optimize=True)
     atr_multiplier = DecimalParameter(1.5, 4.0, default=2.5, decimals=1, space="buy", optimize=True)
 
     # ── Informative pairs ──
     def informative_pairs(self):
         return [("BTC/USDT", self.timeframe)]
-
-    def leverage(
-        self,
-        pair: str,
-        current_time: datetime,
-        current_rate: float,
-        proposed_leverage: float,
-        max_leverage: float,
-        entry_tag: str | None,
-        side: str,
-        **kwargs,
-    ) -> float:
-        """Dynamic leverage: base 3x, scaled by conviction modifier, capped at 5x."""
-        modifier = get_position_modifier(self, pair)
-        lev = min(3.0 * modifier, 5.0)
-        return min(lev, max_leverage)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Calculate all technical indicators."""
@@ -180,48 +164,31 @@ class CryptoInvestorV1(IStrategy):
         # Required: RSI pullback (core signal)
         rsi_pullback = dataframe["rsi"] < self.buy_rsi_threshold.value
 
-        # Required: minimal trend filter — EMA-21 above EMA-50 OR EMA-50 rising
-        # Prevents counter-trend entries in WEAK_TREND_DOWN
+        # Required: EMA directional filter — both conditions must hold
         ema_fast = f"ema_{self.buy_ema_fast.value}"
         ema_slow = f"ema_{self.buy_ema_slow.value}"
         ema_directional = (
             (dataframe[ema_fast] > dataframe[ema_slow])
-            | (dataframe[ema_slow] > dataframe[ema_slow].shift(5))
+            & (dataframe["close"] > dataframe[ema_fast])
         )
 
-        # Confirmation signals — need at least ONE
+        # Required: ADX confirms trend strength
+        adx_filter = dataframe["adx"] > 20
+
+        # Required: both MACD and volume confirmation
         macd_improving = (
             (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
             | (dataframe["macd"] > dataframe["macdsignal"])
         )
         volume_spike = dataframe["volume_ratio"] > 1.0
 
-        any_confirmation = macd_improving | volume_spike
-
         # Basic filters
         has_volume = dataframe["volume"] > 0
         not_overbought = dataframe["rsi"] > 10  # not in freefall
 
         dataframe.loc[
-            rsi_pullback & ema_directional & any_confirmation & has_volume & not_overbought,
+            rsi_pullback & ema_directional & adx_filter & macd_improving & volume_spike & has_volume & not_overbought,
             "enter_long",
-        ] = 1
-
-        # ── Short entry: EMA bearish alignment + RSI overbought + MACD declining ──
-        ema_bearish = (
-            (dataframe[ema_fast] < dataframe[ema_slow])
-            | (dataframe[ema_slow] < dataframe[ema_slow].shift(5))
-        )
-        rsi_overbought = dataframe["rsi"] > 60
-        macd_declining = (
-            (dataframe["macdhist"] < dataframe["macdhist"].shift(1))
-            | (dataframe["macd"] < dataframe["macdsignal"])
-        )
-        not_oversold = dataframe["rsi"] < 90
-
-        dataframe.loc[
-            ema_bearish & rsi_overbought & macd_declining & has_volume & not_oversold,
-            "enter_short",
         ] = 1
 
         return dataframe
@@ -244,15 +211,6 @@ class CryptoInvestorV1(IStrategy):
                 reduce(lambda x, y: x | y, conditions) | exit_trend_break,
                 "exit_long",
             ] = 1
-
-        # ── Short exit: RSI oversold OR price crosses above fast EMA ──
-        exit_short_rsi = dataframe["rsi"] < 30
-        exit_short_trend = (
-            (dataframe["close"] > dataframe[f"ema_{self.buy_ema_fast.value}"])
-            & (dataframe["close"].shift(1) <= dataframe[f"ema_{self.buy_ema_fast.value}"].shift(1))
-        )
-
-        dataframe.loc[exit_short_rsi | exit_short_trend, "exit_short"] = 1
 
         return dataframe
 
@@ -314,7 +272,7 @@ class CryptoInvestorV1(IStrategy):
         last_candle = dataframe.iloc[-1]
         atr = last_candle.get("atr", 0)
 
-        if atr == 0:
+        if atr == 0 or (isinstance(atr, float) and (atr != atr)):
             return self.stoploss
 
         # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)

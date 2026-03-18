@@ -46,7 +46,7 @@ class BollingerMeanReversion(IStrategy):
 
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = True
+    can_short = False
     # Warm-up: BB period up to 30, plus RSI/ADX/ATR 14 — need at least 30 candles.
     startup_candle_count = 50
 
@@ -55,24 +55,24 @@ class BollingerMeanReversion(IStrategy):
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.04,     # 4% ROI target (take profits faster)
-        "60": 0.025,   # 2.5% after 1 hour
-        "240": 0.015,  # 1.5% after 4 hours
-        "480": 0.005,  # 0.5% after 8 hours
+        "0": 0.06,
+        "60": 0.03,
+        "120": 0.015,
+        "240": 0.008,
     }
 
     stoploss = -0.06
     use_custom_stoploss = True
     trailing_stop = True
-    trailing_stop_positive = 0.01
-    trailing_stop_positive_offset = 0.025
+    trailing_stop_positive = 0.008
+    trailing_stop_positive_offset = 0.018
     trailing_only_offset_is_reached = True
 
     order_types = {
         "entry": "limit",
         "exit": "limit",
         "stoploss": "market",
-        "stoploss_on_exchange": False,
+        "stoploss_on_exchange": True,
     }
 
     # Hyperopt parameters — aggressive defaults for high trade frequency
@@ -84,22 +84,6 @@ class BollingerMeanReversion(IStrategy):
     )
     buy_adx_ceiling = IntParameter(25, 60, default=40, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(55, 75, default=60, space="sell", optimize=True)
-
-    def leverage(
-        self,
-        pair: str,
-        current_time: datetime,
-        current_rate: float,
-        proposed_leverage: float,
-        max_leverage: float,
-        entry_tag: str | None,
-        side: str,
-        **kwargs,
-    ) -> float:
-        """Dynamic leverage: base 3x, scaled by conviction modifier, capped at 5x."""
-        modifier = get_position_modifier(self, pair)
-        lev = min(3.0 * modifier, 5.0)
-        return min(lev, max_leverage)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         from freqtrade.enums import RunMode
@@ -178,19 +162,6 @@ class BollingerMeanReversion(IStrategy):
 
         dataframe.loc[reduce(lambda x, y: x & y, conditions), "enter_long"] = 1
 
-        # ── Short entry: price above upper BB + RSI overbought + volume spike ──
-        short_conditions = [
-            dataframe["close"] > dataframe[f"bb_upper{bb_suffix}"],
-            dataframe["rsi"] > (100 - self.buy_rsi_threshold.value),  # Mirror oversold
-            dataframe["adx"] < self.buy_adx_ceiling.value,
-            dataframe["rsi"] < 95,
-            dataframe["volume"] > 0,
-        ]
-        if vol_factor > 0:
-            short_conditions.append(dataframe["volume_ratio"] > vol_factor)
-
-        dataframe.loc[reduce(lambda x, y: x & y, short_conditions), "enter_short"] = 1
-
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -208,13 +179,6 @@ class BollingerMeanReversion(IStrategy):
 
         # Exit on either condition
         dataframe.loc[reduce(lambda x, y: x | y, conditions), "exit_long"] = 1
-
-        # ── Short exit: price drops to middle band OR RSI oversold ──
-        short_exit_conditions = [
-            dataframe["close"] < dataframe[f"bb_mid{bb_suffix}"],
-            dataframe["rsi"] < (100 - self.sell_rsi_threshold.value),
-        ]
-        dataframe.loc[reduce(lambda x, y: x | y, short_exit_conditions), "exit_short"] = 1
 
         return dataframe
 
@@ -335,7 +299,7 @@ class BollingerMeanReversion(IStrategy):
         last_candle = dataframe.iloc[-1]
         atr = last_candle.get("atr", 0)
         adx = last_candle.get("adx", 0)
-        if atr == 0:
+        if atr == 0 or (isinstance(atr, float) and (atr != atr)):
             return self.stoploss
 
         # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)

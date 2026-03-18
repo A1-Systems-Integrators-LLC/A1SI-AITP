@@ -478,19 +478,19 @@ class TestSignalWeightRebalance:
     def test_macro_weight_exists(self):
         from common.signals.constants import DEFAULT_WEIGHTS
         assert "macro" in DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["macro"] == 0.05
+        assert DEFAULT_WEIGHTS["macro"] == 0.04
 
-    def test_sentiment_weight_increased(self):
+    def test_sentiment_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["sentiment"] == 0.22
+        assert DEFAULT_WEIGHTS["sentiment"] == 0.10
 
-    def test_technical_weight_decreased(self):
+    def test_technical_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["technical"] == 0.22
+        assert DEFAULT_WEIGHTS["technical"] == 0.35
 
-    def test_regime_weight_decreased(self):
+    def test_regime_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["regime"] == 0.18
+        assert DEFAULT_WEIGHTS["regime"] == 0.25
 
 
 # ── Aggregator Modifiers ────────────────────────────────────────────────────
@@ -548,7 +548,7 @@ class TestAggregatorModifiers:
         result = agg.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             technical_score=50,
-            regime_state=_make_regime_state(Regime.RANGING),
+            regime_state=_make_regime_state(Regime.WEAK_TREND_UP),
         )
         # Fear & Greed +10 should boost composite
         fg_reason = [r for r in result.reasoning if "Fear & Greed" in r]
@@ -570,7 +570,7 @@ class TestAggregatorModifiers:
         result = agg.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             technical_score=50,
-            regime_state=_make_regime_state(Regime.RANGING),
+            regime_state=_make_regime_state(Regime.WEAK_TREND_UP),
         )
         reddit_reason = [r for r in result.reasoning if "Reddit" in r]
         assert len(reddit_reason) >= 1
@@ -593,7 +593,7 @@ class TestAggregatorModifiers:
         result = agg.compute(
             "BTC/USDT", "crypto", "CryptoInvestorV1",
             technical_score=50,
-            regime_state=_make_regime_state(Regime.RANGING),
+            regime_state=_make_regime_state(Regime.WEAK_TREND_UP),
         )
         trending_reason = [r for r in result.reasoning if "Trending" in r]
         assert len(trending_reason) >= 1

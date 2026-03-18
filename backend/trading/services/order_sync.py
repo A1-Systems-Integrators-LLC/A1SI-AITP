@@ -12,10 +12,12 @@ _sync_task: asyncio.Task | None = None
 _sync_lock = asyncio.Lock()
 
 SYNC_INTERVAL_SECONDS = 15
+MAX_BACKOFF_SECONDS = 300  # 5 minutes max backoff
 
 
 async def _sync_loop() -> None:
     """Periodically sync all active live orders with their exchanges."""
+    consecutive_errors = 0
     while True:
         try:
             from trading.models import Order, OrderStatus, TradingMode
@@ -39,10 +41,18 @@ async def _sync_loop() -> None:
                 except Exception as e:
                     logger.warning(f"Sync failed for order {order.id}: {e}")
 
-        except Exception as e:
-            logger.error(f"Order sync loop error: {e}")
+            consecutive_errors = 0  # Reset on success
 
-        await asyncio.sleep(SYNC_INTERVAL_SECONDS)
+        except Exception as e:
+            consecutive_errors += 1
+            logger.error(f"Order sync loop error (attempt {consecutive_errors}): {e}")
+
+        # Exponential backoff on consecutive errors
+        if consecutive_errors > 0:
+            backoff = min(SYNC_INTERVAL_SECONDS * (2 ** consecutive_errors), MAX_BACKOFF_SECONDS)
+            await asyncio.sleep(backoff)
+        else:
+            await asyncio.sleep(SYNC_INTERVAL_SECONDS)
 
 
 async def start_order_sync() -> None:

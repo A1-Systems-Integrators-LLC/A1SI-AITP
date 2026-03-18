@@ -334,6 +334,7 @@ class SignalAttribution(models.Model):
     )
     strategy = models.CharField(max_length=100)
     composite_score = models.FloatField()
+    technical_contribution = models.FloatField(default=0.0)
     ml_contribution = models.FloatField(default=0.0)
     sentiment_contribution = models.FloatField(default=0.0)
     regime_contribution = models.FloatField(default=0.0)

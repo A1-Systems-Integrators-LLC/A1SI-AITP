@@ -398,13 +398,21 @@ def list_available_data(directory: Path | None = None) -> pd.DataFrame:
     """List all available Parquet data files with metadata."""
     directory = directory or PROCESSED_DIR
     records = []
+    valid_timeframes = {"1m", "5m", "15m", "1h", "4h", "1d"}
     for f in directory.glob("*.parquet"):
         parts = f.stem.split("_")
         if len(parts) >= 4:
             exchange = parts[0]
             symbol = f"{parts[1]}/{parts[2]}"
             timeframe = parts[3]
-            df = pd.read_parquet(f)
+            # Skip non-OHLCV files (e.g., funding rate files)
+            if timeframe not in valid_timeframes:
+                continue
+            try:
+                df = pd.read_parquet(f)
+            except Exception as e:
+                logger.warning("Failed to read %s: %s", f, e)
+                continue
             records.append(
                 {
                     "exchange": exchange,
@@ -517,7 +525,7 @@ def download_watchlist(
         symbols = _DEFAULT_WATCHLISTS.get(asset_class, _DEFAULT_WATCHLISTS["crypto"])
     if timeframes is None:
         if asset_class in ("equity",):
-            timeframes = ["1d"]
+            timeframes = ["1h", "1d"]
         elif asset_class == "forex":
             timeframes = ["1h", "4h", "1d"]
         else:
@@ -594,6 +602,7 @@ def detect_gaps(
     df: pd.DataFrame,
     timeframe: str,
     max_allowed_gaps: int = 0,
+    asset_class: str = "crypto",
 ) -> list[dict]:
     """Detect missing candles in an OHLCV DataFrame.
 
@@ -605,6 +614,9 @@ def detect_gaps(
         Expected candle interval ('1m', '5m', '15m', '1h', '4h', '1d')
     max_allowed_gaps : int
         Number of consecutive missing candles before flagging
+    asset_class : str
+        Asset class for gap tolerance ('crypto', 'equity', 'forex').
+        Equity skips overnight/weekend gaps; forex skips weekend gaps.
 
     Returns
     -------
@@ -629,6 +641,16 @@ def detect_gaps(
     for i in range(1, len(index)):
         actual_delta = index[i] - index[i - 1]
         if actual_delta > expected_delta * (1 + max_allowed_gaps):
+            # Skip expected gaps for non-crypto assets
+            if asset_class == "equity" and _is_equity_expected_gap(
+                index[i - 1], index[i], timeframe
+            ):
+                continue
+            if asset_class == "forex" and _is_forex_expected_gap(
+                index[i - 1], index[i]
+            ):
+                continue
+
             missing = int(actual_delta / expected_delta) - 1
             gaps.append(
                 {
@@ -639,6 +661,35 @@ def detect_gaps(
             )
 
     return gaps
+
+
+def _is_equity_expected_gap(start: pd.Timestamp, end: pd.Timestamp, timeframe: str) -> bool:
+    """Return True if gap is an expected equity market closure (overnight or weekend).
+
+    Equity markets are closed overnight (~16:00-09:30 ET) and on weekends.
+    For daily timeframe, only weekend gaps (Fri→Mon) are expected.
+    """
+    if timeframe == "1d":
+        # Weekend gap: Friday → Monday (2 calendar days gap is normal)
+        return start.weekday() == 4 and end.weekday() == 0
+    # Intraday: overnight gap or weekend gap
+    # Overnight: end of day to next morning (up to ~17.5 hours for 1h candles)
+    hours = (end - start).total_seconds() / 3600
+    if hours <= 20 and start.weekday() < 5:
+        return True  # Overnight gap
+    # Weekend: Friday PM to Monday AM (up to ~65 hours)
+    if start.weekday() == 4 and end.weekday() == 0 and hours <= 70:
+        return True
+    return False
+
+
+def _is_forex_expected_gap(start: pd.Timestamp, end: pd.Timestamp) -> bool:
+    """Return True if gap is an expected forex weekend closure (Fri 5PM - Sun 5PM ET)."""
+    hours = (end - start).total_seconds() / 3600
+    # Forex weekend gap: Friday → Sunday/Monday, typically ~48 hours
+    if start.weekday() == 4 and end.weekday() in (0, 6) and hours <= 55:
+        return True
+    return False
 
 
 _STALE_THRESHOLDS: dict[str, float] = {
@@ -829,8 +880,19 @@ def validate_data(
             issues_summary=["No data found"],
         )
 
-    gaps = detect_gaps(df, timeframe)
-    is_stale, stale_hours = detect_stale_data(df, max_stale_hours)
+    # Infer asset class from exchange for appropriate thresholds
+    asset_class = "crypto"
+    if exchange_id == "yfinance":
+        # Heuristic: forex pairs have 6-char symbols like EURUSD, equity are shorter
+        forex_currencies = {"EUR", "USD", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"}
+        parts = symbol.split("/")
+        if len(parts) == 2 and parts[0] in forex_currencies and parts[1] in forex_currencies:
+            asset_class = "forex"
+        else:
+            asset_class = "equity"
+
+    gaps = detect_gaps(df, timeframe, asset_class=asset_class)
+    is_stale, stale_hours = detect_stale_data(df, max_stale_hours, asset_class=asset_class)
     nan_cols = audit_nans(df)
     outlier_list = detect_outliers(df, price_spike_pct)
     ohlc_violations = check_ohlc_integrity(df)
@@ -981,10 +1043,10 @@ def add_indicators(df: pd.DataFrame, periods: list = None) -> pd.DataFrame:
         # Exponential Moving Average
         result[f"ema_{p}"] = result["close"].ewm(span=p, adjust=False).mean()
 
-    # RSI (14-period default)
+    # RSI (14-period, Wilder's smoothing — matches technical.rsi())
     delta = result["close"].diff()
-    gain = delta.where(delta > 0, 0.0).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0.0)).rolling(window=14).mean()
+    gain = delta.where(delta > 0, 0.0).ewm(alpha=1 / 14, adjust=False).mean()
+    loss = (-delta.where(delta < 0, 0.0)).ewm(alpha=1 / 14, adjust=False).mean()
     rs = gain / loss.replace(0, np.nan)
     result["rsi_14"] = 100 - (100 / (1 + rs))
 

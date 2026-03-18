@@ -25,6 +25,7 @@ class MLService:
         timeframe = params.get("timeframe", "1h")
         exchange = params.get("exchange", "kraken")
         test_ratio = params.get("test_ratio", 0.2)
+        asset_class = params.get("asset_class", "crypto")
 
         progress_cb(0.1, "Loading data...")
         try:
@@ -65,6 +66,7 @@ class MLService:
             feature_importance=result["feature_importance"],
             symbol=symbol,
             timeframe=timeframe,
+            label=f"{asset_class}_{symbol}",
         )
 
         progress_cb(1.0, "Complete")

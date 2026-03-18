@@ -139,22 +139,22 @@ class TestSentimentScorerEdgeCases:
         assert abs(score) < 0.5
 
     def test_negator_flips_positive(self):
-        """'not bullish' should reduce or flip the positive score."""
-        pos_score, _ = score_text("bullish")
-        neg_score, _ = score_text("not bullish")
+        """'not great' should score lower than 'great'."""
+        pos_score, _ = score_text("great")
+        neg_score, _ = score_text("not great")
         assert neg_score < pos_score
 
     def test_negator_flips_negative(self):
-        """'not crash' should flip negative to positive."""
-        neg_score, _ = score_text("crash")
-        flipped_score, _ = score_text("not crash")
+        """'not terrible' should flip negative to positive."""
+        neg_score, _ = score_text("terrible")
+        flipped_score, _ = score_text("not terrible")
         assert flipped_score > neg_score
 
     def test_intensifier_amplifies(self):
-        """'massive surge' should score higher than plain 'surge' in diluted text."""
+        """'extremely good' should score higher than plain 'good' in diluted text."""
         # Use enough filler words so the score doesn't saturate at 1.0
-        plain, _ = score_text("the market saw a surge today in trading across the board")
-        intense, _ = score_text("the market saw a massive surge today in trading across the board")
+        plain, _ = score_text("the market had a good day today across the board")
+        intense, _ = score_text("the market had an extremely good day today across the board")
         assert intense > plain
 
     def test_no_sentiment_words_returns_neutral(self):
@@ -847,7 +847,7 @@ class TestSentimentSignalEdgeCases:
         articles = [
             {"sentiment_score": 0.5, "age_hours": -5.0, "title": "Test", "summary": ""},
         ]
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         # Should not crash, treat as age=0
         assert result.article_count == 1
         assert result.signal > 0
@@ -855,7 +855,7 @@ class TestSentimentSignalEdgeCases:
     def test_missing_keys_in_article(self):
         """Articles with missing keys should use defaults."""
         articles = [{}]  # all keys missing
-        result = compute_signal(articles, "crypto")
+        result = compute_signal(articles, "crypto", rescore=False)
         assert result.article_count == 1
         assert result.signal == 0.0  # default sentiment_score=0
 
@@ -865,7 +865,7 @@ class TestSentimentSignalEdgeCases:
             {"sentiment_score": 0.5, "age_hours": 1.0, "title": "X", "summary": ""}
             for _ in range(8)
         ]
-        crypto_result = compute_signal(articles, "crypto")
-        forex_result = compute_signal(articles, "forex")
+        crypto_result = compute_signal(articles, "crypto", rescore=False)
+        forex_result = compute_signal(articles, "forex", rescore=False)
         # 8 articles: crypto conviction=8/20=0.4, forex conviction=8/8=1.0
         assert forex_result.conviction > crypto_result.conviction

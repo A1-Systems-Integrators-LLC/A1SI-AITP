@@ -176,8 +176,18 @@ def _check_regime_deterioration(
     if alignment_drop < REGIME_DETERIORATION_THRESHOLD:
         return None  # Not a significant deterioration
 
-    # Only exit profitable positions on regime deterioration
     if current_profit_pct <= 0:
+        if alignment_drop > 40:
+            return ExitAdvice(
+                should_exit=True,
+                reason=(
+                    f"Regime deterioration cut loss: {entry_regime.value} → {current_regime.value} "
+                    f"(alignment drop {alignment_drop:.0f} > 40), "
+                    f"loss {current_profit_pct:.1%}"
+                ),
+                urgency=URGENCY_IMMEDIATE,
+                partial_pct=0.0,
+            )
         return ExitAdvice(
             should_exit=False,
             reason=(

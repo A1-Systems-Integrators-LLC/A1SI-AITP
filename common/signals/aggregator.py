@@ -284,6 +284,9 @@ class SignalAggregator:
         # ── 4. Derive outputs ────────────────────────────────────────────
         result.signal_label = self._label(composite, effective_threshold)
         result.entry_approved = composite >= effective_threshold
+
+        if len(available) < 2:
+            result.entry_approved = False
         result.position_modifier = self._position_modifier(composite, effective_threshold)
         result.reasoning = self._build_reasoning(
             sources,

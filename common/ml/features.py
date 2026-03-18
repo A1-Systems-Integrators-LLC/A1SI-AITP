@@ -63,6 +63,9 @@ def compute_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["ema_7_over_21"] = feat["ema_7"] / feat["ema_21"] - 1
     feat["ema_21_over_50"] = feat["ema_21"] / feat["ema_50"] - 1
 
+    raw_ma_cols = [f"sma_{p}" for p in [7, 14, 21, 50]] + [f"ema_{p}" for p in [7, 14, 21, 50]]
+    feat = feat.drop(columns=[c for c in raw_ma_cols if c in feat.columns])
+
     # --- Momentum ---
     feat["rsi_14"] = rsi(df["close"], 14)
     macd_df = macd(df["close"])
@@ -87,7 +90,7 @@ def compute_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["obv"] = obv(df)
     feat["mfi_14"] = mfi(df)
     feat["volume_sma_20"] = sma(df["volume"], 20)
-    feat["volume_ratio"] = df["volume"] / feat["volume_sma_20"]
+    feat["volume_ratio"] = df["volume"] / feat["volume_sma_20"].replace(0, np.nan)
 
     return feat
 
@@ -134,7 +137,6 @@ def add_return_features(df: pd.DataFrame, periods: list[int] | None = None) -> p
     result = pd.DataFrame(index=df.index)
     for p in periods:
         result[f"return_{p}"] = df["close"].pct_change(p)
-        result[f"log_return_{p}"] = np.log(df["close"] / df["close"].shift(p))
 
     # High-low range as fraction of close
     result["hl_range_pct"] = (df["high"] - df["low"]) / df["close"]

@@ -209,12 +209,21 @@ class TestAdaptiveRiskTightening(TestCase):
         """WEAK_TREND_DOWN applies 0.85 multiplier."""
         from risk.services.risk import RiskManagementService
 
+        mock_regime_state = MagicMock()
+        mock_regime_state.regime.value = "WEAK_TREND_DOWN"
+
         with patch("risk.services.risk.ensure_platform_imports"):
             mock_detector = MagicMock()
-            mock_detector.detect.return_value = {"regime": "WEAK_TREND_DOWN"}
+            mock_detector.detect.return_value = mock_regime_state
+            mock_load = MagicMock(return_value=MagicMock(empty=False))
             with patch.dict(
                 "sys.modules",
-                {"common.regime.regime_detector": MagicMock(RegimeDetector=lambda: mock_detector)},
+                {
+                    "common.regime.regime_detector": MagicMock(
+                        RegimeDetector=lambda: mock_detector,
+                    ),
+                    "common.data_pipeline.pipeline": MagicMock(load_ohlcv=mock_load),
+                },
             ):
                 mult, name = RiskManagementService._get_regime_risk_multiplier()
                 assert mult == 0.85

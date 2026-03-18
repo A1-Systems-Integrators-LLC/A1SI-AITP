@@ -47,16 +47,19 @@ class TestSentimentScorer:
     def test_negation(self):
         from common.sentiment.scorer import score_text
 
-        score_no_neg, _ = score_text("This is a bullish rally")
-        score_negated, _ = score_text("This is not a bullish rally")
+        score_no_neg, _ = score_text("This is a great outcome")
+        score_negated, _ = score_text("This is not a great outcome")
         assert score_negated < score_no_neg
 
     def test_intensifier(self):
         from common.sentiment.scorer import score_text
 
         # Use longer text so normalization doesn't clamp both to 1.0
-        base = "the company reported a quiet day with some trading activity and a small rally"
-        intense = "the company reported a quiet day with some trading activity and a massive rally"
+        base = "the company reported a quiet day with some trading activity and a small profit"
+        intense = (
+            "the company reported a quiet day with some trading"
+            " activity and an excellent profit"
+        )
         score_normal, _ = score_text(base)
         score_intense, _ = score_text(intense)
         assert score_intense > score_normal
@@ -76,8 +79,8 @@ class TestSentimentScorer:
 
         # Positive title, negative summary — title should dominate (60%)
         score, _ = score_article(
-            "Massive bullish breakout in crypto markets",
-            "Some concerns about crash risks remain",
+            "Excellent and wonderful gains in the markets today",
+            "Some concerns about terrible risks remain",
         )
         assert score > 0  # Title positivity should outweigh summary negativity
 

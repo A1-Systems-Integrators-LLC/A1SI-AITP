@@ -274,16 +274,20 @@ class RiskManagementService:
         """
         try:
             ensure_platform_imports()
+            from common.data_pipeline.pipeline import load_ohlcv
             from common.regime.regime_detector import RegimeDetector
 
             detector = RegimeDetector()
             # Use BTC/USDT as the reference symbol for crypto regime
-            regime = detector.detect("BTC/USDT")
-            regime_name = regime.get("regime", "UNKNOWN") if isinstance(regime, dict) else "UNKNOWN"
+            df = load_ohlcv("BTC/USDT", "1h", "kraken")
+            if df is None or df.empty:
+                return 1.0, "UNKNOWN"
+            regime = detector.detect(df)
+            regime_name = regime.regime.value if regime else "UNKNOWN"
 
             multipliers = {
-                "STRONG_TREND_DOWN": 0.5,
-                "HIGH_VOLATILITY": 0.7,
+                "STRONG_TREND_DOWN": 0.75,
+                "HIGH_VOLATILITY": 0.80,
                 "WEAK_TREND_DOWN": 0.85,
             }
             return multipliers.get(regime_name, 1.0), regime_name
@@ -313,7 +317,9 @@ class RiskManagementService:
             peak = state.peak_equity if state.peak_equity > 0 else 1
             drawdown = 1.0 - (state.total_equity / peak)
             daily_loss_pct = (
-                abs(state.daily_pnl / state.total_equity) if state.total_equity > 0 else 0.0
+                max(0.0, -state.daily_pnl / state.total_equity)
+                if state.total_equity > 0
+                else 0.0
             )
 
             # Adaptive risk tightening based on regime
@@ -477,7 +483,23 @@ class RiskManagementService:
                 },
             )
 
-        # Send notification with audit trail
+        # Create audit trail unconditionally (don't rely on send_notification)
+        try:
+            from risk.models import AlertLog
+
+            await sync_to_async(AlertLog.objects.create)(
+                portfolio_id=portfolio_id,
+                event_type="kill_switch_halt",
+                severity="critical",
+                message=f"Kill switch HALT: {reason} ({cancelled} orders cancelled)",
+                channel="log",
+                delivered=True,
+                error="",
+            )
+        except Exception as e:
+            logger.error(f"Failed to create halt AlertLog: {e}")
+
+        # Send notification (may fail independently)
         try:
             await sync_to_async(RiskManagementService.send_notification)(
                 portfolio_id,

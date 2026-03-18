@@ -232,7 +232,15 @@ class HealthView(APIView):
             with db_conn.cursor() as cur:
                 cur.execute("PRAGMA journal_mode")
                 mode = cur.fetchone()[0]
-            checks["journal"] = {"status": "ok", "mode": mode}
+            if mode not in ("delete", "memory"):
+                checks["journal"] = {
+                    "status": "error",
+                    "mode": mode,
+                    "detail": f"Expected DELETE journal mode, got {mode.upper()}. "
+                    "WAL mode is incompatible with Docker virtiofs.",
+                }
+            else:
+                checks["journal"] = {"status": "ok", "mode": mode}
         except Exception as e:
             checks["journal"] = {"status": "error", "detail": str(e)}
 
@@ -407,7 +415,7 @@ class MetricsView(APIView):
             ml_count = len(ModelRegistry().list_models())
             metrics.gauge("ml_models_total", ml_count)
         except Exception:
-            pass
+            logger.debug("Failed to snapshot ML model count", exc_info=True)
 
         # Orchestrator paused strategies
         try:
@@ -417,7 +425,7 @@ class MetricsView(APIView):
             paused = sum(1 for s in orch.get_all_states() if s.action == ACTION_PAUSE)
             metrics.gauge("orchestrator_strategies_paused", paused)
         except Exception:
-            pass
+            logger.debug("Failed to snapshot orchestrator metrics", exc_info=True)
 
         # Signal cache size
         try:

@@ -6,23 +6,24 @@ from common.regime.regime_detector import Regime
 # Must sum to 1.0.  When a source is unavailable its weight is
 # redistributed proportionally to the remaining sources.
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "technical": 0.22,
-    "regime": 0.18,
-    "ml": 0.20,
-    "sentiment": 0.22,
+    "technical": 0.35,
+    "regime": 0.25,
+    "ml": 0.08,
+    "sentiment": 0.10,
     "scanner": 0.05,
-    "win_rate": 0.03,
-    "funding": 0.05,
-    "macro": 0.05,
+    "win_rate": 0.05,
+    "funding": 0.08,
+    "macro": 0.04,
 }
 
 # ── Entry thresholds ─────────────────────────────────────────────────────────
 # (offset_above_threshold, position_modifier, label)
 # Actual threshold is conviction_threshold from asset_tuning + session adjustment.
 ENTRY_TIER_OFFSETS: list[tuple[int, float, str]] = [
-    (20, 1.0, "strong_buy"),  # threshold + 20
-    (10, 0.7, "buy"),  # threshold + 10
-    (0, 0.4, "cautious_buy"),  # threshold + 0
+    (25, 1.2, "very_strong_buy"),
+    (15, 1.0, "strong_buy"),
+    (5, 0.7, "buy"),
+    (0, 0.5, "cautious_buy"),
 ]
 
 # ── Signal labels ────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ CRYPTO_ALIGNMENT: dict[Regime, dict[str, int]] = {
         "TrendReversal": 60,
     },
     Regime.STRONG_TREND_DOWN: {
-        "CryptoInvestorV1": 60,  # Shorts thrive in strong downtrends
+        "CryptoInvestorV1": 5,  # Long-only: worst regime for longs
         "BollingerMeanReversion": 45,
         "VolatilityBreakout": 55,  # Breakdown shorts
         "MomentumShort": 90,  # Short-only excels here
@@ -138,7 +139,12 @@ ALIGNMENT_TABLES: dict[str, dict[Regime, dict[str, int]]] = {
 # ── Hard-disable rules ───────────────────────────────────────────────────────
 # (regime, strategy) pairs that instantly reject regardless of other scores.
 # Cleared: with shorts enabled, all strategies can profit in any regime.
-HARD_DISABLE: set[tuple[Regime, str]] = set()
+HARD_DISABLE: set[tuple[Regime, str]] = {
+    (Regime.RANGING, "CryptoInvestorV1"),
+    (Regime.STRONG_TREND_DOWN, "CryptoInvestorV1"),
+    (Regime.STRONG_TREND_UP, "BollingerMeanReversion"),
+    (Regime.WEAK_TREND_UP, "BollingerMeanReversion"),
+}
 
 # ── Regime change cooldown ───────────────────────────────────────────────────
 # REGIME_COOLDOWN_BARS moved to per-asset-class config in asset_tuning.py
