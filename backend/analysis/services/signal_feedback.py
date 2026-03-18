@@ -304,9 +304,8 @@ def _compute_pnl(order) -> float | None:
     cross-contamination between trades.
     """
     try:
-        from trading.models import Order
-
         from analysis.models import SignalAttribution
+        from trading.models import Order
 
         if not order.avg_fill_price or order.avg_fill_price <= 0:
             return None

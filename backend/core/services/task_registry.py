@@ -1116,6 +1116,7 @@ def _run_adaptive_weighting(params: dict, progress_cb: ProgressCallback) -> dict
     recommended = result.get("recommended_weights", {})
     if recommended and result.get("total_trades", 0) >= 10:
         try:
+            from core.platform_bridge import ensure_platform_imports
             ensure_platform_imports()
             from common.signals.constants import DEFAULT_WEIGHTS
 

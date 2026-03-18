@@ -678,18 +678,14 @@ def _is_equity_expected_gap(start: pd.Timestamp, end: pd.Timestamp, timeframe: s
     if hours <= 20 and start.weekday() < 5:
         return True  # Overnight gap
     # Weekend: Friday PM to Monday AM (up to ~65 hours)
-    if start.weekday() == 4 and end.weekday() == 0 and hours <= 70:
-        return True
-    return False
+    return start.weekday() == 4 and end.weekday() == 0 and hours <= 70
 
 
 def _is_forex_expected_gap(start: pd.Timestamp, end: pd.Timestamp) -> bool:
     """Return True if gap is an expected forex weekend closure (Fri 5PM - Sun 5PM ET)."""
     hours = (end - start).total_seconds() / 3600
     # Forex weekend gap: Friday → Sunday/Monday, typically ~48 hours
-    if start.weekday() == 4 and end.weekday() in (0, 6) and hours <= 55:
-        return True
-    return False
+    return start.weekday() == 4 and end.weekday() in (0, 6) and hours <= 55
 
 
 _STALE_THRESHOLDS: dict[str, float] = {
