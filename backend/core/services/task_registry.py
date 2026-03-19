@@ -335,16 +335,47 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
             instance_results.append({"url": url, "status": "error", "error": str(e)})
 
     # Update RiskState with actual equity and daily P&L
-    # Sum actual Freqtrade wallet sizes (not the inflated platform initial_capital)
+    # Only count wallets for instances that actually responded (are running)
     from django.conf import settings as django_settings
 
-    # Each Freqtrade instance has its own dry_run_wallet config:
-    # CIV1: $200, BMR: $200, VB: $100 = $500 total
-    # Pull from FREQTRADE_INSTANCES or use the known paper trading capital
     ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
-    wallet_total = sum(inst.get("dry_run_wallet", 0) for inst in ft_instances)
-    initial_capital = wallet_total if wallet_total > 0 else 500.0
-    current_equity = initial_capital + total_pnl
+    # Map URLs to their wallet sizes
+    url_to_wallet: dict[str, float] = {}
+    for inst in ft_instances:
+        inst_url = inst.get("url", "")
+        if inst_url:
+            url_to_wallet[inst_url] = inst.get("dry_run_wallet", 0)
+
+    # Sum wallets only for instances that responded successfully
+    live_wallet_total = 0.0
+    for result in instance_results:
+        if result.get("status") == "ok":
+            live_wallet_total += url_to_wallet.get(result["url"], 0)
+
+    # Include forex paper trading P&L
+    forex_pnl = 0.0
+    try:
+        from trading.services.forex_paper_trading import ForexPaperTradingService
+
+        forex_profit = ForexPaperTradingService().get_profit()
+        forex_pnl = forex_profit.get("profit_all_coin", 0.0) or 0.0
+        # Forex capital: $1000 per open position (MAX_OPEN_POSITIONS=3)
+        forex_capital = forex_profit.get("trade_count", 0)
+        # Count buy orders as capital deployed
+        forex_buy_count = (forex_profit.get("trade_count", 0)
+                          - forex_profit.get("closed_trade_count", 0)
+                          + forex_profit.get("closed_trade_count", 0))
+        # Simpler: forex capital = $1000 * number of symbols ever traded
+        from trading.models import Order, OrderStatus, TradingMode
+        forex_buys = Order.objects.filter(
+            asset_class="forex", mode=TradingMode.PAPER, status=OrderStatus.FILLED, side="buy",
+        ).values("symbol").distinct().count()
+        forex_initial = forex_buys * 1000.0  # POSITION_SIZE_USD from forex service
+    except Exception:
+        forex_initial = 0.0
+
+    initial_capital = (live_wallet_total + forex_initial) if (live_wallet_total + forex_initial) > 0 else 500.0
+    current_equity = initial_capital + total_pnl + forex_pnl
 
     from portfolio.models import Portfolio
     from risk.models import RiskState
@@ -393,7 +424,10 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
 
     return {
         "total_pnl": total_pnl,
+        "forex_pnl": forex_pnl,
         "equity_updated": True,
+        "current_equity": current_equity,
+        "initial_capital": initial_capital,
         "instances": instance_results,
         "open_positions_count": len(open_positions),
     }

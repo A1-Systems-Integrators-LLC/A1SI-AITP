@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring
+.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -37,6 +37,19 @@ setup-frontend:
 
 dev:
 	@bash scripts/dev.sh
+
+start:
+	@bash scripts/start.sh
+
+start-all:
+	FREQTRADE_INSTANCES=CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout,MomentumShort,GridDCA,MomentumScalper15m,SentimentEventTrader,TrendReversal $(MAKE) start
+
+stop:
+	@echo "Stopping all A1SI-AITP services..."
+	@pkill -f "daphne.*config.asgi" 2>/dev/null || true
+	@pkill -f "node.*vite" 2>/dev/null || true
+	@pkill -f "freqtrade trade" 2>/dev/null || true
+	@echo "All services stopped."
 
 dev-backend:
 	cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) -m daphne -b 0.0.0.0 -p 8000 config.asgi:application
