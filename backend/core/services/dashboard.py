@@ -76,7 +76,7 @@ class DashboardService:
             portfolio = Portfolio.objects.order_by("id").first()
             if portfolio:
                 summary = TradingPerformanceService.get_summary(
-                    portfolio.id, asset_class=asset_class,
+                    portfolio.id, asset_class=asset_class, mode="live",
                 )
             else:
                 summary = {}
@@ -207,6 +207,47 @@ class DashboardService:
                         "open_trades": 0,
                         "closed_trades": 0,
                     })
+
+            # Include forex paper trading P&L
+            try:
+                from trading.services.forex_paper_trading import ForexPaperTradingService
+
+                forex_svc = ForexPaperTradingService()
+                forex_status = forex_svc.get_status()
+                forex_profit = forex_svc.get_profit()
+
+                forex_pnl = forex_profit.get("profit_all_coin", 0) or 0
+                forex_pnl_pct = forex_profit.get("profit_all_percent", 0) or 0
+                forex_trade_count = forex_profit.get("trade_count", 0) or 0
+                forex_closed = forex_profit.get("closed_trade_count", 0) or 0
+                forex_wins = forex_profit.get("winning_trades", 0) or 0
+                forex_losses = forex_profit.get("losing_trades", 0) or 0
+
+                if forex_status.get("running", False):
+                    running_count += 1
+
+                forex_open = forex_profit.get(
+                    "open_trade_count",
+                    max(forex_trade_count - forex_closed, 0),
+                )
+
+                total_pnl += forex_pnl
+                total_pnl_pct += forex_pnl_pct
+                open_trades += forex_open
+                closed_trades += forex_closed
+                winning += forex_wins
+                losing += forex_losses
+
+                instances.append({
+                    "name": "forex_signals",
+                    "running": forex_status.get("running", False),
+                    "strategy": "ForexSignals",
+                    "pnl": round(forex_pnl, 2),
+                    "open_trades": forex_open,
+                    "closed_trades": forex_closed,
+                })
+            except Exception as e:
+                logger.debug("Forex paper trading unavailable: %s", e)
 
             total_decided = winning + losing
             win_rate = round(winning / total_decided * 100, 1) if total_decided > 0 else 0.0

@@ -95,6 +95,7 @@ def open_orders(portfolio):
 
 @pytest.fixture
 def filled_orders(portfolio):
+    """Filled LIVE orders for trading KPI tests (paper orders are in paper_trading section)."""
     now = dj_tz.now()
     return [
         Order.objects.create(
@@ -106,7 +107,7 @@ def filled_orders(portfolio):
             filled=1.0,
             avg_fill_price=50000,
             status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER,
+            mode=TradingMode.LIVE,
             portfolio_id=portfolio.id,
             timestamp=now,
         ),
@@ -119,7 +120,7 @@ def filled_orders(portfolio):
             filled=1.0,
             avg_fill_price=55000,
             status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER,
+            mode=TradingMode.LIVE,
             portfolio_id=portfolio.id,
             timestamp=now,
         ),
@@ -132,7 +133,7 @@ def filled_orders(portfolio):
             filled=10.0,
             avg_fill_price=3000,
             status=OrderStatus.FILLED,
-            mode=TradingMode.PAPER,
+            mode=TradingMode.LIVE,
             portfolio_id=portfolio.id,
             timestamp=now,
         ),
@@ -388,13 +389,13 @@ class TestPaperTradingWidget:
 
         with patch("trading.views._get_paper_trading_services", return_value={"civ1": mock_svc}):
             pt = DashboardService._get_paper_trading_kpis()
-            assert pt["instances_running"] == 1
+            assert pt["instances_running"] == 2  # 1 Freqtrade + 1 forex
             assert pt["total_pnl"] == 100.0
             assert pt["total_pnl_pct"] == 10.0
             assert pt["open_trades"] == 2  # 5 - 3
             assert pt["closed_trades"] == 3
             assert pt["win_rate"] == pytest.approx(66.7, abs=0.1)  # 2/3 * 100
-            assert len(pt["instances"]) == 1
+            assert len(pt["instances"]) == 2  # Freqtrade + forex
             assert pt["instances"][0]["name"] == "civ1"
             assert pt["instances"][0]["strategy"] == "CryptoInvestorV1"
 
@@ -417,16 +418,16 @@ class TestPaperTradingWidget:
 
         with patch("trading.views._get_paper_trading_services", return_value={"bmr": mock_svc}):
             pt = DashboardService._get_paper_trading_kpis()
-            assert pt["instances_running"] == 0
-            assert len(pt["instances"]) == 1
-            assert pt["instances"][0]["running"] is False
+            assert pt["instances_running"] == 1  # forex always running
+            assert len(pt["instances"]) == 2  # BMR + forex
+            assert pt["instances"][0]["running"] is False  # BMR
 
     def test_paper_trading_in_full_kpis(self):
         """paper_trading section appears in full get_kpis() output."""
         with patch("trading.views._get_paper_trading_services", return_value={}):
             kpis = DashboardService.get_kpis()
             assert "paper_trading" in kpis
-            assert kpis["paper_trading"]["instances_running"] == 0
+            assert kpis["paper_trading"]["instances_running"] == 1  # forex
             assert isinstance(kpis["paper_trading"]["instances"], list)
 
 

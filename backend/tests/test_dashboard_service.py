@@ -106,20 +106,25 @@ class TestDashboardServicePartialFailures:
 @pytest.mark.django_db
 class TestDashboardServicePaperTradingKpis:
     def test_paper_trading_defaults_when_no_services(self):
-        """Paper trading KPIs return zeros when Freqtrade is not running."""
+        """Paper trading KPIs return zeros when Freqtrade is not running (forex always present)."""
         with patch(
             "trading.views._get_paper_trading_services",
             return_value={},
         ):
             kpis = DashboardService.get_kpis()
             pt = kpis["paper_trading"]
-            assert pt["instances_running"] == 0
+            # Forex signals instance is always present and "running"
+            assert pt["instances_running"] == 1
             assert pt["total_pnl"] == 0.0
             assert pt["total_pnl_pct"] == 0.0
             assert pt["open_trades"] == 0
             assert pt["closed_trades"] == 0
             assert pt["win_rate"] == 0.0
             assert isinstance(pt["instances"], list)
+            # Forex instance included
+            forex_inst = [i for i in pt["instances"] if i["name"] == "forex_signals"]
+            assert len(forex_inst) == 1
+            assert forex_inst[0]["strategy"] == "ForexSignals"
 
     def test_paper_trading_structure(self):
         """Paper trading KPIs have all expected keys."""
@@ -155,8 +160,8 @@ class TestDashboardServicePaperTradingKpis:
             return_value={"civ1": mock_svc, "bmr": mock_svc},
         ):
             pt = DashboardService._get_paper_trading_kpis()
-            assert pt["instances_running"] == 2
-            assert pt["total_pnl"] == 51.0  # 25.5 * 2
+            assert pt["instances_running"] == 3  # 2 Freqtrade + 1 forex
+            assert pt["total_pnl"] == 51.0  # 25.5 * 2 (forex has 0)
             assert pt["open_trades"] == 2  # (3-2) * 2
             assert pt["closed_trades"] == 4  # 2 * 2
             assert pt["win_rate"] == 50.0  # 2 wins / 4 total
@@ -196,8 +201,8 @@ class TestDashboardServicePaperTradingKpis:
             return_value={"good": good_svc, "bad": bad_svc},
         ):
             pt = DashboardService._get_paper_trading_kpis()
-            assert pt["instances_running"] == 1
+            assert pt["instances_running"] == 2  # 1 good Freqtrade + 1 forex
             assert pt["total_pnl"] == 10.0
-            assert len(pt["instances"]) == 2
+            assert len(pt["instances"]) == 3  # good + bad + forex
             assert pt["instances"][0]["running"] is True
             assert pt["instances"][1]["running"] is False

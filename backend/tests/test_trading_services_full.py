@@ -368,22 +368,37 @@ class TestPerformanceMetricsEdgeCases:
         assert result["total_trades"] == 1  # Counted but zero-price skipped from P&L
         assert result["total_pnl"] == 0.0
 
-    def test_only_buys_negative_pnl(self):
-        """Buys with no sells → negative P&L (cost with no revenue)."""
+    def test_only_buys_open_position(self):
+        """Buys with no sells → open position, zero realized P&L."""
         from trading.services.performance import TradingPerformanceService
 
         self._create_order("ETH/USDT", "buy", 3000.0, amount=2.0)
         result = TradingPerformanceService.get_summary(8000)
-        # sell_revenue=0, buy_cost=6000 → PnL = -6000
-        assert result["total_pnl"] < 0
+        assert result["total_pnl"] == 0.0  # No realized P&L — position is open
+        assert result["open_positions"]["ETH/USDT"]["qty"] == 2.0
+        assert result["open_positions"]["ETH/USDT"]["side"] == "long"
+        assert result["open_positions"]["ETH/USDT"]["avg_price"] == 3000.0
 
-    def test_only_sells_positive_pnl(self):
-        """Sells with no buys → positive P&L (revenue with no cost)."""
+    def test_only_sells_open_position(self):
+        """Sells with no buys → short position, zero realized P&L."""
         from trading.services.performance import TradingPerformanceService
 
         self._create_order("SOL/USDT", "sell", 150.0, amount=10.0)
         result = TradingPerformanceService.get_summary(8000)
-        assert result["total_pnl"] > 0
+        assert result["total_pnl"] == 0.0  # No realized P&L — position is open
+        assert result["open_positions"]["SOL/USDT"]["qty"] == 10.0
+        assert result["open_positions"]["SOL/USDT"]["side"] == "short"
+
+    def test_partial_match_realized_pnl(self):
+        """Buy 2, sell 1 → realized P&L on matched unit, open position on remainder."""
+        from trading.services.performance import TradingPerformanceService
+
+        self._create_order("BTC/USDT", "buy", 100.0, amount=2.0)
+        self._create_order("BTC/USDT", "sell", 150.0, amount=1.0)
+        result = TradingPerformanceService.get_summary(8000)
+        assert result["total_pnl"] == 50.0  # 1 unit matched: (150-100)*1
+        assert result["open_positions"]["BTC/USDT"]["qty"] == 1.0
+        assert result["open_positions"]["BTC/USDT"]["side"] == "long"
 
     def test_profit_factor_infinity(self):
         """All wins, no losses → profit_factor is None (infinity)."""

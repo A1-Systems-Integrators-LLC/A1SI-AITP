@@ -110,6 +110,7 @@ class TestPerformanceZeroPriceGuard:
                 self.avg_fill_price = avg_fill_price
                 self.amount = amount
                 self.filled = filled
+                self.asset_class = "crypto"
 
         orders = [
             FakeOrder(1, "BTC/USDT", "buy", 50000.0, 50000.0, 1.0, 1.0),
@@ -119,8 +120,10 @@ class TestPerformanceZeroPriceGuard:
 
         result = TradingPerformanceService._compute_metrics(orders)
         assert result["total_trades"] == 3
-        # Zero-price sell skipped, so BTC has buy cost but no sell revenue → negative P&L
-        assert result["total_pnl"] == -50000.0
+        # Zero-price sell skipped → BTC has unmatched buy (open position, not a loss)
+        assert result["total_pnl"] == 0.0
+        assert result["open_positions"]["BTC/USDT"]["qty"] == 1.0
+        assert result["open_positions"]["BTC/USDT"]["side"] == "long"
 
     def test_performance_empty_orders_returns_defaults(self):
         result = TradingPerformanceService._compute_metrics([])

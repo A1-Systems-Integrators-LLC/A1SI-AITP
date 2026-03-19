@@ -222,6 +222,95 @@ class ForexPaperTradingService:
 
         return exits
 
+    def get_profit(self) -> dict[str, Any]:
+        """Compute P&L from filled forex paper trades.
+
+        Realized P&L from matched buy/sell pairs (weighted average cost).
+        Unrealized P&L from open positions marked to current market prices.
+        """
+        from django.db.models import F, Sum
+
+        from trading.models import Order, OrderStatus, TradingMode
+
+        filled = Order.objects.filter(
+            asset_class="forex",
+            mode=TradingMode.PAPER,
+            status=OrderStatus.FILLED,
+        )
+
+        buys = filled.filter(side="buy")
+        sells = filled.filter(side="sell")
+
+        buy_count = buys.count()
+        sell_count = sells.count()
+        closed_count = min(buy_count, sell_count)
+
+        # Per-symbol realized + unrealized P&L
+        symbols = set(filled.values_list("symbol", flat=True))
+        realized_pnl = 0.0
+        unrealized_pnl = 0.0
+        winning = 0
+        losing = 0
+
+        for sym in symbols:
+            sym_buys = buys.filter(symbol=sym)
+            sym_sells = sells.filter(symbol=sym)
+
+            buy_val = float(
+                sym_buys.aggregate(total=Sum(F("price") * F("amount")))["total"] or 0
+            )
+            sell_val = float(
+                sym_sells.aggregate(total=Sum(F("price") * F("amount")))["total"] or 0
+            )
+            buy_qty = float(sym_buys.aggregate(total=Sum("amount"))["total"] or 0)
+            sell_qty = float(sym_sells.aggregate(total=Sum("amount"))["total"] or 0)
+
+            avg_buy = buy_val / buy_qty if buy_qty > 0 else 0
+            avg_sell = sell_val / sell_qty if sell_qty > 0 else 0
+
+            # Realized P&L from matched (closed) quantities
+            matched = min(buy_qty, sell_qty)
+            if matched > 0:
+                sym_realized = matched * (avg_sell - avg_buy)
+                realized_pnl += sym_realized
+                if sym_realized > 0:
+                    winning += 1
+                elif sym_realized < 0:
+                    losing += 1
+
+            # Unrealized P&L from open positions at current price
+            net_qty = buy_qty - sell_qty
+            if abs(net_qty) > 1e-10:
+                current_price = self._get_price(sym)
+                if current_price and current_price > 0:
+                    if net_qty > 0:  # long position
+                        unrealized_pnl += (current_price - avg_buy) * net_qty
+                    else:  # short position
+                        unrealized_pnl += (avg_sell - current_price) * abs(net_qty)
+
+        total_pnl = realized_pnl + unrealized_pnl
+
+        # Percentage based on total invested
+        buy_value = float(
+            buys.aggregate(total=Sum(F("price") * F("amount")))["total"] or 0
+        )
+        profit_pct = (total_pnl / buy_value * 100) if buy_value else 0.0
+
+        # Actual open position count from net buy/sell balance per symbol
+        open_symbols = self._get_open_symbols()
+
+        return {
+            "profit_all_coin": round(total_pnl, 4),
+            "profit_all_percent": round(profit_pct, 2),
+            "trade_count": buy_count + sell_count,
+            "closed_trade_count": closed_count,
+            "open_trade_count": len(open_symbols),
+            "winning_trades": winning,
+            "losing_trades": losing,
+            "realized_pnl": round(realized_pnl, 4),
+            "unrealized_pnl": round(unrealized_pnl, 4),
+        }
+
     def get_status(self) -> dict[str, Any]:
         """Return status dict matching PaperTradingStatus interface."""
         open_symbols = self._get_open_symbols()

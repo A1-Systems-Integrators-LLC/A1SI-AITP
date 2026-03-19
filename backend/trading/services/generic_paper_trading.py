@@ -44,23 +44,28 @@ class GenericPaperTradingService:
             except ImportError:
                 pass
 
-        # Risk check
-        from risk.services.risk import RiskManagementService
-
-        approved, reason = await sync_to_async(RiskManagementService.check_trade)(
-            order.portfolio_id,
-            order.symbol,
-            order.side,
-            order.amount,
-            order.price or 0.0,
-            order.stop_loss_price,
+        # Skip risk gate for closing orders — they reduce exposure, not increase it
+        is_closing = await sync_to_async(GenericPaperTradingService._is_closing_order)(
+            order
         )
-        if not approved:
-            await sync_to_async(order.transition_to)(
-                OrderStatus.REJECTED,
-                reject_reason=reason,
+        if not is_closing:
+            # Risk check for new positions only
+            from risk.services.risk import RiskManagementService
+
+            approved, reason = await sync_to_async(RiskManagementService.check_trade)(
+                order.portfolio_id,
+                order.symbol,
+                order.side,
+                order.amount,
+                order.price or 0.0,
+                order.stop_loss_price,
             )
-            return order
+            if not approved:
+                await sync_to_async(order.transition_to)(
+                    OrderStatus.REJECTED,
+                    reject_reason=reason,
+                )
+                return order
 
         # Get current price for fill simulation
         router = DataServiceRouter()
@@ -120,6 +125,34 @@ class GenericPaperTradingService:
             f"@ {fill_price} (fee={fee:.4f}, {asset_class})",
         )
         return order
+
+    @staticmethod
+    def _is_closing_order(order: Order) -> bool:
+        """Check if this order reduces an existing open position.
+
+        Exit/close orders should bypass risk position-size checks because
+        they reduce exposure rather than increase it.  A sell against a net
+        long (or a buy against a net short) is considered closing.
+        """
+        from django.db.models import Sum
+
+        filled = Order.objects.filter(
+            symbol=order.symbol,
+            asset_class=order.asset_class,
+            mode=order.mode,
+            status=OrderStatus.FILLED,
+        )
+        buy_total = (
+            filled.filter(side="buy").aggregate(total=Sum("amount"))["total"] or 0
+        )
+        sell_total = (
+            filled.filter(side="sell").aggregate(total=Sum("amount"))["total"] or 0
+        )
+        net = float(buy_total) - float(sell_total)
+        # Sell closes a long position; buy closes a short position
+        return (order.side == "sell" and net > 0) or (
+            order.side == "buy" and net < 0
+        )
 
     @staticmethod
     async def get_status() -> dict[str, Any]:
