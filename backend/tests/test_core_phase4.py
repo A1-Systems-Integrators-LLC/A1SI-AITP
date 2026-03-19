@@ -2183,7 +2183,8 @@ class TestDashboardService:
             patch("trading.views._get_paper_trading_services", return_value={}),
         ):
             result = DashboardService._get_paper_trading_kpis()
-        assert result["instances_running"] == 0
+        # Forex signals instance is always present and "running"
+        assert result["instances_running"] == 1
 
     def test_get_paper_trading_kpis_running_instance(self):
         from core.services.dashboard import DashboardService
@@ -2203,7 +2204,7 @@ class TestDashboardService:
             patch("asgiref.sync.async_to_sync", return_value=MagicMock(return_value=mock_profit)),
         ):
             result = DashboardService._get_paper_trading_kpis()
-        assert result["instances_running"] == 1
+        assert result["instances_running"] == 2  # 1 Freqtrade + 1 forex
         assert result["total_pnl"] == 100.0
         assert result["win_rate"] > 0
 

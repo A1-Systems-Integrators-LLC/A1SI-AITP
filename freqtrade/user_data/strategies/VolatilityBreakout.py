@@ -65,10 +65,10 @@ class VolatilityBreakout(IStrategy):
         "0": 0.12,
         "120": 0.07,
         "480": 0.04,
-        "1440": 0.02,
+        "1440": 0.01,
     }
 
-    stoploss = -0.05
+    stoploss = -0.03
     use_custom_stoploss = True
 
     trailing_stop = True

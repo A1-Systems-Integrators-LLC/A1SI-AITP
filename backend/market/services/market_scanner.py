@@ -105,11 +105,7 @@ class MarketScannerService:
                 latest_rsi = float(rsi_val.iloc[-1]) if not rsi_val.empty else 50.0
                 latest_adx = float(adx_val.iloc[-1]) if not adx_val.empty else 0.0
 
-                create_kwargs = {
-                    "timeframe": timeframe,
-                    "asset_class": asset_class,
-                    "expires_at": expires_at,
-                }
+                detections = []
 
                 # --- Volume Surge ---
                 opp = self._check_volume_surge(
@@ -118,30 +114,12 @@ class MarketScannerService:
                     is_tick_volume=(asset_class == "forex"),
                 )
                 if opp:
-                    opp = self._enrich_score(opp, latest_rsi, latest_adx)
-                    MarketOpportunity.objects.create(
-                        symbol=symbol,
-                        opportunity_type=opp["type"],
-                        score=opp["score"],
-                        details=opp["details"],
-                        **create_kwargs,
-                    )
-                    opportunities_created += 1
-                    self._maybe_alert(symbol, opp, asset_class)
+                    detections.append(opp)
 
                 # --- RSI Bounce ---
                 opp = self._check_rsi_bounce(symbol, rsi_val, latest_close, timeframe)
                 if opp:
-                    opp = self._enrich_score(opp, latest_rsi, latest_adx)
-                    MarketOpportunity.objects.create(
-                        symbol=symbol,
-                        opportunity_type=opp["type"],
-                        score=opp["score"],
-                        details=opp["details"],
-                        **create_kwargs,
-                    )
-                    opportunities_created += 1
-                    self._maybe_alert(symbol, opp, asset_class)
+                    detections.append(opp)
 
                 # --- Breakout Candidate ---
                 opp = self._check_breakout(
@@ -149,16 +127,7 @@ class MarketScannerService:
                     distance_pct=thresholds["breakout_distance_pct"],
                 )
                 if opp:
-                    opp = self._enrich_score(opp, latest_rsi, latest_adx)
-                    MarketOpportunity.objects.create(
-                        symbol=symbol,
-                        opportunity_type=opp["type"],
-                        score=opp["score"],
-                        details=opp["details"],
-                        **create_kwargs,
-                    )
-                    opportunities_created += 1
-                    self._maybe_alert(symbol, opp, asset_class)
+                    detections.append(opp)
 
                 # --- Trend Pullback ---
                 opp = self._check_trend_pullback(
@@ -167,32 +136,25 @@ class MarketScannerService:
                     pullback_max=thresholds["pullback_max_pct"],
                 )
                 if opp:
-                    opp = self._enrich_score(opp, latest_rsi, latest_adx)
-                    MarketOpportunity.objects.create(
-                        symbol=symbol,
-                        opportunity_type=opp["type"],
-                        score=opp["score"],
-                        details=opp["details"],
-                        **create_kwargs,
-                    )
-                    opportunities_created += 1
-                    self._maybe_alert(symbol, opp, asset_class)
+                    detections.append(opp)
 
                 # --- Momentum Shift ---
                 opp = self._check_momentum_shift(
                     symbol, macd_df, latest_close, timeframe,
                 )
                 if opp:
-                    opp = self._enrich_score(opp, latest_rsi, latest_adx)
-                    MarketOpportunity.objects.create(
-                        symbol=symbol,
-                        opportunity_type=opp["type"],
-                        score=opp["score"],
-                        details=opp["details"],
-                        **create_kwargs,
+                    detections.append(opp)
+
+                # Save with deduplication
+                for det in detections:
+                    det = self._enrich_score(det, latest_rsi, latest_adx)
+                    created = self._save_opportunity(
+                        MarketOpportunity, symbol, det, asset_class,
+                        timeframe, expires_at, now,
                     )
-                    opportunities_created += 1
-                    self._maybe_alert(symbol, opp, asset_class)
+                    if created:
+                        opportunities_created += 1
+                    self._maybe_alert(symbol, det, asset_class)
 
             except Exception:
                 logger.warning("Scanner error for %s", symbol, exc_info=True)
@@ -432,6 +394,37 @@ class MarketScannerService:
                 "reason": f"MACD histogram flipped {direction} ({prev_hist:.4f} → {curr_hist:.4f})",
             },
         }
+
+    # ── Persistence with deduplication ──────────────────────────
+
+    @staticmethod
+    def _save_opportunity(
+        model_cls: type,
+        symbol: str,
+        opp: dict[str, Any],
+        asset_class: str,
+        timeframe: str,
+        expires_at: Any,
+        now: Any,
+    ) -> bool:
+        """Save or update an opportunity, deduplicating by (symbol, type, asset_class).
+
+        Returns True if a new record was created, False if an existing one was updated.
+        """
+        _, created = model_cls.objects.update_or_create(
+            symbol=symbol,
+            opportunity_type=opp["type"],
+            asset_class=asset_class,
+            acted_on=False,
+            expires_at__gt=now,
+            defaults={
+                "score": opp["score"],
+                "details": opp["details"],
+                "timeframe": timeframe,
+                "expires_at": expires_at,
+            },
+        )
+        return created
 
     # ── Score enrichment ─────────────────────────────────────────
 

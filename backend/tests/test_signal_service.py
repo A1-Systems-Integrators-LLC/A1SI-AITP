@@ -543,6 +543,24 @@ class TestSignalAPIViews:
             StrategyOrchestrator._STATE_FILE = orig
             StrategyOrchestrator.reset_instance()
 
+    def test_strategy_status_fallback_thresholds_match_orchestrator(self):
+        """Regression: fallback thresholds in views.py must match StrategyOrchestrator constants."""
+        import inspect
+
+        from analysis.views import StrategyStatusView
+        from trading.services.strategy_orchestrator import StrategyOrchestrator
+
+        source = inspect.getsource(StrategyStatusView.get)
+        assert "StrategyOrchestrator.PAUSE_THRESHOLD" in source, (
+            "Fallback must use StrategyOrchestrator.PAUSE_THRESHOLD, not a hardcoded value"
+        )
+        assert "StrategyOrchestrator.REDUCE_THRESHOLD" in source, (
+            "Fallback must use StrategyOrchestrator.REDUCE_THRESHOLD, not a hardcoded value"
+        )
+        # Also verify the actual constant values for documentation
+        assert StrategyOrchestrator.PAUSE_THRESHOLD == 15
+        assert StrategyOrchestrator.REDUCE_THRESHOLD == 35
+
     def test_ml_prediction_list_view(self):
         MLPrediction.objects.create(
             model_id="m1",

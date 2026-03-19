@@ -42,12 +42,12 @@
             ".*UP/.*",
             ".*BEAR/.*",
             ".*BULL/.*",
-            "USDC/USDT",
-            "USDG/USDT",
-            "DAI/USDT",
-            "TUSD/USDT",
-            "PYUSD/USDT",
-            "XAUT/USDT"
+            "(USDC|ZUSD)/.*",
+            "USDG/.*",
+            "(DAI|XDAI)/.*",
+            "(TUSD|TUSDT)/.*",
+            "PYUSD/.*",
+            "XAUT/.*"
         ]
     },
     "pairlists": [

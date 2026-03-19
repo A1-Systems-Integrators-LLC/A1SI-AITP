@@ -58,10 +58,10 @@ class BollingerMeanReversion(IStrategy):
         "0": 0.06,
         "60": 0.03,
         "120": 0.015,
-        "240": 0.008,
+        "240": 0.005,
     }
 
-    stoploss = -0.06
+    stoploss = -0.03
     use_custom_stoploss = True
     trailing_stop = True
     trailing_stop_positive = 0.008

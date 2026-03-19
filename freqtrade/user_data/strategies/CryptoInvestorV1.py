@@ -66,11 +66,11 @@ class CryptoInvestorV1(IStrategy):
         "0": 0.10,
         "120": 0.06,
         "480": 0.03,
-        "1440": 0.015,
+        "1440": 0.01,
     }
 
     # ── Stop loss ──
-    stoploss = -0.07
+    stoploss = -0.04
     use_custom_stoploss = True
 
     # ── Trailing stop ──

@@ -530,19 +530,19 @@ class TestStrategyMetadata:
         assert CryptoInvestorV1.INTERFACE_VERSION == 3
         assert CryptoInvestorV1.timeframe == "1h"
         assert CryptoInvestorV1.can_short is False
-        assert CryptoInvestorV1.stoploss == -0.07
+        assert CryptoInvestorV1.stoploss == -0.04
 
     def test_bmr_metadata(self):
         assert BollingerMeanReversion.INTERFACE_VERSION == 3
         assert BollingerMeanReversion.timeframe == "1h"
         assert BollingerMeanReversion.can_short is False
-        assert BollingerMeanReversion.stoploss == -0.06
+        assert BollingerMeanReversion.stoploss == -0.03
 
     def test_vb_metadata(self):
         assert VolatilityBreakout.INTERFACE_VERSION == 3
         assert VolatilityBreakout.timeframe == "1h"
         assert VolatilityBreakout.can_short is False
-        assert VolatilityBreakout.stoploss == -0.05
+        assert VolatilityBreakout.stoploss == -0.03
 
     def test_roi_tables_are_decreasing(self):
         """ROI targets should decrease over time."""

@@ -225,6 +225,59 @@ class TestScanAllIntegration:
 
 
 @pytest.mark.django_db
+class TestScannerDeduplication:
+    """Verify scanner uses update_or_create to prevent duplicate opportunities."""
+
+    def test_duplicate_scan_updates_instead_of_creating(self):
+        """Running scan_all twice for the same symbol should not create duplicate records."""
+        from django.utils import timezone
+
+        from market.models import MarketOpportunity
+
+        # Create initial opportunity
+        now = timezone.now()
+        expires = now + timedelta(hours=24)
+        MarketOpportunity.objects.create(
+            symbol="BTC/USDT",
+            opportunity_type="volume_surge",
+            asset_class="crypto",
+            score=60,
+            expires_at=expires,
+            acted_on=False,
+        )
+
+        # Build mock data that triggers a volume_surge detection
+        idx = pd.date_range("2024-01-01", periods=100, freq="h")
+        volume = pd.Series([100.0] * 99 + [500.0], index=idx)  # Last bar: 5x surge
+        close = pd.Series([100.0] * 100, index=idx)
+        high = pd.Series([101.0] * 100, index=idx)
+        low = pd.Series([99.0] * 100, index=idx)
+        df = pd.DataFrame(
+            {"open": close, "high": high, "low": low, "close": close, "volume": volume},
+            index=idx,
+        )
+
+        config = {"data": {"watchlist": ["BTC/USDT"]}}
+        with (
+            patch("common.data_pipeline.pipeline.load_ohlcv", return_value=df),
+            patch("core.platform_bridge.get_platform_config", return_value=config),
+            patch("core.platform_bridge.ensure_platform_imports"),
+        ):
+            scanner = MarketScannerService()
+            scanner.scan_all(asset_class="crypto")
+
+        # Should have at most 1 unexpired volume_surge for BTC/USDT
+        volume_surges = MarketOpportunity.objects.filter(
+            symbol="BTC/USDT",
+            opportunity_type="volume_surge",
+            asset_class="crypto",
+        )
+        assert volume_surges.count() <= 1, (
+            f"Expected at most 1 volume_surge for BTC/USDT, got {volume_surges.count()}"
+        )
+
+
+@pytest.mark.django_db
 class TestOpportunityAssetClassFilter:
     """Test API filtering by asset_class on opportunities."""
 

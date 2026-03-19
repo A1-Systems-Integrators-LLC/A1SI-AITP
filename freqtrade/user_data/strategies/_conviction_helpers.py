@@ -132,10 +132,11 @@ def check_strategy_paused(strategy: Any) -> bool:
     strategy_name = strategy.__class__.__name__
     now = time.monotonic()
 
-    # Cache pause status for 60 seconds
+    # Cache pause status for 15 seconds (tight window to prevent trades slipping
+    # through during orchestrator pause cycles)
     cache = getattr(strategy, "_pause_cache", {})
     cached = cache.get(strategy_name)
-    if cached and (now - cached["ts"]) < 60:
+    if cached and (now - cached["ts"]) < 15:
         return cached["paused"]
 
     try:

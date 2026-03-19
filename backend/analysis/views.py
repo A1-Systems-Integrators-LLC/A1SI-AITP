@@ -928,9 +928,11 @@ class StrategyStatusView(APIView):
 
             for strat in strategies:
                 alignment = regime_row.get(strat, 50)
-                if alignment <= 10:
+                from trading.services.strategy_orchestrator import StrategyOrchestrator
+
+                if alignment <= StrategyOrchestrator.PAUSE_THRESHOLD:
                     action = "pause"
-                elif alignment <= 30:
+                elif alignment <= StrategyOrchestrator.REDUCE_THRESHOLD:
                     action = "reduce_size"
                 else:
                     action = "active"
