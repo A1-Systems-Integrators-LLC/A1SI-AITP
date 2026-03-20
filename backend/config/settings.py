@@ -604,6 +604,13 @@ SCHEDULED_TASKS = {
         "interval_seconds": 14400,
         "params": {},
     },
+    "daily_risk_reset": {
+        "name": "Daily Risk Reset",
+        "description": "Reset daily P&L counters at midnight UTC for all portfolios",
+        "task_type": "daily_risk_reset",
+        "interval_seconds": 86400,
+        "params": {},
+    },
 }
 
 # ── Workflow templates ────────────────────────────────────────

@@ -295,7 +295,12 @@ def _run_workflow(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]
 
 
 def _sync_freqtrade_equity() -> dict[str, Any]:
-    """Read Freqtrade profit API and update RiskState equity."""
+    """Read Freqtrade profit API and update RiskState equity.
+
+    SAFETY: If no Freqtrade instances respond, we skip the equity update entirely
+    to avoid corrupting RiskState with fabricated values (which previously caused
+    false drawdown halts).
+    """
     import requests
     from django.conf import settings
 
@@ -334,47 +339,74 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
             logger.warning("Freqtrade equity sync failed for %s: %s", url, e)
             instance_results.append({"url": url, "status": "error", "error": str(e)})
 
-    # Update RiskState with actual equity and daily P&L
-    # Only count wallets for instances that actually responded (are running)
+    # Include forex paper trading P&L
+    forex_pnl = 0.0
+    forex_initial = 0.0
+    try:
+        from trading.services.forex_paper_trading import ForexPaperTradingService
+
+        forex_profit = ForexPaperTradingService().get_profit()
+        forex_pnl = forex_profit.get("profit_all_coin", 0.0) or 0.0
+        from trading.models import Order, OrderStatus, TradingMode
+        forex_buys = Order.objects.filter(
+            asset_class="forex", mode=TradingMode.PAPER, status=OrderStatus.FILLED, side="buy",
+        ).values("symbol").distinct().count()
+        forex_initial = forex_buys * 1000.0
+    except Exception:
+        pass
+
+    # ── SAFETY: Count how many Freqtrade instances actually responded ──
     from django.conf import settings as django_settings
 
     ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
-    # Map URLs to their wallet sizes
     url_to_wallet: dict[str, float] = {}
     for inst in ft_instances:
         inst_url = inst.get("url", "")
         if inst_url:
             url_to_wallet[inst_url] = inst.get("dry_run_wallet", 0)
 
-    # Sum wallets only for instances that responded successfully
-    live_wallet_total = 0.0
-    for result in instance_results:
-        if result.get("status") == "ok":
-            live_wallet_total += url_to_wallet.get(result["url"], 0)
+    successful = [r for r in instance_results if r.get("status") == "ok"]
+    total_urls = len([u for u in ft_urls if u])
 
-    # Include forex paper trading P&L
-    forex_pnl = 0.0
-    try:
-        from trading.services.forex_paper_trading import ForexPaperTradingService
+    # If NO Freqtrade instances responded, skip equity update entirely.
+    # This prevents fabricating equity from zero wallets and triggering false halts.
+    if not successful and total_urls > 0 and forex_initial <= 0:
+        logger.warning(
+            "Freqtrade equity sync: 0/%d instances responded, no forex capital — "
+            "SKIPPING equity update to prevent corruption",
+            total_urls,
+        )
+        return {
+            "total_pnl": 0.0,
+            "forex_pnl": forex_pnl,
+            "equity_updated": False,
+            "skipped_reason": "no_instances_responding",
+            "instances": instance_results,
+            "open_positions_count": 0,
+        }
 
-        forex_profit = ForexPaperTradingService().get_profit()
-        forex_pnl = forex_profit.get("profit_all_coin", 0.0) or 0.0
-        # Forex capital: $1000 per open position (MAX_OPEN_POSITIONS=3)
-        forex_capital = forex_profit.get("trade_count", 0)
-        # Count buy orders as capital deployed
-        forex_buy_count = (forex_profit.get("trade_count", 0)
-                          - forex_profit.get("closed_trade_count", 0)
-                          + forex_profit.get("closed_trade_count", 0))
-        # Simpler: forex capital = $1000 * number of symbols ever traded
-        from trading.models import Order, OrderStatus, TradingMode
-        forex_buys = Order.objects.filter(
-            asset_class="forex", mode=TradingMode.PAPER, status=OrderStatus.FILLED, side="buy",
-        ).values("symbol").distinct().count()
-        forex_initial = forex_buys * 1000.0  # POSITION_SIZE_USD from forex service
-    except Exception:
-        forex_initial = 0.0
+    live_wallet_total = sum(
+        url_to_wallet.get(r["url"], 0) for r in successful
+    )
+    initial_capital = live_wallet_total + forex_initial
 
-    initial_capital = (live_wallet_total + forex_initial) if (live_wallet_total + forex_initial) > 0 else 500.0
+    # If computed initial capital is zero (no wallets matched, no forex),
+    # skip update to avoid division-by-zero and false drawdown calculations.
+    if initial_capital <= 0:
+        logger.error(
+            "Freqtrade equity sync: initial_capital=%.2f (wallet=%.2f, forex=%.2f) — "
+            "skipping update to prevent corruption",
+            initial_capital, live_wallet_total, forex_initial,
+        )
+        return {
+            "total_pnl": total_pnl,
+            "forex_pnl": forex_pnl,
+            "equity_updated": False,
+            "skipped_reason": "zero_initial_capital",
+            "instances": instance_results,
+            "open_positions_count": 0,
+        }
+
     current_equity = initial_capital + total_pnl + forex_pnl
 
     from portfolio.models import Portfolio
@@ -409,10 +441,29 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
     # Only update crypto portfolios — equity/forex have separate tracking
     portfolios = Portfolio.objects.filter(asset_class="crypto")
     if not portfolios.exists():
-        # Fallback: update all portfolios if none are tagged crypto
         portfolios = Portfolio.objects.all()
+
+    equity_updated = False
     for portfolio in portfolios:
+        # ── EQUITY SWING GUARD: reject updates that change equity by >50% ──
+        # This catches data errors (e.g. partial instance responses) before they
+        # corrupt the risk state and trigger false halts.
+        try:
+            state = RiskState.objects.get(portfolio_id=portfolio.id)
+            if state.total_equity > 0:
+                delta_pct = abs(current_equity - state.total_equity) / state.total_equity
+                if delta_pct > 0.50:
+                    logger.error(
+                        "Equity swing guard: new=$%.2f, current=$%.2f, delta=%.0f%% — "
+                        "skipping update for portfolio %s",
+                        current_equity, state.total_equity, delta_pct * 100, portfolio.id,
+                    )
+                    continue
+        except RiskState.DoesNotExist:
+            pass
+
         RiskManagementService.update_equity(portfolio.id, current_equity)
+        equity_updated = True
         # Also update daily_pnl and open_positions
         try:
             state = RiskState.objects.get(portfolio_id=portfolio.id)
@@ -425,12 +476,40 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
     return {
         "total_pnl": total_pnl,
         "forex_pnl": forex_pnl,
-        "equity_updated": True,
+        "equity_updated": equity_updated,
         "current_equity": current_equity,
         "initial_capital": initial_capital,
         "instances": instance_results,
         "open_positions_count": len(open_positions),
     }
+
+
+def _run_daily_risk_reset(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Reset daily P&L counters for all portfolios.
+
+    Should run once per day (midnight UTC) to prevent stale daily_pnl accumulation.
+    """
+    from portfolio.models import Portfolio
+    from risk.services.risk import RiskManagementService
+
+    progress_cb(0.1, "Resetting daily risk counters")
+    portfolios = list(Portfolio.objects.values_list("id", flat=True))
+
+    if not portfolios:
+        return {"status": "completed", "message": "No portfolios", "reset_count": 0}
+
+    reset_count = 0
+    for i, pid in enumerate(portfolios):
+        try:
+            RiskManagementService.reset_daily(pid)
+            reset_count += 1
+            logger.info("Daily risk reset completed for portfolio %s", pid)
+        except Exception as e:
+            logger.error("Daily risk reset failed for portfolio %s: %s", pid, e)
+        progress_cb(0.1 + 0.8 * (i + 1) / len(portfolios), f"Reset {i + 1}/{len(portfolios)}")
+
+    progress_cb(0.9, f"Reset {reset_count} portfolios")
+    return {"status": "completed", "reset_count": reset_count, "total_portfolios": len(portfolios)}
 
 
 def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
@@ -1313,4 +1392,5 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "reddit_sentiment_refresh": _run_reddit_sentiment_refresh,
     "coingecko_trending_refresh": _run_coingecko_trending_refresh,
     "macro_data_refresh": _run_macro_data_refresh,
+    "daily_risk_reset": _run_daily_risk_reset,
 }

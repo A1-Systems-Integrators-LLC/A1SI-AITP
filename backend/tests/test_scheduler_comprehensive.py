@@ -51,10 +51,11 @@ class TestRegistryCompleteness:
         "reddit_sentiment_refresh",
         "coingecko_trending_refresh",
         "macro_data_refresh",
+        "daily_risk_reset",
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 28
+        assert len(TASK_REGISTRY) == 29
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES

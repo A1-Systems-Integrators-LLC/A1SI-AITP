@@ -295,10 +295,12 @@ class TestFreqtradeEquitySync:
             exchange_id="kraken",
             asset_class="crypto",
         )
+        # Use realistic equity (close to expected $500 wallet total) so the
+        # equity swing guard (50% max delta) doesn't reject the update.
         RiskState.objects.create(
             portfolio_id=portfolio.id,
-            total_equity=10000,
-            peak_equity=10000,
+            total_equity=500,
+            peak_equity=500,
         )
         RiskLimits.objects.create(portfolio_id=portfolio.id)
 
@@ -330,7 +332,7 @@ class TestFreqtradeEquitySync:
         assert result["total_pnl"] == pytest.approx(-123.0)
 
         state = RiskState.objects.get(portfolio_id=portfolio.id)
-        # Actual capital: $200 + $200 + $100 = $500, equity = 500 - 123 = 377
+        # Actual capital: $200 + $200 + $100 = $500, PnL = 3 × -41 = -123, equity = 377
         assert state.total_equity == pytest.approx(500.0 - 123.0)
         # daily_pnl should reflect the equity change from daily_start_equity
         assert state.daily_pnl == pytest.approx(state.total_equity - state.daily_start_equity)
