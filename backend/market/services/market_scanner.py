@@ -6,10 +6,12 @@ MarketOpportunity records and optionally broadcasts high-score alerts.
 """
 
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
 import pandas as pd
+from django.db import OperationalError, transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -156,6 +158,9 @@ class MarketScannerService:
                         opportunities_created += 1
                     self._maybe_alert(symbol, det, asset_class)
 
+            except OperationalError:
+                logger.error("Scanner DB error for %s", symbol, exc_info=True)
+                errors += 1
             except Exception:
                 logger.warning("Scanner error for %s", symbol, exc_info=True)
                 errors += 1
@@ -406,25 +411,40 @@ class MarketScannerService:
         timeframe: str,
         expires_at: Any,
         now: Any,
+        _max_retries: int = 3,
     ) -> bool:
         """Save or update an opportunity, deduplicating by (symbol, type, asset_class).
 
         Returns True if a new record was created, False if an existing one was updated.
+        Uses transaction.atomic() with retry on SQLite OperationalError (database locked).
         """
-        _, created = model_cls.objects.update_or_create(
-            symbol=symbol,
-            opportunity_type=opp["type"],
-            asset_class=asset_class,
-            acted_on=False,
-            expires_at__gt=now,
-            defaults={
-                "score": opp["score"],
-                "details": opp["details"],
-                "timeframe": timeframe,
-                "expires_at": expires_at,
-            },
-        )
-        return created
+        for attempt in range(_max_retries):
+            try:
+                with transaction.atomic():
+                    _, created = model_cls.objects.update_or_create(
+                        symbol=symbol,
+                        opportunity_type=opp["type"],
+                        asset_class=asset_class,
+                        acted_on=False,
+                        expires_at__gt=now,
+                        defaults={
+                            "score": opp["score"],
+                            "details": opp["details"],
+                            "timeframe": timeframe,
+                            "expires_at": expires_at,
+                        },
+                    )
+                return created
+            except OperationalError:
+                if attempt < _max_retries - 1:
+                    time.sleep(0.1 * (attempt + 1))
+                else:
+                    logger.error(
+                        "Database locked saving opportunity %s/%s after %d retries",
+                        symbol, opp["type"], _max_retries,
+                    )
+                    raise
+        return False  # pragma: no cover
 
     # ── Score enrichment ─────────────────────────────────────────
 

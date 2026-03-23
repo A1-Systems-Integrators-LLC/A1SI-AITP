@@ -168,7 +168,7 @@ class JobRunner:
                     message=f"Job {job_id[:8]} started",
                 )
             except Exception:
-                pass
+                logger.debug("WS broadcast failed for job %s start", job_id[:8], exc_info=True)
 
             _last_persisted_pct = [0]  # mutable container for closure
 
@@ -231,7 +231,7 @@ class JobRunner:
                     message=f"Job {job_id[:8]} completed",
                 )
             except Exception:
-                pass
+                logger.debug("WS broadcast failed for job %s completion", job_id[:8], exc_info=True)
 
             # Persist structured result for backtest jobs
             backtest_job_types = {
@@ -329,7 +329,7 @@ class JobRunner:
                     message=f"Job {job_id[:8]} failed: {e}",
                 )
             except Exception:
-                pass
+                logger.debug("WS broadcast failed for job %s failure", job_id[:8], exc_info=True)
 
     @staticmethod
     def get_live_progress(job_id: str) -> dict[str, Any] | None:

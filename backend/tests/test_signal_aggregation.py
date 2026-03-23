@@ -714,10 +714,20 @@ class TestSignalAggregatorCompute:
         )
         # With only technical, it gets full weight (redistributed)
         assert sig.composite_score == 80.0
-        # Single source: entry NOT approved (min 2 sources required)
-        assert sig.entry_approved is False
+        # Single source: threshold raised by +10 (55+10=65), score=80 passes
+        assert sig.entry_approved is True
         assert "technical" in sig.sources_available
         assert len(sig.sources_available) == 1
+
+    def test_technical_only_below_raised_threshold(self, aggregator):
+        sig = aggregator.compute(
+            "BTC/USDT", "crypto", "CryptoInvestorV1",
+            technical_score=60,
+        )
+        assert sig.composite_score == 60.0
+        # Single source: threshold raised by +10 (55+10=65), score=60 fails
+        assert sig.entry_approved is False
+        assert any("Single-source" in r for r in sig.reasoning)
 
     def test_regime_and_technical(self, aggregator, regime_bullish):
         sig = aggregator.compute(

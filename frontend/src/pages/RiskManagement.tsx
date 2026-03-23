@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { portfoliosApi } from "../api/portfolios";
 import { riskApi } from "../api/risk";
 import { useToast } from "../hooks/useToast";
-import { useSystemEvents } from "../hooks/useSystemEvents";
+import { useSystemEventsContext } from "../hooks/useSystemEventsContext";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useAssetClass } from "../hooks/useAssetClass";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -19,7 +19,7 @@ export function RiskManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { assetClass } = useAssetClass();
-  const { isHalted: wsHalted, haltReason: wsHaltReason } = useSystemEvents();
+  const { isHalted: wsHalted, haltReason: wsHaltReason } = useSystemEventsContext();
   const [portfolioId, setPortfolioId] = useLocalStorage("ci:risk-portfolio", 1);
   const [varHistoryPage, setVarHistoryPage] = useState(1);
   const [tradeLogPage, setTradeLogPage] = useState(1);

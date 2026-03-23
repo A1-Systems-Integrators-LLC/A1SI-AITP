@@ -56,7 +56,7 @@ class StrategyOrchestrator:
 
     REP_SYMBOLS: dict[str, str] = {
         "crypto": "BTC/USDT",
-        "equity": "SPY",
+        "equity": "SPY/USD",
         "forex": "EUR/USD",
     }
 
@@ -231,7 +231,10 @@ class StrategyOrchestrator:
                     all_results.append(result)
 
             except Exception as e:
-                logger.error("Strategy orchestration failed for %s: %s", asset_class, e)
+                logger.error(
+                    "Strategy orchestration failed for %s: %s",
+                    asset_class, e, exc_info=True,
+                )
                 # Preserve existing state on error — do NOT un-pause strategies.
                 # If no prior state exists (first run), default to active.
                 for strat in strategies:

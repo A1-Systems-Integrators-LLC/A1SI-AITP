@@ -27,6 +27,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { AssetClassSelector } from "./AssetClassSelector";
 import { ThemeToggle } from "./ThemeToggle";
 import { AssetClassContext } from "../contexts/assetClass";
+import { SystemEventsContext } from "../contexts/systemEvents";
 import { ThemeContext } from "../contexts/theme";
 import type { Theme } from "../contexts/theme";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -62,7 +63,8 @@ export function Layout({ onLogout, username }: LayoutProps) {
   const [assetClass, setAssetClass] = useLocalStorage<AssetClass>("ci:asset-class", "crypto");
   const [theme, setTheme] = useLocalStorage<Theme>("ci:theme", "dark");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isConnected, isReconnecting, reconnectAttempt, reconnect, isHalted, haltReason, lastOrderUpdate, lastRiskAlert } = useSystemEvents();
+  const systemEvents = useSystemEvents();
+  const { isConnected, isReconnecting, reconnectAttempt, reconnect, isHalted, haltReason, lastOrderUpdate, lastRiskAlert } = systemEvents;
   const { toast } = useToast();
   const prevOrderRef = useRef(lastOrderUpdate);
   const prevAlertRef = useRef(lastRiskAlert);
@@ -91,6 +93,7 @@ export function Layout({ onLogout, username }: LayoutProps) {
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
     <AssetClassContext.Provider value={{ assetClass, setAssetClass }}>
+    <SystemEventsContext.Provider value={systemEvents}>
     <div className="flex h-screen">
       {/* Mobile hamburger button */}
       <button
@@ -182,6 +185,7 @@ export function Layout({ onLogout, username }: LayoutProps) {
         </div>
       </main>
     </div>
+    </SystemEventsContext.Provider>
     </AssetClassContext.Provider>
     </ThemeContext.Provider>
   );

@@ -45,7 +45,7 @@ except ImportError:
 # Signal cache refresh interval (seconds)
 SIGNAL_REFRESH_INTERVAL = 300  # 5 minutes
 # Maximum age of a cached signal before it's considered stale (seconds)
-SIGNAL_MAX_AGE = 900  # 15 minutes
+SIGNAL_MAX_AGE = 600  # 10 minutes
 
 
 def fetch_signal(
@@ -68,7 +68,7 @@ def fetch_signal(
             return resp.json()
         logger.warning(f"Signal API returned {resp.status_code} for {pair}")
     except Exception as e:
-        logger.warning(f"Signal fetch failed for {pair}: {e}")
+        logger.error(f"Signal fetch failed for {pair}: {e}")
     return None
 
 
@@ -162,7 +162,7 @@ def check_strategy_paused(strategy: Any) -> bool:
                         )
                     return paused
     except Exception as e:
-        logger.warning(f"Strategy pause check failed: {e}")
+        logger.error(f"Strategy pause check failed: {e}")
 
     return False  # fail-open
 
@@ -243,12 +243,25 @@ def get_position_modifier(strategy: Any, pair: str) -> float:
     """Get position size modifier from cached signal.
 
     Returns 1.0 (full size) if no signal available.
+    Floors at 0.5 for approved signals to prevent near-zero stakes.
     Multiplied by profit reinvestment stake multiplier when available.
     """
     modifier = 1.0
     signal = getattr(strategy, "_signals", {}).get(pair)
     if signal:
-        modifier = signal.get("position_modifier", 1.0)
+        # Only use modifier if entry was approved; otherwise default to 1.0 (fail-open)
+        if not signal.get("approved", True):
+            logger.warning(
+                f"Signal for {pair} not approved but get_position_modifier called — "
+                f"returning 1.0 (fail-open)"
+            )
+            modifier = 1.0
+        else:
+            modifier = signal.get("position_modifier", 1.0)
+            # Floor at 0.5 to prevent near-zero stakes from rounding artifacts
+            if modifier < 0.5:
+                logger.info(f"Position modifier {modifier:.2f} floored to 0.5 for {pair}")
+                modifier = 0.5
 
     # Scale by profit reinvestment tracker
     try:
@@ -307,16 +320,26 @@ def check_exit_advice(
         )
 
         if advice.should_exit:
-            # Freqtrade custom_exit cannot do partial closes — only exit
-            # when the advisor recommends a full exit (partial_pct >= 1.0)
-            # or a non-partial reason (regime deterioration, time exit).
+            # Freqtrade custom_exit cannot do partial closes.
+            # For significant partials (>=50%), convert to full exit — better
+            # to take profit than hold the full position indefinitely.
+            # For small partials (<50%), skip (not worth a full close).
             if 0 < advice.partial_pct < 1.0:
-                logger.info(
-                    f"Exit advisor: {pair} — partial exit suggested "
-                    f"({advice.partial_pct:.0%}) but Freqtrade cannot "
-                    f"partially close — skipping (reason: {advice.reason})",
-                )
-                return None
+                if advice.partial_pct >= 0.5:
+                    tag = f"conviction_{advice.reason.replace(' ', '_')[:30]}"
+                    logger.info(
+                        f"Exit advisor: {pair} — partial exit ({advice.partial_pct:.0%}) "
+                        f"converted to FULL exit (Freqtrade limitation). "
+                        f"Reason: {advice.reason}",
+                    )
+                    return tag
+                else:
+                    logger.info(
+                        f"Exit advisor: {pair} — small partial ({advice.partial_pct:.0%}) "
+                        f"skipped (Freqtrade cannot partially close). "
+                        f"Reason: {advice.reason}",
+                    )
+                    return None
             tag = f"conviction_{advice.reason.replace(' ', '_')[:30]}"
             logger.info(
                 f"Exit advisor: {pair} — {advice.reason} "

@@ -21,22 +21,12 @@ declare -A FT_CONFIGS=(
     [CryptoInvestorV1]="config.json"
     [BollingerMeanReversion]="config_bmr.json"
     [VolatilityBreakout]="config_vb.json"
-    [MomentumShort]="config_short.json"
-    [GridDCA]="config_grid.json"
-    [MomentumScalper15m]="config_scalp.json"
-    [SentimentEventTrader]="config_sentiment.json"
-    [TrendReversal]="config_reversal.json"
 )
 
 declare -A FT_PORTS=(
     [CryptoInvestorV1]=8080
     [BollingerMeanReversion]=8083
     [VolatilityBreakout]=8084
-    [MomentumShort]=8085
-    [GridDCA]=8086
-    [MomentumScalper15m]=8087
-    [SentimentEventTrader]=8088
-    [TrendReversal]=8089
 )
 
 # ── Pre-flight checks ────────────────────────────────────────
@@ -44,6 +34,10 @@ echo "╔═══════════════════════�
 echo "║            A1SI-AITP PLATFORM START                  ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
+
+# Clear Python bytecode caches to prevent stale .pyc issues after code updates
+echo "→ Clearing Python bytecode caches..."
+find "$ROOT_DIR" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Check core ports
 for port in 8000 5173; do

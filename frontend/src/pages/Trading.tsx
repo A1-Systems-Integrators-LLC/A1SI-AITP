@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSystemEvents } from "../hooks/useSystemEvents";
+import { useSystemEventsContext } from "../hooks/useSystemEventsContext";
 import { useToast } from "../hooks/useToast";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useAssetClass } from "../hooks/useAssetClass";
@@ -43,7 +43,7 @@ export function Trading() {
   const [symbolFilter, setSymbolFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showCancelAll, setShowCancelAll] = useState(false);
-  const { isConnected, isHalted } = useSystemEvents();
+  const { isConnected, isHalted } = useSystemEventsContext();
 
   const amountLabel = assetClass === "equity" ? "Shares" : assetClass === "forex" ? "Lots" : "Amount";
 

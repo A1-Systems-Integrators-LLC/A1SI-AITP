@@ -94,6 +94,7 @@ def bmr_technical_score(
     stoch_k: float,
     mfi: float,
     volume_ratio: float,
+    bb_upper: float | None = None,
 ) -> float:
     """BollingerMeanReversion technical score (0-100).
 
@@ -106,15 +107,29 @@ def bmr_technical_score(
         stoch_k: Stochastic %K value.
         mfi: Money Flow Index value.
         volume_ratio: Current volume / 20-period average volume.
+        bb_upper: Bollinger Band upper value (optional, used for accurate band position).
 
     """
     score = 0.0
 
     # BB distance from lower band (0-30): closer to or below lower = better
-    if bb_mid > 0:
-        pct_from_lower = (close - bb_lower) / bb_mid * 100
+    # Use band width (upper - lower) as denominator for accurate positioning
+    band_range = (bb_upper - bb_lower) if bb_upper is not None else 0.0
+    if band_range > 1e-10:
+        pct_from_lower = (close - bb_lower) / band_range * 100
         if pct_from_lower <= 0:
             score += 30.0  # At or below lower band
+        elif pct_from_lower <= 10:
+            score += 25.0
+        elif pct_from_lower <= 25:
+            score += 15.0
+        elif pct_from_lower <= 50:
+            score += 8.0
+    elif bb_mid > 0:
+        # Fallback if bb_upper not provided: use SMA-relative (legacy)
+        pct_from_lower = (close - bb_lower) / bb_mid * 100
+        if pct_from_lower <= 0:
+            score += 30.0
         elif pct_from_lower <= 2:
             score += 25.0
         elif pct_from_lower <= 5:
@@ -206,8 +221,8 @@ def vb_technical_score(
         score += 8.0
 
     # BB expansion (0-15): widening bands = increasing volatility
-    if bb_width_prev > 0:
-        expansion = (bb_width - bb_width_prev) / bb_width_prev
+    if bb_width_prev > 1e-10:
+        expansion = _clamp((bb_width - bb_width_prev) / bb_width_prev, -1.0, 10.0)
         if expansion > 0.1:
             score += 15.0
         elif expansion > 0.05:
@@ -268,6 +283,7 @@ def mean_reversion_technical_score(
     stoch_k: float,
     mfi: float,
     volume_ratio: float,
+    bb_upper: float | None = None,
 ) -> float:
     """EquityMeanReversion / ForexRange technical score (0-100)."""
     # Same mechanics as BMR — mean reversion is transferable
@@ -280,6 +296,7 @@ def mean_reversion_technical_score(
         stoch_k=stoch_k,
         mfi=mfi,
         volume_ratio=volume_ratio,
+        bb_upper=bb_upper,
     )
 
 

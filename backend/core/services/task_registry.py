@@ -440,16 +440,21 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
         except Exception as e:
             logger.debug("Failed to fetch open trades from %s: %s", url, e)
 
-    # Only update crypto portfolios — equity/forex have separate tracking
+    # Only update the first crypto portfolio — equity/forex have separate tracking.
+    # Previously iterated all portfolios, applying the same equity to each,
+    # which would corrupt drawdown calculations in multi-portfolio scenarios.
     portfolios = Portfolio.objects.filter(asset_class="crypto")
     if not portfolios.exists():
         portfolios = Portfolio.objects.all()
 
+    portfolio = portfolios.first()
     equity_updated = False
-    for portfolio in portfolios:
+
+    if portfolio is not None:
         # ── EQUITY SWING GUARD: reject updates that change equity by >50% ──
         # This catches data errors (e.g. partial instance responses) before they
         # corrupt the risk state and trigger false halts.
+        swing_blocked = False
         try:
             state = RiskState.objects.get(portfolio_id=portfolio.id)
             if state.total_equity > 0:
@@ -460,20 +465,31 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
                         "skipping update for portfolio %s",
                         current_equity, state.total_equity, delta_pct * 100, portfolio.id,
                     )
-                    continue
+                    swing_blocked = True
         except RiskState.DoesNotExist:
             pass
 
-        RiskManagementService.update_equity(portfolio.id, current_equity)
-        equity_updated = True
-        # Also update daily_pnl and open_positions
-        try:
-            state = RiskState.objects.get(portfolio_id=portfolio.id)
-            state.daily_pnl = current_equity - state.daily_start_equity
-            state.open_positions = open_positions
-            state.save(update_fields=["daily_pnl", "open_positions"])
-        except RiskState.DoesNotExist:
-            pass
+        if not swing_blocked:
+            RiskManagementService.update_equity(portfolio.id, current_equity)
+            equity_updated = True
+            # Also update daily_pnl and open_positions
+            try:
+                state = RiskState.objects.get(portfolio_id=portfolio.id)
+                state.daily_pnl = current_equity - state.daily_start_equity
+                state.open_positions = open_positions
+                state.save(update_fields=["daily_pnl", "open_positions"])
+            except RiskState.DoesNotExist:
+                pass
+
+    # Feed open position prices into the singleton ReturnTracker for VaR/correlation
+    if open_positions:
+        prices = {
+            sym: pos.get("entry_price", 0)
+            for sym, pos in open_positions.items()
+            if pos.get("entry_price")
+        }
+        if prices:
+            RiskManagementService.record_prices(prices)
 
     return {
         "total_pnl": total_pnl,

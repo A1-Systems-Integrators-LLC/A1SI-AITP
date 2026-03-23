@@ -1,6 +1,7 @@
 """Risk management service — wraps common.risk.risk_manager with Django ORM persistence."""
 
 import logging
+import threading as _threading
 from datetime import datetime, timedelta, timezone
 
 from channels.layers import get_channel_layer
@@ -11,6 +12,31 @@ from core.services.notification import NotificationService
 from risk.models import AlertLog, RiskLimits, RiskMetricHistory, RiskState, TradeCheckLog
 
 logger = logging.getLogger("risk_service")
+
+# ── Singleton ReturnTracker for VaR/Correlation ──────────────────────────────
+# Without this, every _build_risk_manager() call creates a fresh ReturnTracker,
+# so VaR, correlation, and heat check metrics are always empty/zero.
+_return_tracker = None
+_return_tracker_lock = _threading.Lock()
+
+
+def _get_return_tracker():
+    global _return_tracker
+    if _return_tracker is None:
+        with _return_tracker_lock:
+            if _return_tracker is None:
+                ensure_platform_imports()
+                from common.risk.risk_manager import ReturnTracker
+
+                _return_tracker = ReturnTracker()
+    return _return_tracker
+
+
+def _reset_return_tracker():
+    """Reset singleton (for testing)."""
+    global _return_tracker
+    with _return_tracker_lock:
+        _return_tracker = None
 
 
 class RiskManagementService:
@@ -43,6 +69,7 @@ class RiskManagementService:
             max_leverage=limits_config.max_leverage,
         )
         rm = RiskManager(limits=limits)
+        rm.return_tracker = _get_return_tracker()
         rm.state = PortfolioState(
             total_equity=state.total_equity,
             peak_equity=state.peak_equity,
@@ -116,12 +143,20 @@ class RiskManagementService:
 
     @staticmethod
     def update_equity(portfolio_id: int, equity: float) -> dict:
-        state = RiskManagementService._get_or_create_state(portfolio_id)
-        limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
-        rm = RiskManagementService._build_risk_manager(limits_config, state)
-        rm.update_equity(equity)
-        RiskManagementService._persist_state(rm, state)
+        with transaction.atomic():
+            state = RiskManagementService._get_or_create_state(portfolio_id)
+            limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
+            rm = RiskManagementService._build_risk_manager(limits_config, state)
+            rm.update_equity(equity)
+            RiskManagementService._persist_state(rm, state)
         return RiskManagementService.get_status(portfolio_id)
+
+    @staticmethod
+    def record_prices(prices: dict[str, float]) -> None:
+        """Feed price observations into the singleton ReturnTracker for VaR/correlation."""
+        tracker = _get_return_tracker()
+        for symbol, price in prices.items():
+            tracker.record_price(symbol, price)
 
     @staticmethod
     def check_trade(
@@ -206,11 +241,12 @@ class RiskManagementService:
 
     @staticmethod
     def reset_daily(portfolio_id: int) -> dict:
-        state = RiskManagementService._get_or_create_state(portfolio_id)
-        limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
-        rm = RiskManagementService._build_risk_manager(limits_config, state)
-        rm.reset_daily()
-        RiskManagementService._persist_state(rm, state)
+        with transaction.atomic():
+            state = RiskManagementService._get_or_create_state(portfolio_id)
+            limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
+            rm = RiskManagementService._build_risk_manager(limits_config, state)
+            rm.reset_daily()
+            RiskManagementService._persist_state(rm, state)
         try:
             RiskManagementService.send_notification(
                 portfolio_id,

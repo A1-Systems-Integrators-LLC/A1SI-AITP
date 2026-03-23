@@ -308,6 +308,13 @@ class RiskManager:
 
         # Apply signal/conviction modifier after regime modifier
         if signal_modifier is not None:
+            if signal_modifier <= 0:
+                logger.warning(
+                    "Signal modifier is %.2f (<=0), rejecting position sizing. "
+                    "This likely means entry was not approved by the aggregator.",
+                    signal_modifier,
+                )
+                return 0.0
             clamped = max(0.2, min(1.5, signal_modifier))
             size *= clamped
             logger.info(

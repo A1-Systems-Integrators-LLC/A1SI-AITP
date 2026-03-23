@@ -272,6 +272,7 @@ class SignalService:
                     stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
                     mfi=mfi_val,
                     volume_ratio=volume_ratio,
+                    bb_upper=float(bb_df["bb_upper"].iloc[-1]),
                 )
             if scorer_type == "vb":
                 bb_df = bollinger_bands(close)
@@ -314,10 +315,24 @@ class SignalService:
                     stoch_k=float(stoch_df["stoch_k"].iloc[-1]),
                     mfi=mfi_val,
                     volume_ratio=volume_ratio,
+                    bb_upper=float(bb_df["bb_upper"].iloc[-1]),
                 )
         except Exception as e:
             logger.warning("Technical score unavailable for %s/%s: %s", symbol, strategy_name, e)
         return None
+
+    @staticmethod
+    def _get_macro_score() -> float | None:
+        """Fetch macro score from FRED adapter (VIX, yield curve, fed funds, DXY)."""
+        try:
+            ensure_platform_imports()
+            from common.market_data.fred_adapter import fetch_macro_snapshot
+
+            snapshot = fetch_macro_snapshot()
+            return snapshot.get("macro_score") if snapshot else None
+        except Exception as e:
+            logger.warning("Macro score unavailable: %s", e)
+            return None
 
     @staticmethod
     def _get_win_rate(strategy_name: str) -> float | None:
@@ -375,6 +390,7 @@ class SignalService:
         sent_score, sent_conv = cls._get_sentiment_signal(symbol, asset_class)
         scanner = cls._get_scanner_score(symbol, asset_class)
         win_rate = cls._get_win_rate(strategy_name)
+        macro = cls._get_macro_score()
 
         signal = aggregator.compute(
             symbol=symbol,
@@ -388,6 +404,7 @@ class SignalService:
             sentiment_conviction=sent_conv,
             scanner_score=scanner,
             win_rate=win_rate,
+            macro_score=macro,
         )
 
         result = {

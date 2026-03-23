@@ -198,7 +198,6 @@ class SignalAggregator:
                     available.append("funding")
             except Exception:
                 pass
-
         # Macro data (FRED: VIX, yield curve, fed funds, DXY)
         if macro_score is not None:
             sources["macro"] = _clamp(macro_score)
@@ -285,8 +284,11 @@ class SignalAggregator:
         result.signal_label = self._label(composite, effective_threshold)
         result.entry_approved = composite >= effective_threshold
 
-        if len(available) < 2:
+        _single_source_rejected = False
+        if len(available) < 2 and composite < effective_threshold + 10:
+            # Single-source: raise threshold by +10 instead of hard reject
             result.entry_approved = False
+            _single_source_rejected = True
         result.position_modifier = self._position_modifier(composite, effective_threshold)
         result.reasoning = self._build_reasoning(
             sources,
@@ -304,6 +306,14 @@ class SignalAggregator:
             result.reasoning.insert(0, _reddit_reason)
         if _trending_reason:
             result.reasoning.insert(0, _trending_reason)
+        if _single_source_rejected:
+            result.reasoning.append(
+                "Single-source signal: threshold raised by +10 (need stronger conviction)"
+            )
+        if asset_class != "crypto" and "funding" not in available:
+            result.reasoning.append(
+                "funding: N/A (non-crypto asset, weight redistributed)"
+            )
 
         # Economic calendar modifier (forex only)
         if asset_class == "forex":

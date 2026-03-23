@@ -28,8 +28,8 @@ RSS_FEEDS: dict[str, list[dict[str, str]]] = {
         {"name": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/"},
     ],
     "forex": [
-        {"name": "DailyFX", "url": "https://www.dailyfx.com/feeds/market-news"},
-        {"name": "ForexFactory", "url": "https://www.forexfactory.com/rss.php"},
+        {"name": "Investing.com", "url": "https://www.investing.com/rss/news_14.rss"},
+        {"name": "FXStreet", "url": "https://www.fxstreet.com/rss/news"},
     ],
 }
 
