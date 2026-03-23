@@ -13,7 +13,9 @@ PYTHON="$VENV/bin/python"
 # ── Configurable: which Freqtrade instances to start ──────────
 # Set FREQTRADE_INSTANCES env var to override (comma-separated)
 # Default: the 3 pilot strategies
-DEFAULT_FT_INSTANCES="CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout"
+# BMR-only phase (2026-03-23 team review): consolidate $500 capital on single strategy
+# Override: FREQTRADE_INSTANCES=CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout
+DEFAULT_FT_INSTANCES="BollingerMeanReversion"
 FT_INSTANCES="${FREQTRADE_INSTANCES:-$DEFAULT_FT_INSTANCES}"
 
 # Strategy → config file mapping

@@ -159,12 +159,19 @@ declare -A FT_PORTS=(
     [VolatilityBreakout]=8084
 )
 
+# BMR-only phase (2026-03-23 team review): consolidate $500 capital on single strategy
+# Override: WATCHDOG_FT_INSTANCES=CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout
+DEFAULT_WATCHDOG_FT="BollingerMeanReversion"
+WATCHDOG_FT_INSTANCES="${WATCHDOG_FT_INSTANCES:-$DEFAULT_WATCHDOG_FT}"
+
 check_freqtrade() {
     local ft_user="freqtrader"
     local ft_pass="freqtrader"
     local all_ok=true
 
-    for strategy in CryptoInvestorV1 BollingerMeanReversion VolatilityBreakout; do
+    IFS=',' read -ra FT_LIST <<< "$WATCHDOG_FT_INSTANCES"
+    for strategy in "${FT_LIST[@]}"; do
+        strategy=$(echo "$strategy" | xargs)  # trim whitespace
         local port="${FT_PORTS[$strategy]}"
         local config="${FT_CONFIGS[$strategy]}"
 
