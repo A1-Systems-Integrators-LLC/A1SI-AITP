@@ -146,7 +146,7 @@ class TestFundingRateConstants:
         from common.signals.constants import DEFAULT_WEIGHTS
 
         assert "funding" in DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["funding"] == 0.08
+        assert DEFAULT_WEIGHTS["funding"] == 0.05
 
 
 @pytest.mark.django_db

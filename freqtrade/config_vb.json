@@ -47,7 +47,21 @@
             "(DAI|XDAI)/.*",
             "(TUSD|TUSDT)/.*",
             "PYUSD/.*",
-            "XAUT/.*"
+            "XAUT/.*",
+            "FARTCOIN/.*",
+            "TRUMP/.*",
+            "PENGU/.*",
+            "FIDD/.*",
+            "RAVE/.*",
+            "CC/.*",
+            "MELANIA/.*",
+            "SIDEKICK/.*",
+            "OBOL/.*",
+            "S/.*",
+            "BERA/.*",
+            "ALEO/.*",
+            "APE/.*",
+            "VIRTUAL/.*"
         ]
     },
     "pairlists": [

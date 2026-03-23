@@ -171,7 +171,7 @@ class TestConstants:
 
     def test_hard_disable_populated(self):
         """In spot mode, several regime-strategy pairs are hard-disabled."""
-        assert len(HARD_DISABLE) >= 4
+        assert len(HARD_DISABLE) >= 3
 
     def test_conviction_threshold_crypto_default(self):
         assert get_conviction_threshold("crypto") == 55
@@ -741,7 +741,7 @@ class TestSignalAggregatorCompute:
 
     def test_position_modifier_tiers(self, aggregator):
         # Crypto threshold=55: very_strong_buy=80(1.2), strong_buy=70(1.0),
-        # buy=60(0.7), cautious_buy=55(0.5)
+        # buy=60(0.85), cautious_buy=55(0.7)
         # Score >= 80 -> 1.2
         sig80 = aggregator.compute(
             "X", "crypto", "CryptoInvestorV1", technical_score=85,
@@ -754,17 +754,17 @@ class TestSignalAggregatorCompute:
         )
         assert sig70.position_modifier == 1.0
 
-        # Score 60-69 -> 0.7
+        # Score 60-69 -> 0.85
         sig60 = aggregator.compute(
             "X", "crypto", "CryptoInvestorV1", technical_score=65,
         )
-        assert sig60.position_modifier == 0.7
+        assert sig60.position_modifier == 0.85
 
-        # Score 55-59 -> 0.5
+        # Score 55-59 -> 0.7
         sig55 = aggregator.compute(
             "X", "crypto", "CryptoInvestorV1", technical_score=57,
         )
-        assert sig55.position_modifier == 0.5
+        assert sig55.position_modifier == 0.7
 
         # Score < 55 -> 0.0
         sig40 = aggregator.compute(
@@ -934,9 +934,9 @@ class TestSignalAggregatorWeightRedistribution:
             technical_score=80,
             scanner_score=60,
         )
-        # tech weight = 0.35, scanner weight = 0.05
-        # Redistributed: tech = 0.35/0.40, scanner = 0.05/0.40
-        expected = 80 * (0.35 / 0.40) + 60 * (0.05 / 0.40)
+        # tech weight = 0.50, scanner weight = 0.00
+        # Redistributed: tech = 0.50/0.50, scanner = 0.00/0.50
+        expected = 80 * (0.50 / 0.50) + 60 * (0.00 / 0.50)
         assert abs(sig.composite_score - expected) < 0.5
 
     def test_custom_weights(self):

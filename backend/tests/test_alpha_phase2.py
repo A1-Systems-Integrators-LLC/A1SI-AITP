@@ -478,19 +478,19 @@ class TestSignalWeightRebalance:
     def test_macro_weight_exists(self):
         from common.signals.constants import DEFAULT_WEIGHTS
         assert "macro" in DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["macro"] == 0.04
+        assert DEFAULT_WEIGHTS["macro"] == 0.00
 
     def test_sentiment_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["sentiment"] == 0.10
+        assert DEFAULT_WEIGHTS["sentiment"] == 0.05
 
     def test_technical_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["technical"] == 0.35
+        assert DEFAULT_WEIGHTS["technical"] == 0.50
 
     def test_regime_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["regime"] == 0.25
+        assert DEFAULT_WEIGHTS["regime"] == 0.30
 
 
 # ── Aggregator Modifiers ────────────────────────────────────────────────────

@@ -18,7 +18,7 @@ class TestSpotConfig:
 
     EXPECTED = {
         "config.json": {"wallet": 500, "stake": 60, "trades": 2},
-        "config_bmr.json": {"wallet": 400, "stake": 50, "trades": 2},
+        "config_bmr.json": {"wallet": 500, "stake": 80, "trades": 3},
         "config_vb.json": {"wallet": 300, "stake": 40, "trades": 1},
     }
 
@@ -113,7 +113,7 @@ class TestConvictionThresholds:
     def test_hard_disable_populated(self):
         from common.signals.constants import HARD_DISABLE
 
-        assert len(HARD_DISABLE) >= 4
+        assert len(HARD_DISABLE) >= 3
 
     def test_std_alignment_nonzero_crypto(self):
         from common.regime.regime_detector import Regime

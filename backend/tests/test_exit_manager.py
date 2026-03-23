@@ -150,7 +150,7 @@ class TestRegimeDeterioration:
             current_regime_state=_regime_state(Regime.WEAK_TREND_UP),
             entry_time=NOW - timedelta(hours=1),
             current_time=NOW,
-            current_profit_pct=0.05,
+            current_profit_pct=0.02,  # Below CIV1 2.5% partial profit target
         )
         # CIV1: STRONG_TREND_UP=95, WEAK_TREND_UP=75 → drop=20 < 30 threshold
         assert advice.should_exit is False
@@ -180,7 +180,7 @@ class TestRegimeDeterioration:
             current_regime_state=_regime_state(Regime.RANGING),
             entry_time=NOW - timedelta(hours=1),
             current_time=NOW,
-            current_profit_pct=0.01,
+            current_profit_pct=0.005,  # Below BMR 1% partial profit target
         )
         assert advice.should_exit is False
 
@@ -259,16 +259,16 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=NOW - timedelta(hours=12),
             current_time=NOW,
-            current_profit_pct=0.07,
+            current_profit_pct=0.03,
             already_exited_pct=0.0,
         )
         assert advice.should_exit is True
         assert advice.urgency == URGENCY_NEXT_CANDLE
         assert advice.partial_pct == pytest.approx(1 / 3)
-        assert "CIV1 1/3 at 6%" in advice.reason
+        assert "CIV1 1/3 at 2.5%" in advice.reason
 
-    def test_civ1_second_target_10pct(self):
-        """CIV1 at 12% profit, already exited 1/3 → close 1/2."""
+    def test_civ1_second_target_4pct(self):
+        """CIV1 at 5% profit, already exited 1/3 → close 1/2."""
         advice = advise_exit(
             symbol="BTC/USDT",
             strategy_name="CryptoInvestorV1",
@@ -277,15 +277,15 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=NOW - timedelta(hours=24),
             current_time=NOW,
-            current_profit_pct=0.12,
+            current_profit_pct=0.05,
             already_exited_pct=1 / 3,
         )
         assert advice.should_exit is True
         assert advice.partial_pct == pytest.approx(1 / 2)
-        assert "CIV1 1/2 at 10%" in advice.reason
+        assert "CIV1 1/2 at 4%" in advice.reason
 
     def test_civ1_already_exited_half(self):
-        """CIV1 at 12% profit, already exited 1/2 → no more partial targets."""
+        """CIV1 at 5% profit, already exited 1/2 → no more partial targets."""
         advice = advise_exit(
             symbol="BTC/USDT",
             strategy_name="CryptoInvestorV1",
@@ -294,14 +294,14 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=NOW - timedelta(hours=24),
             current_time=NOW,
-            current_profit_pct=0.12,
+            current_profit_pct=0.05,
             already_exited_pct=0.5,
         )
         # Both targets exceeded but already_exited_pct >= close_fraction for both
         assert advice.should_exit is False
 
-    def test_bmr_first_target_2pct(self):
-        """BMR at 2.5% → close 1/2."""
+    def test_bmr_first_target_1pct(self):
+        """BMR at 1.5% → close 1/2."""
         advice = advise_exit(
             symbol="ETH/USDT",
             strategy_name="BollingerMeanReversion",
@@ -310,14 +310,14 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.RANGING),
             entry_time=NOW - timedelta(hours=6),
             current_time=NOW,
-            current_profit_pct=0.025,
+            current_profit_pct=0.015,
             already_exited_pct=0.0,
         )
         assert advice.should_exit is True
         assert advice.partial_pct == pytest.approx(1 / 2)
 
-    def test_bmr_second_target_4pct(self):
-        """BMR at 5% profit, already exited 1/2 → close 3/4."""
+    def test_bmr_second_target_2pct(self):
+        """BMR at 3% profit, already exited 1/2 → close 3/4."""
         advice = advise_exit(
             symbol="ETH/USDT",
             strategy_name="BollingerMeanReversion",
@@ -326,15 +326,15 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.RANGING),
             entry_time=NOW - timedelta(hours=12),
             current_time=NOW,
-            current_profit_pct=0.05,
+            current_profit_pct=0.03,
             already_exited_pct=0.5,
         )
         assert advice.should_exit is True
         assert advice.partial_pct == pytest.approx(3 / 4)
-        assert "BMR 3/4 at 4%" in advice.reason
+        assert "BMR 3/4 at 2%" in advice.reason
 
-    def test_vb_target_5pct(self):
-        """VB at 6% → close 1/3."""
+    def test_vb_target_25pct(self):
+        """VB at 3% → close 1/3."""
         advice = advise_exit(
             symbol="SOL/USDT",
             strategy_name="VolatilityBreakout",
@@ -343,7 +343,7 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.HIGH_VOLATILITY),
             entry_time=NOW - timedelta(hours=12),
             current_time=NOW,
-            current_profit_pct=0.06,
+            current_profit_pct=0.03,
             already_exited_pct=0.0,
         )
         assert advice.should_exit is True
@@ -375,7 +375,7 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=NOW - timedelta(hours=1),
             current_time=NOW,
-            current_profit_pct=0.04,  # Below 6% target
+            current_profit_pct=0.02,  # Below 2.5% target
         )
         assert advice.should_exit is False
 
@@ -389,13 +389,13 @@ class TestPartialProfit:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=NOW - timedelta(hours=24),
             current_time=NOW,
-            current_profit_pct=0.15,  # Above both 6% and 10%
+            current_profit_pct=0.15,  # Above both 2.5% and 4%
             already_exited_pct=0.0,
         )
         assert advice.should_exit is True
-        # Should get the 10% target (1/2) since it's checked first (reversed)
+        # Should get the 4% target (1/2) since it's checked first (reversed)
         assert advice.partial_pct == pytest.approx(1 / 2)
-        assert "10%" in advice.reason
+        assert "4%" in advice.reason
 
 
 # ─── Time-Based Exit ──────────────────────────────────────────────────────────
@@ -566,8 +566,8 @@ class TestPriorityOrder:
             already_exited_pct=0.0,
         )
         assert advice.should_exit is True
-        # Partial profit target checked first
-        assert advice.partial_pct == pytest.approx(1 / 3)
+        # Partial profit target checked first — CIV1 highest target is 4% (1/2)
+        assert advice.partial_pct == pytest.approx(1 / 2)
 
 
 # ─── Default current_time ────────────────────────────────────────────────────

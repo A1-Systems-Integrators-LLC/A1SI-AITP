@@ -209,7 +209,7 @@ class TestCryptoInvestorV1CustomExit:
         assert result is None
 
     def test_custom_exit_stale_trade(self):
-        """Trades held > 7 days with < 1% profit should be exited."""
+        """Trades held > 5 days with < 0.5% profit should be exited."""
         df = pd.DataFrame({"ema_21": [100.0], "ema_100": [99.0]})
         self.strategy.dp.get_analyzed_dataframe.return_value = (df, None)
 
@@ -217,7 +217,7 @@ class TestCryptoInvestorV1CustomExit:
         trade.open_date_utc = datetime.now(tz=timezone.utc) - timedelta(days=8)
         result = self.strategy.custom_exit(
             "BTC/USDT", trade, datetime.now(tz=timezone.utc),
-            50000.0, 0.005, False,
+            50000.0, 0.004, False,
         )
         assert result == "stale_trade"
 

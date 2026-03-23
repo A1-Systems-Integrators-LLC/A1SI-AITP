@@ -55,17 +55,17 @@ class BollingerMeanReversion(IStrategy):
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.06,
-        "60": 0.03,
-        "120": 0.015,
-        "240": 0.005,
+        "0": 0.025,
+        "60": 0.015,
+        "120": 0.008,
+        "240": 0.003,
     }
 
     stoploss = -0.03
     use_custom_stoploss = True
     trailing_stop = True
-    trailing_stop_positive = 0.008
-    trailing_stop_positive_offset = 0.018
+    trailing_stop_positive = 0.005
+    trailing_stop_positive_offset = 0.01
     trailing_only_offset_is_reached = True
 
     order_types = {
@@ -309,9 +309,9 @@ class BollingerMeanReversion(IStrategy):
         atr_mult = 1.5 if adx > 35 else 2.0
         atr_stop = -(atr * atr_mult * regime_mult) / current_rate
 
-        if current_profit > 0.04:
-            atr_stop = max(atr_stop, -0.025)
-        elif current_profit > 0.02:
-            atr_stop = max(atr_stop, -0.03)
+        if current_profit > 0.015:
+            atr_stop = max(atr_stop, -0.01)  # Tighten to -1% at 1.5%+
+        elif current_profit > 0.008:
+            atr_stop = max(atr_stop, -0.02)  # Tighten to -2% at 0.8%+
 
         return max(atr_stop, self.stoploss)

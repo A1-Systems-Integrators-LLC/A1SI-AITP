@@ -412,7 +412,7 @@ class TestExitManagerMaxHoldMultiplier:
             current_regime_state=_regime_state(Regime.STRONG_TREND_UP),
             entry_time=entry_time,
             current_time=NOW,
-            current_profit_pct=0.01,
+            current_profit_pct=0.005,  # Below BMR 1% partial profit target
         )
         assert not advice.should_exit
 

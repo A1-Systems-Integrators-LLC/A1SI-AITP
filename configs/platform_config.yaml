@@ -48,14 +48,13 @@ data:
   processed_path: "data/processed"
   orderbook_path: "data/orderbook"
 
-  # All non-stablecoin Kraken USDT pairs (2026-03-05)
-  # 36 pairs: excludes stablecoins (DAI, USDC, USDE, USDG, USDQ, USDR, USAT, RLUSD, EURR, XAUT)
+  # Curated Kraken USDT pairs — top liquid assets only (2026-03-23)
+  # 22 pairs: top-15 by market cap + established alts. Memecoins removed.
   watchlist:
     - "BTC/USDT"
     - "ETH/USDT"
     - "SOL/USDT"
     - "XRP/USDT"
-    - "XMR/USDT"
     - "DOGE/USDT"
     - "LTC/USDT"
     - "BNB/USDT"
@@ -65,29 +64,16 @@ data:
     - "AVAX/USDT"
     - "DOT/USDT"
     - "ATOM/USDT"
+    - "TON/USDT"
+    - "SHIB/USDT"
+    # Established alts with consistent volume
+    - "XMR/USDT"
     - "ALGO/USDT"
-    - "PENGU/USDT"
-    - "FARTCOIN/USDT"
-    - "TRUMP/USDT"
-    - "FIDD/USDT"
-    - "RAVE/USDT"
     - "KAS/USDT"
     - "XTZ/USDT"
-    - "CC/USDT"
-    - "ALEO/USDT"
-    # Lower volume but active
-    - "APE/USDT"
-    - "BERA/USDT"
     - "CRO/USDT"
     - "MANA/USDT"
-    - "MELANIA/USDT"
-    - "OBOL/USDT"
-    - "S/USDT"
-    - "SHIB/USDT"
-    - "SIDEKICK/USDT"
-    - "TON/USDT"
     - "VET/USDT"
-    - "VIRTUAL/USDT"
 
   timeframes:
     - "1m"
@@ -305,7 +291,7 @@ freqtrade:
 
   # Standalone ML pipeline (common/ml/)
   ml:
-    enabled: true
+    enabled: false  # Disabled: insufficient training data (30d/3 symbols). Re-enable after 6+ months.
     model_storage_path: "models"  # Relative to project root
 
     # Feature engineering

@@ -6,14 +6,14 @@ from common.regime.regime_detector import Regime
 # Must sum to 1.0.  When a source is unavailable its weight is
 # redistributed proportionally to the remaining sources.
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "technical": 0.35,
-    "regime": 0.25,
-    "ml": 0.08,
-    "sentiment": 0.10,
-    "scanner": 0.05,
-    "win_rate": 0.05,
-    "funding": 0.08,
-    "macro": 0.04,
+    "technical": 0.50,
+    "regime": 0.30,
+    "ml": 0.00,
+    "sentiment": 0.05,
+    "scanner": 0.00,
+    "win_rate": 0.10,
+    "funding": 0.05,
+    "macro": 0.00,
 }
 
 # ── Entry thresholds ─────────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 ENTRY_TIER_OFFSETS: list[tuple[int, float, str]] = [
     (25, 1.2, "very_strong_buy"),
     (15, 1.0, "strong_buy"),
-    (5, 0.7, "buy"),
-    (0, 0.5, "cautious_buy"),
+    (5, 0.85, "buy"),
+    (0, 0.7, "cautious_buy"),
 ]
 
 # ── Signal labels ────────────────────────────────────────────────────────────
@@ -143,7 +143,6 @@ HARD_DISABLE: set[tuple[Regime, str]] = {
     (Regime.RANGING, "CryptoInvestorV1"),
     (Regime.STRONG_TREND_DOWN, "CryptoInvestorV1"),
     (Regime.STRONG_TREND_UP, "BollingerMeanReversion"),
-    (Regime.WEAK_TREND_UP, "BollingerMeanReversion"),
 }
 
 # ── Regime change cooldown ───────────────────────────────────────────────────
@@ -174,15 +173,15 @@ REGIME_DETERIORATION_THRESHOLD = 30  # alignment drop triggering exit
 # Applied in order; once a tier is reached, that fraction is exited.
 PARTIAL_PROFIT_TARGETS: dict[str, list[tuple[float, float, str]]] = {
     "CryptoInvestorV1": [
-        (0.06, 1 / 3, "CIV1 1/3 at 6%"),
-        (0.10, 1 / 2, "CIV1 1/2 at 10%"),
+        (0.025, 1 / 3, "CIV1 1/3 at 2.5%"),
+        (0.04, 1 / 2, "CIV1 1/2 at 4%"),
     ],
     "BollingerMeanReversion": [
-        (0.02, 1 / 2, "BMR 1/2 at 2%"),
-        (0.04, 3 / 4, "BMR 3/4 at 4%"),
+        (0.01, 1 / 2, "BMR 1/2 at 1%"),
+        (0.02, 3 / 4, "BMR 3/4 at 2%"),
     ],
     "VolatilityBreakout": [
-        (0.05, 1 / 3, "VB 1/3 at 5%"),
+        (0.025, 1 / 3, "VB 1/3 at 2.5%"),
     ],
     "EquityMomentum": [
         (0.04, 1 / 3, "EqMom 1/3 at 4%"),

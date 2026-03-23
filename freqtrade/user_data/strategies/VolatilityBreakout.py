@@ -62,18 +62,18 @@ class VolatilityBreakout(IStrategy):
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.12,
-        "120": 0.07,
-        "480": 0.04,
-        "1440": 0.01,
+        "0": 0.05,
+        "120": 0.03,
+        "480": 0.015,
+        "1440": 0.005,
     }
 
     stoploss = -0.03
     use_custom_stoploss = True
 
     trailing_stop = True
-    trailing_stop_positive = 0.025
-    trailing_stop_positive_offset = 0.05
+    trailing_stop_positive = 0.015
+    trailing_stop_positive_offset = 0.025
     trailing_only_offset_is_reached = True
 
     order_types = {
@@ -303,9 +303,9 @@ class VolatilityBreakout(IStrategy):
         atr_stop = -(atr * float(self.atr_multiplier.value) * regime_mult) / current_rate
 
         # Tighten as profit increases (breakouts: protect gains quickly)
-        if current_profit > 0.07:
-            atr_stop = max(atr_stop, -0.025)  # Tight at 7%+
-        elif current_profit > 0.04:
-            atr_stop = max(atr_stop, -0.035)  # Moderate at 4%+
+        if current_profit > 0.03:
+            atr_stop = max(atr_stop, -0.015)  # Tight at 3%+
+        elif current_profit > 0.015:
+            atr_stop = max(atr_stop, -0.025)  # Moderate at 1.5%+
 
         return max(atr_stop, self.stoploss)

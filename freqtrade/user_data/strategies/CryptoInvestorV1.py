@@ -63,10 +63,10 @@ class CryptoInvestorV1(IStrategy):
 
     # ── ROI table (aggressive: take profits faster) ──
     minimal_roi = {
-        "0": 0.10,
-        "120": 0.06,
-        "480": 0.03,
-        "1440": 0.01,
+        "0": 0.04,
+        "120": 0.025,
+        "480": 0.015,
+        "1440": 0.005,
     }
 
     # ── Stop loss ──
@@ -75,8 +75,8 @@ class CryptoInvestorV1(IStrategy):
 
     # ── Trailing stop ──
     trailing_stop = True
-    trailing_stop_positive = 0.02
-    trailing_stop_positive_offset = 0.04
+    trailing_stop_positive = 0.01
+    trailing_stop_positive_offset = 0.02
     trailing_only_offset_is_reached = True
 
     # ── Order settings ──
@@ -282,10 +282,10 @@ class CryptoInvestorV1(IStrategy):
         atr_stop = -(atr * float(self.atr_multiplier.value) * regime_mult) / current_rate
 
         # Tighten stop as profit increases
-        if current_profit > 0.08:
-            atr_stop = max(atr_stop, -0.03)  # Tighten to -3%
-        elif current_profit > 0.05:
-            atr_stop = max(atr_stop, -0.04)  # Tighten to -4%
+        if current_profit > 0.03:
+            atr_stop = max(atr_stop, -0.015)  # Tighten to -1.5% at 3%+
+        elif current_profit > 0.02:
+            atr_stop = max(atr_stop, -0.025)  # Tighten to -2.5% at 2%+
 
         return max(atr_stop, self.stoploss)
 
@@ -322,7 +322,7 @@ class CryptoInvestorV1(IStrategy):
             return "trend_breakdown"
 
         # Exit if held too long with small profit (opportunity cost)
-        if trade.open_date_utc + timedelta(days=7) < current_time and current_profit < 0.01:
+        if trade.open_date_utc + timedelta(days=5) < current_time and current_profit < 0.005:
             return "stale_trade"
 
         return None
