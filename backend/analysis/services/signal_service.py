@@ -160,12 +160,12 @@ class SignalService:
     def _get_sentiment_signal(symbol: str, asset_class: str) -> tuple[float | None, float | None]:
         """Fetch sentiment signal and conviction."""
         try:
-            ensure_platform_imports()
-            from common.sentiment.signal import compute_signal
+            from market.services.news import NewsService
 
-            result = compute_signal(symbol, asset_class=asset_class)
-            if result:
-                return result.get("score", None), result.get("conviction", None)
+            service = NewsService()
+            signal_data = service.get_sentiment_signal(asset_class=asset_class, hours=24)
+            if signal_data and signal_data.get("article_count", 0) > 0:
+                return signal_data.get("signal"), signal_data.get("conviction")
         except Exception as e:
             logger.warning("Sentiment signal unavailable for %s: %s", symbol, e)
         return None, None
@@ -174,13 +174,16 @@ class SignalService:
     def _get_scanner_score(symbol: str, asset_class: str) -> float | None:
         """Fetch latest scanner opportunity score."""
         try:
+            from django.utils import timezone
+
             from market.models import MarketOpportunity
 
+            now = timezone.now()
             opp = (
                 MarketOpportunity.objects.filter(
                     symbol=symbol,
                     asset_class=asset_class,
-                    is_active=True,
+                    expires_at__gt=now,
                 )
                 .order_by("-detected_at")
                 .first()

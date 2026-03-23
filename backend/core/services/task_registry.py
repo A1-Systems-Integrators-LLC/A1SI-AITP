@@ -312,6 +312,8 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
     # Fall back to instance configs if top-level settings not set
     if not any(ft_urls):
         for inst in getattr(settings, "FREQTRADE_INSTANCES", []):
+            if not inst.get("enabled", True):
+                continue  # Skip disabled (not deployed) instances
             url = inst.get("url", "")
             if url:
                 ft_urls.append(url)

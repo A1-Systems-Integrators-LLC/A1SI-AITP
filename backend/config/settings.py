@@ -306,6 +306,7 @@ FREQTRADE_INSTANCES = [
         "port": 8080,
         "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:8080"),
         "dry_run_wallet": 200.0,
+        "enabled": True,
     },
     {
         "name": "BollingerMeanReversion",
@@ -313,6 +314,7 @@ FREQTRADE_INSTANCES = [
         "port": 8083,
         "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:8083"),
         "dry_run_wallet": 200.0,
+        "enabled": True,
     },
     {
         "name": "VolatilityBreakout",
@@ -320,6 +322,7 @@ FREQTRADE_INSTANCES = [
         "port": 8084,
         "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:8084"),
         "dry_run_wallet": 100.0,
+        "enabled": True,
     },
     {
         "name": "MomentumShort",
@@ -327,6 +330,7 @@ FREQTRADE_INSTANCES = [
         "port": 8085,
         "url": os.environ.get("FREQTRADE_SHORT_API_URL", "http://127.0.0.1:8085"),
         "dry_run_wallet": 200.0,
+        "enabled": False,  # Not deployed — no running instance
     },
     {
         "name": "GridDCA",
@@ -334,6 +338,7 @@ FREQTRADE_INSTANCES = [
         "port": 8086,
         "url": os.environ.get("FREQTRADE_GRID_API_URL", "http://127.0.0.1:8086"),
         "dry_run_wallet": 200.0,
+        "enabled": False,  # Not deployed — no running instance
     },
     {
         "name": "MomentumScalper15m",
@@ -341,6 +346,7 @@ FREQTRADE_INSTANCES = [
         "port": 8087,
         "url": os.environ.get("FREQTRADE_SCALP_API_URL", "http://127.0.0.1:8087"),
         "dry_run_wallet": 200.0,
+        "enabled": False,  # Not deployed — no running instance
     },
     {
         "name": "SentimentEventTrader",
@@ -348,6 +354,7 @@ FREQTRADE_INSTANCES = [
         "port": 8088,
         "url": os.environ.get("FREQTRADE_SENTIMENT_API_URL", "http://127.0.0.1:8088"),
         "dry_run_wallet": 200.0,
+        "enabled": False,  # Not deployed — no running instance
     },
     {
         "name": "TrendReversal",
@@ -355,6 +362,7 @@ FREQTRADE_INSTANCES = [
         "port": 8089,
         "url": os.environ.get("FREQTRADE_REVERSAL_API_URL", "http://127.0.0.1:8089"),
         "dry_run_wallet": 200.0,
+        "enabled": False,  # Not deployed — no running instance
     },
 ]
 

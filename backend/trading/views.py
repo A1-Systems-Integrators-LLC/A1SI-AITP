@@ -589,6 +589,8 @@ def _get_paper_trading_services() -> dict:
                 else:
                     _paper_trading_services = {}
                     for inst in instances:
+                        if not inst.get("enabled", True):
+                            continue  # Skip disabled (not deployed) instances
                         _paper_trading_services[inst["name"]] = PaperTradingService(
                             api_url=inst.get("url"),
                             instance_name=inst["name"],

@@ -141,6 +141,8 @@ class SignalFeedbackService:
         errors = 0
 
         for instance in ft_instances:
+            if not instance.get("enabled", True):
+                continue  # Skip disabled (not deployed) instances
             url = instance.get("url", "")
             if not url:
                 continue

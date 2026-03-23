@@ -345,7 +345,7 @@ class TestSignalService:
 
     def test_get_sentiment_signal_exception_returns_nones(self):
         with patch(
-            "analysis.services.signal_service.ensure_platform_imports", side_effect=ImportError
+            "market.services.news.NewsService", side_effect=Exception("db error")
         ):
             from analysis.services.signal_service import SignalService
 

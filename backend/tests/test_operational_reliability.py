@@ -395,9 +395,13 @@ class TestFreqtradeEquitySync:
 
             result = _sync_freqtrade_equity()
 
-        # Should have used instance URLs (all instances in settings)
+        # Should have used only enabled instance URLs from FREQTRADE_INSTANCES
+        enabled_count = sum(
+            1 for i in settings_mod.FREQTRADE_INSTANCES
+            if i.get("enabled", True) and i.get("url")
+        )
         assert result["equity_updated"] is True
-        assert len(result["instances"]) == len(settings_mod.FREQTRADE_INSTANCES)
+        assert len(result["instances"]) == enabled_count
 
 
 class TestRiskMonitoringWithSync:

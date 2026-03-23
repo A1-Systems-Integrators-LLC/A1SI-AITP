@@ -397,29 +397,32 @@ class TestSignalServiceSuccessPaths:
     def test_get_sentiment_signal_success(self):
         from analysis.services.signal_service import SignalService
 
-        mock_compute = MagicMock(return_value={"score": 0.6, "conviction": 0.8})
+        mock_service = MagicMock()
+        mock_service.return_value.get_sentiment_signal.return_value = {
+            "signal": 0.6,
+            "conviction": 0.8,
+            "article_count": 5,
+        }
 
-        with (
-            patch("analysis.services.signal_service.ensure_platform_imports"),
-            patch.dict("sys.modules", {
-                "common.sentiment.signal": MagicMock(compute_signal=mock_compute),
-            }),
-        ):
+        with patch("market.services.news.NewsService", mock_service):
             score, conv = SignalService._get_sentiment_signal("BTC/USDT", "crypto")
             assert score == 0.6
             assert conv == 0.8
+            mock_service.return_value.get_sentiment_signal.assert_called_once_with(
+                asset_class="crypto", hours=24,
+            )
 
     def test_get_sentiment_signal_empty_result(self):
         from analysis.services.signal_service import SignalService
 
-        mock_compute = MagicMock(return_value=None)
+        mock_service = MagicMock()
+        mock_service.return_value.get_sentiment_signal.return_value = {
+            "signal": 0.0,
+            "conviction": 0.0,
+            "article_count": 0,
+        }
 
-        with (
-            patch("analysis.services.signal_service.ensure_platform_imports"),
-            patch.dict("sys.modules", {
-                "common.sentiment.signal": MagicMock(compute_signal=mock_compute),
-            }),
-        ):
+        with patch("market.services.news.NewsService", mock_service):
             score, conv = SignalService._get_sentiment_signal("BTC/USDT", "crypto")
             assert score is None
             assert conv is None
@@ -438,6 +441,12 @@ class TestSignalServiceSuccessPaths:
             mock_objects.filter.return_value = mock_qs
             result = SignalService._get_scanner_score("BTC/USDT", "crypto")
             assert result == 82
+            # Verify correct filter kwargs (expires_at__gt, not is_active)
+            call_kwargs = mock_objects.filter.call_args[1]
+            assert "expires_at__gt" in call_kwargs
+            assert "is_active" not in call_kwargs
+            assert call_kwargs["symbol"] == "BTC/USDT"
+            assert call_kwargs["asset_class"] == "crypto"
 
     def test_get_scanner_score_exception(self):
         """Cover lines 86-88: exception in scanner lookup."""

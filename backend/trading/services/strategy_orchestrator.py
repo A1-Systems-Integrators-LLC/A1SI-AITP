@@ -189,7 +189,35 @@ class StrategyOrchestrator:
                 detector = RegimeDetector()
                 df = self._load_regime_data(sym, asset_class)
                 if df is None or df.empty:
-                    raise ValueError(f"No OHLCV data for {sym}")
+                    # No data available for this asset class — this is expected
+                    # when equity/forex data hasn't been downloaded yet.
+                    # Gracefully skip instead of spamming ERROR logs.
+                    logger.debug(
+                        "Strategy orchestration skipped for %s: no OHLCV data for %s",
+                        asset_class, sym,
+                    )
+                    for strat in strategies:
+                        key = self._state_key(strat, asset_class)
+                        existing = self._states.get(key)
+                        if existing:
+                            all_results.append({
+                                "strategy": strat,
+                                "asset_class": asset_class,
+                                "regime": existing.regime,
+                                "alignment": existing.alignment,
+                                "action": existing.action,
+                                "changed": False,
+                                "skipped": True,
+                            })
+                        else:
+                            result = self._update_strategy(
+                                strat, asset_class, "unknown", 50, ACTION_ACTIVE,
+                            )
+                            result["skipped"] = True
+                            result["changed"] = False
+                            all_results.append(result)
+                    continue
+
                 state = detector.detect(df)
                 table = ALIGNMENT_TABLES.get(asset_class, ALIGNMENT_TABLES["crypto"])
                 regime_row = table.get(state.regime, {})
