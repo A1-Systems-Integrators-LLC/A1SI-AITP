@@ -58,6 +58,7 @@ DEFAULT_TRAIN_PARAMS = {
     "colsample_bytree": 0.8,
     "reg_alpha": 0.1,
     "reg_lambda": 0.1,
+    "is_unbalance": True,  # Handle class imbalance — prevents "always predict up" bias
     "verbose": -1,
     "n_jobs": 4,  # Adjust based on available CPU cores
 }

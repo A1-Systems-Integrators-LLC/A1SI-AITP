@@ -263,29 +263,32 @@ class TaskScheduler:
             logger.error("No executor for task_type=%s (task=%s)", task.task_type, task_id)
             return
 
-        # Submit via JobRunner for BackgroundJob tracking
-        from analysis.services.job_runner import get_job_runner
+        try:
+            # Submit via JobRunner for BackgroundJob tracking
+            from analysis.services.job_runner import get_job_runner
 
-        job_type = f"scheduled_{task.task_type}"
-        job_id = get_job_runner().submit(job_type, executor, task.params)
+            job_type = f"scheduled_{task.task_type}"
+            job_id = get_job_runner().submit(job_type, executor, task.params)
 
-        now = datetime.now(tz=timezone.utc)
-        update_fields = {
-            "last_run_at": now,
-            "last_run_status": "submitted",
-            "last_run_job_id": job_id,
-            "run_count": task.run_count + 1,
-        }
+            now = datetime.now(tz=timezone.utc)
+            update_fields = {
+                "last_run_at": now,
+                "last_run_status": "submitted",
+                "last_run_job_id": job_id,
+                "run_count": task.run_count + 1,
+            }
 
-        # Update next_run_at from APScheduler
-        if self._scheduler:
-            apjob = self._scheduler.get_job(task_id)
-            nrt = getattr(apjob, "next_run_time", None) if apjob else None
-            if nrt:
-                update_fields["next_run_at"] = nrt
+            # Update next_run_at from APScheduler
+            if self._scheduler:
+                apjob = self._scheduler.get_job(task_id)
+                nrt = getattr(apjob, "next_run_time", None) if apjob else None
+                if nrt:
+                    update_fields["next_run_at"] = nrt
 
-        ScheduledTask.objects.filter(id=task_id).update(**update_fields)
-        logger.info("Task %s submitted as job %s", task_id, job_id)
+            ScheduledTask.objects.filter(id=task_id).update(**update_fields)
+            logger.info("Task %s submitted as job %s", task_id, job_id)
+        except Exception:
+            logger.exception("Failed to execute scheduled task %s", task_id)
 
         # Broadcast scheduler event
         try:

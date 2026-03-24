@@ -435,6 +435,7 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
                             "side": "buy",
                             "size": trade.get("amount", 0),
                             "entry_price": trade.get("open_rate", 0),
+                            "current_price": trade.get("current_rate", 0),
                             "value": trade.get("stake_amount", 0),
                         }
         except Exception as e:
@@ -476,17 +477,20 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
             try:
                 state = RiskState.objects.get(portfolio_id=portfolio.id)
                 state.daily_pnl = current_equity - state.daily_start_equity
+                state.total_pnl = current_equity - initial_capital
                 state.open_positions = open_positions
-                state.save(update_fields=["daily_pnl", "open_positions"])
+                state.save(update_fields=["daily_pnl", "total_pnl", "open_positions"])
             except RiskState.DoesNotExist:
                 pass
 
-    # Feed open position prices into the singleton ReturnTracker for VaR/correlation
+    # Feed current mark prices into the singleton ReturnTracker for VaR/correlation.
+    # Must use current_price (live mark) not entry_price (static) — otherwise
+    # returns are always 0.0 and VaR is never computed.
     if open_positions:
         prices = {
-            sym: pos.get("entry_price", 0)
+            sym: pos.get("current_price") or pos.get("entry_price", 0)
             for sym, pos in open_positions.items()
-            if pos.get("entry_price")
+            if pos.get("current_price") or pos.get("entry_price")
         }
         if prices:
             RiskManagementService.record_prices(prices)
