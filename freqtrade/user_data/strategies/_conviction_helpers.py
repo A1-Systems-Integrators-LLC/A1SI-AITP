@@ -217,6 +217,57 @@ def check_conviction(strategy: Any, pair: str) -> bool:
     return True
 
 
+def record_signal_attribution(strategy: Any, pair: str, trade_id: str = "") -> None:
+    """Record signal attribution data at trade entry for the performance feedback loop.
+
+    POSTs signal component breakdown to the Django API so the feedback system
+    can track which signal sources are most accurate. Fail-open: errors are
+    logged but never block trade execution.
+    """
+    signal = getattr(strategy, "_signals", {}).get(pair)
+    if not signal:
+        logger.debug("No cached signal for %s, skipping attribution recording", pair)
+        return
+
+    try:
+        import requests
+
+        # Build attribution payload from cached signal components
+        components = signal.get("components", {})
+        payload = {
+            "order_id": trade_id,
+            "symbol": pair,
+            "strategy": strategy.__class__.__name__,
+            "asset_class": "crypto",
+            "composite_score": signal.get("score", 0),
+            "technical_contribution": components.get("technical", 0),
+            "ml_contribution": components.get("ml", 0),
+            "sentiment_contribution": components.get("sentiment", 0),
+            "regime_contribution": components.get("regime", 0),
+            "scanner_contribution": components.get("scanner", 0),
+            "win_rate_contribution": components.get("win_rate", 0),
+            "position_modifier": signal.get("position_modifier", 1.0),
+            "regime": signal.get("regime", "unknown"),
+        }
+
+        resp = requests.post(
+            f"{strategy.risk_api_url}/api/signals/record/",
+            json=payload,
+            timeout=5,
+        )
+        if resp.status_code in (200, 201):
+            logger.info(
+                "Recorded signal attribution for %s (score=%.1f, trade=%s)",
+                pair, signal.get("score", 0), trade_id,
+            )
+        else:
+            logger.warning(
+                "Signal attribution API returned %d for %s", resp.status_code, pair,
+            )
+    except Exception as e:
+        logger.warning("Signal attribution recording failed for %s: %s", pair, e)
+
+
 def record_entry_regime(strategy: Any, pair: str) -> None:
     """Record the current regime at trade entry time for exit tracking."""
     if not HAS_CONVICTION:

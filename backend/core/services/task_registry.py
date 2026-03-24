@@ -1381,6 +1381,51 @@ def _run_funding_rate_refresh(params: dict, progress_cb: ProgressCallback) -> di
         return {"status": "error", "error": str(e)}
 
 
+def _run_autonomous_check(params: dict, progress_cb: ProgressCallback) -> dict:
+    """Hourly subsystem health check and auto-remediation."""
+    try:
+        from core.management.commands.autonomous_check import (
+            _check_data_freshness,
+            _check_freqtrade,
+            _check_ml_training,
+            _check_order_health,
+            _check_scheduler,
+            _check_signal_attributions,
+            _fix_ml_training,
+        )
+
+        progress_cb(0.1, "Running health checks...")
+        checks = [
+            _check_freqtrade(),
+            _check_ml_training(),
+            _check_signal_attributions(),
+            _check_data_freshness(),
+            _check_scheduler(),
+            _check_order_health(),
+        ]
+        progress_cb(0.7, "Checking for fixes...")
+
+        fixes: list[str] = []
+        if params.get("fix", False):
+            ml_fix = _fix_ml_training()
+            if ml_fix:
+                fixes.append(ml_fix)
+
+        issues = [c for c in checks if c["status"] != "pass"]
+        progress_cb(1.0, f"Done: {len(issues)} issues found")
+
+        return {
+            "status": "completed",
+            "all_pass": len(issues) == 0,
+            "checks": len(checks),
+            "issues": len(issues),
+            "fixes_applied": fixes,
+        }
+    except Exception as e:
+        logger.error("Autonomous check failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
 TASK_REGISTRY: dict[str, TaskExecutor] = {
     "data_refresh": _run_data_refresh,
     "regime_detection": _run_regime_detection,
@@ -1411,4 +1456,5 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "coingecko_trending_refresh": _run_coingecko_trending_refresh,
     "macro_data_refresh": _run_macro_data_refresh,
     "daily_risk_reset": _run_daily_risk_reset,
+    "autonomous_check": _run_autonomous_check,
 }

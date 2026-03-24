@@ -11,9 +11,12 @@ vi.mock("../src/components/PriceChart", () => ({
 
 const mockKPIs = {
   portfolio: { count: 3, total_value: 50000, total_cost: 40000, unrealized_pnl: 10000, pnl_pct: 25 },
-  trading: { total_trades: 15, win_rate: 60, total_pnl: 1500, profit_factor: 2.5, open_orders: 2 },
+  trading: { total_trades: 15, win_rate: 60, total_pnl: 1500, profit_factor: 2.5, open_orders: 2, total_orders: 200, rejected_orders: 20, filled_orders: 170, rejection_rate: 10.0 },
   risk: { equity: 10000, drawdown: 0.05, daily_pnl: 125.50, is_halted: false, open_positions: 2 },
   platform: { data_files: 12, active_jobs: 1, framework_count: 7 },
+  system_health: { scheduler_running: true, last_data_refresh: "2026-02-24T12:00:00Z", freqtrade_instances: [], active_tasks: 35, total_jobs_completed: 10000, total_jobs_failed: 5 },
+  activity_feed: [],
+  learning_status: { ml_accuracy: 55.0, ml_predictions_total: 100, ml_models_count: 1, ml_last_trained: null, signal_attributions: 0, orchestrator_states: [] },
   generated_at: "2026-02-24T12:00:00Z",
 };
 

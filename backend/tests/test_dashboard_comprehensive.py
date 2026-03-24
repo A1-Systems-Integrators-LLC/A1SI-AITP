@@ -201,7 +201,7 @@ class TestKPIAggregationAllSections:
         """Trading section has required keys."""
         kpis = DashboardService.get_kpis()
         t = kpis["trading"]
-        for key in ("total_trades", "win_rate", "total_pnl", "profit_factor", "open_orders"):
+        for key in ("total_trades", "win_rate", "total_pnl", "profit_factor", "open_orders", "total_orders", "rejected_orders", "filled_orders", "rejection_rate"):
             assert key in t, f"Missing trading key: {key}"
 
     def test_risk_section_keys(self, portfolio, risk_state):
@@ -586,7 +586,7 @@ class TestDashboardResponseStructure:
         client.force_login(user)
         resp = client.get("/api/dashboard/kpis/")
         data = resp.json()
-        expected = {"portfolio", "trading", "risk", "platform", "paper_trading", "generated_at"}
+        expected = {"portfolio", "trading", "risk", "platform", "paper_trading", "system_health", "activity_feed", "learning_status", "generated_at"}
         assert set(data.keys()) == expected
 
     def test_platform_status_response_keys(self, client, user):

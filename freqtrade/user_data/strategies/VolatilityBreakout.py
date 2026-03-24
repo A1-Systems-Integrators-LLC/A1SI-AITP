@@ -37,6 +37,7 @@ from _conviction_helpers import (
     get_position_modifier,
     get_regime_stop_multiplier,
     record_entry_regime,
+    record_signal_attribution,
     refresh_signals,
 )
 from freqtrade.strategy import (
@@ -267,6 +268,9 @@ class VolatilityBreakout(IStrategy):
 
         # Record entry regime for exit advisor
         record_entry_regime(self, pair)
+
+        # Record signal attribution for performance feedback loop
+        record_signal_attribution(self, pair, str(kwargs.get("trade_id", "")))
 
         return True
 

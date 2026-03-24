@@ -579,6 +579,13 @@ SCHEDULED_TASKS = {
         "interval_seconds": 86400,
         "params": {},
     },
+    "autonomous_check": {
+        "name": "Autonomous System Check",
+        "description": "Hourly subsystem health verification and auto-remediation",
+        "task_type": "autonomous_check",
+        "interval_seconds": 3600,
+        "params": {"fix": True},
+    },
 }
 
 # ── Workflow templates ────────────────────────────────────────

@@ -696,7 +696,7 @@ class TestSignalFeedbackExecutors(TestCase):
     def test_registry_has_22_executors(self):
         from core.services.task_registry import TASK_REGISTRY
 
-        assert len(TASK_REGISTRY) == 29
+        assert len(TASK_REGISTRY) == 30
 
 
 # ── URL routing tests ────────────────────────────────────────────────

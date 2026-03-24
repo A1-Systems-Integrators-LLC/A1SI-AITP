@@ -159,9 +159,8 @@ declare -A FT_PORTS=(
     [VolatilityBreakout]=8084
 )
 
-# BMR-only phase (2026-03-23 team review): consolidate $500 capital on single strategy
-# Override: WATCHDOG_FT_INSTANCES=CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout
-DEFAULT_WATCHDOG_FT="BollingerMeanReversion"
+# Full 3-strategy operation (restored 2026-03-24 operational overhaul)
+DEFAULT_WATCHDOG_FT="CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout"
 WATCHDOG_FT_INSTANCES="${WATCHDOG_FT_INSTANCES:-$DEFAULT_WATCHDOG_FT}"
 
 check_freqtrade() {

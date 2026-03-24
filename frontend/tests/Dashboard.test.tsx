@@ -129,7 +129,7 @@ const mockNewsSentiment = {
 
 const mockKpis = {
   portfolio: { count: 1, total_value: 10000 },
-  trading: { total_trades: 5, win_rate: 60.0, total_pnl: 500.0, profit_factor: 2.0 },
+  trading: { total_trades: 5, win_rate: 60.0, total_pnl: 500.0, profit_factor: 2.0, open_orders: 0, total_orders: 100, rejected_orders: 10, filled_orders: 85, rejection_rate: 10.0 },
   risk: { daily_pnl: 125.5, drawdown: 0.048, is_halted: false },
   platform: { data_files: 12, active_jobs: 2 },
   paper_trading: {
@@ -143,6 +143,33 @@ const mockKpis = {
       { name: "civ1", running: true, strategy: "CryptoInvestorV1", pnl: 10.50, open_trades: 1, closed_trades: 2 },
       { name: "bmr", running: true, strategy: "BollingerMeanReversion", pnl: 5.25, open_trades: 0, closed_trades: 2 },
       { name: "vb", running: false, strategy: "VolatilityBreakout", pnl: 0, open_trades: 0, closed_trades: 0 },
+    ],
+  },
+  system_health: {
+    scheduler_running: true,
+    last_data_refresh: new Date().toISOString(),
+    freqtrade_instances: [
+      { name: "CryptoInvestorV1", port: 8080, running: true, enabled: true },
+      { name: "BollingerMeanReversion", port: 8083, running: true, enabled: true },
+      { name: "VolatilityBreakout", port: 8084, running: false, enabled: true },
+    ],
+    active_tasks: 35,
+    total_jobs_completed: 10441,
+    total_jobs_failed: 12,
+  },
+  activity_feed: [
+    { timestamp: new Date().toISOString(), type: "job", message: "scheduled data refresh — completed", severity: "info" },
+    { timestamp: new Date().toISOString(), type: "task", message: "Market Scan Crypto — run #751", severity: "info" },
+  ],
+  learning_status: {
+    ml_accuracy: 50.0,
+    ml_predictions_total: 3319,
+    ml_models_count: 1,
+    ml_last_trained: null,
+    signal_attributions: 0,
+    orchestrator_states: [
+      { strategy: "CryptoInvestorV1", action: "reduce_size", alignment: 25, regime: "high_volatility" },
+      { strategy: "BollingerMeanReversion", action: "active", alignment: 65, regime: "high_volatility" },
     ],
   },
   generated_at: new Date().toISOString(),
@@ -216,9 +243,11 @@ describe("Dashboard", () => {
     expect(screen.getByText("Status")).toBeInTheDocument();
   });
 
-  it("shows Online status", () => {
+  it("shows Running status when scheduler is running", async () => {
     renderWithProviders(<Dashboard />);
-    expect(screen.getByText("Online")).toBeInTheDocument();
+    // "Running" appears in both summary card and system health — check at least one exists
+    const runningElements = await screen.findAllByText("Running");
+    expect(runningElements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders framework status section after data loads", async () => {
@@ -510,7 +539,7 @@ describe("Dashboard", () => {
   it("shows trading performance card with negative P&L", async () => {
     const negTradingKpis = {
       ...mockKpis,
-      trading: { total_trades: 10, win_rate: 40.0, total_pnl: -250.0, profit_factor: null },
+      trading: { total_trades: 10, win_rate: 40.0, total_pnl: -250.0, profit_factor: null, open_orders: 0, total_orders: 50, rejected_orders: 5, filled_orders: 40, rejection_rate: 10.0 },
     };
     vi.stubGlobal(
       "fetch",
@@ -530,8 +559,8 @@ describe("Dashboard", () => {
     renderWithProviders(<Dashboard />);
     expect(await screen.findByText("Trading Performance")).toBeInTheDocument();
     expect(screen.getByText("$-250.00")).toBeInTheDocument();
-    // null profit_factor should show infinity symbol
-    expect(screen.getByText("\u221E")).toBeInTheDocument();
+    // Rejection rate should be shown
+    expect(screen.getByText("10.0%")).toBeInTheDocument();
   });
 
   it("shows paper trading widget with no instances running", async () => {

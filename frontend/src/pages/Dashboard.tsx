@@ -24,17 +24,20 @@ import {
   ASSET_CLASS_LABELS,
 } from "../constants/assetDefaults";
 import type {
+  ActivityFeedItem,
   AssetClass,
   BackgroundJob,
   DailyReport,
   DashboardKPIs,
   FrameworkStatus,
+  LearningStatus,
   OHLCVData,
   OpportunitySummary,
   PaperTradingKPIs,
   PlatformStatus,
   RegimeState,
   RegimeType,
+  SystemHealth,
   TickerData,
 } from "../types";
 
@@ -188,7 +191,12 @@ export function Dashboard() {
           text={dailyPnl != null ? `$${dailyPnl.toFixed(2)}` : "\u2014"}
           textColor={dailyPnl != null && dailyPnl >= 0 ? "text-green-400" : dailyPnl != null && dailyPnl < 0 ? "text-red-400" : ""}
         />
-        <SummaryCard label="Status" text="Online" textColor="text-[var(--color-success)]" />
+        <SummaryCard
+          label="Status"
+          text={kpis.data?.system_health?.scheduler_running ? "Running" : "Degraded"}
+          textColor={kpis.data?.system_health?.scheduler_running ? "text-[var(--color-success)]" : "text-red-400"}
+          pulse={kpis.data?.system_health?.scheduler_running}
+        />
       </div>
       {kpis.dataUpdatedAt > 0 && (
         <p className="mt-1 text-right text-xs text-[var(--color-text-muted)]" data-testid="kpi-timestamp">
@@ -199,6 +207,21 @@ export function Dashboard() {
       {/* Paper Trading */}
       {kpis.data?.paper_trading && (
         <PaperTradingWidget data={kpis.data.paper_trading} />
+      )}
+
+      {/* System Health + Agent Learning */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {kpis.data?.system_health && (
+          <SystemHealthCard data={kpis.data.system_health} />
+        )}
+        {kpis.data?.learning_status && (
+          <AgentLearningCard data={kpis.data.learning_status} />
+        )}
+      </div>
+
+      {/* Activity Feed */}
+      {kpis.data?.activity_feed && kpis.data.activity_feed.length > 0 && (
+        <ActivityFeedWidget events={kpis.data.activity_feed} />
       )}
 
       {/* Watchlist */}
@@ -382,30 +405,41 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Trading Performance Card */}
-      {kpis.data?.trading && kpis.data.trading.total_trades > 0 && (
+      {/* Trading Performance Card — always visible */}
+      {kpis.data?.trading && (
         <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
           <h3 className="mb-4 text-lg font-semibold">Trading Performance</h3>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)]">Filled Orders</p>
+              <p className="text-xl font-bold">{kpis.data.trading.filled_orders ?? 0}</p>
+            </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Win Rate</p>
-              <p className="text-xl font-bold">{kpis.data.trading.win_rate.toFixed(1)}%</p>
+              <p className="text-xl font-bold">{(kpis.data.trading.win_rate ?? 0).toFixed(1)}%</p>
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Total P&L</p>
-              <p className={`text-xl font-bold ${kpis.data.trading.total_pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                ${kpis.data.trading.total_pnl.toFixed(2)}
+              <p className={`text-xl font-bold ${(kpis.data.trading.total_pnl ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                ${(kpis.data.trading.total_pnl ?? 0).toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[var(--color-text-muted)]">Profit Factor</p>
-              <p className="text-xl font-bold">{kpis.data.trading.profit_factor != null ? kpis.data.trading.profit_factor.toFixed(2) : "\u221E"}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Total Orders</p>
+              <p className="text-xl font-bold">{kpis.data.trading.total_orders ?? 0}</p>
             </div>
             <div>
-              <p className="text-xs text-[var(--color-text-muted)]">Trades</p>
-              <p className="text-xl font-bold">{kpis.data.trading.total_trades}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Rejection Rate</p>
+              <p className={`text-xl font-bold ${(kpis.data.trading.rejection_rate ?? 0) > 50 ? "text-red-400" : (kpis.data.trading.rejection_rate ?? 0) > 20 ? "text-yellow-400" : "text-green-400"}`}>
+                {(kpis.data.trading.rejection_rate ?? 0).toFixed(1)}%
+              </p>
             </div>
           </div>
+          {kpis.data.trading.total_trades === 0 && kpis.data.paper_trading && (
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+              No live trades yet. Paper trading P&L: ${kpis.data.paper_trading.total_pnl.toFixed(2)}
+            </p>
+          )}
         </div>
       )}
 
@@ -527,6 +561,154 @@ export function Dashboard() {
         </div>
       </div>
       </section>
+    </div>
+  );
+}
+
+function SystemHealthCard({ data }: { data: SystemHealth }) {
+  const dataAge = data.last_data_refresh
+    ? Math.round((Date.now() - new Date(data.last_data_refresh).getTime()) / 60000)
+    : null;
+  const dataFresh = dataAge !== null && dataAge < 60;
+  const dataStale = dataAge !== null && dataAge >= 240;
+
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-testid="system-health-card">
+      <h3 className="mb-4 text-lg font-semibold">System Health</h3>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Scheduler</span>
+          <span className={`flex items-center gap-1.5 text-sm ${data.scheduler_running ? "text-green-400" : "text-red-400"}`}>
+            <span className={`h-2 w-2 rounded-full ${data.scheduler_running ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+            {data.scheduler_running ? "Running" : "Stopped"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Active Tasks</span>
+          <span className="text-sm font-medium">{data.active_tasks}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Data Freshness</span>
+          <span className={`text-sm ${dataFresh ? "text-green-400" : dataStale ? "text-red-400" : "text-yellow-400"}`}>
+            {dataAge !== null ? `${dataAge}m ago` : "Unknown"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Jobs</span>
+          <span className="text-sm">
+            <span className="text-green-400">{data.total_jobs_completed.toLocaleString()}</span>
+            {data.total_jobs_failed > 0 && (
+              <> / <span className="text-red-400">{data.total_jobs_failed} failed</span></>
+            )}
+          </span>
+        </div>
+        {data.freqtrade_instances.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-[var(--color-text-muted)]">Trading Engines</p>
+            <div className="flex flex-wrap gap-2">
+              {data.freqtrade_instances.map((ft) => (
+                <span
+                  key={ft.name}
+                  className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
+                    ft.running
+                      ? "bg-green-500/15 text-green-400"
+                      : ft.enabled
+                        ? "bg-red-500/15 text-red-400"
+                        : "bg-gray-500/15 text-gray-400"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${ft.running ? "bg-green-400" : ft.enabled ? "bg-red-400" : "bg-gray-400"}`} />
+                  {ft.name.replace("CryptoInvestorV1", "CIV1").replace("BollingerMeanReversion", "BMR").replace("VolatilityBreakout", "VB")}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AgentLearningCard({ data }: { data: LearningStatus }) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-testid="agent-learning-card">
+      <h3 className="mb-4 text-lg font-semibold">Agent Learning</h3>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm">ML Accuracy</span>
+          <span className={`text-sm font-medium ${
+            data.ml_accuracy === null ? "text-[var(--color-text-muted)]"
+              : data.ml_accuracy >= 55 ? "text-green-400"
+                : data.ml_accuracy >= 50 ? "text-yellow-400" : "text-red-400"
+          }`}>
+            {data.ml_accuracy !== null ? `${data.ml_accuracy}%` : "No data"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Predictions Made</span>
+          <span className="text-sm font-medium">{data.ml_predictions_total.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Signal Attributions</span>
+          <span className={`text-sm font-medium ${data.signal_attributions === 0 ? "text-red-400" : ""}`}>
+            {data.signal_attributions}
+            {data.signal_attributions === 0 && " (broken)"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm">Last Training</span>
+          <span className="text-sm text-[var(--color-text-muted)]">
+            {data.ml_last_trained
+              ? new Date(data.ml_last_trained).toLocaleDateString()
+              : "Never"}
+          </span>
+        </div>
+        {data.orchestrator_states.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-[var(--color-text-muted)]">Strategy Orchestrator</p>
+            <div className="flex flex-wrap gap-2">
+              {data.orchestrator_states.map((s) => (
+                <span
+                  key={s.strategy}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    s.action === "active"
+                      ? "bg-green-500/15 text-green-400"
+                      : s.action === "reduce_size"
+                        ? "bg-yellow-500/15 text-yellow-400"
+                        : "bg-red-500/15 text-red-400"
+                  }`}
+                >
+                  {s.strategy.replace("CryptoInvestorV1", "CIV1").replace("BollingerMeanReversion", "BMR").replace("VolatilityBreakout", "VB").replace("EquityMomentum", "EqMom").replace("EquityMeanReversion", "EqMR").replace("ForexTrend", "FxTr").replace("ForexRange", "FxRa")}: {s.action}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ActivityFeedWidget({ events }: { events: ActivityFeedItem[] }) {
+  const typeIcons: Record<string, string> = { job: "\u2699", alert: "\u26A0", task: "\u23F0" };
+  return (
+    <div className="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6" data-testid="activity-feed">
+      <h3 className="mb-4 text-lg font-semibold">Recent Activity</h3>
+      <div className="space-y-2 max-h-64 overflow-y-auto">
+        {events.map((evt, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-[var(--color-border)] p-2">
+            <span className="mt-0.5 text-sm">{typeIcons[evt.type] ?? "\u2022"}</span>
+            <div className="min-w-0 flex-1">
+              <p className={`truncate text-sm ${evt.severity === "error" || evt.severity === "critical" ? "text-red-400" : ""}`}>
+                {evt.message}
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {new Date(evt.timestamp).toLocaleTimeString()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

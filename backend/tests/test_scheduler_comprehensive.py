@@ -52,10 +52,11 @@ class TestRegistryCompleteness:
         "coingecko_trending_refresh",
         "macro_data_refresh",
         "daily_risk_reset",
+        "autonomous_check",
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 29
+        assert len(TASK_REGISTRY) == 30
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES

@@ -889,6 +889,45 @@ export interface PaperTradingKPIs {
 }
 
 // Dashboard KPI types
+export interface ActivityFeedItem {
+  timestamp: string;
+  type: "job" | "alert" | "task";
+  message: string;
+  severity: string;
+}
+
+export interface FreqtradeInstance {
+  name: string;
+  port: number;
+  running: boolean;
+  enabled: boolean;
+}
+
+export interface SystemHealth {
+  scheduler_running: boolean;
+  last_data_refresh: string | null;
+  freqtrade_instances: FreqtradeInstance[];
+  active_tasks: number;
+  total_jobs_completed: number;
+  total_jobs_failed: number;
+}
+
+export interface OrchestratorState {
+  strategy: string;
+  action: string;
+  alignment: number;
+  regime: string;
+}
+
+export interface LearningStatus {
+  ml_accuracy: number | null;
+  ml_predictions_total: number;
+  ml_models_count: number;
+  ml_last_trained: string | null;
+  signal_attributions: number;
+  orchestrator_states: OrchestratorState[];
+}
+
 export interface DashboardKPIs {
   portfolio: {
     count: number;
@@ -896,6 +935,7 @@ export interface DashboardKPIs {
     total_cost: number;
     unrealized_pnl: number;
     pnl_pct: number;
+    equity_source?: string;
   };
   trading: {
     total_trades: number;
@@ -903,6 +943,10 @@ export interface DashboardKPIs {
     total_pnl: number;
     profit_factor: number | null;
     open_orders: number;
+    total_orders: number;
+    rejected_orders: number;
+    filled_orders: number;
+    rejection_rate: number;
   };
   risk: {
     equity: number;
@@ -917,5 +961,8 @@ export interface DashboardKPIs {
     framework_count: number;
   };
   paper_trading: PaperTradingKPIs;
+  system_health: SystemHealth;
+  activity_feed: ActivityFeedItem[];
+  learning_status: LearningStatus;
   generated_at: string;
 }

@@ -17,7 +17,7 @@ logger = logging.getLogger("forex_paper_trading")
 # Configuration
 MIN_ENTRY_SCORE = 70
 MAX_OPEN_POSITIONS = 3
-POSITION_SIZE_USD = 1000.0
+POSITION_SIZE_USD = 100.0  # Fallback only — prefer dynamic sizing from RiskLimits
 MAX_HOLD_HOURS = 24
 EXIT_SCORE_THRESHOLD = 40
 
@@ -68,7 +68,8 @@ class ForexPaperTradingService:
                 logger.warning("No price for %s, skipping entry", opp.symbol)
                 continue
 
-            amount = POSITION_SIZE_USD / price
+            position_value = self._get_position_size_usd()
+            amount = position_value / price
             direction = (
                 opp.details.get("direction", "bullish")
                 if isinstance(opp.details, dict)
@@ -367,6 +368,35 @@ class ForexPaperTradingService:
             if net != 0:
                 open_syms.add(symbol)
         return open_syms
+
+    @staticmethod
+    def _get_position_size_usd() -> float:
+        """Compute position size from portfolio equity and risk limits.
+
+        Uses max_position_size_pct from RiskLimits applied to current equity
+        from RiskState. Falls back to POSITION_SIZE_USD constant.
+        """
+        try:
+            from portfolio.models import Portfolio
+            from risk.models import RiskLimits, RiskState
+
+            portfolio = Portfolio.objects.order_by("id").first()
+            if not portfolio:
+                return POSITION_SIZE_USD
+
+            state = RiskState.objects.get(portfolio_id=portfolio.id)
+            limits = RiskLimits.objects.get(portfolio_id=portfolio.id)
+            equity = state.total_equity or 500.0
+            max_pct = limits.max_position_size_pct or 0.20
+            size = equity * max_pct
+            logger.debug(
+                "Forex position size: $%.2f (equity=$%.2f × max_pct=%.0f%%)",
+                size, equity, max_pct * 100,
+            )
+            return size
+        except Exception as e:
+            logger.warning("Using fallback position size: %s", e)
+            return POSITION_SIZE_USD
 
     @staticmethod
     def _get_price(symbol: str) -> float:

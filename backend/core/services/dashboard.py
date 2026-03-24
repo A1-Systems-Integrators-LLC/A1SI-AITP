@@ -1,7 +1,7 @@
 """Dashboard KPI aggregation service."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from core.platform_bridge import get_processed_dir
 
@@ -22,6 +22,9 @@ class DashboardService:
             platform_data = DashboardService._get_platform_kpis()
 
             paper_trading_data = DashboardService._get_paper_trading_kpis()
+            system_health = DashboardService._get_system_health()
+            activity_feed = DashboardService._get_activity_feed()
+            learning_status = DashboardService._get_learning_status()
 
             return {
                 "portfolio": portfolio_data,
@@ -29,6 +32,9 @@ class DashboardService:
                 "risk": risk_data,
                 "platform": platform_data,
                 "paper_trading": paper_trading_data,
+                "system_health": system_health,
+                "activity_feed": activity_feed,
+                "learning_status": learning_status,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
@@ -49,6 +55,27 @@ class DashboardService:
                 }
 
             summary = PortfolioAnalyticsService.get_portfolio_summary(portfolio.id)
+
+            # If no holdings, fall back to RiskState equity data
+            if summary.get("holding_count", 0) == 0:
+                try:
+                    from risk.models import RiskState
+
+                    state = RiskState.objects.get(portfolio_id=portfolio.id)
+                    equity = state.total_equity or 0.0
+                    start_eq = state.daily_start_equity or equity
+                    total_pnl = state.total_pnl or 0.0
+                    return {
+                        "count": 0,
+                        "total_value": equity,
+                        "total_cost": start_eq,
+                        "unrealized_pnl": total_pnl,
+                        "pnl_pct": round(total_pnl / start_eq * 100, 2) if start_eq > 0 else 0.0,
+                        "equity_source": "risk_state",
+                    }
+                except Exception:
+                    pass
+
             return {
                 "count": summary.get("holding_count", 0),
                 "total_value": summary.get("total_value", 0.0),
@@ -88,12 +115,19 @@ class DashboardService:
                     OrderStatus.PARTIAL_FILL,
                 ],
             ).count()
+            total_orders = Order.objects.count()
+            rejected_orders = Order.objects.filter(status=OrderStatus.REJECTED).count()
+            filled_orders = Order.objects.filter(status=OrderStatus.FILLED).count()
             return {
                 "total_trades": summary.get("total_trades", 0),
                 "win_rate": summary.get("win_rate", 0.0),
                 "total_pnl": summary.get("total_pnl", 0.0),
                 "profit_factor": summary.get("profit_factor"),
                 "open_orders": open_orders,
+                "total_orders": total_orders,
+                "rejected_orders": rejected_orders,
+                "filled_orders": filled_orders,
+                "rejection_rate": round(rejected_orders / total_orders * 100, 1) if total_orders > 0 else 0.0,
             }
         except Exception as e:
             logger.warning("Failed to get trading KPIs: %s", e)
@@ -292,6 +326,205 @@ class DashboardService:
                 "active_jobs": 0,
                 "framework_count": 0,
             }
+
+    @staticmethod
+    def _get_system_health() -> dict:
+        """Aggregate system health from scheduler, data freshness, and Freqtrade."""
+        default = {
+            "scheduler_running": False,
+            "last_data_refresh": None,
+            "freqtrade_instances": [],
+            "active_tasks": 0,
+            "total_jobs_completed": 0,
+            "total_jobs_failed": 0,
+        }
+        try:
+            from core.models import ScheduledTask
+            from core.services.scheduler import get_scheduler
+
+            scheduler = get_scheduler()
+            default["scheduler_running"] = scheduler.running
+
+            # Data freshness
+            data_task = ScheduledTask.objects.filter(id="data_refresh_crypto").first()
+            if data_task and data_task.last_run_at:
+                default["last_data_refresh"] = data_task.last_run_at.isoformat()
+
+            default["active_tasks"] = ScheduledTask.objects.filter(
+                status=ScheduledTask.ACTIVE,
+            ).count()
+
+            # Job stats
+            from analysis.models import BackgroundJob
+
+            default["total_jobs_completed"] = BackgroundJob.objects.filter(
+                status="completed",
+            ).count()
+            default["total_jobs_failed"] = BackgroundJob.objects.filter(
+                status="failed",
+            ).count()
+
+            # Freqtrade instances (list of dicts in settings)
+            from django.conf import settings as django_settings
+
+            import requests as req_lib
+
+            ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
+            for cfg in ft_instances:
+                name = cfg.get("name", "unknown")
+                port = cfg.get("port", 0)
+                running = False
+                if cfg.get("enabled") and port:
+                    try:
+                        r = req_lib.get(
+                            f"http://localhost:{port}/api/v1/ping",
+                            auth=(
+                                cfg.get("username", "freqtrader"),
+                                cfg.get("password", "freqtrader"),
+                            ),
+                            timeout=2,
+                        )
+                        running = r.status_code == 200
+                    except Exception:
+                        pass
+                default["freqtrade_instances"].append({
+                    "name": name,
+                    "port": port,
+                    "running": running,
+                    "enabled": cfg.get("enabled", False),
+                })
+
+        except Exception as e:
+            logger.warning("Failed to get system health: %s", e)
+
+        return default
+
+    @staticmethod
+    def _get_activity_feed(limit: int = 15) -> list[dict]:
+        """Recent system events from jobs, alerts, and scheduled tasks."""
+        events: list[dict] = []
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=24)
+
+        try:
+            # Recent completed/failed jobs
+            from analysis.models import BackgroundJob
+
+            for job in BackgroundJob.objects.filter(
+                created_at__gte=cutoff,
+            ).order_by("-created_at")[:10]:
+                ts = job.completed_at or job.created_at
+                events.append({
+                    "timestamp": ts.isoformat() if ts else now.isoformat(),
+                    "type": "job",
+                    "message": f"{job.job_type.replace('_', ' ')} — {job.status}",
+                    "severity": "error" if job.status == "failed" else "info",
+                })
+        except Exception:
+            pass
+
+        try:
+            # Recent alerts
+            from core.models import AlertLog
+
+            for alert in AlertLog.objects.order_by("-created_at")[:5]:
+                events.append({
+                    "timestamp": alert.created_at.isoformat(),
+                    "type": "alert",
+                    "message": f"[{alert.severity}] {alert.event_type}: {alert.message[:80]}",
+                    "severity": alert.severity,
+                })
+        except Exception:
+            pass
+
+        try:
+            # Recent scheduled task runs
+            from core.models import ScheduledTask
+
+            for task in ScheduledTask.objects.filter(
+                last_run_at__gte=cutoff,
+            ).order_by("-last_run_at")[:5]:
+                events.append({
+                    "timestamp": task.last_run_at.isoformat(),
+                    "type": "task",
+                    "message": f"{task.name} — run #{task.run_count}",
+                    "severity": "info",
+                })
+        except Exception:
+            pass
+
+        # Sort by timestamp descending, return most recent
+        events.sort(key=lambda e: e["timestamp"], reverse=True)
+        return events[:limit]
+
+    @staticmethod
+    def _get_learning_status() -> dict:
+        """ML model accuracy, signal weights, and orchestrator state."""
+        default = {
+            "ml_accuracy": None,
+            "ml_predictions_total": 0,
+            "ml_models_count": 0,
+            "ml_last_trained": None,
+            "signal_attributions": 0,
+            "orchestrator_states": [],
+        }
+        try:
+            from analysis.models import MLPrediction
+
+            total = MLPrediction.objects.count()
+            default["ml_predictions_total"] = total
+            if total > 0:
+                correct = MLPrediction.objects.filter(outcome="correct").count()
+                incorrect = MLPrediction.objects.filter(outcome="incorrect").count()
+                decided = correct + incorrect
+                if decided > 0:
+                    default["ml_accuracy"] = round(correct / decided * 100, 1)
+        except Exception:
+            pass
+
+        try:
+            from analysis.models import SignalAttribution
+
+            default["signal_attributions"] = SignalAttribution.objects.count()
+        except Exception:
+            pass
+
+        try:
+            from analysis.models import BackgroundJob
+
+            last_ml = BackgroundJob.objects.filter(
+                job_type__contains="ml_training",
+                status="completed",
+            ).order_by("-completed_at").first()
+            if last_ml and last_ml.completed_at:
+                default["ml_last_trained"] = last_ml.completed_at.isoformat()
+
+            default["ml_models_count"] = BackgroundJob.objects.filter(
+                job_type__contains="ml_training",
+                status="completed",
+            ).count()
+        except Exception:
+            pass
+
+        try:
+            import json
+            from pathlib import Path
+
+            state_file = Path("data/orchestrator_state.json")
+            if state_file.exists():
+                with open(state_file) as f:
+                    orch_data = json.load(f)
+                for strategy, info in orch_data.items():
+                    default["orchestrator_states"].append({
+                        "strategy": strategy,
+                        "action": info.get("action", "unknown"),
+                        "alignment": info.get("alignment_score", 0),
+                        "regime": info.get("regime", "unknown"),
+                    })
+        except Exception:
+            pass
+
+        return default
 
 
 def _get_framework_list() -> list[dict]:
