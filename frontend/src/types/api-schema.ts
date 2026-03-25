@@ -1720,7 +1720,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Record signal attribution at trade entry. */
+        /** @description Record signal attribution at trade entry — unauthenticated (Freqtrade calls). */
         post: operations["signals_record_create"];
         delete?: never;
         options?: never;
@@ -1735,7 +1735,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Which strategies should be active given current regime conditions. */
+        /**
+         * @description Which strategies should be active given current regime conditions.
+         *
+         *     Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
+         */
         get: operations["signals_strategy_status_list"];
         put?: never;
         post?: never;
@@ -2038,6 +2042,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActivityFeedItem: {
+            type: string;
+            message: string;
+            timestamp: string;
+            status?: string | null;
+        };
         /**
          * @description * `up` - Up
          *     * `down` - Down
@@ -2210,6 +2220,9 @@ export interface components {
             risk: components["schemas"]["DashboardRiskKPI"];
             platform: components["schemas"]["DashboardPlatformKPI"];
             paper_trading: components["schemas"]["DashboardPaperTradingKPI"];
+            system_health: components["schemas"]["SystemHealth"];
+            activity_feed: components["schemas"]["ActivityFeedItem"][];
+            learning_status: components["schemas"]["LearningStatus"];
             generated_at: string;
         };
         DashboardPaperTradingInstance: {
@@ -2248,6 +2261,7 @@ export interface components {
             unrealized_pnl: number;
             /** Format: double */
             pnl_pct: number;
+            equity_source?: string | null;
         };
         DashboardRiskKPI: {
             /** Format: double */
@@ -2268,6 +2282,17 @@ export interface components {
             /** Format: double */
             profit_factor: number | null;
             open_orders: number;
+            /** @default 0 */
+            total_orders: number;
+            /** @default 0 */
+            rejected_orders: number;
+            /** @default 0 */
+            filled_orders: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            rejection_rate: number;
         };
         DataDownloadRequest: {
             /**
@@ -2500,6 +2525,12 @@ export interface components {
          * @enum {string}
          */
         FrameworkStatusStatusEnum: "running" | "idle" | "not_installed";
+        FreqtradeInstanceHealth: {
+            name: string;
+            port: number;
+            running: boolean;
+            enabled: boolean;
+        };
         HaltRequest: {
             reason: string;
         };
@@ -2603,6 +2634,15 @@ export interface components {
             markets_count: number;
             message: string;
             key_rotated_at: string;
+        };
+        LearningStatus: {
+            /** Format: double */
+            ml_accuracy: number | null;
+            ml_predictions_total: number;
+            ml_models_count: number;
+            ml_last_trained: string | null;
+            signal_attributions: number;
+            orchestrator_states: components["schemas"]["OrchestratorState"][];
         };
         LiveTradingStatus: {
             exchange_connected: boolean;
@@ -2780,6 +2820,13 @@ export interface components {
          * @enum {string}
          */
         OpportunityTypeEnum: "volume_surge" | "rsi_bounce" | "breakout" | "trend_pullback" | "momentum_shift";
+        OrchestratorState: {
+            strategy: string;
+            action: string;
+            /** Format: double */
+            alignment: number;
+            regime: string;
+        };
         Order: {
             readonly id: number;
             exchange_id: string;
@@ -3334,6 +3381,14 @@ export interface components {
             /** Format: double */
             worst_trade: number;
             symbol: string;
+        };
+        SystemHealth: {
+            scheduler_running: boolean;
+            last_data_refresh: string | null;
+            freqtrade_instances: components["schemas"]["FreqtradeInstanceHealth"][];
+            active_tasks: number;
+            total_jobs_completed: number;
+            total_jobs_failed: number;
         };
         TaskActionResponse: {
             message: string;

@@ -50,6 +50,7 @@ class DashboardPortfolioKPISerializer(serializers.Serializer):
     total_cost = serializers.FloatField()
     unrealized_pnl = serializers.FloatField()
     pnl_pct = serializers.FloatField()
+    equity_source = serializers.CharField(required=False, allow_null=True)
 
 
 class DashboardTradingKPISerializer(serializers.Serializer):
@@ -58,6 +59,10 @@ class DashboardTradingKPISerializer(serializers.Serializer):
     total_pnl = serializers.FloatField()
     profit_factor = serializers.FloatField(allow_null=True)
     open_orders = serializers.IntegerField()
+    total_orders = serializers.IntegerField(required=False, default=0)
+    rejected_orders = serializers.IntegerField(required=False, default=0)
+    filled_orders = serializers.IntegerField(required=False, default=0)
+    rejection_rate = serializers.FloatField(required=False, default=0.0)
 
 
 class DashboardRiskKPISerializer(serializers.Serializer):
@@ -93,12 +98,54 @@ class DashboardPaperTradingKPISerializer(serializers.Serializer):
     instances = DashboardPaperTradingInstanceSerializer(many=True)
 
 
+class FreqtradeInstanceHealthSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    port = serializers.IntegerField()
+    running = serializers.BooleanField()
+    enabled = serializers.BooleanField()
+
+
+class SystemHealthSerializer(serializers.Serializer):
+    scheduler_running = serializers.BooleanField()
+    last_data_refresh = serializers.CharField(allow_null=True)
+    freqtrade_instances = FreqtradeInstanceHealthSerializer(many=True)
+    active_tasks = serializers.IntegerField()
+    total_jobs_completed = serializers.IntegerField()
+    total_jobs_failed = serializers.IntegerField()
+
+
+class ActivityFeedItemSerializer(serializers.Serializer):
+    type = serializers.CharField()
+    message = serializers.CharField()
+    timestamp = serializers.CharField()
+    status = serializers.CharField(required=False, allow_null=True)
+
+
+class OrchestratorStateSerializer(serializers.Serializer):
+    strategy = serializers.CharField()
+    action = serializers.CharField()
+    alignment = serializers.FloatField()
+    regime = serializers.CharField()
+
+
+class LearningStatusSerializer(serializers.Serializer):
+    ml_accuracy = serializers.FloatField(allow_null=True)
+    ml_predictions_total = serializers.IntegerField()
+    ml_models_count = serializers.IntegerField()
+    ml_last_trained = serializers.CharField(allow_null=True)
+    signal_attributions = serializers.IntegerField()
+    orchestrator_states = OrchestratorStateSerializer(many=True)
+
+
 class DashboardKPISerializer(serializers.Serializer):
     portfolio = DashboardPortfolioKPISerializer()
     trading = DashboardTradingKPISerializer()
     risk = DashboardRiskKPISerializer()
     platform = DashboardPlatformKPISerializer()
     paper_trading = DashboardPaperTradingKPISerializer()
+    system_health = SystemHealthSerializer()
+    activity_feed = ActivityFeedItemSerializer(many=True)
+    learning_status = LearningStatusSerializer()
     generated_at = serializers.CharField()
 
 

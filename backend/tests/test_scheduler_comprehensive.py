@@ -258,7 +258,10 @@ class TestExecutorErrorIsolation:
             side_effect=RuntimeError("No data for BTC/USDT"),
         ):
             result = executor({"symbol": "BTC/USDT"}, _noop_cb)
-            assert result["status"] == "completed"
+            # When ALL training fails, status is "error" (not silent "completed")
+            assert result["status"] == "error"
+            assert result["models_trained"] == 0
+            assert result["errors"] == 1
             assert result["results"][0]["status"] == "error"
             assert "No data" in result["results"][0]["error"]
 

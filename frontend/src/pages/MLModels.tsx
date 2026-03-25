@@ -16,7 +16,7 @@ export function MLModels() {
   const { toast } = useToast();
   const [trainSymbol, setTrainSymbol] = useState("BTC/USDT");
   const [trainTimeframe, setTrainTimeframe] = useState("1h");
-  const [trainExchange, setTrainExchange] = useState("binance");
+  const [trainExchange, setTrainExchange] = useState("kraken");
   const [testRatio, setTestRatio] = useState(0.2);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [predictModelId, setPredictModelId] = useState("");

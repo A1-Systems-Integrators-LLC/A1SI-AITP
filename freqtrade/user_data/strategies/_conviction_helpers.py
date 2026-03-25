@@ -232,22 +232,27 @@ def record_signal_attribution(strategy: Any, pair: str, trade_id: str = "") -> N
     try:
         import requests
 
-        # Build attribution payload from cached signal components
+        # Build attribution payload matching RecordAttributionRequestSerializer
+        # signal_data must be a nested dict that SignalFeedbackService.record_attribution expects
         components = signal.get("components", {})
         payload = {
             "order_id": trade_id,
             "symbol": pair,
             "strategy": strategy.__class__.__name__,
             "asset_class": "crypto",
-            "composite_score": signal.get("score", 0),
-            "technical_contribution": components.get("technical", 0),
-            "ml_contribution": components.get("ml", 0),
-            "sentiment_contribution": components.get("sentiment", 0),
-            "regime_contribution": components.get("regime", 0),
-            "scanner_contribution": components.get("scanner", 0),
-            "win_rate_contribution": components.get("win_rate", 0),
-            "position_modifier": signal.get("position_modifier", 1.0),
-            "regime": signal.get("regime", "unknown"),
+            "signal_data": {
+                "composite_score": signal.get("score", 0),
+                "position_modifier": signal.get("position_modifier", 1.0),
+                "_regime": signal.get("regime", "unknown"),
+                "components": {
+                    "technical": components.get("technical", 0),
+                    "ml": components.get("ml", 0),
+                    "sentiment": components.get("sentiment", 0),
+                    "regime": components.get("regime", 0),
+                    "scanner": components.get("scanner", 0),
+                    "win_rate": components.get("win_rate", 0),
+                },
+            },
         }
 
         resp = requests.post(

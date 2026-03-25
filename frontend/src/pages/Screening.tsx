@@ -15,7 +15,7 @@ export function Screening() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [symbol, setSymbol] = useState(DEFAULT_SYMBOL[assetClass]);
   const [timeframe, setTimeframe] = useState("1h");
-  const [exchange, setExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "binance");
+  const [exchange, setExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "kraken");
   const [fees, setFees] = useState(DEFAULT_FEES[assetClass]);
 
   const { data: strategies } = useQuery({

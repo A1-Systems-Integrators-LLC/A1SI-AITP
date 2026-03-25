@@ -31,7 +31,7 @@ export function Backtesting() {
   const [symbol, setSymbol] = useState(DEFAULT_SYMBOL[assetClass]);
   const [timeframe, setTimeframe] = useState("1h");
   const [timerange, setTimerange] = useState("");
-  const [exchange, setExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "binance");
+  const [exchange, setExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "kraken");
 
   const { data: strategies, isError: strategiesError } = useQuery<StrategyInfo[]>({
     queryKey: ["backtest-strategies"],

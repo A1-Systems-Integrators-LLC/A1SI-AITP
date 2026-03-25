@@ -57,7 +57,7 @@ function ExchangeForm({
   isSubmitting: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [exchangeId, setExchangeId] = useState(initial?.exchange_id ?? "binance");
+  const [exchangeId, setExchangeId] = useState(initial?.exchange_id ?? "kraken");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [passphrase, setPassphrase] = useState("");

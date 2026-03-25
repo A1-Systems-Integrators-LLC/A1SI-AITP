@@ -26,7 +26,7 @@ export function DataManagement() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [downloadSymbols, setDownloadSymbols] = useState(defaultSymbols.join(", "));
   const [downloadTimeframes, setDownloadTimeframes] = useState(["1h"]);
-  const [downloadExchange, setDownloadExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "binance");
+  const [downloadExchange, setDownloadExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "kraken");
   const [downloadDays, setDownloadDays] = useState(90);
 
   const { data: files, isLoading, isError: filesError } = useQuery<DataFileInfo[]>({

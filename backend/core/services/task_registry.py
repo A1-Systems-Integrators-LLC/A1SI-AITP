@@ -455,18 +455,38 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
         # ── EQUITY SWING GUARD: reject updates that change equity by >50% ──
         # This catches data errors (e.g. partial instance responses) before they
         # corrupt the risk state and trigger false halts.
+        # Compare against BOTH previous equity AND initial capital — new forex
+        # positions legitimately increase the capital base, so a 50% swing vs
+        # previous equity can be expected when new positions are opened.
         swing_blocked = False
         try:
             state = RiskState.objects.get(portfolio_id=portfolio.id)
             if state.total_equity > 0:
                 delta_pct = abs(current_equity - state.total_equity) / state.total_equity
-                if delta_pct > 0.50:
+                # Also check swing relative to computed initial capital —
+                # if current_equity is close to initial_capital, the capital base
+                # grew legitimately (e.g. new forex positions opened).
+                capital_delta_pct = (
+                    abs(current_equity - initial_capital) / initial_capital
+                    if initial_capital > 0
+                    else 1.0
+                )
+                if delta_pct > 0.50 and capital_delta_pct > 0.50:
                     logger.error(
-                        "Equity swing guard: new=$%.2f, current=$%.2f, delta=%.0f%% — "
+                        "Equity swing guard: new=$%.2f, current=$%.2f, delta=%.0f%%, "
+                        "capital_base=$%.2f, capital_delta=%.0f%% — "
                         "skipping update for portfolio %s",
-                        current_equity, state.total_equity, delta_pct * 100, portfolio.id,
+                        current_equity, state.total_equity, delta_pct * 100,
+                        initial_capital, capital_delta_pct * 100, portfolio.id,
                     )
                     swing_blocked = True
+                elif delta_pct > 0.50:
+                    logger.info(
+                        "Equity swing: new=$%.2f, current=$%.2f, delta=%.0f%% — "
+                        "ALLOWING because capital_base=$%.2f (capital_delta=%.0f%%)",
+                        current_equity, state.total_equity, delta_pct * 100,
+                        initial_capital, capital_delta_pct * 100,
+                    )
         except RiskState.DoesNotExist:
             pass
 
@@ -539,11 +559,16 @@ def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[st
     # Sync Freqtrade equity before risk checks
     progress_cb(0.1, "Syncing Freqtrade equity")
     sync_result = None
+    equity_sync_failed = False
     try:
         sync_result = _sync_freqtrade_equity()
         logger.info("Equity synced: total_pnl=$%.2f", sync_result.get("total_pnl", 0))
     except Exception as e:
-        logger.error("Freqtrade equity sync failed: %s", e)
+        equity_sync_failed = True
+        logger.error(
+            "Freqtrade equity sync failed: %s — risk checks will use stale equity data",
+            e,
+        )
 
     progress_cb(0.3, "Checking portfolio risk")
     try:
@@ -564,11 +589,15 @@ def _run_risk_monitoring(params: dict, progress_cb: ProgressCallback) -> dict[st
                 results.append({"portfolio_id": pid, "status": "error", "error": str(e)})
             progress_cb(0.3 + 0.6 * (i + 1) / len(portfolios), f"Checked portfolio {pid}")
 
+        all_errors = all(
+            isinstance(r, dict) and r.get("status") == "error" for r in results
+        )
         return {
-            "status": "completed",
+            "status": "error" if (all_errors and results) else "completed",
             "portfolios_checked": len(portfolios),
             "results": results,
             "equity_sync": sync_result,
+            "equity_sync_failed": equity_sync_failed,
         }
     except Exception as e:
         logger.error("Risk monitoring failed: %s", e)
@@ -636,7 +665,19 @@ def _run_vbt_screen(params: dict, progress_cb: ProgressCallback) -> dict[str, An
             results.append({"symbol": symbol, "status": "error", "error": str(e)})
         progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Screened {i + 1}/{len(symbols)}")
 
-    return {"status": "completed", "symbols_screened": len(results), "results": results}
+    succeeded = sum(1 for r in results if r["status"] == "completed")
+    errors = sum(1 for r in results if r["status"] == "error")
+    if errors > 0:
+        logger.error(
+            "VBT screen: %d/%d symbols failed", errors, len(results),
+        )
+    return {
+        "status": "completed" if succeeded > 0 else "error",
+        "symbols_screened": len(results),
+        "succeeded": succeeded,
+        "errors": errors,
+        "results": results,
+    }
 
 
 def _run_ml_training(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
@@ -668,7 +709,16 @@ def _run_ml_training(params: dict, progress_cb: ProgressCallback) -> dict[str, A
             results.append({"symbol": symbol, "status": "error", "error": str(e)})
         progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Trained {i + 1}/{len(symbols)}")
 
-    return {"status": "completed", "models_trained": len(results), "results": results}
+    trained = sum(1 for r in results if r.get("status") != "error")
+    errors = sum(1 for r in results if r.get("status") == "error")
+    if errors > 0:
+        logger.error("ML training: %d/%d symbols failed", errors, len(results))
+    return {
+        "status": "completed" if trained > 0 else "error",
+        "models_trained": trained,
+        "errors": errors,
+        "results": results,
+    }
 
 
 def _run_market_scan(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
@@ -962,9 +1012,21 @@ def _run_ml_predict(params: dict, progress_cb: ProgressCallback) -> dict[str, An
         progress_cb(0.1 + 0.8 * (i + 1) / len(symbols), f"Predicted {i + 1}/{len(symbols)}")
 
     predicted = sum(1 for r in results if r["status"] == "predicted")
+    no_model = sum(1 for r in results if r["status"] == "no_model")
+    errors = sum(1 for r in results if r["status"] == "error")
+
+    if predicted == 0 and len(results) > 0:
+        logger.error(
+            "ML predict completed with 0 predictions (%d no_model, %d errors) — "
+            "ML pipeline may be dead. Check ml_training task.",
+            no_model, errors,
+        )
+
     return {
-        "status": "completed",
+        "status": "completed" if predicted > 0 else "error",
         "predicted": predicted,
+        "no_model": no_model,
+        "errors": errors,
         "total": len(results),
         "results": results,
     }
@@ -1203,7 +1265,10 @@ def _run_signal_feedback(params: dict, progress_cb: ProgressCallback) -> dict[st
             window_hours=window_hours,
         )
     except Exception as e:
-        logger.warning("Freqtrade backfill failed: %s", e)
+        logger.error(
+            "Freqtrade backfill failed: %s — signal weights will not update from paper trades",
+            e,
+        )
 
     accuracy = SignalFeedbackService.get_source_accuracy(
         asset_class=params.get("asset_class"),

@@ -137,6 +137,10 @@ class DashboardService:
                 "total_pnl": 0.0,
                 "profit_factor": None,
                 "open_orders": 0,
+                "total_orders": 0,
+                "rejected_orders": 0,
+                "filled_orders": 0,
+                "rejection_rate": 0.0,
             }
 
     @staticmethod
@@ -510,7 +514,7 @@ class DashboardService:
             import json
             from pathlib import Path
 
-            state_file = Path("data/orchestrator_state.json")
+            state_file = Path(__file__).resolve().parents[2] / "data" / "orchestrator_state.json"
             if state_file.exists():
                 with open(state_file) as f:
                     orch_data = json.load(f)

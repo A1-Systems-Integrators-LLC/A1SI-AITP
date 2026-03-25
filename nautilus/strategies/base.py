@@ -264,6 +264,7 @@ class NautilusStrategyBase:
                     "size": size,
                     "entry_price": entry_price,
                     "stop_loss_price": stop_loss_price,
+                    "asset_class": self._get_asset_class(),
                 },
                 timeout=5,
             )

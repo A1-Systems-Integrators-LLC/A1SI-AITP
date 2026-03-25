@@ -773,7 +773,8 @@ class TestTaskExecutors:
             ),
         ):
             result = _run_ml_predict({"asset_class": "crypto"}, self._progress_cb)
-            assert result["status"] == "completed"
+            # With 0 predictions, status is "error" to surface broken ML pipeline
+            assert result["status"] == "error"
             assert result["predicted"] == 0
 
     def test_ml_feedback_executor_no_predictions(self):

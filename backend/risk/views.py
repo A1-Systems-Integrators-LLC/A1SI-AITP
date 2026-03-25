@@ -87,6 +87,7 @@ class TradeCheckView(APIView):
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
         composite_score = d.get("composite_score")
+        asset_class = d.get("asset_class", "crypto")
         approved, reason = RiskManagementService.check_trade(
             portfolio_id,
             d["symbol"],
@@ -95,6 +96,7 @@ class TradeCheckView(APIView):
             d["entry_price"],
             d.get("stop_loss_price"),
             composite_score=composite_score,
+            asset_class=asset_class,
         )
         result = {"approved": approved, "reason": reason}
         if composite_score is not None:

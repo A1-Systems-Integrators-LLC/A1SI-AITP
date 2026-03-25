@@ -855,7 +855,12 @@ class EntryCheckView(APIView):
 
 
 class StrategyStatusView(APIView):
-    """Which strategies should be active given current regime conditions."""
+    """Which strategies should be active given current regime conditions.
+
+    Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
+    """
+
+    permission_classes = [AllowAny]
 
     @extend_schema(
         responses=StrategyStatusSerializer(many=True),
@@ -1040,7 +1045,9 @@ class SignalAttributionDetailView(APIView):
 
 
 class SignalRecordView(APIView):
-    """Record signal attribution at trade entry."""
+    """Record signal attribution at trade entry — unauthenticated (Freqtrade calls)."""
+
+    permission_classes = [AllowAny]
 
     @extend_schema(
         request=RecordAttributionRequestSerializer,

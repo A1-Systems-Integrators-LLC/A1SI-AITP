@@ -2424,7 +2424,8 @@ paths:
   /api/signals/record/:
     post:
       operationId: signals_record_create
-      description: Record signal attribution at trade entry.
+      description: Record signal attribution at trade entry — unauthenticated (Freqtrade
+        calls).
       tags:
       - Signals
       requestBody:
@@ -2435,6 +2436,7 @@ paths:
         required: true
       security:
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -2445,7 +2447,10 @@ paths:
   /api/signals/strategy-status/:
     get:
       operationId: signals_strategy_status_list
-      description: Which strategies should be active given current regime conditions.
+      description: |-
+        Which strategies should be active given current regime conditions.
+
+        Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
       parameters:
       - in: query
         name: asset_class
@@ -2460,6 +2465,7 @@ paths:
       - Signals
       security:
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -2905,6 +2911,22 @@ paths:
           description: ''
 components:
   schemas:
+    ActivityFeedItem:
+      type: object
+      properties:
+        type:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+        status:
+          type: string
+          nullable: true
+      required:
+      - message
+      - timestamp
+      - type
     ActualDirectionEnum:
       enum:
       - up
@@ -3292,14 +3314,25 @@ components:
           $ref: '#/components/schemas/DashboardPlatformKPI'
         paper_trading:
           $ref: '#/components/schemas/DashboardPaperTradingKPI'
+        system_health:
+          $ref: '#/components/schemas/SystemHealth'
+        activity_feed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityFeedItem'
+        learning_status:
+          $ref: '#/components/schemas/LearningStatus'
         generated_at:
           type: string
       required:
+      - activity_feed
       - generated_at
+      - learning_status
       - paper_trading
       - platform
       - portfolio
       - risk
+      - system_health
       - trading
     DashboardPaperTradingInstance:
       type: object
@@ -3385,6 +3418,9 @@ components:
         pnl_pct:
           type: number
           format: double
+        equity_source:
+          type: string
+          nullable: true
       required:
       - count
       - pnl_pct
@@ -3430,6 +3466,19 @@ components:
           nullable: true
         open_orders:
           type: integer
+        total_orders:
+          type: integer
+          default: 0
+        rejected_orders:
+          type: integer
+          default: 0
+        filled_orders:
+          type: integer
+          default: 0
+        rejection_rate:
+          type: number
+          format: double
+          default: 0.0
       required:
       - open_orders
       - profit_factor
@@ -3925,6 +3974,22 @@ components:
         * `running` - running
         * `idle` - idle
         * `not_installed` - not_installed
+    FreqtradeInstanceHealth:
+      type: object
+      properties:
+        name:
+          type: string
+        port:
+          type: integer
+        running:
+          type: boolean
+        enabled:
+          type: boolean
+      required:
+      - enabled
+      - name
+      - port
+      - running
     HaltRequest:
       type: object
       properties:
@@ -4155,6 +4220,33 @@ components:
       - markets_count
       - message
       - success
+    LearningStatus:
+      type: object
+      properties:
+        ml_accuracy:
+          type: number
+          format: double
+          nullable: true
+        ml_predictions_total:
+          type: integer
+        ml_models_count:
+          type: integer
+        ml_last_trained:
+          type: string
+          nullable: true
+        signal_attributions:
+          type: integer
+        orchestrator_states:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrchestratorState'
+      required:
+      - ml_accuracy
+      - ml_last_trained
+      - ml_models_count
+      - ml_predictions_total
+      - orchestrator_states
+      - signal_attributions
     LiveTradingStatus:
       type: object
       properties:
@@ -4546,6 +4638,23 @@ components:
         * `breakout` - Breakout Candidate
         * `trend_pullback` - Trend Pullback
         * `momentum_shift` - Momentum Shift
+    OrchestratorState:
+      type: object
+      properties:
+        strategy:
+          type: string
+        action:
+          type: string
+        alignment:
+          type: number
+          format: double
+        regime:
+          type: string
+      required:
+      - action
+      - alignment
+      - regime
+      - strategy
     Order:
       type: object
       properties:
@@ -5778,6 +5887,31 @@ components:
       - win_count
       - win_rate
       - worst_trade
+    SystemHealth:
+      type: object
+      properties:
+        scheduler_running:
+          type: boolean
+        last_data_refresh:
+          type: string
+          nullable: true
+        freqtrade_instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/FreqtradeInstanceHealth'
+        active_tasks:
+          type: integer
+        total_jobs_completed:
+          type: integer
+        total_jobs_failed:
+          type: integer
+      required:
+      - active_tasks
+      - freqtrade_instances
+      - last_data_refresh
+      - scheduler_running
+      - total_jobs_completed
+      - total_jobs_failed
     TaskActionResponse:
       type: object
       properties:

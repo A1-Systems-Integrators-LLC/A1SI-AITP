@@ -59,6 +59,7 @@ class GenericPaperTradingService:
                 order.amount,
                 order.price or 0.0,
                 order.stop_loss_price,
+                asset_class=asset_class,
             )
             if not approved:
                 await sync_to_async(order.transition_to)(

@@ -3285,7 +3285,8 @@ class TestRiskMonitoringTaskRegistry:
             side_effect=RuntimeError("risk fail"),
         ):
             result = _run_risk_monitoring({}, cb)
-        assert result["status"] == "completed"
+        # When ALL portfolios fail, status is "error" (not "completed")
+        assert result["status"] == "error"
         assert result["results"][0]["status"] == "error"
 
     def test_risk_monitoring_total_exception(self):

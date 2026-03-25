@@ -167,6 +167,7 @@ class RiskManagementService:
         entry_price: float,
         stop_loss_price: float | None = None,
         composite_score: float | None = None,
+        asset_class: str = "crypto",
     ) -> tuple[bool, str]:
         state = RiskManagementService._get_or_create_state(portfolio_id)
         limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
@@ -188,6 +189,7 @@ class RiskManagementService:
             drawdown_at_check=round(drawdown, 4),
             open_positions_at_check=len(state.open_positions or {}),
             composite_score=composite_score,
+            asset_class=asset_class,
         )
 
         # Log ML/conviction agreement/disagreement with risk decision

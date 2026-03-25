@@ -19,11 +19,11 @@ export function PortfolioPage() {
   const { assetClass } = useAssetClass();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newExchange, setNewExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "binance");
+  const [newExchange, setNewExchange] = useState(EXCHANGE_OPTIONS[assetClass][0]?.value ?? "kraken");
   const [newDescription, setNewDescription] = useState("");
   const [editingPortfolioId, setEditingPortfolioId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editExchange, setEditExchange] = useState("binance");
+  const [editExchange, setEditExchange] = useState("kraken");
   const [editDescription, setEditDescription] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
@@ -71,7 +71,7 @@ export function PortfolioPage() {
   const startEditPortfolio = (p: Portfolio) => {
     setEditingPortfolioId(p.id);
     setEditName(p.name);
-    setEditExchange(p.exchange_id ?? "binance");
+    setEditExchange(p.exchange_id ?? "kraken");
     setEditDescription(p.description || "");
   };
 

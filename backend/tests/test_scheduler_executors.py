@@ -196,7 +196,8 @@ class TestRiskMonitoringExecutor:
         ):
             result = executor({}, _noop_cb)
 
-        assert result["status"] == "completed"
+        # When ALL portfolios fail, status is "error" (not silent "completed")
+        assert result["status"] == "error"
         assert result["portfolios_checked"] == 2
         # Both should have error results
         for r in result["results"]:

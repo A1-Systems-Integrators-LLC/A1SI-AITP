@@ -52,7 +52,7 @@ export function OrderForm({ mode = "paper" }: OrderFormProps) {
     order_type: price ? ("limit" as const) : ("market" as const),
     amount: parseFloat(amount),
     price: price ? parseFloat(price) : 0,
-    exchange_id: activePortfolio?.exchange_id ?? "binance",
+    exchange_id: activePortfolio?.exchange_id ?? "kraken",
     mode,
     portfolio_id: activePortfolio?.id ?? 1,
     asset_class: assetClass,
