@@ -1495,6 +1495,35 @@ def _run_autonomous_check(params: dict, progress_cb: ProgressCallback) -> dict:
         return {"status": "error", "error": str(e)}
 
 
+def _run_pdf_report(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
+    """Generate daily PDF intelligence report."""
+    progress_cb(0.1, "Generating PDF report")
+    try:
+        from market.services.pdf_report import PDFReportGenerator
+
+        path = PDFReportGenerator.generate(
+            portfolio_id=params.get("portfolio_id", 1),
+            lookback_days=params.get("lookback_days", 30),
+        )
+        progress_cb(0.9, "PDF report generated")
+
+        try:
+            from core.services.notification import NotificationService
+
+            NotificationService.send_telegram_sync(
+                f"<b>Daily PDF Report Generated</b>\n"
+                f"File: {path.name}\n"
+                f"Size: {path.stat().st_size / 1024:.1f} KB",
+            )
+        except Exception:
+            logger.debug("PDF report Telegram notification failed", exc_info=True)
+
+        return {"status": "completed", "path": str(path), "size_kb": path.stat().st_size / 1024}
+    except Exception as e:
+        logger.error("PDF report generation failed: %s", e)
+        return {"status": "error", "error": str(e)}
+
+
 TASK_REGISTRY: dict[str, TaskExecutor] = {
     "data_refresh": _run_data_refresh,
     "regime_detection": _run_regime_detection,
@@ -1526,4 +1555,5 @@ TASK_REGISTRY: dict[str, TaskExecutor] = {
     "macro_data_refresh": _run_macro_data_refresh,
     "daily_risk_reset": _run_daily_risk_reset,
     "autonomous_check": _run_autonomous_check,
+    "pdf_report": _run_pdf_report,
 }

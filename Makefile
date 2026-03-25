@@ -240,6 +240,9 @@ clean-data:
 
 # ── Pilot ──────────────────────────────────────────────────
 
+pdf-report:
+	$(MANAGE) generate_pdf_report
+
 smoke-test:
 	@bash scripts/smoke_test.sh
 

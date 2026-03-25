@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>A1SI-AITP Daily Intelligence Report - {{ report_date }}</title>
+<style>
+  /* ── Page Setup ── */
+  @page {
+    size: A4;
+    margin: 18mm 15mm 22mm 15mm;
+    @bottom-center {
+      content: "A1SI-AITP Daily Intelligence Report";
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 7pt;
+      color: #606080;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 7pt;
+      color: #606080;
+    }
+  }
+
+  /* ── Reset & Base ── */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    line-height: 1.5;
+    color: #e0e0e0;
+    background: #0f0f1a;
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-size: 22pt;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4mm;
+  }
+
+  h2 {
+    font-size: 14pt;
+    font-weight: 600;
+    color: #00d4aa;
+    margin-bottom: 4mm;
+    padding-bottom: 2mm;
+    border-bottom: 1px solid #1e1e36;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #c0c0d0;
+    margin-bottom: 3mm;
+  }
+
+  p {
+    margin-bottom: 2mm;
+  }
+
+  /* ── Page Sections ── */
+  .page {
+    page-break-after: always;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+  }
+
+  /* ── Cover Page ── */
+  .cover-header {
+    text-align: center;
+    padding: 20mm 0 10mm 0;
+    border-bottom: 2px solid #00d4aa;
+    margin-bottom: 8mm;
+  }
+
+  .cover-header h1 {
+    font-size: 28pt;
+    letter-spacing: 1px;
+    margin-bottom: 2mm;
+  }
+
+  .cover-subtitle {
+    font-size: 12pt;
+    color: #a0a0b8;
+    margin-bottom: 2mm;
+  }
+
+  .cover-date {
+    font-size: 14pt;
+    color: #00d4aa;
+    font-weight: 600;
+  }
+
+  .generated-at {
+    font-size: 7pt;
+    color: #606080;
+    text-align: center;
+    margin-top: 3mm;
+    margin-bottom: 8mm;
+  }
+
+  /* ── Executive Summary ── */
+  .exec-summary {
+    background: #161628;
+    border: 1px solid #1e1e36;
+    border-radius: 3mm;
+    padding: 5mm;
+    margin-bottom: 6mm;
+  }
+
+  .exec-summary .status-line {
+    font-size: 11pt;
+    font-weight: 600;
+    margin-bottom: 2mm;
+  }
+
+  /* ── KPI Grid ── */
+  .kpi-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3mm;
+    margin-bottom: 6mm;
+  }
+
+  .kpi-card {
+    flex: 1 1 calc(33.333% - 3mm);
+    max-width: calc(33.333% - 2mm);
+    background: #161628;
+    border: 1px solid #1e1e36;
+    border-radius: 2mm;
+    padding: 4mm;
+    text-align: center;
+  }
+
+  .kpi-card .kpi-label {
+    font-size: 7pt;
+    color: #808098;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1mm;
+  }
+
+  .kpi-card .kpi-value {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  .kpi-card .kpi-sub {
+    font-size: 7pt;
+    color: #808098;
+    margin-top: 1mm;
+  }
+
+  .kpi-value.positive { color: #00d4aa; }
+  .kpi-value.negative { color: #ff4d6a; }
+  .kpi-value.neutral  { color: #ffffff; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5mm;
+    font-size: 8.5pt;
+  }
+
+  thead th {
+    background: #1a1a30;
+    color: #00d4aa;
+    font-weight: 600;
+    text-align: left;
+    padding: 2.5mm 3mm;
+    border-bottom: 2px solid #00d4aa;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  tbody td {
+    padding: 2mm 3mm;
+    border-bottom: 1px solid #1e1e36;
+    vertical-align: middle;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #141425;
+  }
+
+  tbody tr:nth-child(odd) {
+    background: #0f0f1a;
+  }
+
+  tbody tr:hover {
+    background: #1a1a35;
+  }
+
+  td.numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Status Badges ── */
+  .badge {
+    display: inline-block;
+    padding: 0.5mm 2.5mm;
+    border-radius: 1.5mm;
+    font-size: 7pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-green {
+    background: #0a3a2a;
+    color: #00d4aa;
+    border: 1px solid #00d4aa;
+  }
+
+  .badge-yellow {
+    background: #3a3a0a;
+    color: #f0c040;
+    border: 1px solid #f0c040;
+  }
+
+  .badge-red {
+    background: #3a0a0a;
+    color: #ff4d6a;
+    border: 1px solid #ff4d6a;
+  }
+
+  .badge-blue {
+    background: #0a1a3a;
+    color: #4da6ff;
+    border: 1px solid #4da6ff;
+  }
+
+  .badge-gray {
+    background: #1e1e2e;
+    color: #808098;
+    border: 1px solid #808098;
+  }
+
+  /* ── Charts ── */
+  .chart-container {
+    text-align: center;
+    margin: 4mm 0;
+    background: #161628;
+    border: 1px solid #1e1e36;
+    border-radius: 2mm;
+    padding: 3mm;
+  }
+
+  .chart-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 1mm;
+  }
+
+  .chart-row {
+    display: flex;
+    gap: 3mm;
+    margin-bottom: 4mm;
+  }
+
+  .chart-row .chart-container {
+    flex: 1;
+  }
+
+  .no-data {
+    color: #606080;
+    font-style: italic;
+    text-align: center;
+    padding: 10mm 0;
+    font-size: 8pt;
+  }
+
+  /* ── Section Divider ── */
+  .section-divider {
+    border: none;
+    border-top: 1px solid #1e1e36;
+    margin: 5mm 0;
+  }
+
+  /* ── Two-Column Layout ── */
+  .two-col {
+    display: flex;
+    gap: 4mm;
+  }
+
+  .two-col > div {
+    flex: 1;
+  }
+
+  /* ── Regime Indicator ── */
+  .regime-indicator {
+    display: inline-block;
+    padding: 1mm 4mm;
+    border-radius: 2mm;
+    font-size: 10pt;
+    font-weight: 700;
+  }
+
+  .regime-strong-trend-up   { background: #0a4a2a; color: #00ff88; }
+  .regime-weak-trend-up     { background: #0a3a2a; color: #00d4aa; }
+  .regime-ranging            { background: #2a2a0a; color: #f0c040; }
+  .regime-weak-trend-down   { background: #3a1a0a; color: #ff8844; }
+  .regime-strong-trend-down { background: #3a0a0a; color: #ff4d6a; }
+  .regime-high-volatility   { background: #2a0a3a; color: #cc66ff; }
+  .regime-unknown            { background: #1e1e2e; color: #808098; }
+
+  /* ── Progress Bars ── */
+  .progress-bar {
+    background: #1e1e36;
+    border-radius: 1.5mm;
+    height: 4mm;
+    overflow: hidden;
+    margin-top: 1mm;
+  }
+
+  .progress-bar .fill {
+    height: 100%;
+    border-radius: 1.5mm;
+    transition: width 0.3s;
+  }
+
+  .fill-green  { background: #00d4aa; }
+  .fill-yellow { background: #f0c040; }
+  .fill-red    { background: #ff4d6a; }
+
+  /* ── Weight Comparison ── */
+  .weight-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+  }
+
+  .weight-bar {
+    flex: 1;
+    height: 3mm;
+    background: #1e1e36;
+    border-radius: 1mm;
+    overflow: hidden;
+  }
+
+  .weight-bar .current {
+    height: 100%;
+    background: #4da6ff;
+    border-radius: 1mm;
+  }
+
+  .weight-bar .recommended {
+    height: 100%;
+    background: #00d4aa;
+    border-radius: 1mm;
+  }
+
+  /* ── Utility ── */
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-muted { color: #606080; }
+  .text-small { font-size: 7pt; }
+  .text-accent { color: #00d4aa; }
+  .text-positive { color: #00d4aa; }
+  .text-negative { color: #ff4d6a; }
+  .text-warning { color: #f0c040; }
+  .mt-2 { margin-top: 2mm; }
+  .mt-4 { margin-top: 4mm; }
+  .mb-2 { margin-bottom: 2mm; }
+  .mb-4 { margin-bottom: 4mm; }
+</style>
+</head>
+<body>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 1: Cover + Executive Summary
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="cover-header">
+    <h1>A1SI-AITP</h1>
+    <div class="cover-subtitle">Daily Intelligence Report</div>
+    <div class="cover-date">{{ report_date | default("N/A") }}</div>
+  </div>
+  <div class="generated-at">Generated {{ generated_at | default("N/A") }}</div>
+
+  {# Executive Summary #}
+  <div class="exec-summary">
+    <h2 style="border-bottom: none; padding-bottom: 0; margin-bottom: 3mm;">Executive Summary</h2>
+    <div class="status-line">
+      System:
+      {% if system and system.scheduler_running %}
+        <span class="badge badge-green">Operational</span>
+      {% else %}
+        <span class="badge badge-red">Degraded</span>
+      {% endif %}
+      &nbsp;&nbsp;
+      Risk:
+      {% if risk and risk.is_halted %}
+        <span class="badge badge-red">Halted</span>
+      {% elif risk and risk.drawdown is defined and risk.drawdown|float > 10 %}
+        <span class="badge badge-yellow">Elevated</span>
+      {% else %}
+        <span class="badge badge-green">Normal</span>
+      {% endif %}
+      &nbsp;&nbsp;
+      Regime:
+      {% set regime_name = regime.dominant_regime | default("UNKNOWN") | upper | replace(" ", "_") %}
+      <span class="regime-indicator regime-{{ regime_name | lower | replace(' ', '-') }}">
+        {{ regime.dominant_regime | default("Unknown") }}
+      </span>
+      {% if regime and regime.avg_confidence is defined %}
+        <span class="text-small text-muted">({{ (regime.avg_confidence * 100) | round(0) }}% confidence)</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# KPI Cards #}
+  <h3>Key Performance Indicators</h3>
+  <div class="kpi-grid">
+    {# Portfolio Value #}
+    <div class="kpi-card">
+      <div class="kpi-label">Portfolio Value</div>
+      <div class="kpi-value neutral">
+        ${{ "{:,.2f}".format(portfolio.total_value | default(0) | float) }}
+      </div>
+      <div class="kpi-sub">{{ portfolio.count | default(0) }} holdings</div>
+    </div>
+
+    {# Unrealized P&L #}
+    <div class="kpi-card">
+      <div class="kpi-label">Unrealized P&L</div>
+      <div class="kpi-value {{ 'positive' if (portfolio.unrealized_pnl | default(0) | float) >= 0 else 'negative' }}">
+        {{ "+" if (portfolio.unrealized_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(portfolio.unrealized_pnl | default(0) | float) }}
+      </div>
+      <div class="kpi-sub">
+        {{ "+" if (portfolio.pnl_pct | default(0) | float) >= 0 else "" }}{{ (portfolio.pnl_pct | default(0) | float) | round(2) }}%
+      </div>
+    </div>
+
+    {# Trading P&L #}
+    <div class="kpi-card">
+      <div class="kpi-label">Trading P&L</div>
+      <div class="kpi-value {{ 'positive' if (trading.total_pnl | default(0) | float) >= 0 else 'negative' }}">
+        {{ "+" if (trading.total_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(trading.total_pnl | default(0) | float) }}
+      </div>
+      <div class="kpi-sub">{{ trading.total_trades | default(0) }} trades</div>
+    </div>
+
+    {# Win Rate #}
+    <div class="kpi-card">
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value {{ 'positive' if (trading.win_rate | default(0) | float) >= 50 else 'negative' }}">
+        {{ (trading.win_rate | default(0) | float) | round(1) }}%
+      </div>
+      <div class="kpi-sub">
+        Profit Factor: {{ (trading.profit_factor | default(0) | float) | round(2) }}
+      </div>
+    </div>
+
+    {# Drawdown #}
+    <div class="kpi-card">
+      <div class="kpi-label">Current Drawdown</div>
+      <div class="kpi-value {{ 'negative' if (risk.drawdown | default(0) | float) > 5 else ('text-warning' if (risk.drawdown | default(0) | float) > 2 else 'positive') }}">
+        {{ (risk.drawdown | default(0) | float) | round(2) }}%
+      </div>
+      <div class="kpi-sub">
+        VaR(95): ${{ "{:,.2f}".format(risk.var_95 | default(0) | float) }}
+      </div>
+    </div>
+
+    {# ML Accuracy #}
+    <div class="kpi-card">
+      <div class="kpi-label">ML Accuracy</div>
+      <div class="kpi-value {{ 'positive' if (ml.ml_accuracy | default(0) | float) >= 55 else 'negative' }}">
+        {{ (ml.ml_accuracy | default(0) | float) | round(1) }}%
+      </div>
+      <div class="kpi-sub">{{ ml.ml_models_count | default(0) }} models</div>
+    </div>
+  </div>
+
+  {# System Status Summary #}
+  <h3>System Status</h3>
+  <div class="two-col">
+    <div>
+      <table>
+        <tbody>
+          <tr>
+            <td>Scheduler</td>
+            <td class="text-right">
+              {% if system and system.scheduler_running %}
+                <span class="badge badge-green">Running</span>
+              {% else %}
+                <span class="badge badge-red">Stopped</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Active Tasks</td>
+            <td class="text-right">{{ system.active_tasks | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Jobs Completed</td>
+            <td class="text-right">{{ system.total_jobs_completed | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Jobs Failed</td>
+            <td class="text-right">
+              <span class="{{ 'text-negative' if (system.total_jobs_failed | default(0) | int) > 0 else '' }}">
+                {{ system.total_jobs_failed | default(0) }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tbody>
+          <tr>
+            <td>Open Orders</td>
+            <td class="text-right">{{ trading.open_orders | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Risk Status</td>
+            <td class="text-right">
+              {% if risk and risk.is_halted %}
+                <span class="badge badge-red">Halted</span>
+              {% else %}
+                <span class="badge badge-green">Active</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Peak Equity</td>
+            <td class="text-right">${{ "{:,.2f}".format(risk.peak_equity | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Current Equity</td>
+            <td class="text-right">${{ "{:,.2f}".format(risk.equity | default(0) | float) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 2: Portfolio & Risk
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <h2>Portfolio &amp; Risk Overview</h2>
+
+  {# Risk Metrics Table #}
+  <h3>Risk Metrics</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th class="text-right">Value</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Current Equity</td>
+        <td class="numeric">${{ "{:,.2f}".format(risk.equity | default(0) | float) }}</td>
+        <td>
+          {% if (risk.equity | default(0) | float) > 0 %}
+            <span class="badge badge-green">Funded</span>
+          {% else %}
+            <span class="badge badge-red">Zero</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Peak Equity</td>
+        <td class="numeric">${{ "{:,.2f}".format(risk.peak_equity | default(0) | float) }}</td>
+        <td><span class="text-muted">High watermark</span></td>
+      </tr>
+      <tr>
+        <td>Drawdown</td>
+        <td class="numeric">{{ (risk.drawdown | default(0) | float) | round(2) }}%</td>
+        <td>
+          {% if (risk.drawdown | default(0) | float) > 10 %}
+            <span class="badge badge-red">Critical</span>
+          {% elif (risk.drawdown | default(0) | float) > 5 %}
+            <span class="badge badge-yellow">Warning</span>
+          {% else %}
+            <span class="badge badge-green">Normal</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Daily P&L</td>
+        <td class="numeric {{ 'text-positive' if (risk.daily_pnl | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (risk.daily_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(risk.daily_pnl | default(0) | float) }}
+        </td>
+        <td>
+          {% if (risk.daily_pnl | default(0) | float) >= 0 %}
+            <span class="badge badge-green">Profit</span>
+          {% else %}
+            <span class="badge badge-red">Loss</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Value at Risk (95%)</td>
+        <td class="numeric">${{ "{:,.2f}".format(risk.var_95 | default(0) | float) }}</td>
+        <td><span class="text-muted">1-day horizon</span></td>
+      </tr>
+      <tr>
+        <td>CVaR (95%)</td>
+        <td class="numeric">${{ "{:,.2f}".format(risk.cvar_95 | default(0) | float) }}</td>
+        <td><span class="text-muted">Expected shortfall</span></td>
+      </tr>
+      <tr>
+        <td>Trading Halted</td>
+        <td class="numeric">{{ "Yes" if risk.is_halted else "No" }}</td>
+        <td>
+          {% if risk and risk.is_halted %}
+            <span class="badge badge-red">Halted</span>
+          {% else %}
+            <span class="badge badge-green">Active</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  {# Portfolio Summary #}
+  <h3>Portfolio Summary</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th class="text-right">Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Total Holdings</td>
+        <td class="numeric">{{ portfolio.count | default(0) }}</td>
+      </tr>
+      <tr>
+        <td>Total Value</td>
+        <td class="numeric">${{ "{:,.2f}".format(portfolio.total_value | default(0) | float) }}</td>
+      </tr>
+      <tr>
+        <td>Total Cost</td>
+        <td class="numeric">${{ "{:,.2f}".format(portfolio.total_cost | default(0) | float) }}</td>
+      </tr>
+      <tr>
+        <td>Unrealized P&L</td>
+        <td class="numeric {{ 'text-positive' if (portfolio.unrealized_pnl | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (portfolio.unrealized_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(portfolio.unrealized_pnl | default(0) | float) }}
+          ({{ "+" if (portfolio.pnl_pct | default(0) | float) >= 0 else "" }}{{ (portfolio.pnl_pct | default(0) | float) | round(2) }}%)
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  {# Charts: Equity Curve and Drawdown #}
+  <h3>Equity Curve</h3>
+  <div class="chart-container">
+    {% if chart_equity_curve %}
+      <img src="{{ chart_equity_curve }}" alt="Equity Curve">
+    {% else %}
+      <p class="no-data">Insufficient data for equity curve chart</p>
+    {% endif %}
+  </div>
+
+  <h3>Drawdown</h3>
+  <div class="chart-container">
+    {% if chart_drawdown %}
+      <img src="{{ chart_drawdown }}" alt="Drawdown Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for drawdown chart</p>
+    {% endif %}
+  </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 3: Strategy Performance
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <h2>Strategy Performance</h2>
+
+  {# Strategy Breakdown Table #}
+  <h3>Strategy Breakdown</h3>
+  {% if strategy_breakdown %}
+  <table>
+    <thead>
+      <tr>
+        <th>Strategy</th>
+        <th class="text-right">Trades</th>
+        <th class="text-right">P&L</th>
+        <th class="text-right">Win Rate</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in strategy_breakdown %}
+      <tr>
+        <td>{{ s.name | default("Unknown") }}</td>
+        <td class="numeric">{{ s.trade_count | default(s.trades | default(0)) }}</td>
+        <td class="numeric {{ 'text-positive' if (s.pnl | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (s.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(s.pnl | default(0) | float) }}
+        </td>
+        {% set tc = s.trade_count | default(s.trades | default(0)) | int %}
+        {% set wins = s.winning_trades | default(0) | int %}
+        {% set wr = (wins / tc * 100) if tc > 0 else 0.0 %}
+        <td class="numeric">{{ wr | round(1) }}%</td>
+        <td>
+          {% if s.running is defined and s.running %}
+            <span class="badge badge-green">Running</span>
+          {% elif s.running is defined and not s.running %}
+            <span class="badge badge-red">Stopped</span>
+          {% else %}
+            <span class="badge badge-gray">Unknown</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No strategy data available</p>
+  {% endif %}
+
+  {# Strategy Comparison Chart #}
+  <h3>Strategy Comparison</h3>
+  <div class="chart-container">
+    {% if chart_strategy_comparison %}
+      <img src="{{ chart_strategy_comparison }}" alt="Strategy Comparison Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for strategy comparison chart</p>
+    {% endif %}
+  </div>
+
+  {# Orchestrator State #}
+  <h3>Strategy Orchestrator</h3>
+  {% if orchestrator %}
+  <table>
+    <thead>
+      <tr>
+        <th>Strategy</th>
+        <th>Asset Class</th>
+        <th>Regime</th>
+        <th class="text-right">Alignment</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orchestrator %}
+      <tr>
+        <td>{{ o.strategy | default("Unknown") }}</td>
+        <td>
+          <span class="badge badge-blue">{{ o.asset_class | default("N/A") | upper }}</span>
+        </td>
+        <td>{{ o.regime | default("N/A") }}</td>
+        <td class="numeric">
+          {% set alignment = o.alignment | default(0) | float %}
+          <span class="{{ 'text-positive' if alignment >= 70 else ('text-warning' if alignment >= 40 else 'text-negative') }}">
+            {{ alignment | round(0) }}%
+          </span>
+        </td>
+        <td>
+          {% set action = o.action | default("unknown") | lower %}
+          {% if action == "active" or action == "run" %}
+            <span class="badge badge-green">Active</span>
+          {% elif action == "reduce_size" %}
+            <span class="badge badge-yellow">Reduce Size</span>
+          {% elif action == "pause" or action == "paused" %}
+            <span class="badge badge-red">Paused</span>
+          {% else %}
+            <span class="badge badge-gray">{{ o.action | default("N/A") }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No orchestrator data available</p>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 4: Market Analysis
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <h2>Market Analysis</h2>
+
+  {# Regime Information #}
+  <h3>Current Market Regime</h3>
+  <div class="exec-summary">
+    <div style="display: flex; align-items: center; gap: 4mm; margin-bottom: 3mm;">
+      {% set regime_css = regime.dominant_regime | default("unknown") | lower | replace(" ", "-") | replace("_", "-") %}
+      <span class="regime-indicator regime-{{ regime_css }}">
+        {{ regime.dominant_regime | default("Unknown") }}
+      </span>
+      {% if regime and regime.avg_confidence is defined %}
+        <span class="text-muted">Confidence: {{ (regime.avg_confidence * 100) | round(1) }}%</span>
+      {% endif %}
+    </div>
+
+    {% if regime and regime.distribution %}
+    <h3 style="margin-top: 3mm;">Regime Distribution</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Regime</th>
+          <th class="text-right">Weight</th>
+          <th style="width: 40%;">Distribution</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r_name, r_pct in regime.distribution.items() %}
+        <tr>
+          <td>{{ r_name }}</td>
+          <td class="numeric">{{ (r_pct | float) | round(1) }}%</td>
+          <td>
+            <div class="progress-bar">
+              <div class="fill {% if r_pct | float > 50 %}fill-green{% elif r_pct | float > 20 %}fill-yellow{% else %}fill-red{% endif %}"
+                   style="width: {{ r_pct | float | round(0) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+
+  {# Market Opportunities #}
+  <h3>Top Market Opportunities</h3>
+  {% if opportunities %}
+  <table>
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Type</th>
+        <th class="text-right">Score</th>
+        <th>Detected</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for opp in opportunities %}
+      <tr>
+        <td><strong>{{ opp.symbol | default("N/A") }}</strong></td>
+        <td>
+          {% set opp_type = opp.type | default("unknown") | lower %}
+          {% if opp_type == "volume_surge" %}
+            <span class="badge badge-blue">Volume Surge</span>
+          {% elif opp_type == "rsi_bounce" %}
+            <span class="badge badge-green">RSI Bounce</span>
+          {% elif opp_type == "breakout" %}
+            <span class="badge badge-yellow">Breakout</span>
+          {% elif opp_type == "trend_pullback" %}
+            <span class="badge badge-green">Pullback</span>
+          {% elif opp_type == "momentum_shift" %}
+            <span class="badge badge-blue">Momentum</span>
+          {% else %}
+            <span class="badge badge-gray">{{ opp.type | default("Unknown") }}</span>
+          {% endif %}
+        </td>
+        <td class="numeric">
+          <strong class="{{ 'text-positive' if (opp.score | default(0) | float) >= 75 else ('text-warning' if (opp.score | default(0) | float) >= 50 else 'text-muted') }}">
+            {{ (opp.score | default(0) | float) | round(0) }}
+          </strong>
+        </td>
+        <td class="text-small text-muted">{{ opp.detected_at | default("N/A") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No active market opportunities</p>
+  {% endif %}
+
+  {# Regime Timeline Chart #}
+  <h3>Regime Timeline</h3>
+  <div class="chart-container">
+    {% if chart_regime_timeline %}
+      <img src="{{ chart_regime_timeline }}" alt="Regime Timeline Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for regime timeline chart</p>
+    {% endif %}
+  </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 5: What Was Learned (ML & Signal Intelligence)
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <h2>What Was Learned</h2>
+
+  {# ML Statistics #}
+  <h3>Machine Learning Performance</h3>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Model Accuracy</div>
+      <div class="kpi-value {{ 'positive' if (ml.ml_accuracy | default(0) | float) >= 55 else 'negative' }}">
+        {{ (ml.ml_accuracy | default(0) | float) | round(1) }}%
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Predictions</div>
+      <div class="kpi-value neutral">{{ ml.ml_predictions_total | default(0) }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Active Models</div>
+      <div class="kpi-value neutral">{{ ml.ml_models_count | default(0) }}</div>
+    </div>
+  </div>
+  {% if ml and ml.ml_last_trained %}
+  <p class="text-small text-muted mt-2">Last trained: {{ ml.ml_last_trained }}</p>
+  {% endif %}
+
+  <hr class="section-divider">
+
+  {# Signal Source Attribution #}
+  <h3>Signal Source Attribution</h3>
+  {% if attribution and attribution.sources %}
+  <table>
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th class="text-right">Accuracy</th>
+        <th class="text-right">Avg Win Score</th>
+        <th class="text-right">Avg Loss Score</th>
+        <th class="text-right">Trades</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for source_name, src in attribution.sources.items() %}
+      <tr>
+        <td><strong>{{ source_name }}</strong></td>
+        <td class="numeric">
+          <span class="{{ 'text-positive' if (src.accuracy | default(0) | float) >= 55 else 'text-negative' }}">
+            {{ (src.accuracy | default(0) | float) | round(1) }}%
+          </span>
+        </td>
+        <td class="numeric text-positive">{{ (src.avg_win_score | default(0) | float) | round(1) }}</td>
+        <td class="numeric text-negative">{{ (src.avg_loss_score | default(0) | float) | round(1) }}</td>
+        <td class="numeric">{{ src.trades | default(0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No signal attribution data available</p>
+  {% endif %}
+
+  <hr class="section-divider">
+
+  {# Signal Weights: Current vs Recommended #}
+  <h3>Signal Weights</h3>
+  {% if weights and weights.current_weights %}
+  <table>
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th class="text-right">Current</th>
+        <th class="text-right">Recommended</th>
+        <th class="text-right">Adjustment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for source_name, current_w in weights.current_weights.items() %}
+      {% set recommended_w = weights.recommended_weights[source_name] | default(current_w) %}
+      {% set adjustment = weights.adjustments[source_name] | default(0) %}
+      <tr>
+        <td><strong>{{ source_name }}</strong></td>
+        <td class="numeric">{{ (current_w | float) | round(3) }}</td>
+        <td class="numeric text-accent">{{ (recommended_w | float) | round(3) }}</td>
+        <td class="numeric {{ 'text-positive' if (adjustment | float) > 0 else ('text-negative' if (adjustment | float) < 0 else '') }}">
+          {{ "+" if (adjustment | float) > 0 else "" }}{{ (adjustment | float) | round(3) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No weight recommendation data available</p>
+  {% endif %}
+
+  {# Signal Radar Chart #}
+  <h3>Signal Source Radar</h3>
+  <div class="chart-container">
+    {% if chart_signal_radar %}
+      <img src="{{ chart_signal_radar }}" alt="Signal Source Radar Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for signal radar chart</p>
+    {% endif %}
+  </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 6: Historical Performance
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <h2>Historical Performance</h2>
+
+  {# Daily P&L Table (7 days) #}
+  <h3>Daily P&L (Last 7 Days)</h3>
+  {% if daily_pnl_history %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th class="text-right">Equity</th>
+        <th class="text-right">P&L</th>
+        <th class="text-right">Drawdown</th>
+        <th class="text-right">Trades</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in daily_pnl_history %}
+      <tr>
+        <td>{{ day.date | default("N/A") }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(day.equity | default(0) | float) }}</td>
+        <td class="numeric {{ 'text-positive' if (day.pnl | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (day.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(day.pnl | default(0) | float) }}
+        </td>
+        <td class="numeric {{ 'text-negative' if (day.drawdown_pct | default(0) | float) > 5 else '' }}">
+          {{ (day.drawdown_pct | default(0) | float) | round(2) }}%
+        </td>
+        <td class="numeric">{{ day.trades | default(0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No daily P&L history available</p>
+  {% endif %}
+
+  <hr class="section-divider">
+
+  {# Weekly P&L Table (4 weeks) #}
+  <h3>Weekly Summary (Last 4 Weeks)</h3>
+  {% if weekly_pnl_history %}
+  <table>
+    <thead>
+      <tr>
+        <th>Week</th>
+        <th class="text-right">Start Equity</th>
+        <th class="text-right">End Equity</th>
+        <th class="text-right">P&L</th>
+        <th class="text-right">Max Drawdown</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in weekly_pnl_history %}
+      <tr>
+        <td>{{ week.week | default("N/A") }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(week.start_equity | default(0) | float) }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(week.end_equity | default(0) | float) }}</td>
+        <td class="numeric {{ 'text-positive' if (week.pnl | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (week.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(week.pnl | default(0) | float) }}
+        </td>
+        <td class="numeric {{ 'text-negative' if (week.max_drawdown | default(0) | float) > 5 else '' }}">
+          {{ (week.max_drawdown | default(0) | float) | round(2) }}%
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No weekly P&L history available</p>
+  {% endif %}
+
+  {# Daily P&L Bar Chart #}
+  <h3>Daily P&L Chart</h3>
+  <div class="chart-container">
+    {% if chart_daily_pnl %}
+      <img src="{{ chart_daily_pnl }}" alt="Daily P&L Bar Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for daily P&L chart</p>
+    {% endif %}
+  </div>
+</div>
+
+</body>
+</html>

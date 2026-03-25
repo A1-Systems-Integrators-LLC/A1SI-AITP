@@ -586,6 +586,13 @@ SCHEDULED_TASKS = {
         "interval_seconds": 3600,
         "params": {"fix": True},
     },
+    "pdf_report_daily": {
+        "name": "Daily PDF Report",
+        "description": "Generate daily PDF intelligence report at midnight UTC",
+        "task_type": "pdf_report",
+        "interval_seconds": 86400,
+        "params": {},
+    },
 }
 
 # ── Workflow templates ────────────────────────────────────────
