@@ -2421,6 +2421,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/SignalAttribution'
           description: ''
+  /api/signals/health/:
+    get:
+      operationId: signals_health_retrieve
+      description: 'Signal pipeline health: per-source availability and latency.'
+      parameters:
+      - in: query
+        name: asset_class
+        schema:
+          type: string
+          enum:
+          - crypto
+          - equity
+          - forex
+      tags:
+      - Signals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/signals/record/:
     post:
       operationId: signals_record_create

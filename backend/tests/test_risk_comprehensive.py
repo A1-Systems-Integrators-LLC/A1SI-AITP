@@ -277,8 +277,9 @@ class TestMarketHoursEnforcement:
             "common.market_hours.sessions.MarketHoursService.is_market_open",
             return_value=True,
         ):
+            # Position must be under equity 5% limit: 3 × $150 = $450 = 4.5%
             approved, reason = rm.check_new_trade(
-                "AAPL", "buy", 10, 150.0, asset_class="equity",
+                "AAPL", "buy", 3, 150.0, asset_class="equity",
             )
         assert approved is True
 

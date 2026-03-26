@@ -4,6 +4,7 @@ and persists job state to DB via Django ORM.
 
 import logging
 import math
+import time
 import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -105,6 +106,12 @@ CRITICAL_TASK_TYPES = frozenset(
     }
 )
 
+# Retry configuration for failed tasks
+MAX_RETRIES = 3
+RETRY_BASE_DELAY_S = 5  # Exponential backoff: 5s, 10s, 20s
+# Tasks re-scheduled frequently enough that retrying is wasteful
+NO_RETRY_TYPES = CRITICAL_TASK_TYPES | frozenset({"data_quality_check", "autonomous_check"})
+
 
 class JobRunner:
     def __init__(self, max_workers: int = 2):
@@ -187,7 +194,36 @@ class JobRunner:
                         progress_message=message[:200],
                     )
 
-            result = run_fn(params, progress_callback)
+            # ── Execute with retry on hard failures ─────────────────────
+            max_attempts = 1 if job_obj.job_type in NO_RETRY_TYPES else MAX_RETRIES + 1
+            last_err: Exception | None = None
+            result = None
+
+            for attempt in range(max_attempts):
+                if attempt > 0:
+                    delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                    logger.warning(
+                        "Job %s retry %d/%d in %ds",
+                        job_id[:8], attempt, MAX_RETRIES, delay,
+                    )
+                    _job_progress[job_id] = {
+                        "progress": 0.0,
+                        "progress_message": f"Retrying ({attempt}/{MAX_RETRIES})...",
+                    }
+                    time.sleep(delay)
+                try:
+                    result = run_fn(params, progress_callback)
+                    last_err = None
+                    break
+                except Exception as retry_exc:
+                    last_err = retry_exc
+                    logger.warning(
+                        "Job %s attempt %d failed: %s",
+                        job_id[:8], attempt + 1, retry_exc,
+                    )
+
+            if last_err is not None:
+                raise last_err
 
             # Detect soft failures: executor returned {"status": "error"}
             is_soft_failure = isinstance(result, dict) and result.get("status") == "error"

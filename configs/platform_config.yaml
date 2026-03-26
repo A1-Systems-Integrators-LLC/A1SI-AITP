@@ -425,9 +425,9 @@ vectorbt:
 # Risk management (global)
 # ──────────────────────────────────────────────
 risk_management:
-  max_portfolio_drawdown: 0.40  # 40% max drawdown — aggressive $500 risk capital
-  max_single_trade_risk: 0.08   # 8% of portfolio per trade (leveraged)
-  max_daily_loss: 0.15          # 15% daily loss limit
+  max_portfolio_drawdown: 0.20  # 20% max drawdown — tightened for paper trading
+  max_single_trade_risk: 0.05   # 5% of portfolio per trade
+  max_daily_loss: 0.08          # 8% daily loss limit
   max_correlation: 0.7          # Max correlation between concurrent positions
   min_paper_trade_days: 14      # Minimum paper trading before live
   max_leverage: 5.0             # Kraken futures isolated margin cap

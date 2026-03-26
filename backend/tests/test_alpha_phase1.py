@@ -160,14 +160,14 @@ class TestRiskLimitConfig:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
-    def test_max_portfolio_drawdown_40(self):
-        assert self.config["risk_management"]["max_portfolio_drawdown"] == 0.40
+    def test_max_portfolio_drawdown_20(self):
+        assert self.config["risk_management"]["max_portfolio_drawdown"] == 0.20  # Tightened for paper trading
 
-    def test_max_daily_loss_15(self):
-        assert self.config["risk_management"]["max_daily_loss"] == 0.15
+    def test_max_daily_loss_8(self):
+        assert self.config["risk_management"]["max_daily_loss"] == 0.08  # Tightened for paper trading
 
-    def test_max_single_trade_risk_8(self):
-        assert self.config["risk_management"]["max_single_trade_risk"] == 0.08
+    def test_max_single_trade_risk_5(self):
+        assert self.config["risk_management"]["max_single_trade_risk"] == 0.05  # Tightened for paper trading
 
     def test_max_leverage_5(self):
         assert self.config["risk_management"]["max_leverage"] == 5.0

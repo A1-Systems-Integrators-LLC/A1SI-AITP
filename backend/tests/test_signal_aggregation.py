@@ -934,9 +934,10 @@ class TestSignalAggregatorWeightRedistribution:
             technical_score=80,
             scanner_score=60,
         )
-        # tech weight = 0.50, scanner weight = 0.00
-        # Redistributed: tech = 0.50/0.50, scanner = 0.00/0.50
-        expected = 80 * (0.50 / 0.50) + 60 * (0.00 / 0.50)
+        # tech weight = 0.45, scanner weight = 0.05
+        # Redistributed: tech = 0.45/0.50, scanner = 0.05/0.50
+        total_w = 0.45 + 0.05
+        expected = 80 * (0.45 / total_w) + 60 * (0.05 / total_w)
         assert abs(sig.composite_score - expected) < 0.5
 
     def test_custom_weights(self):

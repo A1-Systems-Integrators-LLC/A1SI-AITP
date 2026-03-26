@@ -211,7 +211,9 @@
       "Bash(/tmp/critical_findings.txt:*)",
       "Bash(/home/rredmer/Dev/Portfolio/A1SI-AITP/docs/integration-audit-2026-03-25.md:*)",
       "Bash(python -c \":*)",
-      "Bash(PYTHONPATH=backend python backend/manage.py makemigrations core --name add_cron_schedule_to_scheduledtask)"
+      "Bash(PYTHONPATH=backend python backend/manage.py makemigrations core --name add_cron_schedule_to_scheduledtask)",
+      "Bash(python3 -c \":*)",
+      "Bash(/home/rredmer/miniforge3/bin/python3 -m pytest /home/rredmer/Dev/Portfolio/A1SI-AITP/backend/tests/ -q --tb=line)"
     ]
   }
 }

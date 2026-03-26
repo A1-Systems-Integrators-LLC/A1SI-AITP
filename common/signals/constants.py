@@ -6,14 +6,14 @@ from common.regime.regime_detector import Regime
 # Must sum to 1.0.  When a source is unavailable its weight is
 # redistributed proportionally to the remaining sources.
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "technical": 0.50,
-    "regime": 0.30,
+    "technical": 0.45,
+    "regime": 0.25,
     "ml": 0.00,
     "sentiment": 0.05,
-    "scanner": 0.00,
+    "scanner": 0.05,
     "win_rate": 0.10,
     "funding": 0.05,
-    "macro": 0.00,
+    "macro": 0.05,
 }
 
 # ── Entry thresholds ─────────────────────────────────────────────────────────

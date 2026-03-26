@@ -3,6 +3,7 @@
 import csv
 
 from django.http import HttpResponse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -818,6 +819,27 @@ class SignalBatchView(APIView):
             strategy_name=data.get("strategy_name", "CryptoInvestorV1"),
         )
         return Response(results)
+
+
+class SignalHealthView(APIView):
+    """Signal pipeline health: per-source availability and latency."""
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Signals"],
+        parameters=[
+            OpenApiParameter(
+                "asset_class", str, enum=["crypto", "equity", "forex"],
+            ),
+        ],
+    )
+    def get(self, request: Request) -> Response:
+        asset_class = request.query_params.get("asset_class", "crypto")
+
+        from analysis.services.signal_service import SignalService
+
+        health = SignalService.get_pipeline_health(asset_class)
+        return Response(health)
 
 
 class EntryCheckView(APIView):

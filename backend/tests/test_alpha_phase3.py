@@ -244,11 +244,11 @@ class TestPhase3Weights:
 
     def test_technical_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["technical"] == 0.50
+        assert DEFAULT_WEIGHTS["technical"] == 0.45  # Reduced from 0.50
 
     def test_regime_weight(self):
         from common.signals.constants import DEFAULT_WEIGHTS
-        assert DEFAULT_WEIGHTS["regime"] == 0.30
+        assert DEFAULT_WEIGHTS["regime"] == 0.25  # Reduced from 0.30
 
     def test_ml_weight_disabled(self):
         from common.signals.constants import DEFAULT_WEIGHTS

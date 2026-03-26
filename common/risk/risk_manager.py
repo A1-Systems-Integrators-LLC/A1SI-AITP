@@ -209,6 +209,20 @@ class RiskManager:
             logger.warning(f"Trade rejected: {reason}")
     """
 
+    # Per-asset-class risk limit overrides (mirrors platform_config.yaml).
+    # Crypto uses global limits (no entry here).
+    _ASSET_CLASS_OVERRIDES: dict[str, dict[str, float]] = {
+        "equity": {
+            "max_position_size_pct": 0.05,
+            "max_daily_loss": 0.03,
+            "max_single_trade_risk": 0.03,
+        },
+        "forex": {
+            "max_position_size_pct": 0.35,
+            "max_daily_loss": 0.15,
+        },
+    }
+
     def __init__(self, limits: RiskLimits | None = None):
         self.limits = limits or RiskLimits()
         self.state = PortfolioState()
@@ -361,15 +375,29 @@ class RiskManager:
                         "market_hours module not available, skipping hours check"
                     )
 
+            # Resolve per-asset-class risk limits
+            overrides = self._ASSET_CLASS_OVERRIDES.get(asset_class, {})
+            eff_max_daily_loss = overrides.get("max_daily_loss", self.limits.max_daily_loss)
+            eff_max_position_size_pct = overrides.get(
+                "max_position_size_pct", self.limits.max_position_size_pct
+            )
+            eff_max_single_trade_risk = overrides.get(
+                "max_single_trade_risk", self.limits.max_single_trade_risk
+            )
+            if overrides:
+                logger.debug(
+                    "Using %s risk overrides for %s: %s", asset_class, symbol, overrides
+                )
+
             # Check daily loss proactively
             if self.state.total_equity > 0 and self.state.daily_start_equity > 0:
                 daily_change = (
                     self.state.total_equity - self.state.daily_start_equity
                 ) / self.state.daily_start_equity
-                if daily_change <= -self.limits.max_daily_loss:
+                if daily_change <= -eff_max_daily_loss:
                     return False, (
                         f"Daily loss limit reached: {daily_change:.2%}"
-                        f" <= -{self.limits.max_daily_loss:.2%}"
+                        f" <= -{eff_max_daily_loss:.2%}"
                     )
 
             # Check max open positions
@@ -385,17 +413,17 @@ class RiskManager:
             # Check position size vs portfolio
             trade_value = size * entry_price
             position_pct = trade_value / self.state.total_equity
-            if position_pct > self.limits.max_position_size_pct:
+            if position_pct > eff_max_position_size_pct:
                 return False, (
                     f"Position too large: {position_pct:.2%}"
-                    f" > {self.limits.max_position_size_pct:.2%}"
+                    f" > {eff_max_position_size_pct:.2%}"
                 )
 
             # Check risk/reward if stop loss provided
             if stop_loss_price:
                 price_risk = abs(entry_price - stop_loss_price)
                 trade_risk = price_risk / entry_price
-                if trade_risk > self.limits.max_single_trade_risk * 2:
+                if trade_risk > eff_max_single_trade_risk * 2:
                     return False, f"Stop loss too wide: {trade_risk:.2%} risk per unit"
 
                 # Check min risk/reward ratio

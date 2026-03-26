@@ -490,3 +490,143 @@ class SignalService:
             "signal_label": signal["signal_label"],
             "hard_disabled": signal["hard_disabled"],
         }
+
+    @staticmethod
+    def get_pipeline_health(asset_class: str = "crypto") -> dict:
+        """Check health of each signal source in the pipeline."""
+        import time
+
+        from django.utils import timezone as tz
+
+        sources: dict[str, Any] = {}
+        now = tz.now()
+
+        # Technical scorer
+        t0 = time.monotonic()
+        try:
+            ensure_platform_imports()
+            from common.indicators.technical import add_all_indicators  # noqa: F401
+            sources["technical"] = {"status": "ok", "latency_ms": 0}
+        except Exception as e:
+            sources["technical"] = {"status": "error", "error": str(e)}
+        sources["technical"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Regime detector
+        t0 = time.monotonic()
+        try:
+            ensure_platform_imports()
+            from common.regime.regime_detector import RegimeDetector  # noqa: F401
+            sources["regime"] = {"status": "ok", "latency_ms": 0}
+        except Exception as e:
+            sources["regime"] = {"status": "error", "error": str(e)}
+        sources["regime"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # ML prediction
+        t0 = time.monotonic()
+        try:
+            ensure_platform_imports()
+            from common.ml.prediction import PredictionService  # noqa: F401
+            from common.ml.registry import ModelRegistry
+            models = ModelRegistry().list_models()
+            sources["ml"] = {
+                "status": "ok" if models else "unavailable",
+                "model_count": len(models),
+                "latency_ms": 0,
+            }
+        except Exception as e:
+            sources["ml"] = {"status": "error", "error": str(e)}
+        sources["ml"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Sentiment/News
+        t0 = time.monotonic()
+        try:
+            from market.models import NewsArticle
+            recent_count = NewsArticle.objects.filter(
+                published_at__gte=now - tz.timedelta(hours=24),
+            ).count()
+            sources["sentiment"] = {
+                "status": "ok" if recent_count > 0 else "stale",
+                "articles_24h": recent_count,
+                "latency_ms": 0,
+            }
+        except Exception as e:
+            sources["sentiment"] = {"status": "error", "error": str(e)}
+        sources["sentiment"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Scanner
+        t0 = time.monotonic()
+        try:
+            from market.models import MarketOpportunity
+            active_opps = MarketOpportunity.objects.filter(
+                asset_class=asset_class,
+                expires_at__gt=now,
+            ).count()
+            sources["scanner"] = {
+                "status": "ok",
+                "active_opportunities": active_opps,
+                "latency_ms": 0,
+            }
+        except Exception as e:
+            sources["scanner"] = {"status": "error", "error": str(e)}
+        sources["scanner"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Win rate
+        t0 = time.monotonic()
+        try:
+            from trading.models import Order
+            filled_count = Order.objects.filter(status="FILLED").count()
+            sources["win_rate"] = {
+                "status": "ok" if filled_count >= 20 else "insufficient_data",
+                "filled_orders": filled_count,
+                "latency_ms": 0,
+            }
+        except Exception as e:
+            sources["win_rate"] = {"status": "error", "error": str(e)}
+        sources["win_rate"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Funding (crypto only)
+        t0 = time.monotonic()
+        if asset_class == "crypto":
+            try:
+                ensure_platform_imports()
+                from common.data_pipeline.pipeline import load_funding_rates
+                fr = load_funding_rates()
+                sources["funding"] = {
+                    "status": "ok" if fr is not None and not fr.empty else "no_data",
+                    "latency_ms": 0,
+                }
+            except Exception as e:
+                sources["funding"] = {"status": "error", "error": str(e)}
+            sources["funding"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+        else:
+            sources["funding"] = {
+                "status": "n/a",
+                "reason": f"Not applicable for {asset_class}",
+            }
+
+        # Macro
+        t0 = time.monotonic()
+        try:
+            ensure_platform_imports()
+            from common.market_data.fred_adapter import fetch_macro_snapshot
+            snapshot = fetch_macro_snapshot()
+            sources["macro"] = {
+                "status": "ok" if snapshot else "no_data",
+                "latency_ms": 0,
+            }
+        except Exception as e:
+            sources["macro"] = {"status": "unavailable", "error": str(e)}
+        sources["macro"]["latency_ms"] = round((time.monotonic() - t0) * 1000)
+
+        # Overall health
+        ok_count = sum(1 for s in sources.values() if s.get("status") == "ok")
+        total = len(sources)
+
+        return {
+            "asset_class": asset_class,
+            "timestamp": now.isoformat(),
+            "overall_status": "healthy" if ok_count >= total * 0.6 else "degraded",
+            "sources_ok": ok_count,
+            "sources_total": total,
+            "sources": sources,
+        }

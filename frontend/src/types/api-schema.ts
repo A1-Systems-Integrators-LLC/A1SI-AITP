@@ -1711,6 +1711,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/signals/health/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Signal pipeline health: per-source availability and latency. */
+        get: operations["signals_health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/signals/record/": {
         parameters: {
             query?: never;
@@ -6264,6 +6281,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignalAttribution"];
+                };
+            };
+        };
+    };
+    signals_health_retrieve: {
+        parameters: {
+            query?: {
+                asset_class?: "crypto" | "equity" | "forex";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

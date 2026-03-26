@@ -33,6 +33,7 @@ from analysis.views import (
     SignalBatchView,
     SignalDetailView,
     SignalFeedbackView,
+    SignalHealthView,
     SignalRecordView,
     SignalWeightsView,
     StrategyStatusView,
@@ -138,6 +139,7 @@ urlpatterns = [
     path("signals/feedback/", SignalFeedbackView.as_view(), name="signal-feedback"),
     path("signals/accuracy/", SignalAccuracyView.as_view(), name="signal-accuracy"),
     path("signals/weights/", SignalWeightsView.as_view(), name="signal-weights"),
+    path("signals/health/", SignalHealthView.as_view(), name="signal-health"),
     path(
         "signals/attribution/<str:order_id>/",
         SignalAttributionDetailView.as_view(),
