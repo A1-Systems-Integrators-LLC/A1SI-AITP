@@ -32,6 +32,18 @@ from common.risk.risk_manager import RiskLimits, RiskManager
 class TestPerAssetClassRiskLimits:
     """Verify check_new_trade() uses per-asset-class overrides."""
 
+    # Mock market hours as open for all equity/forex tests
+    _market_open_patch = patch(
+        "common.market_hours.sessions.MarketHoursService.is_market_open",
+        return_value=True,
+    )
+
+    def setup_method(self):
+        self._market_open_patch.start()
+
+    def teardown_method(self):
+        self._market_open_patch.stop()
+
     def _make_rm(self, **limit_kwargs) -> RiskManager:
         defaults = {
             "max_portfolio_drawdown": 0.40,

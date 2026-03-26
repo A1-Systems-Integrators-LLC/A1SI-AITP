@@ -41,14 +41,18 @@ class TradingPerformanceService:
         buys: dict[str, list] = defaultdict(list)
         sells: dict[str, list] = defaultdict(list)
 
+        total_fees = 0.0
         for order in orders:
             price = order.avg_fill_price or order.price
             if not price:
                 logger.warning("Skipping order %s with zero/null price", order.id)
                 continue
+            fee = float(getattr(order, "fee", 0) or 0)
+            total_fees += fee
             entry = {
                 "amount": float(order.filled or order.amount),
                 "price": float(price),
+                "fee": fee,
                 "asset_class": getattr(order, "asset_class", "crypto"),
             }
             if order.side == "buy":
@@ -71,10 +75,14 @@ class TradingPerformanceService:
             avg_buy = total_buy_cost / total_buy_qty if total_buy_qty > 0 else 0
             avg_sell = total_sell_revenue / total_sell_qty if total_sell_qty > 0 else 0
 
-            # Realized P&L: only from matched (closed) quantity
+            # Realized P&L: only from matched (closed) quantity, net of fees
             matched_qty = min(total_buy_qty, total_sell_qty)
             if matched_qty > 0:
-                realized_pnl[symbol] = matched_qty * (avg_sell - avg_buy)
+                gross_pnl = matched_qty * (avg_sell - avg_buy)
+                sym_fees = sum(b.get("fee", 0) for b in buy_entries) + sum(
+                    s.get("fee", 0) for s in sell_entries
+                )
+                realized_pnl[symbol] = gross_pnl - sym_fees
 
             # Track unmatched (open) positions
             net_qty = total_buy_qty - total_sell_qty
@@ -122,6 +130,7 @@ class TradingPerformanceService:
             "loss_count": loss_count,
             "win_rate": round(win_rate, 2),
             "total_pnl": round(total_pnl, 2),
+            "total_fees": round(total_fees, 4),
             "unrealized_pnl": 0.0,
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),

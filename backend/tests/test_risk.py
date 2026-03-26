@@ -19,7 +19,7 @@ class TestRisk:
         data = resp.json()
         assert "equity" in data
         assert "is_halted" in data
-        assert data["equity"] == 10000.0
+        assert data["equity"] == 0.0  # No phantom default
 
     def test_get_limits(self, authenticated_client):
         resp = authenticated_client.get("/api/risk/1/limits/")

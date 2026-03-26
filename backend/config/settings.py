@@ -305,7 +305,7 @@ FREQTRADE_INSTANCES = [
         "config": "config.json",
         "port": 8080,
         "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:8080"),
-        "dry_run_wallet": 200.0,
+        "dry_run_wallet": 500.0,
         "enabled": True,
     },
     {
@@ -313,7 +313,7 @@ FREQTRADE_INSTANCES = [
         "config": "config_bmr.json",
         "port": 8083,
         "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:8083"),
-        "dry_run_wallet": 200.0,
+        "dry_run_wallet": 500.0,
         "enabled": True,
     },
     {
@@ -321,7 +321,7 @@ FREQTRADE_INSTANCES = [
         "config": "config_vb.json",
         "port": 8084,
         "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:8084"),
-        "dry_run_wallet": 100.0,
+        "dry_run_wallet": 300.0,
         "enabled": True,
     },
 ]

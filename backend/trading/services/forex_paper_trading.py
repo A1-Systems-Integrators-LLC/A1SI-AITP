@@ -269,10 +269,15 @@ class ForexPaperTradingService:
             avg_buy = buy_val / buy_qty if buy_qty > 0 else 0
             avg_sell = sell_val / sell_qty if sell_qty > 0 else 0
 
-            # Realized P&L from matched (closed) quantities
+            # Realized P&L from matched (closed) quantities, net of fees
             matched = min(buy_qty, sell_qty)
             if matched > 0:
-                sym_realized = matched * (avg_sell - avg_buy)
+                sym_fees = float(
+                    sym_buys.aggregate(total=Sum("fee"))["total"] or 0
+                ) + float(
+                    sym_sells.aggregate(total=Sum("fee"))["total"] or 0
+                )
+                sym_realized = matched * (avg_sell - avg_buy) - sym_fees
                 realized_pnl += sym_realized
                 if sym_realized > 0:
                     winning += 1

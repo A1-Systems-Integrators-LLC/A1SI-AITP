@@ -295,140 +295,137 @@ def _run_workflow(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]
 
 
 def _sync_freqtrade_equity() -> dict[str, Any]:
-    """Read Freqtrade profit API and update RiskState equity.
+    """Read Freqtrade balance/profit APIs and update RiskState equity.
 
-    SAFETY: If no Freqtrade instances respond, we skip the equity update entirely
-    to avoid corrupting RiskState with fabricated values (which previously caused
-    false drawdown halts).
+    Equity = declared_capital (Freqtrade wallets) + crypto_pnl + forex_pnl.
+    Every number is auditable: declared capital comes from settings, P&L comes
+    from Freqtrade profit API and forex paper trading fills. No phantom capital.
+
+    SAFETY: If no Freqtrade instances respond, skip the update entirely.
     """
     import requests
-    from django.conf import settings
+    from django.conf import settings as django_settings
 
-    ft_urls = [
-        getattr(settings, "FREQTRADE_API_URL", ""),
-        getattr(settings, "FREQTRADE_BMR_API_URL", ""),
-        getattr(settings, "FREQTRADE_VB_API_URL", ""),
-    ]
-    # Fall back to instance configs if top-level settings not set
-    if not any(ft_urls):
-        for inst in getattr(settings, "FREQTRADE_INSTANCES", []):
-            if not inst.get("enabled", True):
-                continue  # Skip disabled (not deployed) instances
-            url = inst.get("url", "")
-            if url:
-                ft_urls.append(url)
+    ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
+    ft_user = getattr(django_settings, "FREQTRADE_USERNAME", "freqtrader")
+    ft_pass = getattr(django_settings, "FREQTRADE_PASSWORD", "freqtrader")
 
-    ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
-    ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
-
-    total_pnl = 0.0
-    instance_results = []
-    for url in ft_urls:
-        if not url:
+    # Build instance list from settings
+    instances_cfg = []
+    for inst in ft_instances:
+        if not inst.get("enabled", True):
             continue
-        try:
-            resp = requests.get(
-                f"{url}/api/v1/profit",
-                auth=(ft_user, ft_pass),
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            pnl = data.get("profit_all_coin", 0.0)
-            total_pnl += pnl
-            instance_results.append({"url": url, "pnl": pnl, "status": "ok"})
-        except Exception as e:
-            logger.warning("Freqtrade equity sync failed for %s: %s", url, e)
-            instance_results.append({"url": url, "status": "error", "error": str(e)})
+        url = inst.get("url", "")
+        if url:
+            instances_cfg.append({
+                "name": inst.get("name", ""),
+                "url": url,
+                "declared_wallet": inst.get("dry_run_wallet", 0),
+            })
 
-    # Include forex paper trading P&L
+    # ── Fetch per-instance equity from balance API (preferred) or profit API ──
+    instance_results = []
+    total_crypto_pnl = 0.0
+    declared_capital = 0.0
+
+    for inst in instances_cfg:
+        url = inst["url"]
+        wallet = inst["declared_wallet"]
+        result = {"name": inst["name"], "url": url, "declared_wallet": wallet}
+
+        # Try balance API first (actual wallet total from Freqtrade)
+        try:
+            bal_resp = requests.get(
+                f"{url}/api/v1/balance", auth=(ft_user, ft_pass), timeout=10,
+            )
+            bal_resp.raise_for_status()
+            bal_data = bal_resp.json()
+            # total_bot = Freqtrade-managed balance (excludes non-bot funds)
+            balance = bal_data.get("total_bot", bal_data.get("total", 0)) or 0
+            starting = bal_data.get("starting_capital", wallet) or wallet
+            pnl = balance - starting
+            total_crypto_pnl += pnl
+            declared_capital += wallet
+            result.update({
+                "status": "ok",
+                "source": "balance_api",
+                "balance": round(balance, 4),
+                "starting_capital": round(starting, 4),
+                "pnl": round(pnl, 4),
+            })
+        except Exception:
+            # Fallback: profit API + declared wallet
+            try:
+                prof_resp = requests.get(
+                    f"{url}/api/v1/profit", auth=(ft_user, ft_pass), timeout=10,
+                )
+                prof_resp.raise_for_status()
+                pnl = prof_resp.json().get("profit_all_coin", 0.0)
+                total_crypto_pnl += pnl
+                declared_capital += wallet
+                result.update({
+                    "status": "ok",
+                    "source": "profit_api",
+                    "pnl": round(pnl, 4),
+                })
+            except Exception as e:
+                logger.warning("Freqtrade equity sync failed for %s: %s", url, e)
+                result.update({"status": "error", "error": str(e)})
+
+        instance_results.append(result)
+
+    # ── Forex paper trading P&L (from actual filled orders, no phantom capital) ──
     forex_pnl = 0.0
-    forex_initial = 0.0
     try:
         from trading.services.forex_paper_trading import ForexPaperTradingService
 
         forex_profit = ForexPaperTradingService().get_profit()
         forex_pnl = forex_profit.get("profit_all_coin", 0.0) or 0.0
-        from trading.models import Order, OrderStatus, TradingMode
-        forex_buys = Order.objects.filter(
-            asset_class="forex", mode=TradingMode.PAPER, status=OrderStatus.FILLED, side="buy",
-        ).values("symbol").distinct().count()
-        forex_initial = forex_buys * 1000.0
     except Exception:
         pass
 
-    # ── SAFETY: Count how many Freqtrade instances actually responded ──
-    from django.conf import settings as django_settings
-
-    ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
-    url_to_wallet: dict[str, float] = {}
-    for inst in ft_instances:
-        inst_url = inst.get("url", "")
-        if inst_url:
-            url_to_wallet[inst_url] = inst.get("dry_run_wallet", 0)
-
+    # ── SAFETY: require at least one instance responded ──
     successful = [r for r in instance_results if r.get("status") == "ok"]
-    total_urls = len([u for u in ft_urls if u])
-
-    # If NO Freqtrade instances responded, skip equity update entirely.
-    # This prevents fabricating equity from zero wallets and triggering false halts.
-    if not successful and total_urls > 0 and forex_initial <= 0:
+    if not successful and instances_cfg:
         logger.warning(
-            "Freqtrade equity sync: 0/%d instances responded, no forex capital — "
+            "Freqtrade equity sync: 0/%d instances responded — "
             "SKIPPING equity update to prevent corruption",
-            total_urls,
+            len(instances_cfg),
         )
         return {
-            "total_pnl": 0.0,
-            "forex_pnl": forex_pnl,
-            "equity_updated": False,
-            "skipped_reason": "no_instances_responding",
-            "instances": instance_results,
-            "open_positions_count": 0,
+            "total_pnl": 0.0, "forex_pnl": forex_pnl,
+            "equity_updated": False, "skipped_reason": "no_instances_responding",
+            "instances": instance_results, "open_positions_count": 0,
         }
 
-    live_wallet_total = sum(
-        url_to_wallet.get(r["url"], 0) for r in successful
-    )
-    initial_capital = live_wallet_total + forex_initial
-
-    # If computed initial capital is zero (no wallets matched, no forex),
-    # skip update to avoid division-by-zero and false drawdown calculations.
-    if initial_capital <= 0:
+    if declared_capital <= 0:
         logger.error(
-            "Freqtrade equity sync: initial_capital=%.2f (wallet=%.2f, forex=%.2f) — "
-            "skipping update to prevent corruption",
-            initial_capital, live_wallet_total, forex_initial,
+            "Freqtrade equity sync: declared_capital=$%.2f — "
+            "skipping update to prevent corruption", declared_capital,
         )
         return {
-            "total_pnl": total_pnl,
-            "forex_pnl": forex_pnl,
-            "equity_updated": False,
-            "skipped_reason": "zero_initial_capital",
-            "instances": instance_results,
-            "open_positions_count": 0,
+            "total_pnl": total_crypto_pnl, "forex_pnl": forex_pnl,
+            "equity_updated": False, "skipped_reason": "zero_declared_capital",
+            "instances": instance_results, "open_positions_count": 0,
         }
 
-    current_equity = initial_capital + total_pnl + forex_pnl
+    # ── Compute current equity: declared capital + P&L from all sources ──
+    current_equity = declared_capital + total_crypto_pnl + forex_pnl
 
     from portfolio.models import Portfolio
-    from risk.models import RiskState
+    from risk.models import CapitalLedger, RiskState
     from risk.services.risk import RiskManagementService
 
-    # Sync open positions from Freqtrade instances
+    # ── Sync open positions from Freqtrade instances ──
     open_positions: dict[str, dict] = {}
-    for url in ft_urls:
-        if not url:
-            continue
+    for inst in instances_cfg:
+        url = inst["url"]
         try:
             resp = requests.get(
-                f"{url}/api/v1/status",
-                auth=(ft_user, ft_pass),
-                timeout=10,
+                f"{url}/api/v1/status", auth=(ft_user, ft_pass), timeout=10,
             )
             if resp.status_code == 200:
-                trades = resp.json()
-                for trade in trades:
+                for trade in resp.json():
                     pair = trade.get("pair", "")
                     if pair:
                         open_positions[pair] = {
@@ -441,51 +438,38 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
         except Exception as e:
             logger.debug("Failed to fetch open trades from %s: %s", url, e)
 
-    # Only update the first crypto portfolio — equity/forex have separate tracking.
-    # Previously iterated all portfolios, applying the same equity to each,
-    # which would corrupt drawdown calculations in multi-portfolio scenarios.
+    # ── Update RiskState for the crypto portfolio ──
     portfolios = Portfolio.objects.filter(asset_class="crypto")
     if not portfolios.exists():
         portfolios = Portfolio.objects.all()
-
     portfolio = portfolios.first()
     equity_updated = False
 
     if portfolio is not None:
-        # ── EQUITY SWING GUARD: reject updates that change equity by >50% ──
-        # This catches data errors (e.g. partial instance responses) before they
-        # corrupt the risk state and trigger false halts.
-        # Compare against BOTH previous equity AND initial capital — new forex
-        # positions legitimately increase the capital base, so a 50% swing vs
-        # previous equity can be expected when new positions are opened.
+        # Swing guard: reject >50% swings UNLESS the new value is close to
+        # declared capital (which means we're correcting from a bad state).
         swing_blocked = False
         try:
             state = RiskState.objects.get(portfolio_id=portfolio.id)
             if state.total_equity > 0:
                 delta_pct = abs(current_equity - state.total_equity) / state.total_equity
-                # Also check swing relative to computed initial capital —
-                # if current_equity is close to initial_capital, the capital base
-                # grew legitimately (e.g. new forex positions opened).
                 capital_delta_pct = (
-                    abs(current_equity - initial_capital) / initial_capital
-                    if initial_capital > 0
-                    else 1.0
+                    abs(current_equity - declared_capital) / declared_capital
                 )
                 if delta_pct > 0.50 and capital_delta_pct > 0.50:
                     logger.error(
-                        "Equity swing guard: new=$%.2f, current=$%.2f, delta=%.0f%%, "
-                        "capital_base=$%.2f, capital_delta=%.0f%% — "
-                        "skipping update for portfolio %s",
+                        "Equity swing guard: new=$%.2f, stored=$%.2f, delta=%.0f%%, "
+                        "declared=$%.2f, capital_delta=%.0f%% — BLOCKED",
                         current_equity, state.total_equity, delta_pct * 100,
-                        initial_capital, capital_delta_pct * 100, portfolio.id,
+                        declared_capital, capital_delta_pct * 100,
                     )
                     swing_blocked = True
                 elif delta_pct > 0.50:
                     logger.info(
-                        "Equity swing: new=$%.2f, current=$%.2f, delta=%.0f%% — "
-                        "ALLOWING because capital_base=$%.2f (capital_delta=%.0f%%)",
-                        current_equity, state.total_equity, delta_pct * 100,
-                        initial_capital, capital_delta_pct * 100,
+                        "Equity correction: $%.2f → $%.2f (delta=%.0f%%) — "
+                        "ALLOWED (close to declared capital $%.2f)",
+                        state.total_equity, current_equity, delta_pct * 100,
+                        declared_capital,
                     )
         except RiskState.DoesNotExist:
             pass
@@ -493,19 +477,43 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
         if not swing_blocked:
             RiskManagementService.update_equity(portfolio.id, current_equity)
             equity_updated = True
-            # Also update daily_pnl and open_positions
             try:
                 state = RiskState.objects.get(portfolio_id=portfolio.id)
                 state.daily_pnl = current_equity - state.daily_start_equity
-                state.total_pnl = current_equity - initial_capital
+                state.total_pnl = current_equity - declared_capital
+                state.crypto_pnl = total_crypto_pnl
+                state.forex_pnl = forex_pnl
+                state.declared_capital = declared_capital
                 state.open_positions = open_positions
-                state.save(update_fields=["daily_pnl", "total_pnl", "open_positions"])
+                state.save(update_fields=[
+                    "daily_pnl", "total_pnl", "crypto_pnl", "forex_pnl",
+                    "declared_capital", "open_positions",
+                ])
             except RiskState.DoesNotExist:
                 pass
 
-    # Feed current mark prices into the singleton ReturnTracker for VaR/correlation.
-    # Must use current_price (live mark) not entry_price (static) — otherwise
-    # returns are always 0.0 and VaR is never computed.
+            # ── Write audit ledger entry ──
+            try:
+                CapitalLedger.objects.create(
+                    portfolio_id=portfolio.id,
+                    entry_type="equity_sync",
+                    source="scheduler",
+                    amount=current_equity,
+                    balance_after=current_equity,
+                    details={
+                        "declared_capital": declared_capital,
+                        "crypto_pnl": round(total_crypto_pnl, 4),
+                        "forex_pnl": round(forex_pnl, 4),
+                        "instances": [
+                            {k: v for k, v in r.items() if k != "url"}
+                            for r in instance_results
+                        ],
+                    },
+                )
+            except Exception:
+                logger.debug("Failed to write capital ledger entry", exc_info=True)
+
+    # Feed current mark prices into ReturnTracker for VaR/correlation.
     if open_positions:
         prices = {
             sym: pos.get("current_price") or pos.get("entry_price", 0)
@@ -516,11 +524,12 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
             RiskManagementService.record_prices(prices)
 
     return {
-        "total_pnl": total_pnl,
+        "declared_capital": declared_capital,
+        "crypto_pnl": total_crypto_pnl,
         "forex_pnl": forex_pnl,
-        "equity_updated": equity_updated,
+        "total_pnl": total_crypto_pnl + forex_pnl,
         "current_equity": current_equity,
-        "initial_capital": initial_capital,
+        "equity_updated": equity_updated,
         "instances": instance_results,
         "open_positions_count": len(open_positions),
     }

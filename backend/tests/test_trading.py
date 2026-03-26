@@ -32,6 +32,8 @@ class TestTrading:
         assert data["status"] == "pending"
 
     def test_create_order_with_mode(self, authenticated_client):
+        from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(2, 10000.0)
         resp = authenticated_client.post(
             "/api/trading/orders/",
             {

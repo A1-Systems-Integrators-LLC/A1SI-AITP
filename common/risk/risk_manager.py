@@ -248,7 +248,9 @@ class RiskManager:
                 logger.critical(self.state.halt_reason)
                 return False
 
-            # Check daily loss
+            # Check daily loss (skip if daily_start_equity is zero — no baseline yet)
+            if self.state.daily_start_equity <= 0:
+                return True
             daily_change = (
                 current_equity - self.state.daily_start_equity
             ) / self.state.daily_start_equity

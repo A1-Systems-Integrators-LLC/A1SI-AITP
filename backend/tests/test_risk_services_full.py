@@ -35,7 +35,7 @@ class TestGetStatus:
     def test_fresh_portfolio_defaults(self):
         from risk.services.risk import RiskManagementService
         result = RiskManagementService.get_status(9001)
-        assert result["equity"] == 10000.0
+        assert result["equity"] == 0.0
         assert result["is_halted"] is False
         assert result["open_positions"] == 0
 
@@ -95,6 +95,7 @@ class TestCheckTrade:
     def test_approved_trade_logged(self):
         from risk.models import TradeCheckLog
         from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(9020, 10000.0)
         approved, reason = RiskManagementService.check_trade(
             9020, "BTC/USDT", "buy", 0.001, 50000.0, 49000.0,
         )
@@ -135,6 +136,7 @@ class TestCheckTrade:
 
     def test_no_stop_loss(self):
         from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(9023, 10000.0)
         approved, reason = RiskManagementService.check_trade(
             9023, "BTC/USDT", "buy", 0.001, 50000.0,
         )
@@ -157,6 +159,7 @@ class TestCalculatePositionSize:
 
     def test_custom_risk_per_trade(self):
         from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(9031, 10000.0)
         result = RiskManagementService.calculate_position_size(
             9031, 50000.0, 49000.0, risk_per_trade=0.005,
         )
@@ -204,7 +207,7 @@ class TestRecordMetrics:
         metric = RiskManagementService.record_metrics(9050)
         assert isinstance(metric, RiskMetricHistory)
         assert metric.portfolio_id == 9050
-        assert metric.equity == 10000.0
+        assert metric.equity == 0.0
 
     def test_drawdown_recorded(self):
         from risk.models import RiskState
@@ -285,11 +288,13 @@ class TestPeriodicRiskCheckBranches:
 
     def test_healthy_within_limits(self):
         from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(9064, 10000.0)
         result = RiskManagementService.periodic_risk_check(9064)
         assert result["status"] == "ok"
 
     def test_metrics_failure_does_not_break_check(self):
         from risk.services.risk import RiskManagementService
+        RiskManagementService.update_equity(9065, 10000.0)
         with patch.object(
             RiskManagementService, "record_metrics", side_effect=Exception("db error"),
         ):

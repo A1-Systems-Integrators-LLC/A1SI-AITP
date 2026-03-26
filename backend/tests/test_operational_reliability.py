@@ -304,17 +304,29 @@ class TestFreqtradeEquitySync:
         )
         RiskLimits.objects.create(portfolio_id=portfolio.id)
 
-        # Mock Freqtrade responses
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"profit_all_coin": -41.0}
-        mock_resp.raise_for_status.return_value = None
-        mock_get.return_value = mock_resp
+        # Mock Freqtrade balance API responses (new equity sync uses balance first)
+        def mock_get_side_effect(url, **kwargs):
+            resp = MagicMock()
+            resp.raise_for_status.return_value = None
+            resp.status_code = 200
+            if "balance" in url:
+                # Each instance has 159 balance (wallet - losses)
+                resp.json.return_value = {
+                    "total_bot": 159.0, "total": 200.0, "starting_capital": 200.0,
+                }
+            elif "status" in url:
+                resp.json.return_value = []
+            else:
+                resp.json.return_value = {"profit_all_coin": -41.0}
+            return resp
+
+        mock_get.side_effect = mock_get_side_effect
 
         # Mock FREQTRADE_INSTANCES with dry_run_wallet (actual capital)
         mock_instances = [
-            {"name": "CIV1", "url": "http://ft1:8080", "dry_run_wallet": 200.0},
-            {"name": "BMR", "url": "http://ft2:8083", "dry_run_wallet": 200.0},
-            {"name": "VB", "url": "http://ft3:8084", "dry_run_wallet": 100.0},
+            {"name": "CIV1", "url": "http://ft1:8080", "dry_run_wallet": 200.0, "enabled": True},
+            {"name": "BMR", "url": "http://ft2:8083", "dry_run_wallet": 200.0, "enabled": True},
+            {"name": "VB", "url": "http://ft3:8084", "dry_run_wallet": 100.0, "enabled": True},
         ]
         with (
             patch.object(settings_mod, "FREQTRADE_API_URL", "http://ft1:8080"),
@@ -328,12 +340,13 @@ class TestFreqtradeEquitySync:
             result = _sync_freqtrade_equity()
 
         assert result["equity_updated"] is True
-        # 3 instances × -41 = -123 total PnL
-        assert result["total_pnl"] == pytest.approx(-123.0)
+        # 3 instances: balance_api reports pnl = 159 - 200 = -41 each = -123 total
+        assert result["crypto_pnl"] == pytest.approx(-123.0)
 
         state = RiskState.objects.get(portfolio_id=portfolio.id)
-        # Actual capital: $200 + $200 + $100 = $500, PnL = 3 × -41 = -123, equity = 377
+        # Declared capital: $200 + $200 + $100 = $500, PnL = -123, equity = 377
         assert state.total_equity == pytest.approx(500.0 - 123.0)
+        assert state.declared_capital == pytest.approx(500.0)
         # daily_pnl should reflect the equity change from daily_start_equity
         assert state.daily_pnl == pytest.approx(state.total_equity - state.daily_start_equity)
 
@@ -378,17 +391,26 @@ class TestFreqtradeEquitySync:
             asset_class="crypto",
         )
 
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"profit_all_coin": 5.0}
-        mock_resp.raise_for_status.return_value = None
-        mock_get.return_value = mock_resp
+        def mock_get_side_effect(url, **kwargs):
+            resp = MagicMock()
+            resp.raise_for_status.return_value = None
+            resp.status_code = 200
+            if "balance" in url:
+                resp.json.return_value = {
+                    "total_bot": 505.0, "total": 505.0, "starting_capital": 500.0,
+                }
+            elif "status" in url:
+                resp.json.return_value = []
+            else:
+                resp.json.return_value = {"profit_all_coin": 5.0}
+            return resp
 
-        mock_config = {"trading": {"initial_capital": 10000.0}}
+        mock_get.side_effect = mock_get_side_effect
+
         with (
             patch.object(settings_mod, "FREQTRADE_API_URL", ""),
             patch.object(settings_mod, "FREQTRADE_BMR_API_URL", ""),
             patch.object(settings_mod, "FREQTRADE_VB_API_URL", ""),
-            patch("core.platform_bridge.get_platform_config", return_value=mock_config),
             patch("core.platform_bridge.ensure_platform_imports"),
         ):
             from core.services.task_registry import _sync_freqtrade_equity

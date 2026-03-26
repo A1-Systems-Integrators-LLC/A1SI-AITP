@@ -213,7 +213,9 @@
       "Bash(python -c \":*)",
       "Bash(PYTHONPATH=backend python backend/manage.py makemigrations core --name add_cron_schedule_to_scheduledtask)",
       "Bash(python3 -c \":*)",
-      "Bash(/home/rredmer/miniforge3/bin/python3 -m pytest /home/rredmer/Dev/Portfolio/A1SI-AITP/backend/tests/ -q --tb=line)"
+      "Bash(/home/rredmer/miniforge3/bin/python3 -m pytest /home/rredmer/Dev/Portfolio/A1SI-AITP/backend/tests/ -q --tb=line)",
+      "Bash(for name_port in \"CIV1:8080\" \"BMR:8083\" \"VB:8084\")",
+      "Bash(do name=\"$name_port%%:*\" port=\"$name_port##*:\" echo \"=== $name \\(port $port\\) ===\" echo \"-- Profit --\" curl -sf -u \"freqtrader:freqtrader\" \"http://localhost:$port/api/v1/profit\")"
     ]
   }
 }

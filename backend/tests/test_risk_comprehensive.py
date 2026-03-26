@@ -511,17 +511,19 @@ class TestRiskMetricsRecording:
 @pytest.mark.django_db
 class TestEmptyPortfolio:
     def test_status_with_no_state(self):
-        """First call auto-creates state with defaults."""
+        """First call auto-creates state with defaults (zero equity)."""
         status = RiskManagementService.get_status(999)
-        assert status["equity"] == 10000.0
+        assert status["equity"] == 0.0  # No phantom default
         assert status["is_halted"] is False
         assert status["open_positions"] == 0
 
     def test_check_trade_with_no_prior_state(self):
+        # Set up a state with real equity and matching daily_start
+        _setup(portfolio_id=998, equity=1300.0, daily_start=1300.0)
         approved, reason = RiskManagementService.check_trade(
-            998, "BTC/USDT", "buy", 0.01, 50000.0,
+            998, "BTC/USDT", "buy", 0.001, 50000.0,  # $50 = 3.8% of $1,300
         )
-        # Should auto-create state and approve (small trade)
+        # Should approve (small trade vs $1,300 equity)
         assert approved is True
 
     def test_heat_check_empty_portfolio(self):
@@ -531,6 +533,8 @@ class TestEmptyPortfolio:
         assert result["var_95"] == 0.0
 
     def test_position_size_empty_portfolio(self):
+        # Set up a state with real equity first (zero default means no sizing)
+        _setup(portfolio_id=996, equity=1300.0)
         result = RiskManagementService.calculate_position_size(
             996, entry_price=50000.0, stop_loss_price=48000.0,
         )

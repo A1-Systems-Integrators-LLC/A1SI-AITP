@@ -6,11 +6,15 @@ from market.constants import AssetClass
 
 class RiskState(models.Model):
     portfolio_id = models.IntegerField(unique=True, db_index=True)
-    total_equity = models.FloatField(default=10000.0)
-    peak_equity = models.FloatField(default=10000.0)
-    daily_start_equity = models.FloatField(default=10000.0)
+    total_equity = models.FloatField(default=0.0)
+    peak_equity = models.FloatField(default=0.0)
+    daily_start_equity = models.FloatField(default=0.0)
     daily_pnl = models.FloatField(default=0.0)
     total_pnl = models.FloatField(default=0.0)
+    crypto_pnl = models.FloatField(default=0.0)
+    forex_pnl = models.FloatField(default=0.0)
+    equity_pnl = models.FloatField(default=0.0)
+    declared_capital = models.FloatField(default=0.0)
     open_positions = models.JSONField(default=dict, blank=True)
     is_halted = models.BooleanField(default=False)
     halt_reason = models.CharField(max_length=200, default="", blank=True)
@@ -18,6 +22,30 @@ class RiskState(models.Model):
 
     def __str__(self):
         return f"RiskState(portfolio={self.portfolio_id}, equity={self.total_equity})"
+
+
+class CapitalLedger(models.Model):
+    """Immutable audit trail of every equity change."""
+
+    portfolio_id = models.IntegerField(db_index=True)
+    entry_type = models.CharField(max_length=30)
+    source = models.CharField(max_length=50)
+    amount = models.FloatField()
+    balance_after = models.FloatField()
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["portfolio_id", "-created_at"],
+                name="idx_ledger_port_time",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Ledger({self.entry_type}, {self.source}, ${self.amount:.2f})"
 
 
 class RiskLimits(models.Model):
