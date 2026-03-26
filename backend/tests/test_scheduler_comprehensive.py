@@ -53,10 +53,11 @@ class TestRegistryCompleteness:
         "macro_data_refresh",
         "daily_risk_reset",
         "autonomous_check",
+        "pdf_report",
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 30
+        assert len(TASK_REGISTRY) == 31
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES

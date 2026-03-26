@@ -4,21 +4,21 @@
 <meta charset="UTF-8">
 <title>A1SI-AITP Daily Intelligence Report - {{ report_date }}</title>
 <style>
-  /* ── Page Setup ── */
+  /* ── Page Setup (print-friendly light theme) ── */
   @page {
     size: A4;
     margin: 18mm 15mm 22mm 15mm;
     @bottom-center {
-      content: "A1SI-AITP Daily Intelligence Report";
+      content: "A1SI-AITP Daily Intelligence Report — CONFIDENTIAL";
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 7pt;
-      color: #606080;
+      color: #8891a5;
     }
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 7pt;
-      color: #606080;
+      color: #8891a5;
     }
   }
 
@@ -32,33 +32,40 @@
   html, body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 9pt;
-    line-height: 1.5;
-    color: #e0e0e0;
-    background: #0f0f1a;
+    line-height: 1.6;
+    color: #1a1a2e;
+    background: #ffffff;
   }
 
   /* ── Typography ── */
   h1 {
-    font-size: 22pt;
+    font-size: 24pt;
     font-weight: 700;
-    color: #ffffff;
+    color: #1a1a2e;
     margin-bottom: 4mm;
   }
 
   h2 {
     font-size: 14pt;
     font-weight: 600;
-    color: #00d4aa;
+    color: #1a1a2e;
     margin-bottom: 4mm;
     padding-bottom: 2mm;
-    border-bottom: 1px solid #1e1e36;
+    border-bottom: 2px solid #2563eb;
   }
 
   h3 {
     font-size: 11pt;
     font-weight: 600;
-    color: #c0c0d0;
+    color: #374151;
     margin-bottom: 3mm;
+  }
+
+  h4 {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 2mm;
   }
 
   p {
@@ -77,48 +84,51 @@
   /* ── Cover Page ── */
   .cover-header {
     text-align: center;
-    padding: 20mm 0 10mm 0;
-    border-bottom: 2px solid #00d4aa;
+    padding: 25mm 0 10mm 0;
+    border-bottom: 3px solid #1a1a2e;
     margin-bottom: 8mm;
   }
 
   .cover-header h1 {
-    font-size: 28pt;
-    letter-spacing: 1px;
+    font-size: 32pt;
+    letter-spacing: 2px;
+    color: #1a1a2e;
     margin-bottom: 2mm;
   }
 
   .cover-subtitle {
-    font-size: 12pt;
-    color: #a0a0b8;
+    font-size: 14pt;
+    color: #4b5563;
+    font-weight: 400;
     margin-bottom: 2mm;
   }
 
   .cover-date {
-    font-size: 14pt;
-    color: #00d4aa;
+    font-size: 16pt;
+    color: #2563eb;
     font-weight: 600;
   }
 
   .generated-at {
     font-size: 7pt;
-    color: #606080;
+    color: #9ca3af;
     text-align: center;
     margin-top: 3mm;
     margin-bottom: 8mm;
   }
 
-  /* ── Executive Summary ── */
+  /* ── Executive Summary Box ── */
   .exec-summary {
-    background: #161628;
-    border: 1px solid #1e1e36;
-    border-radius: 3mm;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 2mm;
     padding: 5mm;
     margin-bottom: 6mm;
   }
 
   .exec-summary .status-line {
-    font-size: 11pt;
+    font-size: 10pt;
     font-weight: 600;
     margin-bottom: 2mm;
   }
@@ -134,8 +144,8 @@
   .kpi-card {
     flex: 1 1 calc(33.333% - 3mm);
     max-width: calc(33.333% - 2mm);
-    background: #161628;
-    border: 1px solid #1e1e36;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 2mm;
     padding: 4mm;
     text-align: center;
@@ -143,7 +153,7 @@
 
   .kpi-card .kpi-label {
     font-size: 7pt;
-    color: #808098;
+    color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 1mm;
@@ -152,18 +162,18 @@
   .kpi-card .kpi-value {
     font-size: 16pt;
     font-weight: 700;
-    color: #ffffff;
+    color: #1a1a2e;
   }
 
   .kpi-card .kpi-sub {
     font-size: 7pt;
-    color: #808098;
+    color: #6b7280;
     margin-top: 1mm;
   }
 
-  .kpi-value.positive { color: #00d4aa; }
-  .kpi-value.negative { color: #ff4d6a; }
-  .kpi-value.neutral  { color: #ffffff; }
+  .kpi-value.positive { color: #0d7c5f; }
+  .kpi-value.negative { color: #c0392b; }
+  .kpi-value.neutral  { color: #1a1a2e; }
 
   /* ── Tables ── */
   table {
@@ -174,12 +184,12 @@
   }
 
   thead th {
-    background: #1a1a30;
-    color: #00d4aa;
+    background: #f1f5f9;
+    color: #1a1a2e;
     font-weight: 600;
     text-align: left;
     padding: 2.5mm 3mm;
-    border-bottom: 2px solid #00d4aa;
+    border-bottom: 2px solid #cbd5e1;
     font-size: 7.5pt;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -187,20 +197,16 @@
 
   tbody td {
     padding: 2mm 3mm;
-    border-bottom: 1px solid #1e1e36;
+    border-bottom: 1px solid #e2e8f0;
     vertical-align: middle;
   }
 
   tbody tr:nth-child(even) {
-    background: #141425;
+    background: #f8fafc;
   }
 
   tbody tr:nth-child(odd) {
-    background: #0f0f1a;
-  }
-
-  tbody tr:hover {
-    background: #1a1a35;
+    background: #ffffff;
   }
 
   td.numeric {
@@ -220,41 +226,54 @@
   }
 
   .badge-green {
-    background: #0a3a2a;
-    color: #00d4aa;
-    border: 1px solid #00d4aa;
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
   }
 
   .badge-yellow {
-    background: #3a3a0a;
-    color: #f0c040;
-    border: 1px solid #f0c040;
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #fde047;
   }
 
   .badge-red {
-    background: #3a0a0a;
-    color: #ff4d6a;
-    border: 1px solid #ff4d6a;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
   }
 
   .badge-blue {
-    background: #0a1a3a;
-    color: #4da6ff;
-    border: 1px solid #4da6ff;
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
   }
 
   .badge-gray {
-    background: #1e1e2e;
-    color: #808098;
-    border: 1px solid #808098;
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
   }
+
+  .badge-purple {
+    background: #f3e8ff;
+    color: #6b21a8;
+    border: 1px solid #c4b5fd;
+  }
+
+  /* ── Priority Badges ── */
+  .priority-critical { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .priority-high { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+  .priority-medium { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+  .priority-low { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+  .priority-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
 
   /* ── Charts ── */
   .chart-container {
     text-align: center;
     margin: 4mm 0;
-    background: #161628;
-    border: 1px solid #1e1e36;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 2mm;
     padding: 3mm;
   }
@@ -276,17 +295,17 @@
   }
 
   .no-data {
-    color: #606080;
+    color: #9ca3af;
     font-style: italic;
     text-align: center;
-    padding: 10mm 0;
+    padding: 8mm 0;
     font-size: 8pt;
   }
 
   /* ── Section Divider ── */
   .section-divider {
     border: none;
-    border-top: 1px solid #1e1e36;
+    border-top: 1px solid #e2e8f0;
     margin: 5mm 0;
   }
 
@@ -309,17 +328,17 @@
     font-weight: 700;
   }
 
-  .regime-strong-trend-up   { background: #0a4a2a; color: #00ff88; }
-  .regime-weak-trend-up     { background: #0a3a2a; color: #00d4aa; }
-  .regime-ranging            { background: #2a2a0a; color: #f0c040; }
-  .regime-weak-trend-down   { background: #3a1a0a; color: #ff8844; }
-  .regime-strong-trend-down { background: #3a0a0a; color: #ff4d6a; }
-  .regime-high-volatility   { background: #2a0a3a; color: #cc66ff; }
-  .regime-unknown            { background: #1e1e2e; color: #808098; }
+  .regime-strong-trend-up   { background: #dcfce7; color: #166534; }
+  .regime-weak-trend-up     { background: #d1fae5; color: #065f46; }
+  .regime-ranging            { background: #fef9c3; color: #854d0e; }
+  .regime-weak-trend-down   { background: #ffedd5; color: #9a3412; }
+  .regime-strong-trend-down { background: #fee2e2; color: #991b1b; }
+  .regime-high-volatility   { background: #f3e8ff; color: #6b21a8; }
+  .regime-unknown            { background: #f3f4f6; color: #4b5563; }
 
   /* ── Progress Bars ── */
   .progress-bar {
-    background: #1e1e36;
+    background: #e2e8f0;
     border-radius: 1.5mm;
     height: 4mm;
     overflow: hidden;
@@ -329,12 +348,202 @@
   .progress-bar .fill {
     height: 100%;
     border-radius: 1.5mm;
-    transition: width 0.3s;
   }
 
-  .fill-green  { background: #00d4aa; }
-  .fill-yellow { background: #f0c040; }
-  .fill-red    { background: #ff4d6a; }
+  .fill-green  { background: #22c55e; }
+  .fill-yellow { background: #eab308; }
+  .fill-red    { background: #ef4444; }
+  .fill-blue   { background: #3b82f6; }
+
+  /* ── Assessment Cards ── */
+  .assessment-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    padding: 4mm;
+    margin-bottom: 4mm;
+    page-break-inside: avoid;
+  }
+
+  .assessment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3mm;
+    padding-bottom: 2mm;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .assessment-title {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
+  .assessment-score {
+    font-size: 12pt;
+    font-weight: 700;
+    padding: 1mm 3mm;
+    border-radius: 2mm;
+  }
+
+  .score-good { background: #dcfce7; color: #166534; }
+  .score-warning { background: #fef9c3; color: #854d0e; }
+  .score-critical { background: #fee2e2; color: #991b1b; }
+
+  .finding-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2mm 0;
+  }
+
+  .finding-list li {
+    padding: 1mm 0 1mm 4mm;
+    font-size: 8pt;
+    position: relative;
+  }
+
+  .finding-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 3mm;
+    width: 2mm;
+    height: 2mm;
+    border-radius: 50%;
+  }
+
+  .finding-list.findings li::before {
+    background: #3b82f6;
+  }
+
+  .finding-list.concerns li::before {
+    background: #ef4444;
+  }
+
+  /* ── Lesson Cards ── */
+  .lesson-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    padding: 3mm 4mm;
+    margin-bottom: 3mm;
+    page-break-inside: avoid;
+  }
+
+  .lesson-card.positive { border-left: 3px solid #22c55e; }
+  .lesson-card.negative { border-left: 3px solid #ef4444; }
+  .lesson-card.warning  { border-left: 3px solid #eab308; }
+  .lesson-card.info     { border-left: 3px solid #3b82f6; }
+
+  .lesson-category {
+    font-size: 7pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 1mm;
+  }
+
+  .lesson-text {
+    font-size: 8.5pt;
+    color: #1a1a2e;
+    line-height: 1.5;
+  }
+
+  /* ── Decision Log ── */
+  .decision-item {
+    display: flex;
+    gap: 3mm;
+    padding: 2mm 0;
+    border-bottom: 1px solid #f3f4f6;
+    page-break-inside: avoid;
+  }
+
+  .decision-time {
+    flex-shrink: 0;
+    width: 18mm;
+    font-size: 7pt;
+    color: #6b7280;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .decision-category {
+    flex-shrink: 0;
+    width: 28mm;
+  }
+
+  .decision-message {
+    flex: 1;
+    font-size: 8pt;
+    color: #374151;
+  }
+
+  /* ── Recommendation Cards ── */
+  .rec-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    padding: 3mm 4mm;
+    margin-bottom: 2mm;
+    display: flex;
+    gap: 3mm;
+    align-items: flex-start;
+    page-break-inside: avoid;
+  }
+
+  .rec-priority {
+    flex-shrink: 0;
+  }
+
+  .rec-content {
+    flex: 1;
+  }
+
+  .rec-source {
+    font-size: 7pt;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+  }
+
+  .rec-text {
+    font-size: 8.5pt;
+    color: #1a1a2e;
+    margin-top: 0.5mm;
+  }
+
+  .rec-category-tag {
+    display: inline-block;
+    font-size: 6.5pt;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 0.3mm 1.5mm;
+    border-radius: 1mm;
+    margin-top: 1mm;
+  }
+
+  /* ── News Article List ── */
+  .article-item {
+    padding: 2mm 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .article-title {
+    font-size: 8.5pt;
+    font-weight: 500;
+    color: #1a1a2e;
+  }
+
+  .article-meta {
+    font-size: 7pt;
+    color: #6b7280;
+    margin-top: 0.5mm;
+  }
+
+  .sentiment-positive { color: #166534; }
+  .sentiment-negative { color: #991b1b; }
+  .sentiment-neutral  { color: #6b7280; }
 
   /* ── Weight Comparison ── */
   .weight-bar-container {
@@ -346,36 +555,58 @@
   .weight-bar {
     flex: 1;
     height: 3mm;
-    background: #1e1e36;
+    background: #e2e8f0;
     border-radius: 1mm;
     overflow: hidden;
   }
 
   .weight-bar .current {
     height: 100%;
-    background: #4da6ff;
+    background: #3b82f6;
     border-radius: 1mm;
   }
 
   .weight-bar .recommended {
     height: 100%;
-    background: #00d4aa;
+    background: #22c55e;
     border-radius: 1mm;
   }
 
   /* ── Utility ── */
   .text-right { text-align: right; }
   .text-center { text-align: center; }
-  .text-muted { color: #606080; }
+  .text-muted { color: #9ca3af; }
   .text-small { font-size: 7pt; }
-  .text-accent { color: #00d4aa; }
-  .text-positive { color: #00d4aa; }
-  .text-negative { color: #ff4d6a; }
-  .text-warning { color: #f0c040; }
+  .text-accent { color: #2563eb; }
+  .text-positive { color: #0d7c5f; }
+  .text-negative { color: #c0392b; }
+  .text-warning { color: #d97706; }
   .mt-2 { margin-top: 2mm; }
   .mt-4 { margin-top: 4mm; }
   .mb-2 { margin-bottom: 2mm; }
   .mb-4 { margin-bottom: 4mm; }
+  .fw-bold { font-weight: 700; }
+
+  /* ── Page Header (appears on each page) ── */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2mm;
+    margin-bottom: 4mm;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .page-header-title {
+    font-size: 8pt;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .page-header-date {
+    font-size: 8pt;
+    color: #9ca3af;
+  }
 </style>
 </head>
 <body>
@@ -389,11 +620,11 @@
     <div class="cover-subtitle">Daily Intelligence Report</div>
     <div class="cover-date">{{ report_date | default("N/A") }}</div>
   </div>
-  <div class="generated-at">Generated {{ generated_at | default("N/A") }}</div>
+  <div class="generated-at">Generated {{ generated_at | default("N/A") }} UTC</div>
 
   {# Executive Summary #}
   <div class="exec-summary">
-    <h2 style="border-bottom: none; padding-bottom: 0; margin-bottom: 3mm;">Executive Summary</h2>
+    <h2 style="border-bottom: none; padding-bottom: 0; margin-bottom: 3mm; font-size: 12pt;">Executive Summary</h2>
     <div class="status-line">
       System:
       {% if system and system.scheduler_running %}
@@ -406,26 +637,40 @@
       {% if risk and risk.is_halted %}
         <span class="badge badge-red">Halted</span>
       {% elif risk and risk.drawdown is defined and risk.drawdown|float > 10 %}
+        <span class="badge badge-red">Critical</span>
+      {% elif risk and risk.drawdown is defined and risk.drawdown|float > 5 %}
         <span class="badge badge-yellow">Elevated</span>
       {% else %}
         <span class="badge badge-green">Normal</span>
       {% endif %}
       &nbsp;&nbsp;
       Regime:
-      {% set regime_name = regime.dominant_regime | default("UNKNOWN") | upper | replace(" ", "_") %}
-      <span class="regime-indicator regime-{{ regime_name | lower | replace(' ', '-') }}">
-        {{ regime.dominant_regime | default("Unknown") }}
+      {% set regime_css = regime.dominant_regime | default("unknown") | lower | replace(" ", "-") | replace("_", "-") %}
+      <span class="regime-indicator regime-{{ regime_css }}">
+        {{ regime.dominant_regime | default("Unknown") | replace("_", " ") | title }}
       </span>
       {% if regime and regime.avg_confidence is defined %}
         <span class="text-small text-muted">({{ (regime.avg_confidence * 100) | round(0) }}% confidence)</span>
       {% endif %}
     </div>
+
+    {# Quick narrative #}
+    <p class="mt-2" style="font-size: 8.5pt; color: #374151;">
+      {% set strat_count = strategy_breakdown | length if strategy_breakdown else 0 %}
+      {% set running_count = strategy_breakdown | selectattr("running") | list | length if strategy_breakdown else 0 %}
+      {% set decision_count = decisions | length if decisions else 0 %}
+      {{ running_count }} of {{ strat_count }} strategies active.
+      {% if trading and trading.total_trades %}{{ trading.total_trades }} total trades processed{% endif %}
+      {% if trading and (trading.total_pnl | default(0) | float) != 0 %}
+        with {{ "+" if (trading.total_pnl | float) >= 0 else "" }}${{ "{:,.2f}".format(trading.total_pnl | float) }} cumulative P&L.
+      {% else %}.{% endif %}
+      {% if decision_count > 0 %}{{ decision_count }} automated decisions recorded in the last 24h.{% endif %}
+    </p>
   </div>
 
   {# KPI Cards #}
   <h3>Key Performance Indicators</h3>
   <div class="kpi-grid">
-    {# Portfolio Value #}
     <div class="kpi-card">
       <div class="kpi-label">Portfolio Value</div>
       <div class="kpi-value neutral">
@@ -434,7 +679,6 @@
       <div class="kpi-sub">{{ portfolio.count | default(0) }} holdings</div>
     </div>
 
-    {# Unrealized P&L #}
     <div class="kpi-card">
       <div class="kpi-label">Unrealized P&L</div>
       <div class="kpi-value {{ 'positive' if (portfolio.unrealized_pnl | default(0) | float) >= 0 else 'negative' }}">
@@ -445,7 +689,6 @@
       </div>
     </div>
 
-    {# Trading P&L #}
     <div class="kpi-card">
       <div class="kpi-label">Trading P&L</div>
       <div class="kpi-value {{ 'positive' if (trading.total_pnl | default(0) | float) >= 0 else 'negative' }}">
@@ -454,7 +697,6 @@
       <div class="kpi-sub">{{ trading.total_trades | default(0) }} trades</div>
     </div>
 
-    {# Win Rate #}
     <div class="kpi-card">
       <div class="kpi-label">Win Rate</div>
       <div class="kpi-value {{ 'positive' if (trading.win_rate | default(0) | float) >= 50 else 'negative' }}">
@@ -465,7 +707,6 @@
       </div>
     </div>
 
-    {# Drawdown #}
     <div class="kpi-card">
       <div class="kpi-label">Current Drawdown</div>
       <div class="kpi-value {{ 'negative' if (risk.drawdown | default(0) | float) > 5 else ('text-warning' if (risk.drawdown | default(0) | float) > 2 else 'positive') }}">
@@ -476,7 +717,6 @@
       </div>
     </div>
 
-    {# ML Accuracy #}
     <div class="kpi-card">
       <div class="kpi-label">ML Accuracy</div>
       <div class="kpi-value {{ 'positive' if (ml.ml_accuracy | default(0) | float) >= 55 else 'negative' }}">
@@ -486,269 +726,121 @@
     </div>
   </div>
 
-  {# System Status Summary #}
-  <h3>System Status</h3>
-  <div class="two-col">
-    <div>
-      <table>
-        <tbody>
-          <tr>
-            <td>Scheduler</td>
-            <td class="text-right">
-              {% if system and system.scheduler_running %}
-                <span class="badge badge-green">Running</span>
-              {% else %}
-                <span class="badge badge-red">Stopped</span>
-              {% endif %}
-            </td>
-          </tr>
-          <tr>
-            <td>Active Tasks</td>
-            <td class="text-right">{{ system.active_tasks | default(0) }}</td>
-          </tr>
-          <tr>
-            <td>Jobs Completed</td>
-            <td class="text-right">{{ system.total_jobs_completed | default(0) }}</td>
-          </tr>
-          <tr>
-            <td>Jobs Failed</td>
-            <td class="text-right">
-              <span class="{{ 'text-negative' if (system.total_jobs_failed | default(0) | int) > 0 else '' }}">
-                {{ system.total_jobs_failed | default(0) }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div>
-      <table>
-        <tbody>
-          <tr>
-            <td>Open Orders</td>
-            <td class="text-right">{{ trading.open_orders | default(0) }}</td>
-          </tr>
-          <tr>
-            <td>Risk Status</td>
-            <td class="text-right">
-              {% if risk and risk.is_halted %}
-                <span class="badge badge-red">Halted</span>
-              {% else %}
-                <span class="badge badge-green">Active</span>
-              {% endif %}
-            </td>
-          </tr>
-          <tr>
-            <td>Peak Equity</td>
-            <td class="text-right">${{ "{:,.2f}".format(risk.peak_equity | default(0) | float) }}</td>
-          </tr>
-          <tr>
-            <td>Current Equity</td>
-            <td class="text-right">${{ "{:,.2f}".format(risk.equity | default(0) | float) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  {# Team Health Summary Chart #}
+  {% if chart_team_assessment %}
+  <h3>Team Assessment Overview</h3>
+  <div class="chart-container">
+    <img src="{{ chart_team_assessment }}" alt="Team Assessment Scores">
   </div>
+  {% endif %}
 </div>
 
 
 {# ════════════════════════════════════════════════════════════════════════════
-   PAGE 2: Portfolio & Risk
+   PAGE 2: Team Performance Assessment
    ════════════════════════════════════════════════════════════════════════════ #}
 <div class="page">
-  <h2>Portfolio &amp; Risk Overview</h2>
-
-  {# Risk Metrics Table #}
-  <h3>Risk Metrics</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Metric</th>
-        <th class="text-right">Value</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Current Equity</td>
-        <td class="numeric">${{ "{:,.2f}".format(risk.equity | default(0) | float) }}</td>
-        <td>
-          {% if (risk.equity | default(0) | float) > 0 %}
-            <span class="badge badge-green">Funded</span>
-          {% else %}
-            <span class="badge badge-red">Zero</span>
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td>Peak Equity</td>
-        <td class="numeric">${{ "{:,.2f}".format(risk.peak_equity | default(0) | float) }}</td>
-        <td><span class="text-muted">High watermark</span></td>
-      </tr>
-      <tr>
-        <td>Drawdown</td>
-        <td class="numeric">{{ (risk.drawdown | default(0) | float) | round(2) }}%</td>
-        <td>
-          {% if (risk.drawdown | default(0) | float) > 10 %}
-            <span class="badge badge-red">Critical</span>
-          {% elif (risk.drawdown | default(0) | float) > 5 %}
-            <span class="badge badge-yellow">Warning</span>
-          {% else %}
-            <span class="badge badge-green">Normal</span>
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td>Daily P&L</td>
-        <td class="numeric {{ 'text-positive' if (risk.daily_pnl | default(0) | float) >= 0 else 'text-negative' }}">
-          {{ "+" if (risk.daily_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(risk.daily_pnl | default(0) | float) }}
-        </td>
-        <td>
-          {% if (risk.daily_pnl | default(0) | float) >= 0 %}
-            <span class="badge badge-green">Profit</span>
-          {% else %}
-            <span class="badge badge-red">Loss</span>
-          {% endif %}
-        </td>
-      </tr>
-      <tr>
-        <td>Value at Risk (95%)</td>
-        <td class="numeric">${{ "{:,.2f}".format(risk.var_95 | default(0) | float) }}</td>
-        <td><span class="text-muted">1-day horizon</span></td>
-      </tr>
-      <tr>
-        <td>CVaR (95%)</td>
-        <td class="numeric">${{ "{:,.2f}".format(risk.cvar_95 | default(0) | float) }}</td>
-        <td><span class="text-muted">Expected shortfall</span></td>
-      </tr>
-      <tr>
-        <td>Trading Halted</td>
-        <td class="numeric">{{ "Yes" if risk.is_halted else "No" }}</td>
-        <td>
-          {% if risk and risk.is_halted %}
-            <span class="badge badge-red">Halted</span>
-          {% else %}
-            <span class="badge badge-green">Active</span>
-          {% endif %}
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  {# Portfolio Summary #}
-  <h3>Portfolio Summary</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Metric</th>
-        <th class="text-right">Value</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Total Holdings</td>
-        <td class="numeric">{{ portfolio.count | default(0) }}</td>
-      </tr>
-      <tr>
-        <td>Total Value</td>
-        <td class="numeric">${{ "{:,.2f}".format(portfolio.total_value | default(0) | float) }}</td>
-      </tr>
-      <tr>
-        <td>Total Cost</td>
-        <td class="numeric">${{ "{:,.2f}".format(portfolio.total_cost | default(0) | float) }}</td>
-      </tr>
-      <tr>
-        <td>Unrealized P&L</td>
-        <td class="numeric {{ 'text-positive' if (portfolio.unrealized_pnl | default(0) | float) >= 0 else 'text-negative' }}">
-          {{ "+" if (portfolio.unrealized_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(portfolio.unrealized_pnl | default(0) | float) }}
-          ({{ "+" if (portfolio.pnl_pct | default(0) | float) >= 0 else "" }}{{ (portfolio.pnl_pct | default(0) | float) | round(2) }}%)
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  {# Charts: Equity Curve and Drawdown #}
-  <h3>Equity Curve</h3>
-  <div class="chart-container">
-    {% if chart_equity_curve %}
-      <img src="{{ chart_equity_curve }}" alt="Equity Curve">
-    {% else %}
-      <p class="no-data">Insufficient data for equity curve chart</p>
-    {% endif %}
+  <div class="page-header">
+    <span class="page-header-title">Team Performance Assessment</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
   </div>
 
-  <h3>Drawdown</h3>
-  <div class="chart-container">
-    {% if chart_drawdown %}
-      <img src="{{ chart_drawdown }}" alt="Drawdown Chart">
-    {% else %}
-      <p class="no-data">Insufficient data for drawdown chart</p>
-    {% endif %}
-  </div>
-</div>
+  <h2>Team Performance Assessment</h2>
+  <p class="text-muted mb-4" style="font-size: 8pt;">
+    Each specialist reviews their domain and provides findings, concerns, and a health score.
+    Scores below 50 indicate critical issues requiring immediate attention.
+  </p>
 
+  {% if team_assessments %}
+    {% for specialist_key, assessment in team_assessments.items() %}
+    <div class="assessment-card">
+      <div class="assessment-header">
+        <span class="assessment-title">{{ assessment.title | default(specialist_key | title) }}</span>
+        <span class="assessment-score score-{{ assessment.status | default('warning') }}">
+          {{ assessment.health_score | default(50) }}%
+        </span>
+      </div>
 
-{# ════════════════════════════════════════════════════════════════════════════
-   PAGE 3: Strategy Performance
-   ════════════════════════════════════════════════════════════════════════════ #}
-<div class="page">
-  <h2>Strategy Performance</h2>
+      {% if assessment.findings %}
+      <h4 style="color: #2563eb; margin-bottom: 1mm;">Findings</h4>
+      <ul class="finding-list findings">
+        {% for finding in assessment.findings %}
+        <li>{{ finding }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
 
-  {# Strategy Breakdown Table #}
-  <h3>Strategy Breakdown</h3>
-  {% if strategy_breakdown %}
-  <table>
-    <thead>
-      <tr>
-        <th>Strategy</th>
-        <th class="text-right">Trades</th>
-        <th class="text-right">P&L</th>
-        <th class="text-right">Win Rate</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in strategy_breakdown %}
-      <tr>
-        <td>{{ s.name | default("Unknown") }}</td>
-        <td class="numeric">{{ s.trade_count | default(s.trades | default(0)) }}</td>
-        <td class="numeric {{ 'text-positive' if (s.pnl | default(0) | float) >= 0 else 'text-negative' }}">
-          {{ "+" if (s.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(s.pnl | default(0) | float) }}
-        </td>
-        {% set tc = s.trade_count | default(s.trades | default(0)) | int %}
-        {% set wins = s.winning_trades | default(0) | int %}
-        {% set wr = (wins / tc * 100) if tc > 0 else 0.0 %}
-        <td class="numeric">{{ wr | round(1) }}%</td>
-        <td>
-          {% if s.running is defined and s.running %}
-            <span class="badge badge-green">Running</span>
-          {% elif s.running is defined and not s.running %}
-            <span class="badge badge-red">Stopped</span>
-          {% else %}
-            <span class="badge badge-gray">Unknown</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      {% if assessment.concerns %}
+      <h4 style="color: #c0392b; margin-bottom: 1mm;">Concerns</h4>
+      <ul class="finding-list concerns">
+        {% for concern in assessment.concerns %}
+        <li>{{ concern }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
   {% else %}
-    <p class="no-data">No strategy data available</p>
+    <p class="no-data">No team assessment data available</p>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 3: Decisions & Rationale
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="page-header">
+    <span class="page-header-title">Decisions & Rationale</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
+
+  <h2>Decisions &amp; Rationale (Last 24h)</h2>
+  <p class="text-muted mb-4" style="font-size: 8pt;">
+    Automated decisions made by the platform's risk management, strategy orchestrator,
+    and kill switch systems. Each decision includes the trigger event and rationale.
+  </p>
+
+  {% if decisions %}
+  <div style="margin-bottom: 4mm;">
+    <p style="font-size: 8.5pt;">
+      <strong>{{ decisions | length }}</strong> decisions recorded in the last 24 hours
+      across
+      {% set categories = decisions | map(attribute='category') | list | unique | list %}
+      {{ categories | length }} categories:
+      {{ categories | join(", ") }}.
+    </p>
+  </div>
+
+  {% for decision in decisions %}
+  <div class="decision-item">
+    <div class="decision-time">
+      {{ decision.timestamp[:16] | default("N/A") | replace("T", " ") }}
+    </div>
+    <div class="decision-category">
+      {% set sev = decision.severity | default("info") | lower %}
+      <span class="badge {{ 'badge-red' if sev in ('critical', 'error') else ('badge-yellow' if sev == 'warning' else 'badge-blue') }}">
+        {{ decision.category | default("System") }}
+      </span>
+    </div>
+    <div class="decision-message">
+      {{ decision.message | default("No details available") }}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+    <div class="exec-summary" style="border-left-color: #22c55e;">
+      <p style="font-size: 9pt; color: #374151;">
+        No automated decisions were triggered in the last 24 hours.
+        This indicates stable operation with no risk breaches, orchestrator transitions,
+        or emergency actions.
+      </p>
+    </div>
   {% endif %}
 
-  {# Strategy Comparison Chart #}
-  <h3>Strategy Comparison</h3>
-  <div class="chart-container">
-    {% if chart_strategy_comparison %}
-      <img src="{{ chart_strategy_comparison }}" alt="Strategy Comparison Chart">
-    {% else %}
-      <p class="no-data">Insufficient data for strategy comparison chart</p>
-    {% endif %}
-  </div>
-
-  {# Orchestrator State #}
-  <h3>Strategy Orchestrator</h3>
+  {# Strategy Orchestrator State #}
+  <hr class="section-divider">
+  <h3>Current Strategy Orchestrator State</h3>
   {% if orchestrator %}
   <table>
     <thead>
@@ -758,19 +850,18 @@
         <th>Regime</th>
         <th class="text-right">Alignment</th>
         <th>Action</th>
+        <th class="text-right">Last Updated</th>
       </tr>
     </thead>
     <tbody>
       {% for o in orchestrator %}
       <tr>
-        <td>{{ o.strategy | default("Unknown") }}</td>
-        <td>
-          <span class="badge badge-blue">{{ o.asset_class | default("N/A") | upper }}</span>
-        </td>
-        <td>{{ o.regime | default("N/A") }}</td>
+        <td><strong>{{ o.strategy | default("Unknown") }}</strong></td>
+        <td><span class="badge badge-blue">{{ o.asset_class | default("N/A") | upper }}</span></td>
+        <td>{{ o.regime | default("N/A") | replace("_", " ") | title }}</td>
         <td class="numeric">
           {% set alignment = o.alignment | default(0) | float %}
-          <span class="{{ 'text-positive' if alignment >= 70 else ('text-warning' if alignment >= 40 else 'text-negative') }}">
+          <span class="{{ 'text-positive' if alignment >= 70 else ('text-warning' if alignment >= 40 else 'text-negative') }} fw-bold">
             {{ alignment | round(0) }}%
           </span>
         </td>
@@ -786,6 +877,7 @@
             <span class="badge badge-gray">{{ o.action | default("N/A") }}</span>
           {% endif %}
         </td>
+        <td class="numeric text-muted text-small">{{ o.updated_at | default("N/A") }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -797,43 +889,135 @@
 
 
 {# ════════════════════════════════════════════════════════════════════════════
-   PAGE 4: Market Analysis
+   PAGE 4: What Was Learned Today
    ════════════════════════════════════════════════════════════════════════════ #}
 <div class="page">
-  <h2>Market Analysis</h2>
+  <div class="page-header">
+    <span class="page-header-title">What Was Learned Today</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
 
-  {# Regime Information #}
-  <h3>Current Market Regime</h3>
-  <div class="exec-summary">
-    <div style="display: flex; align-items: center; gap: 4mm; margin-bottom: 3mm;">
+  <h2>What Was Learned Today</h2>
+  <p class="text-muted mb-4" style="font-size: 8pt;">
+    Key insights derived from today's trading activity, signal performance,
+    market conditions, and ML model behavior. These lessons inform future
+    strategy adjustments and parameter tuning.
+  </p>
+
+  {% if lessons_learned %}
+    {% for lesson in lessons_learned %}
+    <div class="lesson-card {{ lesson.impact | default('info') }}">
+      <div class="lesson-category">{{ lesson.category | default("General") }}</div>
+      <div class="lesson-text">{{ lesson.lesson | default("No details") }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="no-data">No lessons captured for today</p>
+  {% endif %}
+
+  <hr class="section-divider">
+
+  {# Signal Source Performance #}
+  <h3>Signal Source Attribution</h3>
+  {% if attribution and attribution.sources %}
+  <p style="font-size: 8pt; color: #374151; margin-bottom: 3mm;">
+    Performance of each signal source over the past {{ attribution.window_days | default(30) }} days.
+    Overall win rate: <strong class="{{ 'text-positive' if (attribution.overall_win_rate | default(0) | float) >= 50 else 'text-negative' }}">
+      {{ (attribution.overall_win_rate | default(0) | float) | round(1) }}%</strong>
+    across <strong>{{ attribution.total_trades | default(0) }}</strong> trades.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th class="text-right">Accuracy</th>
+        <th class="text-right">Avg Win Score</th>
+        <th class="text-right">Avg Loss Score</th>
+        <th class="text-right">Trades</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for source_name, src in attribution.sources.items() %}
+      <tr>
+        <td><strong>{{ source_name | replace("_", " ") | title }}</strong></td>
+        <td class="numeric">
+          <span class="{{ 'text-positive' if (src.accuracy | default(0) | float) >= 55 else 'text-negative' }} fw-bold">
+            {{ (src.accuracy | default(0) | float) | round(1) }}%
+          </span>
+        </td>
+        <td class="numeric text-positive">{{ (src.avg_win_score | default(0) | float) | round(1) }}</td>
+        <td class="numeric text-negative">{{ (src.avg_loss_score | default(0) | float) | round(1) }}</td>
+        <td class="numeric">{{ src.trades | default(0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No signal attribution data available</p>
+  {% endif %}
+
+  {# Signal Radar Chart #}
+  {% if chart_signal_radar %}
+  <div class="chart-row">
+    <div class="chart-container">
+      <img src="{{ chart_signal_radar }}" alt="Signal Source Radar Chart">
+    </div>
+    {% if chart_weight_comparison %}
+    <div class="chart-container">
+      <img src="{{ chart_weight_comparison }}" alt="Weight Comparison Chart">
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 5: Market Intelligence
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="page-header">
+    <span class="page-header-title">Market Intelligence</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
+
+  <h2>Market Intelligence</h2>
+
+  {# Regime Overview #}
+  <h3>Market Regime</h3>
+  <div class="exec-summary" style="border-left-color: {{ '#22c55e' if regime.dominant_regime | default('unknown') in ('strong_trend_up', 'weak_trend_up') else ('#eab308' if regime.dominant_regime | default('unknown') == 'ranging' else '#ef4444') }};">
+    <div style="display: flex; align-items: center; gap: 4mm; margin-bottom: 2mm;">
       {% set regime_css = regime.dominant_regime | default("unknown") | lower | replace(" ", "-") | replace("_", "-") %}
       <span class="regime-indicator regime-{{ regime_css }}">
-        {{ regime.dominant_regime | default("Unknown") }}
+        {{ regime.dominant_regime | default("Unknown") | replace("_", " ") | title }}
       </span>
       {% if regime and regime.avg_confidence is defined %}
-        <span class="text-muted">Confidence: {{ (regime.avg_confidence * 100) | round(1) }}%</span>
+        <span class="text-muted">
+          {{ (regime.avg_confidence * 100) | round(1) }}% confidence |
+          {{ regime.symbols_analyzed | default(0) }} symbols analyzed
+        </span>
       {% endif %}
     </div>
 
     {% if regime and regime.distribution %}
-    <h3 style="margin-top: 3mm;">Regime Distribution</h3>
-    <table>
+    <table style="margin-top: 3mm;">
       <thead>
         <tr>
           <th>Regime</th>
-          <th class="text-right">Weight</th>
-          <th style="width: 40%;">Distribution</th>
+          <th class="text-right">Count</th>
+          <th style="width: 50%;">Distribution</th>
         </tr>
       </thead>
       <tbody>
-        {% for r_name, r_pct in regime.distribution.items() %}
+        {% set total = regime.distribution.values() | sum %}
+        {% for r_name, r_count in regime.distribution.items() %}
+        {% set pct = (r_count / total * 100) if total > 0 else 0 %}
         <tr>
-          <td>{{ r_name }}</td>
-          <td class="numeric">{{ (r_pct | float) | round(1) }}%</td>
+          <td>{{ r_name | replace("_", " ") | title }}</td>
+          <td class="numeric">{{ r_count }}</td>
           <td>
             <div class="progress-bar">
-              <div class="fill {% if r_pct | float > 50 %}fill-green{% elif r_pct | float > 20 %}fill-yellow{% else %}fill-red{% endif %}"
-                   style="width: {{ r_pct | float | round(0) }}%;"></div>
+              <div class="fill fill-blue" style="width: {{ pct | round(0) }}%;"></div>
             </div>
           </td>
         </tr>
@@ -843,7 +1027,69 @@
     {% endif %}
   </div>
 
-  {# Market Opportunities #}
+  {# News Sentiment #}
+  <h3>News &amp; Sentiment</h3>
+  {% if news_intelligence and news_intelligence.sentiment_signal %}
+  <div class="two-col mb-4">
+    {% for ac, signal in news_intelligence.sentiment_signal.items() %}
+    {% if signal is mapping %}
+    <div>
+      <h4>{{ ac | upper }} Sentiment</h4>
+      <table>
+        <tbody>
+          <tr>
+            <td>Signal</td>
+            <td class="numeric {{ 'sentiment-positive' if (signal.signal | default(0) | float) > 0 else ('sentiment-negative' if (signal.signal | default(0) | float) < 0 else 'sentiment-neutral') }} fw-bold">
+              {{ (signal.signal | default(0) | float) | round(3) }}
+            </td>
+          </tr>
+          <tr>
+            <td>Label</td>
+            <td class="numeric">
+              <span class="badge {{ 'badge-green' if signal.signal_label == 'bullish' else ('badge-red' if signal.signal_label == 'bearish' else 'badge-gray') }}">
+                {{ signal.signal_label | default("neutral") }}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Conviction</td>
+            <td class="numeric">{{ (signal.conviction | default(0) | float * 100) | round(0) }}%</td>
+          </tr>
+          <tr>
+            <td>Position Modifier</td>
+            <td class="numeric">{{ (signal.position_modifier | default(1.0) | float) | round(2) }}x</td>
+          </tr>
+          <tr>
+            <td>Articles (24h)</td>
+            <td class="numeric">{{ signal.article_count | default(0) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Sentiment Trend Chart #}
+  {% if chart_sentiment_trend %}
+  <div class="chart-container">
+    <img src="{{ chart_sentiment_trend }}" alt="Sentiment Trend Chart">
+  </div>
+  {% endif %}
+
+  {# Top Themes #}
+  {% if news_intelligence and news_intelligence.top_themes %}
+  <h3>Key News Themes</h3>
+  <p style="font-size: 8.5pt; color: #374151;">
+    {% for theme in news_intelligence.top_themes %}
+    <span class="badge badge-purple" style="margin-right: 1mm; margin-bottom: 1mm;">{{ theme }}</span>
+    {% endfor %}
+  </p>
+  {% endif %}
+
+  {# Top Opportunities #}
+  <hr class="section-divider">
   <h3>Top Market Opportunities</h3>
   {% if opportunities %}
   <table>
@@ -851,6 +1097,7 @@
       <tr>
         <th>Symbol</th>
         <th>Type</th>
+        <th>Asset Class</th>
         <th class="text-right">Score</th>
         <th>Detected</th>
       </tr>
@@ -875,6 +1122,7 @@
             <span class="badge badge-gray">{{ opp.type | default("Unknown") }}</span>
           {% endif %}
         </td>
+        <td><span class="badge badge-blue">{{ opp.asset_class | default("crypto") | upper }}</span></td>
         <td class="numeric">
           <strong class="{{ 'text-positive' if (opp.score | default(0) | float) >= 75 else ('text-warning' if (opp.score | default(0) | float) >= 50 else 'text-muted') }}">
             {{ (opp.score | default(0) | float) | round(0) }}
@@ -890,90 +1138,63 @@
   {% endif %}
 
   {# Regime Timeline Chart #}
+  {% if chart_regime_timeline %}
   <h3>Regime Timeline</h3>
   <div class="chart-container">
-    {% if chart_regime_timeline %}
-      <img src="{{ chart_regime_timeline }}" alt="Regime Timeline Chart">
-    {% else %}
-      <p class="no-data">Insufficient data for regime timeline chart</p>
-    {% endif %}
+    <img src="{{ chart_regime_timeline }}" alt="Regime Timeline Chart">
   </div>
+  {% endif %}
 </div>
 
 
 {# ════════════════════════════════════════════════════════════════════════════
-   PAGE 5: What Was Learned (ML & Signal Intelligence)
+   PAGE 6: Recommended Improvements
    ════════════════════════════════════════════════════════════════════════════ #}
 <div class="page">
-  <h2>What Was Learned</h2>
+  <div class="page-header">
+    <span class="page-header-title">Recommended Improvements</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
 
-  {# ML Statistics #}
-  <h3>Machine Learning Performance</h3>
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Model Accuracy</div>
-      <div class="kpi-value {{ 'positive' if (ml.ml_accuracy | default(0) | float) >= 55 else 'negative' }}">
-        {{ (ml.ml_accuracy | default(0) | float) | round(1) }}%
+  <h2>Recommended Improvements</h2>
+  <p class="text-muted mb-4" style="font-size: 8pt;">
+    Actionable recommendations generated from performance analysis, signal attribution,
+    ML model health, news sentiment, and market regime conditions. Prioritized from
+    critical to informational.
+  </p>
+
+  {% if recommendations %}
+    {% for rec in recommendations %}
+    <div class="rec-card">
+      <div class="rec-priority">
+        <span class="badge priority-{{ rec.priority | default('info') }}">
+          {{ rec.priority | default("info") | upper }}
+        </span>
+      </div>
+      <div class="rec-content">
+        <div class="rec-source">{{ rec.source | default("System") }}</div>
+        <div class="rec-text">{{ rec.recommendation | default("No details") }}</div>
+        <span class="rec-category-tag">{{ rec.category | default("General") }}</span>
       </div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Predictions</div>
-      <div class="kpi-value neutral">{{ ml.ml_predictions_total | default(0) }}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Active Models</div>
-      <div class="kpi-value neutral">{{ ml.ml_models_count | default(0) }}</div>
-    </div>
-  </div>
-  {% if ml and ml.ml_last_trained %}
-  <p class="text-small text-muted mt-2">Last trained: {{ ml.ml_last_trained }}</p>
-  {% endif %}
-
-  <hr class="section-divider">
-
-  {# Signal Source Attribution #}
-  <h3>Signal Source Attribution</h3>
-  {% if attribution and attribution.sources %}
-  <table>
-    <thead>
-      <tr>
-        <th>Source</th>
-        <th class="text-right">Accuracy</th>
-        <th class="text-right">Avg Win Score</th>
-        <th class="text-right">Avg Loss Score</th>
-        <th class="text-right">Trades</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for source_name, src in attribution.sources.items() %}
-      <tr>
-        <td><strong>{{ source_name }}</strong></td>
-        <td class="numeric">
-          <span class="{{ 'text-positive' if (src.accuracy | default(0) | float) >= 55 else 'text-negative' }}">
-            {{ (src.accuracy | default(0) | float) | round(1) }}%
-          </span>
-        </td>
-        <td class="numeric text-positive">{{ (src.avg_win_score | default(0) | float) | round(1) }}</td>
-        <td class="numeric text-negative">{{ (src.avg_loss_score | default(0) | float) | round(1) }}</td>
-        <td class="numeric">{{ src.trades | default(0) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {% endfor %}
   {% else %}
-    <p class="no-data">No signal attribution data available</p>
+    <div class="exec-summary" style="border-left-color: #22c55e;">
+      <p style="font-size: 9pt; color: #374151;">
+        No improvement recommendations at this time. All systems operating within normal parameters.
+      </p>
+    </div>
   {% endif %}
 
+  {# Signal Weight Recommendations #}
   <hr class="section-divider">
-
-  {# Signal Weights: Current vs Recommended #}
-  <h3>Signal Weights</h3>
+  <h3>Signal Weight Analysis</h3>
   {% if weights and weights.current_weights %}
   <table>
     <thead>
       <tr>
         <th>Source</th>
-        <th class="text-right">Current</th>
+        <th class="text-right">Current Weight</th>
         <th class="text-right">Recommended</th>
         <th class="text-right">Adjustment</th>
       </tr>
@@ -983,9 +1204,9 @@
       {% set recommended_w = weights.recommended_weights[source_name] | default(current_w) %}
       {% set adjustment = weights.adjustments[source_name] | default(0) %}
       <tr>
-        <td><strong>{{ source_name }}</strong></td>
+        <td><strong>{{ source_name | replace("_", " ") | title }}</strong></td>
         <td class="numeric">{{ (current_w | float) | round(3) }}</td>
-        <td class="numeric text-accent">{{ (recommended_w | float) | round(3) }}</td>
+        <td class="numeric text-accent fw-bold">{{ (recommended_w | float) | round(3) }}</td>
         <td class="numeric {{ 'text-positive' if (adjustment | float) > 0 else ('text-negative' if (adjustment | float) < 0 else '') }}">
           {{ "+" if (adjustment | float) > 0 else "" }}{{ (adjustment | float) | round(3) }}
         </td>
@@ -996,50 +1217,277 @@
   {% else %}
     <p class="no-data">No weight recommendation data available</p>
   {% endif %}
+</div>
 
-  {# Signal Radar Chart #}
-  <h3>Signal Source Radar</h3>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 7: Portfolio & Risk
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="page-header">
+    <span class="page-header-title">Portfolio & Risk</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
+
+  <h2>Portfolio &amp; Risk Overview</h2>
+
+  <div class="two-col">
+    <div>
+      <h3>Risk Metrics</h3>
+      <table>
+        <tbody>
+          <tr>
+            <td>Current Equity</td>
+            <td class="numeric fw-bold">${{ "{:,.2f}".format(risk.equity | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Peak Equity</td>
+            <td class="numeric">${{ "{:,.2f}".format(risk.peak_equity | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Drawdown</td>
+            <td class="numeric {{ 'text-negative fw-bold' if (risk.drawdown | default(0) | float) > 5 else '' }}">
+              {{ (risk.drawdown | default(0) | float) | round(2) }}%
+            </td>
+          </tr>
+          <tr>
+            <td>Daily P&L</td>
+            <td class="numeric {{ 'text-positive' if (risk.daily_pnl | default(0) | float) >= 0 else 'text-negative' }} fw-bold">
+              {{ "+" if (risk.daily_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(risk.daily_pnl | default(0) | float) }}
+            </td>
+          </tr>
+          <tr>
+            <td>VaR (95%)</td>
+            <td class="numeric">${{ "{:,.2f}".format(risk.var_95 | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>CVaR (95%)</td>
+            <td class="numeric">${{ "{:,.2f}".format(risk.cvar_95 | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Trading Status</td>
+            <td class="numeric">
+              {% if risk and risk.is_halted %}
+                <span class="badge badge-red">Halted</span>
+              {% else %}
+                <span class="badge badge-green">Active</span>
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Portfolio Summary</h3>
+      <table>
+        <tbody>
+          <tr>
+            <td>Total Holdings</td>
+            <td class="numeric">{{ portfolio.count | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Total Value</td>
+            <td class="numeric fw-bold">${{ "{:,.2f}".format(portfolio.total_value | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Total Cost</td>
+            <td class="numeric">${{ "{:,.2f}".format(portfolio.total_cost | default(0) | float) }}</td>
+          </tr>
+          <tr>
+            <td>Unrealized P&L</td>
+            <td class="numeric {{ 'text-positive' if (portfolio.unrealized_pnl | default(0) | float) >= 0 else 'text-negative' }} fw-bold">
+              {{ "+" if (portfolio.unrealized_pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(portfolio.unrealized_pnl | default(0) | float) }}
+            </td>
+          </tr>
+          <tr>
+            <td>Open Positions</td>
+            <td class="numeric">{{ risk.open_positions | default(0) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="mt-4">System Status</h3>
+      <table>
+        <tbody>
+          <tr>
+            <td>Scheduler</td>
+            <td class="numeric">
+              {% if system and system.scheduler_running %}
+                <span class="badge badge-green">Running</span>
+              {% else %}
+                <span class="badge badge-red">Stopped</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Active Tasks</td>
+            <td class="numeric">{{ system.active_tasks | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Jobs Completed</td>
+            <td class="numeric">{{ system.total_jobs_completed | default(0) }}</td>
+          </tr>
+          <tr>
+            <td>Jobs Failed</td>
+            <td class="numeric {{ 'text-negative' if (system.total_jobs_failed | default(0) | int) > 0 else '' }}">
+              {{ system.total_jobs_failed | default(0) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Charts: Equity Curve and Drawdown #}
+  <h3 class="mt-4">Equity Curve</h3>
   <div class="chart-container">
-    {% if chart_signal_radar %}
-      <img src="{{ chart_signal_radar }}" alt="Signal Source Radar Chart">
+    {% if chart_equity_curve %}
+      <img src="{{ chart_equity_curve }}" alt="Equity Curve">
     {% else %}
-      <p class="no-data">Insufficient data for signal radar chart</p>
+      <p class="no-data">Insufficient data for equity curve chart</p>
+    {% endif %}
+  </div>
+
+  <h3>Drawdown</h3>
+  <div class="chart-container">
+    {% if chart_drawdown %}
+      <img src="{{ chart_drawdown }}" alt="Drawdown Chart">
+    {% else %}
+      <p class="no-data">Insufficient data for drawdown chart</p>
     {% endif %}
   </div>
 </div>
 
 
 {# ════════════════════════════════════════════════════════════════════════════
-   PAGE 6: Historical Performance
+   PAGE 8: Strategy Performance
    ════════════════════════════════════════════════════════════════════════════ #}
 <div class="page">
+  <div class="page-header">
+    <span class="page-header-title">Strategy Performance</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
+
+  <h2>Strategy Performance</h2>
+
+  {# Strategy Breakdown Table #}
+  <h3>Strategy Breakdown</h3>
+  {% if strategy_breakdown %}
+  <table>
+    <thead>
+      <tr>
+        <th>Strategy</th>
+        <th>Source</th>
+        <th class="text-right">Trades</th>
+        <th class="text-right">Won/Lost</th>
+        <th class="text-right">P&L</th>
+        <th class="text-right">Win Rate</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in strategy_breakdown %}
+      <tr>
+        <td><strong>{{ s.name | default("Unknown") }}</strong></td>
+        <td><span class="badge badge-gray">{{ s.source | default("N/A") }}</span></td>
+        <td class="numeric">{{ s.trade_count | default(s.trades | default(0)) }}</td>
+        <td class="numeric">
+          <span class="text-positive">{{ s.winning_trades | default(0) }}</span> /
+          <span class="text-negative">{{ s.losing_trades | default(0) }}</span>
+        </td>
+        <td class="numeric {{ 'text-positive' if (s.pnl | default(0) | float) >= 0 else 'text-negative' }} fw-bold">
+          {{ "+" if (s.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(s.pnl | default(0) | float) }}
+        </td>
+        {% set tc = s.trade_count | default(s.trades | default(0)) | int %}
+        {% set wins = s.winning_trades | default(0) | int %}
+        {% set wr = (wins / tc * 100) if tc > 0 else 0.0 %}
+        <td class="numeric {{ 'text-positive' if wr >= 50 else 'text-negative' }}">{{ wr | round(1) }}%</td>
+        <td>
+          {% if s.running is defined and s.running %}
+            <span class="badge badge-green">Running</span>
+          {% elif s.running is defined and not s.running %}
+            <span class="badge badge-red">Stopped</span>
+          {% else %}
+            <span class="badge badge-gray">Unknown</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="no-data">No strategy data available</p>
+  {% endif %}
+
+  {# Strategy Comparison Chart #}
+  {% if chart_strategy_comparison %}
+  <h3>Strategy Comparison</h3>
+  <div class="chart-container">
+    <img src="{{ chart_strategy_comparison }}" alt="Strategy Comparison Chart">
+  </div>
+  {% endif %}
+
+  {# Recent News #}
+  {% if news_intelligence and news_intelligence.articles %}
+  <hr class="section-divider">
+  <h3>Recent News Headlines</h3>
+  {% for article in news_intelligence.articles[:8] %}
+  <div class="article-item">
+    <div class="article-title">{{ article.title | default("Untitled") }}</div>
+    <div class="article-meta">
+      <span>{{ article.source | default("Unknown") }}</span>
+      {% if article.sentiment_score is defined and article.sentiment_score is not none %}
+        &nbsp;|&nbsp;
+        <span class="{{ 'sentiment-positive' if (article.sentiment_score | float) > 0.1 else ('sentiment-negative' if (article.sentiment_score | float) < -0.1 else 'sentiment-neutral') }}">
+          Sentiment: {{ (article.sentiment_score | float) | round(2) }}
+        </span>
+      {% endif %}
+      {% if article.published_at is defined %}
+        &nbsp;|&nbsp; {{ article.published_at | default("") }}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════
+   PAGE 9: Historical Performance
+   ════════════════════════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="page-header">
+    <span class="page-header-title">Historical Performance</span>
+    <span class="page-header-date">{{ report_date | default("N/A") }}</span>
+  </div>
+
   <h2>Historical Performance</h2>
 
-  {# Daily P&L Table (7 days) #}
-  <h3>Daily P&L (Last 7 Days)</h3>
+  {# Daily P&L Table #}
+  <h3>Daily P&L</h3>
   {% if daily_pnl_history %}
   <table>
     <thead>
       <tr>
         <th>Date</th>
-        <th class="text-right">Equity</th>
+        <th class="text-right">Open Equity</th>
+        <th class="text-right">Close Equity</th>
         <th class="text-right">P&L</th>
-        <th class="text-right">Drawdown</th>
-        <th class="text-right">Trades</th>
+        <th class="text-right">P&L %</th>
       </tr>
     </thead>
     <tbody>
-      {% for day in daily_pnl_history %}
+      {% for day in daily_pnl_history[-14:] %}
       <tr>
         <td>{{ day.date | default("N/A") }}</td>
-        <td class="numeric">${{ "{:,.2f}".format(day.equity | default(0) | float) }}</td>
-        <td class="numeric {{ 'text-positive' if (day.pnl | default(0) | float) >= 0 else 'text-negative' }}">
+        <td class="numeric">${{ "{:,.2f}".format(day.open_equity | default(0) | float) }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(day.close_equity | default(0) | float) }}</td>
+        <td class="numeric {{ 'text-positive' if (day.pnl | default(0) | float) >= 0 else 'text-negative' }} fw-bold">
           {{ "+" if (day.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(day.pnl | default(0) | float) }}
         </td>
-        <td class="numeric {{ 'text-negative' if (day.drawdown_pct | default(0) | float) > 5 else '' }}">
-          {{ (day.drawdown_pct | default(0) | float) | round(2) }}%
+        <td class="numeric {{ 'text-positive' if (day.pnl_pct | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (day.pnl_pct | default(0) | float) >= 0 else "" }}{{ (day.pnl_pct | default(0) | float) | round(2) }}%
         </td>
-        <td class="numeric">{{ day.trades | default(0) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -1048,32 +1496,41 @@
     <p class="no-data">No daily P&L history available</p>
   {% endif %}
 
+  {# Daily P&L Bar Chart #}
+  {% if chart_daily_pnl %}
+  <div class="chart-container">
+    <img src="{{ chart_daily_pnl }}" alt="Daily P&L Bar Chart">
+  </div>
+  {% endif %}
+
   <hr class="section-divider">
 
-  {# Weekly P&L Table (4 weeks) #}
-  <h3>Weekly Summary (Last 4 Weeks)</h3>
+  {# Weekly P&L Table #}
+  <h3>Weekly Summary</h3>
   {% if weekly_pnl_history %}
   <table>
     <thead>
       <tr>
-        <th>Week</th>
-        <th class="text-right">Start Equity</th>
-        <th class="text-right">End Equity</th>
+        <th>Week Starting</th>
+        <th class="text-right">Days</th>
+        <th class="text-right">Open Equity</th>
+        <th class="text-right">Close Equity</th>
         <th class="text-right">P&L</th>
-        <th class="text-right">Max Drawdown</th>
+        <th class="text-right">P&L %</th>
       </tr>
     </thead>
     <tbody>
-      {% for week in weekly_pnl_history %}
+      {% for week in weekly_pnl_history[-8:] %}
       <tr>
-        <td>{{ week.week | default("N/A") }}</td>
-        <td class="numeric">${{ "{:,.2f}".format(week.start_equity | default(0) | float) }}</td>
-        <td class="numeric">${{ "{:,.2f}".format(week.end_equity | default(0) | float) }}</td>
-        <td class="numeric {{ 'text-positive' if (week.pnl | default(0) | float) >= 0 else 'text-negative' }}">
+        <td>{{ week.week_start | default("N/A") }}</td>
+        <td class="numeric">{{ week.days | default(0) }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(week.open_equity | default(0) | float) }}</td>
+        <td class="numeric">${{ "{:,.2f}".format(week.close_equity | default(0) | float) }}</td>
+        <td class="numeric {{ 'text-positive' if (week.pnl | default(0) | float) >= 0 else 'text-negative' }} fw-bold">
           {{ "+" if (week.pnl | default(0) | float) >= 0 else "" }}${{ "{:,.2f}".format(week.pnl | default(0) | float) }}
         </td>
-        <td class="numeric {{ 'text-negative' if (week.max_drawdown | default(0) | float) > 5 else '' }}">
-          {{ (week.max_drawdown | default(0) | float) | round(2) }}%
+        <td class="numeric {{ 'text-positive' if (week.pnl_pct | default(0) | float) >= 0 else 'text-negative' }}">
+          {{ "+" if (week.pnl_pct | default(0) | float) >= 0 else "" }}{{ (week.pnl_pct | default(0) | float) | round(2) }}%
         </td>
       </tr>
       {% endfor %}
@@ -1082,16 +1539,6 @@
   {% else %}
     <p class="no-data">No weekly P&L history available</p>
   {% endif %}
-
-  {# Daily P&L Bar Chart #}
-  <h3>Daily P&L Chart</h3>
-  <div class="chart-container">
-    {% if chart_daily_pnl %}
-      <img src="{{ chart_daily_pnl }}" alt="Daily P&L Bar Chart">
-    {% else %}
-      <p class="no-data">Insufficient data for daily P&L chart</p>
-    {% endif %}
-  </div>
 </div>
 
 </body>

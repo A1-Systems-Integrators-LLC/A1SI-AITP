@@ -120,6 +120,7 @@ class TaskScheduler:
                     "description": cfg.get("description", ""),
                     "task_type": cfg["task_type"],
                     "interval_seconds": cfg.get("interval_seconds"),
+                    "cron_schedule": cfg.get("cron_schedule", ""),
                     "params": cfg.get("params", {}),
                 },
             )
@@ -146,11 +147,23 @@ class TaskScheduler:
                     WorkflowStep.objects.create(workflow=wf, **step_data)
 
     def _schedule_active_tasks(self) -> None:
-        """Add APScheduler jobs for all active tasks and enabled workflows."""
+        """Add APScheduler jobs for all active tasks and enabled workflows.
+
+        Tasks with a cron_schedule use CronTrigger (fixed clock time).
+        Tasks with interval_seconds use IntervalTrigger (periodic).
+        cron_schedule format: "minute hour day month dow" or
+        "minute hour day month dow|timezone" (e.g. "0 17 * * *|US/Eastern").
+        """
         from core.models import ScheduledTask
 
         for task in ScheduledTask.objects.filter(status=ScheduledTask.ACTIVE):
-            if task.interval_seconds and task.interval_seconds > 0:
+            trigger_added = False
+
+            # Prefer cron_schedule over interval_seconds
+            if task.cron_schedule:
+                trigger_added = self._add_cron_job(task)
+
+            if not trigger_added and task.interval_seconds and task.interval_seconds > 0:
                 self._scheduler.add_job(
                     self._execute_task,
                     "interval",
@@ -159,6 +172,9 @@ class TaskScheduler:
                     args=[task.id],
                     replace_existing=True,
                 )
+                trigger_added = True
+
+            if trigger_added:
                 # Update next_run_at from APScheduler
                 job = self._scheduler.get_job(task.id)
                 nrt = getattr(job, "next_run_time", None) if job else None
@@ -187,6 +203,54 @@ class TaskScheduler:
                     "Scheduled workflow %s (%s) every %ds, next: %s",
                     wf.name, wf.id, wf.schedule_interval_seconds, nrt,
                 )
+
+    def _add_cron_job(self, task: Any) -> bool:
+        """Parse cron_schedule and add a CronTrigger job. Returns True on success."""
+        from apscheduler.triggers.cron import CronTrigger
+
+        try:
+            cron_str = task.cron_schedule.strip()
+            tz = "UTC"
+
+            # Support "cron_expr|timezone" format
+            if "|" in cron_str:
+                cron_str, tz = cron_str.rsplit("|", 1)
+                tz = tz.strip()
+
+            parts = cron_str.split()
+            if len(parts) != 5:
+                logger.error(
+                    "Invalid cron_schedule for %s: %r (need 5 fields)",
+                    task.id, task.cron_schedule,
+                )
+                return False
+
+            trigger = CronTrigger(
+                minute=parts[0],
+                hour=parts[1],
+                day=parts[2],
+                month=parts[3],
+                day_of_week=parts[4],
+                timezone=tz,
+            )
+            self._scheduler.add_job(
+                self._execute_task,
+                trigger,
+                id=task.id,
+                args=[task.id],
+                replace_existing=True,
+            )
+            logger.info(
+                "Scheduled %s with cron '%s' tz=%s",
+                task.id, cron_str, tz,
+            )
+            return True
+        except Exception:
+            logger.exception(
+                "Failed to parse cron_schedule for %s: %r",
+                task.id, task.cron_schedule,
+            )
+            return False
 
     def _active_task_count(self) -> int:
         from core.models import ScheduledTask
@@ -353,21 +417,27 @@ class TaskScheduler:
         task.status = ScheduledTask.ACTIVE
         task.save(update_fields=["status", "updated_at"])
 
-        if self._scheduler and task.interval_seconds and task.interval_seconds > 0:
-            self._scheduler.add_job(
-                self._execute_task,
-                "interval",
-                seconds=task.interval_seconds,
-                id=task_id,
-                args=[task_id],
-                replace_existing=True,
-            )
-            apjob = self._scheduler.get_job(task_id)
-            nrt = getattr(apjob, "next_run_time", None) if apjob else None
-            if nrt:
-                ScheduledTask.objects.filter(id=task_id).update(
-                    next_run_at=nrt,
+        if self._scheduler:
+            re_added = False
+            if task.cron_schedule:
+                re_added = self._add_cron_job(task)
+            if not re_added and task.interval_seconds and task.interval_seconds > 0:
+                self._scheduler.add_job(
+                    self._execute_task,
+                    "interval",
+                    seconds=task.interval_seconds,
+                    id=task_id,
+                    args=[task_id],
+                    replace_existing=True,
                 )
+                re_added = True
+            if re_added:
+                apjob = self._scheduler.get_job(task_id)
+                nrt = getattr(apjob, "next_run_time", None) if apjob else None
+                if nrt:
+                    ScheduledTask.objects.filter(id=task_id).update(
+                        next_run_at=nrt,
+                    )
 
         logger.info("Task %s resumed", task_id)
 

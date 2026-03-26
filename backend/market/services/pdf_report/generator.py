@@ -1,4 +1,9 @@
-"""PDF report generator — orchestrates data collection, charts, and rendering."""
+"""PDF report generator — orchestrates data collection, charts, and rendering.
+
+Enhanced version: produces a comprehensive daily intelligence report with
+team assessments, decision logs, market intelligence, lessons learned,
+and improvement recommendations. Light/print-friendly theme.
+"""
 
 import logging
 from datetime import datetime, timezone
@@ -31,52 +36,34 @@ class PDFReportGenerator:
         out.mkdir(parents=True, exist_ok=True)
 
         # 1. Collect data
-        logger.info("Collecting report data (portfolio=%d, lookback=%dd)", portfolio_id, lookback_days)
+        logger.info(
+            "Collecting report data (portfolio=%d, lookback=%dd)",
+            portfolio_id, lookback_days,
+        )
         data = PDFReportDataCollector.collect(portfolio_id, lookback_days)
 
         # 2. Render charts
         logger.info("Rendering charts")
         charts = {}
-        try:
-            charts["chart_equity_curve"] = ReportChartRenderer.equity_curve(
-                data.get("equity_history", [])
-            )
-        except Exception as e:
-            logger.warning("Equity curve chart failed: %s", e)
-            charts["chart_equity_curve"] = ""
 
-        try:
-            charts["chart_drawdown"] = ReportChartRenderer.drawdown_chart(
-                data.get("equity_history", [])
-            )
-        except Exception as e:
-            logger.warning("Drawdown chart failed: %s", e)
-            charts["chart_drawdown"] = ""
+        # Existing charts
+        charts["chart_equity_curve"] = _render_chart(
+            ReportChartRenderer.equity_curve, data.get("equity_history", []),
+        )
+        charts["chart_drawdown"] = _render_chart(
+            ReportChartRenderer.drawdown_chart, data.get("equity_history", []),
+        )
+        charts["chart_daily_pnl"] = _render_chart(
+            ReportChartRenderer.daily_pnl_bars, data.get("daily_pnl_history", []),
+        )
+        charts["chart_strategy_comparison"] = _render_chart(
+            ReportChartRenderer.strategy_comparison, data.get("strategy_breakdown", []),
+        )
+        charts["chart_regime_timeline"] = _render_chart(
+            ReportChartRenderer.regime_timeline, data.get("regime_history", []),
+        )
 
-        try:
-            charts["chart_daily_pnl"] = ReportChartRenderer.daily_pnl_bars(
-                data.get("daily_pnl_history", [])
-            )
-        except Exception as e:
-            logger.warning("Daily P&L chart failed: %s", e)
-            charts["chart_daily_pnl"] = ""
-
-        try:
-            charts["chart_strategy_comparison"] = ReportChartRenderer.strategy_comparison(
-                data.get("strategy_breakdown", [])
-            )
-        except Exception as e:
-            logger.warning("Strategy comparison chart failed: %s", e)
-            charts["chart_strategy_comparison"] = ""
-
-        try:
-            charts["chart_regime_timeline"] = ReportChartRenderer.regime_timeline(
-                data.get("regime_history", [])
-            )
-        except Exception as e:
-            logger.warning("Regime timeline chart failed: %s", e)
-            charts["chart_regime_timeline"] = ""
-
+        # Signal radar
         try:
             attribution = data.get("attribution", {})
             sources = attribution.get("sources", {})
@@ -84,6 +71,21 @@ class PDFReportGenerator:
         except Exception as e:
             logger.warning("Signal radar chart failed: %s", e)
             charts["chart_signal_radar"] = ""
+
+        # NEW: Sentiment trend chart
+        charts["chart_sentiment_trend"] = _render_chart(
+            ReportChartRenderer.sentiment_trend, data.get("sentiment_history", []),
+        )
+
+        # NEW: Team assessment summary chart
+        charts["chart_team_assessment"] = _render_chart(
+            ReportChartRenderer.team_assessment_summary, data.get("team_assessments", {}),
+        )
+
+        # NEW: Weight comparison chart
+        charts["chart_weight_comparison"] = _render_chart(
+            ReportChartRenderer.weight_comparison, data.get("weights", {}),
+        )
 
         # 3. Render HTML template
         logger.info("Rendering HTML template")
@@ -116,6 +118,15 @@ class PDFReportGenerator:
         _cleanup_old_reports(out, MAX_REPORTS_KEPT)
 
         return pdf_path
+
+
+def _render_chart(renderer_fn: callable, data: object) -> str:
+    """Safely render a chart, returning empty string on failure."""
+    try:
+        return renderer_fn(data)
+    except Exception as e:
+        logger.warning("Chart render failed (%s): %s", renderer_fn.__name__, e)
+        return ""
 
 
 def _render_template(context: dict) -> str:

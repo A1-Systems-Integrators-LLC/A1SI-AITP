@@ -588,9 +588,10 @@ SCHEDULED_TASKS = {
     },
     "pdf_report_daily": {
         "name": "Daily PDF Report",
-        "description": "Generate daily PDF intelligence report at midnight UTC",
+        "description": "Generate daily PDF intelligence report at 5 PM Eastern",
         "task_type": "pdf_report",
-        "interval_seconds": 86400,
+        "interval_seconds": None,
+        "cron_schedule": "0 17 * * *|US/Eastern",
         "params": {},
     },
 }

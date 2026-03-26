@@ -16,6 +16,11 @@ class ScheduledTask(models.Model):
     task_type = models.CharField(max_length=50, db_index=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
     interval_seconds = models.IntegerField(null=True, blank=True)
+    cron_schedule = models.CharField(
+        max_length=100, default="", blank=True,
+        help_text="Cron expression (5-field) with optional timezone, "
+                  "e.g. '0 17 * * *|US/Eastern'. Takes precedence over interval_seconds.",
+    )
     params = models.JSONField(default=dict, blank=True)
     last_run_at = models.DateTimeField(null=True, blank=True)
     last_run_status = models.CharField(max_length=20, default="", blank=True)
