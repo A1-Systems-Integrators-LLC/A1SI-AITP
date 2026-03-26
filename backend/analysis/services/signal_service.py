@@ -590,7 +590,7 @@ class SignalService:
             try:
                 ensure_platform_imports()
                 from common.data_pipeline.pipeline import load_funding_rates
-                fr = load_funding_rates()
+                fr = load_funding_rates("BTC/USDT")
                 sources["funding"] = {
                     "status": "ok" if fr is not None and not fr.empty else "no_data",
                     "latency_ms": 0,
