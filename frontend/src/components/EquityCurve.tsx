@@ -6,6 +6,7 @@ import {
   type IChartApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { useTheme } from "../hooks/useTheme";
 
 interface Trade {
   profit_abs?: number;
@@ -22,22 +23,28 @@ interface EquityCurveProps {
 export function EquityCurve({ trades, initialBalance = 10000, height = 300 }: EquityCurveProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current || trades.length === 0) return;
 
+    const isDark = theme !== "light";
+    const bg = isDark ? "#1e293b" : "#ffffff";
+    const text = isDark ? "#94a3b8" : "#475569";
+    const grid = isDark ? "#334155" : "#e2e8f0";
+
     const chart = createChart(containerRef.current, {
       height,
       layout: {
-        background: { color: "#1e293b" },
-        textColor: "#94a3b8",
+        background: { color: bg },
+        textColor: text,
       },
       grid: {
-        vertLines: { color: "#334155" },
-        horzLines: { color: "#334155" },
+        vertLines: { color: grid },
+        horzLines: { color: grid },
       },
-      rightPriceScale: { borderColor: "#334155" },
-      timeScale: { borderColor: "#334155" },
+      rightPriceScale: { borderColor: grid },
+      timeScale: { borderColor: grid },
     });
 
     // Sort trades by close date
@@ -104,7 +111,7 @@ export function EquityCurve({ trades, initialBalance = 10000, height = 300 }: Eq
       chart.remove();
       chartRef.current = null;
     };
-  }, [trades, initialBalance, height]);
+  }, [trades, initialBalance, height, theme]);
 
   if (trades.length === 0) return null;
 

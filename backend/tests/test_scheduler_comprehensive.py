@@ -57,7 +57,7 @@ class TestRegistryCompleteness:
     }
 
     def test_registry_count(self):
-        assert len(TASK_REGISTRY) == 31
+        assert len(TASK_REGISTRY) == 32
 
     def test_all_expected_types_present(self):
         assert set(TASK_REGISTRY.keys()) == self.EXPECTED_TYPES

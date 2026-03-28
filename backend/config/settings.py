@@ -147,7 +147,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ── Session security ─────────────────────────────────────────
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_COOKIE_AGE = 1800  # 30 minutes (financial platform — minimize exposure window)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -176,7 +176,7 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 # Content-Security-Policy via middleware header
 CSP_DEFAULT_SRC = "'self'"
 CSP_SCRIPT_SRC = "'self'"
-CSP_STYLE_SRC = "'self' 'unsafe-inline'"
+CSP_STYLE_SRC = "'self'"
 CSP_IMG_SRC = "'self' data:"
 CSP_CONNECT_SRC = "'self' ws: wss:"
 CSP_OBJECT_SRC = "'none'"
@@ -332,6 +332,15 @@ SCHEDULER_MAX_WORKERS = int(os.environ.get("SCHEDULER_MAX_WORKERS", "2"))
 
 NEWSAPI_KEY = os.environ.get("NEWSAPI_KEY", "")
 METRICS_AUTH_TOKEN = os.environ.get("METRICS_AUTH_TOKEN", "")
+
+# ── Internal API authentication ──────────────────────────────
+# HMAC secret for Freqtrade/NautilusTrader → Django internal API calls.
+# When set, internal endpoints verify X-Internal-Signature header.
+# When empty, internal endpoints accept requests from INTERNAL_API_ALLOWED_IPS only.
+INTERNAL_API_SECRET = os.environ.get("INTERNAL_API_SECRET", "")
+INTERNAL_API_ALLOWED_IPS = os.environ.get(
+    "INTERNAL_API_ALLOWED_IPS", "127.0.0.1,::1,172.17.0.1",
+).split(",")
 
 SCHEDULED_TASKS = {
     "data_refresh_crypto": {
@@ -592,6 +601,14 @@ SCHEDULED_TASKS = {
         "task_type": "pdf_report",
         "interval_seconds": None,
         "cron_schedule": "0 17 * * *|US/Eastern",
+        "params": {},
+    },
+    "db_backup_daily": {
+        "name": "Daily Database Backup",
+        "description": "SQLite backup with compression at 2 AM Eastern",
+        "task_type": "db_backup",
+        "interval_seconds": None,
+        "cron_schedule": "0 2 * * *|US/Eastern",
         "params": {},
     },
 }

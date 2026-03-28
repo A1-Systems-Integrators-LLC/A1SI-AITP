@@ -9,6 +9,18 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { AssetClass, OHLCVData } from "../types";
+import { useTheme } from "../hooks/useTheme";
+
+function getChartColors(theme: string) {
+  const isDark = theme !== "light";
+  return {
+    bg: isDark ? "#1e293b" : "#ffffff",
+    text: isDark ? "#94a3b8" : "#475569",
+    grid: isDark ? "#334155" : "#e2e8f0",
+    up: "#22c55e",
+    down: "#ef4444",
+  };
+}
 
 const INDICATOR_COLORS: Record<string, string> = {
   sma_21: "#f59e0b",
@@ -47,21 +59,23 @@ export function PriceChart({
   const paneContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const paneChartRef = useRef<IChartApi | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const priceDecimals = assetClass === "forex" ? 5 : 2;
+    const colors = getChartColors(theme);
 
     const chart = createChart(containerRef.current, {
       height,
       layout: {
-        background: { color: "#1e293b" },
-        textColor: "#94a3b8",
+        background: { color: colors.bg },
+        textColor: colors.text,
       },
       grid: {
-        vertLines: { color: "#334155" },
-        horzLines: { color: "#334155" },
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
       },
       localization: {
         priceFormatter: (price: number) => price.toFixed(priceDecimals),
@@ -69,12 +83,12 @@ export function PriceChart({
     });
 
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderDownColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
+      upColor: colors.up,
+      downColor: colors.down,
+      borderDownColor: colors.down,
+      borderUpColor: colors.up,
+      wickDownColor: colors.down,
+      wickUpColor: colors.up,
     });
 
     const chartData: CandlestickData[] = data.map((d) => ({
@@ -116,12 +130,12 @@ export function PriceChart({
       paneChart = createChart(paneContainerRef.current, {
         height: 150,
         layout: {
-          background: { color: "#1e293b" },
-          textColor: "#94a3b8",
+          background: { color: colors.bg },
+          textColor: colors.text,
         },
         grid: {
-          vertLines: { color: "#334155" },
-          horzLines: { color: "#334155" },
+          vertLines: { color: colors.grid },
+          horzLines: { color: colors.grid },
         },
       });
 
@@ -166,7 +180,7 @@ export function PriceChart({
         paneChartRef.current = null;
       }
     };
-  }, [data, height, indicatorData, overlayIndicators, paneIndicators, assetClass]);
+  }, [data, height, indicatorData, overlayIndicators, paneIndicators, assetClass, theme]);
 
   return (
     <div>

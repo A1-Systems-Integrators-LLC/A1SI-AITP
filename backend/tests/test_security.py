@@ -61,7 +61,7 @@ class TestSecurity:
         """Verify AuditMiddleware fires on POST requests."""
         from unittest.mock import patch
 
-        with patch("core.middleware.AuditMiddleware._log_async") as mock_log:
+        with patch("core.middleware.AuditMiddleware._enqueue") as mock_log:
             authenticated_client.post(
                 "/api/portfolios/",
                 {"name": "Audit Test"},

@@ -1702,6 +1702,10 @@ paths:
   /api/risk/{portfolio_id}/check-trade/:
     post:
       operationId: risk_check_trade_create
+      description: |-
+        Internal endpoint for Freqtrade/NautilusTrader risk gate calls.
+
+        Secured by HMAC signature + IP allowlist (see core.internal_auth).
       parameters:
       - in: path
         name: portfolio_id
@@ -2262,7 +2266,7 @@ paths:
   /api/signals/{symbol}/entry-check/:
     post:
       operationId: signals_entry_check_create
-      description: Entry gate for Freqtrade — unauthenticated (internal calls).
+      description: Entry gate for Freqtrade — internal calls only.
       parameters:
       - in: path
         name: symbol
@@ -2277,9 +2281,6 @@ paths:
             schema:
               $ref: '#/components/schemas/EntryCheckRequest'
         required: true
-      security:
-      - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2436,8 +2437,6 @@ paths:
           - forex
       tags:
       - Signals
-      security:
-      - cookieAuth: []
       responses:
         '200':
           content:
@@ -2449,8 +2448,7 @@ paths:
   /api/signals/record/:
     post:
       operationId: signals_record_create
-      description: Record signal attribution at trade entry — unauthenticated (Freqtrade
-        calls).
+      description: Record signal attribution at trade entry — internal calls only.
       tags:
       - Signals
       requestBody:
@@ -2459,9 +2457,6 @@ paths:
             schema:
               $ref: '#/components/schemas/RecordAttributionRequest'
         required: true
-      security:
-      - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2475,7 +2470,7 @@ paths:
       description: |-
         Which strategies should be active given current regime conditions.
 
-        Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
+        Internal — called by Freqtrade bot_loop_start() and frontend.
       parameters:
       - in: query
         name: asset_class
@@ -2488,9 +2483,6 @@ paths:
         description: Asset class
       tags:
       - Signals
-      security:
-      - cookieAuth: []
-      - {}
       responses:
         '200':
           content:

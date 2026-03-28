@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from ccxt.base.errors import ExchangeNotAvailable, NetworkError, RequestTimeout
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -53,6 +54,8 @@ _thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="indicator")
 
 
 class NewsListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=NewsArticleSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
@@ -67,6 +70,8 @@ class NewsListView(APIView):
 
 
 class NewsSentimentView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=NewsSentimentSummarySerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
@@ -80,6 +85,8 @@ class NewsSentimentView(APIView):
 
 
 class SentimentSignalView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=SentimentSignalSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.news import NewsService
@@ -98,6 +105,8 @@ class SentimentSignalView(APIView):
 
 
 class NewsFetchView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=NewsFetchResponseSerializer, tags=["Market"])
     def post(self, request: Request) -> Response:
         from market.services.news import NewsService
@@ -124,6 +133,8 @@ class NewsFetchView(APIView):
 
 
 class MarketStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=MarketStatusSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         asset_class = request.query_params.get("asset_class", "crypto")
@@ -146,6 +157,8 @@ class MarketStatusView(APIView):
 
 
 class ExchangeConfigListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ExchangeConfigSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         configs = ExchangeConfig.objects.all()
@@ -165,6 +178,8 @@ class ExchangeConfigListView(APIView):
 
 
 class ExchangeConfigDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def _get_object(self, pk: int) -> ExchangeConfig | None:
         try:
             return ExchangeConfig.objects.get(pk=pk)
@@ -202,6 +217,8 @@ class ExchangeConfigDetailView(APIView):
 
 
 class ExchangeConfigTestView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ExchangeTestResultSerializer, tags=["Market"])
     def post(self, request: Request, pk: int) -> Response:
         import ccxt.async_support as ccxt
@@ -263,6 +280,8 @@ class ExchangeConfigTestView(APIView):
 
 class ExchangeConfigRotateView(APIView):
     """Rotate exchange API keys with validation."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(responses=KeyRotationResponseSerializer, tags=["Market"])
     def post(self, request: Request, pk: int) -> Response:
@@ -355,6 +374,8 @@ class ExchangeConfigRotateView(APIView):
 
 
 class DataSourceConfigListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DataSourceConfigSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         sources = DataSourceConfig.objects.select_related("exchange_config").all()
@@ -375,6 +396,8 @@ class DataSourceConfigListView(APIView):
 
 
 class DataSourceConfigDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def _get_object(self, pk: int):
         try:
             return DataSourceConfig.objects.select_related("exchange_config").get(pk=pk)
@@ -415,6 +438,8 @@ class DataSourceConfigDetailView(APIView):
 
 
 class ExchangeListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ExchangeInfoSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.exchange import ExchangeService
@@ -424,6 +449,8 @@ class ExchangeListView(APIView):
 
 
 class TickerView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=TickerDataSerializer, tags=["Market"])
     def get(self, request: Request, symbol: str) -> Response:
         from asgiref.sync import async_to_sync
@@ -446,6 +473,8 @@ class TickerView(APIView):
 
 
 class TickerListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=TickerDataSerializer(many=True),
         tags=["Market"],
@@ -506,6 +535,8 @@ class TickerListView(APIView):
 
 
 class OHLCVView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=OHLCVDataSerializer(many=True),
         tags=["Market"],
@@ -556,6 +587,8 @@ class OHLCVView(APIView):
 
 
 class IndicatorListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=IndicatorInfoSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.indicators import IndicatorService
@@ -564,6 +597,8 @@ class IndicatorListView(APIView):
 
 
 class IndicatorComputeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Market"])
     def get(self, request: Request, exchange: str, symbol: str, timeframe: str) -> Response:
         from market.services.indicators import IndicatorService
@@ -592,6 +627,8 @@ class IndicatorComputeView(APIView):
 
 
 class RegimeCurrentAllView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=RegimeStateSerializer(many=True),
         tags=["Regime"],
@@ -632,6 +669,8 @@ class RegimeCurrentAllView(APIView):
 
 
 class RegimeCurrentView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RegimeStateSerializer, tags=["Regime"])
     def get(self, request: Request, symbol: str) -> Response:
         service = _get_regime_service()
@@ -653,6 +692,8 @@ class RegimeCurrentView(APIView):
 
 
 class RegimeHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RegimeHistoryEntrySerializer(many=True), tags=["Regime"])
     def get(self, request: Request, symbol: str) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=1000)
@@ -661,6 +702,8 @@ class RegimeHistoryView(APIView):
 
 
 class RegimeRecommendationView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RoutingDecisionSerializer, tags=["Regime"])
     def get(self, request: Request, symbol: str) -> Response:
         service = _get_regime_service()
@@ -681,6 +724,8 @@ class RegimeRecommendationView(APIView):
 
 
 class RegimeRecommendationAllView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RoutingDecisionSerializer(many=True), tags=["Regime"])
     def get(self, request: Request) -> Response:
         service = _get_regime_service()
@@ -688,6 +733,8 @@ class RegimeRecommendationAllView(APIView):
 
 
 class RegimePositionSizeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=RegimePositionSizeRequestSerializer,
         responses=RegimePositionSizeResponseSerializer,
@@ -733,6 +780,8 @@ class RegimePositionSizeView(APIView):
 
 
 class CircuitBreakerStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=CircuitBreakerListResponseSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.circuit_breaker import get_all_breakers
@@ -762,6 +811,8 @@ class CircuitBreakerStatusView(APIView):
 
 
 class OpportunityListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=MarketOpportunitySerializer(many=True),
         tags=["Market"],
@@ -805,6 +856,8 @@ class OpportunityListView(APIView):
 
 
 class OpportunitySummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=OpportunitySummarySerializer,
         tags=["Market"],
@@ -851,6 +904,8 @@ class OpportunitySummaryView(APIView):
 
 
 class DailyReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DailyReportSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.daily_report import DailyReportService
@@ -861,6 +916,8 @@ class DailyReportView(APIView):
 
 
 class DailyReportHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DailyReportSerializer(many=True), tags=["Market"])
     def get(self, request: Request) -> Response:
         from market.services.daily_report import DailyReportService

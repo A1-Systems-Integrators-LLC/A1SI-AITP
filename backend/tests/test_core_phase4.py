@@ -1036,27 +1036,27 @@ class TestRateLimitMiddleware:
 
 
 class TestAuditMiddleware:
-    def test_log_async_writes_audit(self):
-        """Test _log_async directly to avoid SQLite locking in threaded test."""
+    def test_enqueue_writes_audit_on_flush(self):
+        """Test batch audit: _enqueue adds to batch, _flush_batch writes to DB."""
         from core.middleware import AuditMiddleware
 
         mw = AuditMiddleware(lambda r: MagicMock(status_code=200))
         request = MagicMock()
         request.user.is_authenticated = True
         request.user.username = "testuser"
-        request.META = {"REMOTE_ADDR": "127.0.0.1"}
+        request.META = {"REMOTE_ADDR": "127.0.0.1", "HTTP_X_FORWARDED_FOR": ""}
         request.method = "POST"
         request.path = "/api/test/"
         response = MagicMock(status_code=200)
 
-        with patch("core.models.AuditLog.objects.create") as mock_create:
-            mw._log_async(request, response)
-            # Wait for thread
-            time.sleep(0.3)
-            mock_create.assert_called_once()
-            call_kwargs = mock_create.call_args[1]
-            assert call_kwargs["user"] == "testuser"
-            assert "POST /api/test/" in call_kwargs["action"]
+        with patch("core.models.AuditLog.objects.bulk_create") as mock_bulk:
+            mw._enqueue(request, response)
+            AuditMiddleware._flush_batch()
+            mock_bulk.assert_called_once()
+            entries = mock_bulk.call_args[0][0]
+            assert len(entries) >= 1
+            assert entries[0].user == "testuser"
+            assert "POST /api/test/" in entries[0].action
 
     def test_get_does_not_trigger_audit(self):
         from core.middleware import AuditMiddleware
@@ -1066,9 +1066,9 @@ class TestAuditMiddleware:
         request = MagicMock()
         request.method = "GET"
         request.path = "/api/health/"
-        with patch.object(mw, "_log_async") as mock_log:
+        with patch.object(mw, "_enqueue") as mock_enqueue:
             mw(request)
-            mock_log.assert_not_called()
+            mock_enqueue.assert_not_called()
 
     def test_post_api_triggers_audit(self):
         from core.middleware import AuditMiddleware
@@ -1078,9 +1078,9 @@ class TestAuditMiddleware:
         request = MagicMock()
         request.method = "POST"
         request.path = "/api/orders/"
-        with patch.object(mw, "_log_async") as mock_log:
+        with patch.object(mw, "_enqueue") as mock_enqueue:
             mw(request)
-            mock_log.assert_called_once()
+            mock_enqueue.assert_called_once()
 
     def test_post_non_api_not_audited(self):
         from core.middleware import AuditMiddleware
@@ -1090,42 +1090,43 @@ class TestAuditMiddleware:
         request = MagicMock()
         request.method = "POST"
         request.path = "/admin/login/"
-        with patch.object(mw, "_log_async") as mock_log:
+        with patch.object(mw, "_enqueue") as mock_enqueue:
             mw(request)
-            mock_log.assert_not_called()
+            mock_enqueue.assert_not_called()
 
-    def test_log_async_anonymous_user(self):
+    def test_enqueue_anonymous_user(self):
         from core.middleware import AuditMiddleware
 
         mw = AuditMiddleware(lambda r: MagicMock(status_code=201))
         request = MagicMock()
         request.user.is_authenticated = False
-        request.META = {"REMOTE_ADDR": "10.0.0.1"}
+        request.META = {"REMOTE_ADDR": "10.0.0.1", "HTTP_X_FORWARDED_FOR": ""}
         request.method = "POST"
         request.path = "/api/auth/login/"
         response = MagicMock(status_code=201)
 
-        with patch("core.models.AuditLog.objects.create") as mock_create:
-            mw._log_async(request, response)
-            time.sleep(0.3)
-            mock_create.assert_called_once()
-            assert mock_create.call_args[1]["user"] == "anonymous"
+        with patch("core.models.AuditLog.objects.bulk_create") as mock_bulk:
+            mw._enqueue(request, response)
+            AuditMiddleware._flush_batch()
+            mock_bulk.assert_called_once()
+            entries = mock_bulk.call_args[0][0]
+            assert entries[0].user == "anonymous"
 
-    def test_log_async_import_error_handled(self):
+    def test_flush_handles_bulk_create_error(self):
         from core.middleware import AuditMiddleware
 
         mw = AuditMiddleware(lambda r: MagicMock(status_code=200))
         request = MagicMock()
         request.user.is_authenticated = True
         request.user.username = "u"
-        request.META = {}
+        request.META = {"REMOTE_ADDR": "127.0.0.1", "HTTP_X_FORWARDED_FOR": ""}
         request.method = "DELETE"
         request.path = "/api/item/"
         response = MagicMock(status_code=204)
 
-        with patch("core.models.AuditLog.objects.create", side_effect=RuntimeError("locked")):
-            mw._log_async(request, response)
-            time.sleep(0.3)  # Should not raise
+        with patch("core.models.AuditLog.objects.bulk_create", side_effect=RuntimeError("locked")):
+            mw._enqueue(request, response)
+            AuditMiddleware._flush_batch()  # Should not raise
 
 
 # ── apps.py ───────────────────────────────────────────────────

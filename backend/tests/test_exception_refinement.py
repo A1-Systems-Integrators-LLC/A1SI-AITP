@@ -165,6 +165,6 @@ class TestAuditMiddlewareExceptions:
         request.path = "/api/test/"
         request.META = {"REMOTE_ADDR": "127.0.0.1"}
 
-        with patch("core.middleware.AuditMiddleware._log_async") as mock_log:
+        with patch("core.middleware.AuditMiddleware._enqueue") as mock_log:
             mw(request)
             mock_log.assert_not_called()

@@ -12,6 +12,8 @@ All external calls are fail-open: if the API or conviction modules are
 unreachable, trades proceed as normal.
 """
 
+import hashlib
+import hmac as hmac_mod
 import logging
 import os
 import sys
@@ -46,6 +48,21 @@ except ImportError:
 SIGNAL_REFRESH_INTERVAL = 300  # 5 minutes
 # Maximum age of a cached signal before it's considered stale (seconds)
 SIGNAL_MAX_AGE = 600  # 10 minutes
+# HMAC secret for internal API authentication (empty = rely on IP allowlist)
+_INTERNAL_API_SECRET = os.environ.get("INTERNAL_API_SECRET", "")
+
+
+def _internal_headers(body: bytes | None = None) -> dict[str, str]:
+    """Build headers for internal API calls, including HMAC signature if configured."""
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if _INTERNAL_API_SECRET:
+        ts = str(int(time.time()))
+        message = ts.encode() + (body or b"")
+        sig = hmac_mod.new(
+            _INTERNAL_API_SECRET.encode(), message, hashlib.sha256,
+        ).hexdigest()
+        headers["X-Internal-Signature"] = f"{ts}:{sig}"
+    return headers
 
 
 def fetch_signal(
@@ -56,12 +73,17 @@ def fetch_signal(
     Returns the API response dict or None on failure.
     """
     try:
+        import json as json_mod
+
         import requests
 
         symbol_url = pair.replace("/", "-")
+        payload = {"strategy": strategy_name, "asset_class": "crypto", "side": side}
+        body = json_mod.dumps(payload).encode()
         resp = requests.post(
             f"{api_url}/api/signals/{symbol_url}/entry-check/",
-            json={"strategy": strategy_name, "asset_class": "crypto", "side": side},
+            data=body,
+            headers=_internal_headers(body),
             timeout=5,
         )
         if resp.status_code == 200:
@@ -145,6 +167,7 @@ def check_strategy_paused(strategy: Any) -> bool:
         resp = requests.get(
             f"{strategy.risk_api_url}/api/signals/strategy-status/",
             params={"asset_class": "crypto"},
+            headers=_internal_headers(),
             timeout=5,
         )
         if resp.status_code == 200:
@@ -255,9 +278,11 @@ def record_signal_attribution(strategy: Any, pair: str, trade_id: str = "") -> N
             },
         }
 
+        body = __import__("json").dumps(payload).encode()
         resp = requests.post(
             f"{strategy.risk_api_url}/api/signals/record/",
-            json=payload,
+            data=body,
+            headers=_internal_headers(body),
             timeout=5,
         )
         if resp.status_code in (200, 201):

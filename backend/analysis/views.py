@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -60,10 +60,13 @@ from analysis.serializers import (
     WorkflowScheduleResponseSerializer,
     WorkflowTriggerResponseSerializer,
 )
+from core.internal_auth import InternalAPIView
 from core.utils import safe_int as _safe_int
 
 
 class JobListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=JobSerializer(many=True), tags=["Jobs"])
     def get(self, request: Request) -> Response:
         job_type = request.query_params.get("job_type")
@@ -76,6 +79,8 @@ class JobListView(APIView):
 
 
 class JobDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=JobSerializer, tags=["Jobs"])
     def get(self, request: Request, job_id: str) -> Response:
         try:
@@ -95,6 +100,8 @@ class JobDetailView(APIView):
 
 
 class JobCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=JobCancelResponseSerializer, tags=["Jobs"])
     def post(self, request: Request, job_id: str) -> Response:
         from analysis.services.job_runner import get_job_runner
@@ -109,6 +116,8 @@ class JobCancelView(APIView):
 
 
 class BacktestRunView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=BacktestRequestSerializer,
         responses=JobAcceptedSerializer,
@@ -133,6 +142,8 @@ class BacktestRunView(APIView):
 
 
 class BacktestResultListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=BacktestResultSerializer(many=True),
         tags=["Backtest"],
@@ -157,6 +168,8 @@ class BacktestResultListView(APIView):
 
 
 class BacktestResultDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=BacktestResultSerializer, tags=["Backtest"])
     def get(self, request: Request, result_id: int) -> Response:
         try:
@@ -170,6 +183,8 @@ class BacktestResultDetailView(APIView):
 
 
 class BacktestStrategyListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=StrategyInfoSerializer(many=True), tags=["Backtest"])
     def get(self, request: Request) -> Response:
         from analysis.services.backtest import BacktestService
@@ -178,6 +193,8 @@ class BacktestStrategyListView(APIView):
 
 
 class BacktestCompareView(APIView):
+    permission_classes = [IsAuthenticated]
+
     COMPARE_METRICS = [
         "total_return",
         "sharpe_ratio",
@@ -262,6 +279,8 @@ class BacktestCompareView(APIView):
 
 
 class BacktestExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Backtest"], exclude=True)
     def get(self, request: Request) -> HttpResponse:
         qs = BacktestResult.objects.select_related("job").all()
@@ -326,6 +345,8 @@ class BacktestExportView(APIView):
 
 
 class ScreeningRunView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=ScreenRequestSerializer,
         responses=JobAcceptedSerializer,
@@ -350,6 +371,8 @@ class ScreeningRunView(APIView):
 
 
 class ScreeningResultListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ScreenResultSerializer(many=True), tags=["Screening"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 20, max_val=100)
@@ -362,6 +385,8 @@ class ScreeningResultListView(APIView):
 
 
 class ScreeningResultDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ScreenResultSerializer, tags=["Screening"])
     def get(self, request: Request, result_id: int) -> Response:
         try:
@@ -372,6 +397,8 @@ class ScreeningResultDetailView(APIView):
 
 
 class ScreeningStrategyListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Screening"])
     def get(self, request: Request) -> Response:
         from analysis.services.screening import STRATEGY_TYPES
@@ -380,6 +407,8 @@ class ScreeningStrategyListView(APIView):
 
 
 class DataListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DataFileInfoSerializer(many=True), tags=["Data"])
     def get(self, request: Request) -> Response:
         from analysis.services.data_pipeline import DataPipelineService
@@ -389,6 +418,8 @@ class DataListView(APIView):
 
 
 class DataDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DataFileInfoSerializer, tags=["Data"])
     def get(self, request: Request, exchange: str, symbol: str, timeframe: str) -> Response:
         from analysis.services.data_pipeline import DataPipelineService
@@ -402,6 +433,8 @@ class DataDetailView(APIView):
 
 
 class DataDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=DataDownloadRequestSerializer,
         responses=JobAcceptedSerializer,
@@ -425,6 +458,8 @@ class DataDownloadView(APIView):
 
 
 class DataGenerateSampleView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=DataGenerateSampleRequestSerializer,
         responses=JobAcceptedSerializer,
@@ -453,6 +488,8 @@ class DataGenerateSampleView(APIView):
 
 
 class MLTrainView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=MLTrainRequestSerializer,
         responses=JobAcceptedSerializer,
@@ -476,6 +513,8 @@ class MLTrainView(APIView):
 
 
 class MLModelListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=MLModelInfoSerializer(many=True), tags=["ML"])
     def get(self, request: Request) -> Response:
         from analysis.services.ml import MLService
@@ -484,6 +523,8 @@ class MLModelListView(APIView):
 
 
 class MLModelDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=MLModelInfoSerializer, tags=["ML"])
     def get(self, request: Request, model_id: str) -> Response:
         from analysis.services.ml import MLService
@@ -495,6 +536,8 @@ class MLModelDetailView(APIView):
 
 
 class MLPredictView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=MLPredictRequestSerializer,
         responses=MLPredictionResponseSerializer,
@@ -515,6 +558,8 @@ class MLPredictView(APIView):
 
 
 class DataQualityListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DataQualitySummarySerializer, tags=["Data"])
     def get(self, request: Request) -> Response:
         from core.platform_bridge import ensure_platform_imports
@@ -547,6 +592,8 @@ class DataQualityListView(APIView):
 
 
 class DataQualityDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=DataQualityReportSerializer, tags=["Data"])
     def get(self, request: Request, symbol: str, timeframe: str) -> Response:
         from core.platform_bridge import ensure_platform_imports
@@ -599,6 +646,8 @@ def _quality_report_to_dict(report: object) -> dict:
 
 
 class WorkflowListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowListSerializer(many=True), tags=["Workflows"])
     def get(self, request: Request) -> Response:
         qs = Workflow.objects.prefetch_related("steps").all()
@@ -644,6 +693,8 @@ class WorkflowListView(APIView):
 
 
 class WorkflowDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowDetailSerializer, tags=["Workflows"])
     def get(self, request: Request, workflow_id: str) -> Response:
         try:
@@ -668,6 +719,8 @@ class WorkflowDetailView(APIView):
 
 
 class WorkflowTriggerView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowTriggerResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         from analysis.services.workflow_engine import WorkflowEngine
@@ -690,6 +743,8 @@ class WorkflowTriggerView(APIView):
 
 
 class WorkflowEnableView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowScheduleResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         try:
@@ -702,6 +757,8 @@ class WorkflowEnableView(APIView):
 
 
 class WorkflowDisableView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowScheduleResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, workflow_id: str) -> Response:
         try:
@@ -714,6 +771,8 @@ class WorkflowDisableView(APIView):
 
 
 class WorkflowRunListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowRunListSerializer(many=True), tags=["Workflows"])
     def get(self, request: Request, workflow_id: str) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 20, max_val=100)
@@ -724,6 +783,8 @@ class WorkflowRunListView(APIView):
 
 
 class WorkflowRunDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=WorkflowRunDetailSerializer, tags=["Workflows"])
     def get(self, request: Request, run_id: str) -> Response:
         try:
@@ -743,6 +804,8 @@ class WorkflowRunDetailView(APIView):
 
 
 class WorkflowRunCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=JobCancelResponseSerializer, tags=["Workflows"])
     def post(self, request: Request, run_id: str) -> Response:
         from analysis.services.workflow_engine import WorkflowEngine
@@ -757,6 +820,8 @@ class WorkflowRunCancelView(APIView):
 
 
 class WorkflowStepTypesView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Workflows"])
     def get(self, request: Request) -> Response:
         from analysis.services.step_registry import get_step_types
@@ -769,6 +834,8 @@ class WorkflowStepTypesView(APIView):
 
 class SignalDetailView(APIView):
     """Composite conviction signal for a single symbol."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses=CompositeSignalResponseSerializer,
@@ -801,6 +868,8 @@ class SignalDetailView(APIView):
 class SignalBatchView(APIView):
     """Batch composite signals for multiple symbols."""
 
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=SignalBatchRequestSerializer,
         responses=CompositeSignalResponseSerializer(many=True),
@@ -821,7 +890,7 @@ class SignalBatchView(APIView):
         return Response(results)
 
 
-class SignalHealthView(APIView):
+class SignalHealthView(InternalAPIView):
     """Signal pipeline health: per-source availability and latency."""
 
     @extend_schema(
@@ -842,10 +911,8 @@ class SignalHealthView(APIView):
         return Response(health)
 
 
-class EntryCheckView(APIView):
-    """Entry gate for Freqtrade — unauthenticated (internal calls)."""
-
-    permission_classes = [AllowAny]
+class EntryCheckView(InternalAPIView):
+    """Entry gate for Freqtrade — internal calls only."""
 
     @extend_schema(
         request=EntryCheckRequestSerializer,
@@ -876,13 +943,11 @@ class EntryCheckView(APIView):
             })
 
 
-class StrategyStatusView(APIView):
+class StrategyStatusView(InternalAPIView):
     """Which strategies should be active given current regime conditions.
 
-    Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
+    Internal — called by Freqtrade bot_loop_start() and frontend.
     """
-
-    permission_classes = [AllowAny]
 
     @extend_schema(
         responses=StrategyStatusSerializer(many=True),
@@ -990,6 +1055,8 @@ class StrategyStatusView(APIView):
 class MLPredictionListView(APIView):
     """Recent ML predictions for a symbol — audit trail."""
 
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=MLPredictionSerializer(many=True),
         tags=["ML"],
@@ -1006,6 +1073,8 @@ class MLPredictionListView(APIView):
 
 class MLModelPerformanceView(APIView):
     """Model accuracy metrics and retraining recommendations."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(responses=MLModelPerformanceSerializer, tags=["ML"])
     def get(self, request: Request, model_id: str) -> Response:
@@ -1024,6 +1093,8 @@ class MLModelPerformanceView(APIView):
 
 class SignalAttributionListView(APIView):
     """List signal attributions with optional filters."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses=SignalAttributionSerializer(many=True),
@@ -1055,6 +1126,8 @@ class SignalAttributionListView(APIView):
 class SignalAttributionDetailView(APIView):
     """Get a single signal attribution by order_id."""
 
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=SignalAttributionSerializer, tags=["Signals"])
     def get(self, request: Request, order_id: str) -> Response:
         attr = SignalAttribution.objects.filter(order_id=order_id).first()
@@ -1066,10 +1139,8 @@ class SignalAttributionDetailView(APIView):
         return Response(SignalAttributionSerializer(attr).data)
 
 
-class SignalRecordView(APIView):
-    """Record signal attribution at trade entry — unauthenticated (Freqtrade calls)."""
-
-    permission_classes = [AllowAny]
+class SignalRecordView(InternalAPIView):
+    """Record signal attribution at trade entry — internal calls only."""
 
     @extend_schema(
         request=RecordAttributionRequestSerializer,
@@ -1093,6 +1164,8 @@ class SignalRecordView(APIView):
 
 class SignalFeedbackView(APIView):
     """Backfill outcome for a signal attribution."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=BackfillOutcomeRequestSerializer,
@@ -1124,6 +1197,8 @@ class SignalFeedbackView(APIView):
 class SignalAccuracyView(APIView):
     """Signal source accuracy statistics."""
 
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=SourceAccuracyResponseSerializer,
         tags=["Signals"],
@@ -1150,6 +1225,8 @@ class SignalAccuracyView(APIView):
 
 class SignalWeightsView(APIView):
     """Current and recommended signal weights based on performance."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses=WeightRecommendationResponseSerializer,

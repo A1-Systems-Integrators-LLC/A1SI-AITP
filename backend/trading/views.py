@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from asgiref.sync import async_to_sync
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -35,6 +36,8 @@ _exchange_check_lock = threading.Lock()
 
 
 class OrderListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=OrderSerializer(many=True),
         tags=["Trading"],
@@ -143,6 +146,8 @@ class OrderListView(APIView):
 
 
 class OrderDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=OrderSerializer, tags=["Trading"])
     def get(self, request: Request, order_id: int) -> Response:
         try:
@@ -153,6 +158,8 @@ class OrderDetailView(APIView):
 
 
 class OrderCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=OrderSerializer, tags=["Trading"])
     def post(self, request: Request, order_id: int) -> Response:
         try:
@@ -183,6 +190,8 @@ class OrderCancelView(APIView):
 
 
 class LiveTradingStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=LiveTradingStatusSerializer, tags=["Trading"])
     def get(self, request: Request) -> Response:
         from risk.models import RiskState
@@ -246,6 +255,8 @@ def _get_cached_exchange_status() -> tuple[bool, str]:
 
 
 class OrderExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Trading"])
     def get(self, request: Request) -> Response:
         import csv
@@ -313,6 +324,8 @@ class OrderExportView(APIView):
 
 
 class TradingPerformanceSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=TradingPerformanceSummarySerializer,
         tags=["Trading"],
@@ -334,6 +347,8 @@ class TradingPerformanceSummaryView(APIView):
 
 
 class TradingPerformanceBySymbolView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=SymbolPerformanceSerializer(many=True),
         tags=["Trading"],
@@ -355,6 +370,8 @@ class TradingPerformanceBySymbolView(APIView):
 
 
 class PaperTradingStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         services = _get_paper_trading_services()
@@ -378,6 +395,8 @@ class PaperTradingStatusView(APIView):
 
 
 class PaperTradingStartView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         strategy = request.data.get("strategy", "CryptoInvestorV1")
@@ -386,6 +405,8 @@ class PaperTradingStartView(APIView):
 
 
 class PaperTradingStopView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PaperTradingStatusResponseSerializer, tags=["Paper Trading"])
     def post(self, request: Request) -> Response:
         service = _get_paper_trading_service()
@@ -393,6 +414,8 @@ class PaperTradingStopView(APIView):
 
 
 class PaperTradingTradesView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         services = _get_paper_trading_services()
@@ -427,6 +450,8 @@ class PaperTradingTradesView(APIView):
 
 
 class PaperTradingHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
@@ -441,6 +466,8 @@ class PaperTradingHistoryView(APIView):
 
 
 class PaperTradingProfitView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         services = _get_paper_trading_services()
@@ -454,6 +481,8 @@ class PaperTradingProfitView(APIView):
 
 
 class PaperTradingPerformanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         services = _get_paper_trading_services()
@@ -467,6 +496,8 @@ class PaperTradingPerformanceView(APIView):
 
 
 class PaperTradingBalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         services = _get_paper_trading_services()
@@ -480,6 +511,8 @@ class PaperTradingBalanceView(APIView):
 
 
 class PaperTradingLogView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Paper Trading"])
     def get(self, request: Request) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 100, max_val=500)
@@ -496,6 +529,8 @@ class PaperTradingLogView(APIView):
 
 
 class CancelAllOrdersView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=CancelAllSerializer,
         responses=CancelAllResponseSerializer,
@@ -533,6 +568,8 @@ class CancelAllOrdersView(APIView):
 
 
 class ExchangeHealthView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ExchangeHealthSerializer, tags=["Trading"])
     def get(self, request: Request) -> Response:
         from market.services.exchange import ExchangeService

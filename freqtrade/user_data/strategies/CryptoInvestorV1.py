@@ -165,16 +165,20 @@ class CryptoInvestorV1(IStrategy):
         # Required: RSI pullback (core signal)
         rsi_pullback = dataframe["rsi"] < self.buy_rsi_threshold.value
 
-        # Required: EMA directional filter — both conditions must hold
+        # Required: EMA directional filter — broad uptrend confirmed.
+        # Previous version required close > ema_fast which contradicted the RSI
+        # pullback condition (oversold price is typically BELOW the fast EMA).
+        # This produced zero trades in 3+ months. Now: require EMA cross OR
+        # slow EMA rising, which allows entries during RSI dips in uptrends.
         ema_fast = f"ema_{self.buy_ema_fast.value}"
         ema_slow = f"ema_{self.buy_ema_slow.value}"
         ema_directional = (
             (dataframe[ema_fast] > dataframe[ema_slow])
-            & (dataframe["close"] > dataframe[ema_fast])
+            | (dataframe[ema_slow] > dataframe[ema_slow].shift(5))
         )
 
-        # Required: ADX confirms trend strength
-        adx_filter = dataframe["adx"] > 20
+        # Required: ADX confirms trend strength (relaxed from 20 for weak-trend markets)
+        adx_filter = dataframe["adx"] > 15
 
         # Required: both MACD and volume confirmation
         macd_improving = (
@@ -187,10 +191,11 @@ class CryptoInvestorV1(IStrategy):
         has_volume = dataframe["volume"] > 0
         not_overbought = dataframe["rsi"] > 10  # not in freefall
 
-        dataframe.loc[
-            rsi_pullback & ema_directional & adx_filter & macd_improving & volume_spike & has_volume & not_overbought,
-            "enter_long",
-        ] = 1
+        entry = (
+            rsi_pullback & ema_directional & adx_filter
+            & macd_improving & volume_spike & has_volume & not_overbought
+        )
+        dataframe.loc[entry, "enter_long"] = 1
 
         return dataframe
 
@@ -352,18 +357,24 @@ class CryptoInvestorV1(IStrategy):
 
         # 1. Risk gate (existing)
         try:
+            import json as json_mod
+
             import requests
+            from _conviction_helpers import _internal_headers
 
             stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
+            payload = {
+                "symbol": pair,
+                "side": side,
+                "size": amount,
+                "entry_price": rate,
+                "stop_loss_price": stop_loss_price,
+            }
+            body = json_mod.dumps(payload).encode()
             resp = requests.post(
                 f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
-                json={
-                    "symbol": pair,
-                    "side": side,
-                    "size": amount,
-                    "entry_price": rate,
-                    "stop_loss_price": stop_loss_price,
-                },
+                data=body,
+                headers=_internal_headers(body),
                 timeout=5,
             )
             if resp.status_code == 200:

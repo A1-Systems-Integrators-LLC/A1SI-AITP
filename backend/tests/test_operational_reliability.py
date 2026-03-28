@@ -450,7 +450,7 @@ class TestRiskMonitoringWithSync:
         sync_result = {"total_pnl": -10.0, "equity_updated": True, "instances": []}
 
         with patch(
-            "core.services.task_registry._sync_freqtrade_equity", return_value=sync_result
+            "core.services.executors.risk._sync_freqtrade_equity", return_value=sync_result
         ) as mock_sync:
             from core.services.task_registry import _run_risk_monitoring
 
@@ -478,7 +478,7 @@ class TestRiskMonitoringWithSync:
         RiskLimits.objects.create(portfolio_id=portfolio.id)
 
         with patch(
-            "core.services.task_registry._sync_freqtrade_equity", side_effect=Exception("boom")
+            "core.services.executors.risk._sync_freqtrade_equity", side_effect=Exception("boom")
         ):
             from core.services.task_registry import _run_risk_monitoring
 

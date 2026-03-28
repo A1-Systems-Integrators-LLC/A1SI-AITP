@@ -995,7 +995,7 @@ class TestTaskExecutors:
         from core.services.task_registry import TASK_REGISTRY
 
         # 15 base + 5 IEB + 2 feedback + 2 new + 4 Phase 2 + 1 daily_risk_reset + 1 autonomous_check + 1 pdf_report
-        assert len(TASK_REGISTRY) == 31
+        assert len(TASK_REGISTRY) == 32
 
 
 # ══════════════════════════════════════════════════════

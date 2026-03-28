@@ -6,7 +6,7 @@ import logging
 from django.conf import settings as django_settings
 from django.http import HttpResponse, JsonResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework.permissions import AllowAny, BasePermission
+from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -47,6 +47,8 @@ class MetricsTokenOrSessionAuth(BasePermission):
 
 
 class AuditLogListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=AuditLogListResponseSerializer,
         tags=["Core"],
@@ -251,6 +253,8 @@ class HealthView(APIView):
 
 
 class DashboardKPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=DashboardKPISerializer,
         tags=["Core"],
@@ -271,6 +275,8 @@ class DashboardKPIView(APIView):
 
 
 class PlatformStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PlatformStatusSerializer, tags=["Core"])
     def get(self, request: Request) -> Response:
         from analysis.models import BackgroundJob
@@ -296,6 +302,8 @@ class PlatformStatusView(APIView):
 
 
 class PlatformConfigView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(tags=["Core"])
     def get(self, request: Request) -> Response:
         from core.platform_bridge import get_platform_config_path
@@ -313,6 +321,8 @@ class PlatformConfigView(APIView):
 
 
 class NotificationPreferencesView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=NotificationPreferencesSerializer, tags=["Notifications"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from core.models import NotificationPreferences
@@ -442,6 +452,8 @@ class MetricsView(APIView):
 
 
 class SchedulerStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=SchedulerStatusSerializer, tags=["Scheduler"])
     def get(self, request: Request) -> Response:
         from core.services.scheduler import get_scheduler
@@ -450,6 +462,8 @@ class SchedulerStatusView(APIView):
 
 
 class ScheduledTaskListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ScheduledTaskSerializer(many=True), tags=["Scheduler"])
     def get(self, request: Request) -> Response:
         from core.models import ScheduledTask
@@ -459,6 +473,8 @@ class ScheduledTaskListView(APIView):
 
 
 class ScheduledTaskDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=ScheduledTaskSerializer, tags=["Scheduler"])
     def get(self, request: Request, task_id: str) -> Response:
         from core.models import ScheduledTask
@@ -471,6 +487,8 @@ class ScheduledTaskDetailView(APIView):
 
 
 class ScheduledTaskPauseView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=TaskActionResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler
@@ -481,6 +499,8 @@ class ScheduledTaskPauseView(APIView):
 
 
 class ScheduledTaskResumeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=TaskActionResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler
@@ -491,6 +511,8 @@ class ScheduledTaskResumeView(APIView):
 
 
 class ScheduledTaskTriggerView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=TaskTriggerResponseSerializer, tags=["Scheduler"])
     def post(self, request: Request, task_id: str) -> Response:
         from core.services.scheduler import get_scheduler

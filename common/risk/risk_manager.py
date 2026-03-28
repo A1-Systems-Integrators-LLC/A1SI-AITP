@@ -414,6 +414,8 @@ class RiskManager:
 
             # Check position size vs portfolio
             trade_value = size * entry_price
+            if self.state.total_equity <= 0:
+                return False, "Portfolio equity is zero or negative — cannot evaluate trade"
             position_pct = trade_value / self.state.total_equity
             if position_pct > eff_max_position_size_pct:
                 return False, (

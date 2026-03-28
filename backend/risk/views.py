@@ -1,10 +1,12 @@
 """Risk management views."""
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.internal_auth import InternalAPIView
 from core.utils import safe_int as _safe_int
 from risk.serializers import (
     AlertLogSerializer,
@@ -28,12 +30,16 @@ from risk.services.risk import RiskManagementService
 
 
 class RiskStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskStatusSerializer, tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         return Response(RiskManagementService.get_status(portfolio_id))
 
 
 class RiskLimitsView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskLimitsSerializer, tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         limits = RiskManagementService.get_limits(portfolio_id)
@@ -59,6 +65,8 @@ class RiskLimitsView(APIView):
 
 
 class EquityUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=EquityUpdateSerializer,
         responses=RiskStatusSerializer,
@@ -71,11 +79,11 @@ class EquityUpdateView(APIView):
         return Response(RiskManagementService.update_equity(portfolio_id, equity))
 
 
-class TradeCheckView(APIView):
-    # Allow unauthenticated access for internal Freqtrade risk gate calls.
-    # This endpoint only reads risk state and returns approve/reject — no mutations.
-    authentication_classes = []
-    permission_classes = []
+class TradeCheckView(InternalAPIView):
+    """Internal endpoint for Freqtrade/NautilusTrader risk gate calls.
+
+    Secured by HMAC signature + IP allowlist (see core.internal_auth).
+    """
 
     @extend_schema(
         request=TradeCheckRequestSerializer,
@@ -105,6 +113,8 @@ class TradeCheckView(APIView):
 
 
 class PositionSizeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=PositionSizeRequestSerializer,
         responses=PositionSizeResponseSerializer,
@@ -125,12 +135,16 @@ class PositionSizeView(APIView):
 
 
 class ResetDailyView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskStatusSerializer, tags=["Risk"])
     def post(self, request: Request, portfolio_id: int) -> Response:
         return Response(RiskManagementService.reset_daily(portfolio_id))
 
 
 class VaRView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=VaRResponseSerializer, tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         method = request.query_params.get("method", "parametric")
@@ -138,12 +152,16 @@ class VaRView(APIView):
 
 
 class HeatCheckView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=HeatCheckResponseSerializer, tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         return Response(RiskManagementService.get_heat_check(portfolio_id))
 
 
 class MetricHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskMetricHistorySerializer(many=True), tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         hours = _safe_int(request.query_params.get("hours"), 168, min_val=1, max_val=8760)
@@ -152,6 +170,8 @@ class MetricHistoryView(APIView):
 
 
 class RecordMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskMetricHistorySerializer, tags=["Risk"])
     def post(self, request: Request, portfolio_id: int) -> Response:
         method = request.query_params.get("method", "parametric")
@@ -160,6 +180,8 @@ class RecordMetricsView(APIView):
 
 
 class HaltTradingView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=HaltRequestSerializer,
         responses=HaltResponseSerializer,
@@ -178,6 +200,8 @@ class HaltTradingView(APIView):
 
 
 class ResumeTradingView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=HaltResponseSerializer, tags=["Risk"])
     def post(self, request: Request, portfolio_id: int) -> Response:
         from asgiref.sync import async_to_sync
@@ -187,6 +211,8 @@ class ResumeTradingView(APIView):
 
 
 class AlertListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         responses=AlertLogSerializer(many=True),
         tags=["Risk"],
@@ -216,6 +242,8 @@ class AlertListView(APIView):
 
 
 class TradeLogView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=TradeCheckLogSerializer(many=True), tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         limit = _safe_int(request.query_params.get("limit"), 50, max_val=200)
@@ -224,6 +252,8 @@ class TradeLogView(APIView):
 
 
 class RiskLimitHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=RiskLimitChangeSerializer(many=True), tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from risk.models import RiskLimitChange
@@ -239,6 +269,8 @@ class RiskLimitHistoryView(APIView):
 
 class ProfitTrackingView(APIView):
     """GET /api/risk/{portfolio_id}/profit-tracking/ — profit reinvestment state."""
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(tags=["Risk"])
     def get(self, request: Request, portfolio_id: int) -> Response:

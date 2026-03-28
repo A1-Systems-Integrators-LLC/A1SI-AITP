@@ -345,5 +345,7 @@ class TestConvictionHelpersSide:
             )
 
             call_args = mock_post.call_args
-            assert call_args[1]["json"]["side"] == "short"
+            import json
+            body = json.loads(call_args[1]["data"])
+            assert body["side"] == "short"
             assert result is not None

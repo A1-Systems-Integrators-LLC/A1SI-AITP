@@ -70,7 +70,9 @@ class TestFetchSignal:
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         assert "BTC-USDT" in call_args[0][0]
-        assert call_args[1]["json"]["strategy"] == "CryptoInvestorV1"
+        import json
+        body = json.loads(call_args[1]["data"])
+        assert body["strategy"] == "CryptoInvestorV1"
 
     @patch("requests.post")
     def test_fetch_signal_non_200(self, mock_post):

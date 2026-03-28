@@ -197,42 +197,82 @@ class MetricsMiddleware:
 
 
 class AuditMiddleware:
-    """Log state-changing requests to AuditLog (background thread)."""
+    """Log state-changing requests to AuditLog with batched writes.
+
+    Collects audit entries in memory and flushes to DB every 5 seconds
+    (or when batch reaches 20 entries). This prevents SQLite "database
+    table is locked" errors during concurrent write bursts.
+    """
+
+    _batch: list = []
+    _batch_lock = threading.Lock()
+    _flush_timer: threading.Timer | None = None
+    _FLUSH_INTERVAL = 5.0  # seconds
+    _BATCH_SIZE = 20  # flush when batch reaches this size
 
     def __init__(self, get_response):
         self.get_response = get_response
+        # Start periodic flush timer (skip in test mode to avoid SQLite locks)
+        if AuditMiddleware._flush_timer is None:
+            from django.conf import settings as _settings
+
+            if not getattr(_settings, "TESTING", False):
+                AuditMiddleware._start_flush_timer()
+
+    @classmethod
+    def _start_flush_timer(cls):
+        """Start a repeating timer that flushes the batch."""
+        def _periodic_flush():
+            cls._flush_batch()
+            cls._flush_timer = threading.Timer(cls._FLUSH_INTERVAL, _periodic_flush)
+            cls._flush_timer.daemon = True
+            cls._flush_timer.start()
+
+        cls._flush_timer = threading.Timer(cls._FLUSH_INTERVAL, _periodic_flush)
+        cls._flush_timer.daemon = True
+        cls._flush_timer.start()
 
     def __call__(self, request):
         response = self.get_response(request)
 
         # Only audit state-changing methods on API endpoints
         if request.method in ("POST", "PUT", "DELETE") and request.path.startswith("/api/"):
-            self._log_async(request, response)
+            self._enqueue(request, response)
 
         return response
 
-    def _log_async(self, request, response):
-        """Fire-and-forget audit log entry via thread."""
+    def _enqueue(self, request, response):
+        """Add audit entry to batch; flush if batch is full."""
         user = request.user.username if request.user.is_authenticated else "anonymous"
         ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", ""))
-        method = request.method
-        path = request.path
-        status_code = response.status_code
+        entry = {
+            "user": user,
+            "action": f"{request.method} {request.path}",
+            "ip_address": ip.split(",")[0].strip() if ip else "",
+            "status_code": response.status_code,
+        }
+        with AuditMiddleware._batch_lock:
+            AuditMiddleware._batch.append(entry)
+            if len(AuditMiddleware._batch) >= self._BATCH_SIZE:
+                self._flush_batch()
 
-        def _write():
-            try:
-                from core.models import AuditLog
+    @classmethod
+    def _flush_batch(cls):
+        """Write all queued audit entries to DB in a single bulk_create."""
+        with cls._batch_lock:
+            if not cls._batch:
+                return
+            entries = cls._batch[:]
+            cls._batch.clear()
 
-                AuditLog.objects.create(
-                    user=user,
-                    action=f"{method} {path}",
-                    ip_address=ip.split(",")[0].strip() if ip else "",
-                    status_code=status_code,
-                )
-            except (ImportError, RuntimeError) as e:
-                logger.debug("Audit log write failed (app not ready): %s", e)
-            except Exception as e:
-                logger.warning("Audit log write failed: %s", e)
+        try:
+            from core.models import AuditLog
 
-        thread = threading.Thread(target=_write, daemon=True)
-        thread.start()
+            AuditLog.objects.bulk_create(
+                [AuditLog(**e) for e in entries],
+                ignore_conflicts=True,
+            )
+        except (ImportError, RuntimeError):
+            pass  # App not ready during startup
+        except Exception as e:
+            logger.warning("Audit batch flush failed (%d entries): %s", len(entries), e)

@@ -73,7 +73,7 @@ class TestTaskSchedulerService:
         assert ScheduledTask.objects.filter(id="news_fetch").exists()
         assert ScheduledTask.objects.filter(id="market_scan_crypto").exists()
         assert ScheduledTask.objects.filter(id="market_scan_forex").exists()
-        assert ScheduledTask.objects.count() == 37
+        assert ScheduledTask.objects.count() == 38
 
     def test_sync_updates_existing(self):
         ScheduledTask.objects.create(
@@ -99,7 +99,7 @@ class TestTaskSchedulerService:
         scheduler._sync_tasks_to_db()
         status = scheduler.get_status()
         assert status["running"] is False
-        assert status["total_tasks"] == 37
+        assert status["total_tasks"] == 38
 
     def test_pause_task(self):
         ScheduledTask.objects.create(

@@ -1,6 +1,7 @@
 from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,6 +20,8 @@ from portfolio.serializers import (
 
 
 class PortfolioListView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PortfolioSerializer(many=True), tags=["Portfolio"])
     def get(self, request: Request) -> Response:
         portfolios = Portfolio.objects.prefetch_related("holdings").all()
@@ -40,6 +43,8 @@ class PortfolioListView(APIView):
 
 
 class PortfolioDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PortfolioSerializer, tags=["Portfolio"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         try:
@@ -93,6 +98,8 @@ class PortfolioDetailView(APIView):
 
 
 class HoldingDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=HoldingUpdateSerializer,
         responses=HoldingSerializer,
@@ -121,6 +128,8 @@ class HoldingDetailView(APIView):
 
 
 class HoldingCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=HoldingCreateSerializer,
         responses=HoldingSerializer,
@@ -150,6 +159,8 @@ class HoldingCreateView(APIView):
 
 
 class PortfolioSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=PortfolioSummarySerializer, tags=["Portfolio"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from portfolio.services.analytics import PortfolioAnalyticsService
@@ -162,6 +173,8 @@ class PortfolioSummaryView(APIView):
 
 
 class PortfolioAllocationView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(responses=AllocationItemSerializer(many=True), tags=["Portfolio"])
     def get(self, request: Request, portfolio_id: int) -> Response:
         from portfolio.services.analytics import PortfolioAnalyticsService

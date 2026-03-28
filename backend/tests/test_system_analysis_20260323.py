@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.test import override_settings
 
 # Ensure common modules are importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -376,18 +377,17 @@ class TestH3FundingWeightNonCrypto:
 class TestH4SinglePortfolioEquitySync:
     """H4: Equity sync should update only the first crypto portfolio."""
 
+    @override_settings(
+        FREQTRADE_INSTANCES=[
+            {"url": "http://localhost:8080", "enabled": True, "dry_run_wallet": 500},
+        ],
+        FREQTRADE_API_URL="",
+        FREQTRADE_BMR_API_URL="",
+        FREQTRADE_VB_API_URL="",
+    )
     def test_only_first_portfolio_used(self):
         """_sync_freqtrade_equity should use portfolios.first(), not loop."""
         import requests as req_mod
-
-        from django.conf import settings
-
-        settings.FREQTRADE_INSTANCES = [
-            {"url": "http://localhost:8080", "enabled": True, "dry_run_wallet": 500},
-        ]
-        settings.FREQTRADE_API_URL = ""
-        settings.FREQTRADE_BMR_API_URL = ""
-        settings.FREQTRADE_VB_API_URL = ""
 
         # Create one crypto portfolio and one equity portfolio
         p_crypto = _setup(equity=500.0)

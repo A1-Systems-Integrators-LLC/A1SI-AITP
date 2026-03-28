@@ -335,10 +335,11 @@ class TestSignalHealthEndpoint:
         client.login(username="testuser", password="testpass123")
         return client
 
-    def test_requires_auth(self):
+    def test_accessible_from_localhost(self):
+        """SignalHealthView is an internal endpoint — accessible from localhost (IP allowlist)."""
         client = APIClient()
         resp = client.get("/api/signals/health/")
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 200
 
     def test_returns_health_data(self):
         client = self._get_authed_client()

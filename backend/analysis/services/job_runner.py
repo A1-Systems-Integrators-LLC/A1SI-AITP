@@ -2,6 +2,7 @@
 and persists job state to DB via Django ORM.
 """
 
+import concurrent.futures
 import logging
 import math
 import time
@@ -12,6 +13,17 @@ from datetime import datetime, timezone
 from typing import Any
 
 from django.conf import settings
+
+# ── Job timeout configuration ─────────────────────────────────────────
+JOB_TIMEOUT_SECONDS = 3600  # 1 hour default
+
+JOB_TIMEOUT_OVERRIDES: dict[str, int] = {
+    "vbt_screen": 7200,
+    "nautilus_backtest": 7200,
+    "ml_training": 7200,
+    "freqtrade_backtest": 7200,
+    "hft_backtest": 7200,
+}
 
 logger = logging.getLogger("job_runner")
 
@@ -195,6 +207,7 @@ class JobRunner:
                     )
 
             # ── Execute with retry on hard failures ─────────────────────
+            timeout = JOB_TIMEOUT_OVERRIDES.get(job_obj.job_type, JOB_TIMEOUT_SECONDS)
             max_attempts = 1 if job_obj.job_type in NO_RETRY_TYPES else MAX_RETRIES + 1
             last_err: Exception | None = None
             result = None
@@ -212,7 +225,14 @@ class JobRunner:
                     }
                     time.sleep(delay)
                 try:
-                    result = run_fn(params, progress_callback)
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as timeout_pool:
+                        future = timeout_pool.submit(run_fn, params, progress_callback)
+                        try:
+                            result = future.result(timeout=timeout)
+                        except concurrent.futures.TimeoutError as te:
+                            raise TimeoutError(
+                                f"Job timed out after {timeout}s"
+                            ) from te
                     last_err = None
                     break
                 except Exception as retry_exc:

@@ -1200,6 +1200,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @description Internal endpoint for Freqtrade/NautilusTrader risk gate calls.
+         *
+         *     Secured by HMAC signature + IP allowlist (see core.internal_auth).
+         */
         post: operations["risk_check_trade_create"];
         delete?: never;
         options?: never;
@@ -1618,7 +1623,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Entry gate for Freqtrade — unauthenticated (internal calls). */
+        /** @description Entry gate for Freqtrade — internal calls only. */
         post: operations["signals_entry_check_create"];
         delete?: never;
         options?: never;
@@ -1737,7 +1742,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Record signal attribution at trade entry — unauthenticated (Freqtrade calls). */
+        /** @description Record signal attribution at trade entry — internal calls only. */
         post: operations["signals_record_create"];
         delete?: never;
         options?: never;
@@ -1755,7 +1760,7 @@ export interface paths {
         /**
          * @description Which strategies should be active given current regime conditions.
          *
-         *     Unauthenticated — called by Freqtrade bot_loop_start() and frontend.
+         *     Internal — called by Freqtrade bot_loop_start() and frontend.
          */
         get: operations["signals_strategy_status_list"];
         put?: never;

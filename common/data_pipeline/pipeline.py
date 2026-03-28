@@ -222,41 +222,101 @@ def fetch_ohlcv(
 # ──────────────────────────────────────────────
 
 
+def _to_perpetual_symbol(symbol: str, exchange_id: str) -> str:
+    """Convert a spot symbol to perpetual/swap format for funding rate queries.
+
+    CCXT perpetual symbols use the ``BASE/QUOTE:SETTLE`` convention.
+    Example: ``BTC/USDT`` -> ``BTC/USDT:USDT`` (Bybit linear perpetual).
+    For krakenfutures the settle currency is USD: ``BTC/USDT`` -> ``BTC/USD:USD``.
+    If the symbol already contains ``:``, it is returned unchanged.
+    """
+    if ":" in symbol:
+        return symbol
+    if exchange_id == "krakenfutures":
+        # Kraken futures perps are quoted/settled in USD (not USDT)
+        base = symbol.split("/")[0]
+        return f"{base}/USD:USD"
+    # Default (Bybit, Binance, etc.): USDT-margined linear perps
+    quote = symbol.split("/")[-1] if "/" in symbol else "USDT"
+    base = symbol.split("/")[0]
+    return f"{base}/{quote}:{quote}"
+
+
+# Exchanges known to support ``fetchFundingRateHistory``, tried in order.
+_FUNDING_RATE_EXCHANGES = ["bybit", "krakenfutures"]
+
+
 def fetch_funding_rates(
     symbol: str,
-    exchange_id: str = "kraken",
+    exchange_id: str | None = None,
     since_days: int = 90,
 ) -> pd.DataFrame:
-    """Fetch historical funding rates for a perpetual/spot pair.
+    """Fetch historical funding rates for a perpetual/swap pair.
 
-    Returns DataFrame with columns [funding_rate, timestamp] indexed by datetime.
-    Returns empty DataFrame if exchange doesn't support funding rates.
+    Returns DataFrame with columns [funding_rate] indexed by datetime.
+    Returns empty DataFrame if no exchange supports funding rates for *symbol*.
+
+    When *exchange_id* is ``None`` (default), the function tries each exchange
+    in ``_FUNDING_RATE_EXCHANGES`` until one succeeds.  This avoids the
+    previous silent failure when the Kraken spot API was used (which does not
+    support ``fetchFundingRateHistory``).
     """
-    try:
-        exchange = get_exchange(exchange_id, sandbox=False)
-        exchange.load_markets()
+    exchanges_to_try = [exchange_id] if exchange_id else _FUNDING_RATE_EXCHANGES
 
-        if not exchange.has.get("fetchFundingRateHistory"):
-            logger.debug("%s does not support funding rate history", exchange_id)
-            return pd.DataFrame()
+    for eid in exchanges_to_try:
+        try:
+            exchange = get_exchange(eid, sandbox=False)
+            exchange.load_markets()
 
-        since = int((datetime.now(timezone.utc) - timedelta(days=since_days)).timestamp() * 1000)
-        rates = exchange.fetch_funding_rate_history(symbol, since=since, limit=1000)
+            if not exchange.has.get("fetchFundingRateHistory"):
+                logger.warning(
+                    "%s does not support fetchFundingRateHistory — skipping",
+                    eid,
+                )
+                continue
 
-        if not rates:
-            return pd.DataFrame()
+            perp_symbol = _to_perpetual_symbol(symbol, eid)
 
-        df = pd.DataFrame(rates)
-        if "timestamp" in df.columns and "fundingRate" in df.columns:
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-            df = df.set_index("timestamp")[["fundingRate"]].rename(
-                columns={"fundingRate": "funding_rate"},
+            # Verify the perpetual symbol exists on this exchange
+            if perp_symbol not in exchange.markets:
+                logger.debug(
+                    "%s not found on %s (available perpetuals may differ)",
+                    perp_symbol,
+                    eid,
+                )
+                continue
+
+            since = int(
+                (datetime.now(timezone.utc) - timedelta(days=since_days)).timestamp()
+                * 1000
             )
-            df = df[~df.index.duplicated(keep="last")].sort_index()
-            logger.info("Fetched %d funding rates for %s", len(df), symbol)
-            return df
-    except Exception as e:
-        logger.debug("Funding rate fetch failed for %s: %s", symbol, e)
+            rates = exchange.fetch_funding_rate_history(
+                perp_symbol, since=since, limit=1000
+            )
+
+            if not rates:
+                logger.debug("No funding rate data returned for %s on %s", perp_symbol, eid)
+                continue
+
+            df = pd.DataFrame(rates)
+            if "timestamp" in df.columns and "fundingRate" in df.columns:
+                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+                df = df.set_index("timestamp")[["fundingRate"]].rename(
+                    columns={"fundingRate": "funding_rate"},
+                )
+                df = df[~df.index.duplicated(keep="last")].sort_index()
+                logger.info(
+                    "Fetched %d funding rates for %s from %s", len(df), symbol, eid
+                )
+                return df
+        except Exception as e:
+            logger.warning("Funding rate fetch failed for %s on %s: %s", symbol, eid, e)
+
+    logger.warning(
+        "No funding rate data available for %s from any exchange (%s)",
+        symbol,
+        ", ".join(exchanges_to_try),
+    )
     return pd.DataFrame()
 
 
