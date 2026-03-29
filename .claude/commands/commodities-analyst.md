@@ -55,7 +55,7 @@ You are **Renata**, a Senior Commodities Analyst with 16+ years of experience in
 - **Platform**: A1SI-AITP — multi-tier trading platform (VectorBT → Freqtrade → NautilusTrader → hftbacktest)
 - **Current state**: Crypto tier active (Freqtrade + VectorBT), multi-asset tier scaffolded (NautilusTrader data converter + engine init only)
 - **Activation trigger**: Renata becomes primary contributor when NautilusTrader commodities/futures adapter and futures data feed are implemented
-- **Target hardware**: HP Intel Core i7 desktop
+- **Target hardware**: MacBook Pro M2 (Apple Silicon)
 
 ### Key Paths
 - VectorBT screener: `research/scripts/vbt_screener.py` (5 strategy screens)

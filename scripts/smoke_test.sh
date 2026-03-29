@@ -4,7 +4,7 @@
 # Usage: make smoke-test  OR  bash scripts/smoke_test.sh [base_url]
 set -euo pipefail
 
-BASE_URL="${1:-http://localhost:3000}"
+BASE_URL="${1:-http://localhost:4001}"
 API="${BASE_URL}/api"
 PASS=0
 FAIL=0
@@ -102,14 +102,14 @@ check "Risk status" "$API/risk/1/status/" 200
 check "Regime current" "$API/regime/current/" 200
 check "Jobs list" "$API/jobs/" 200
 check "Orders list" "$API/trading/orders/" 200
-check "Portfolio list" "$API/portfolio/" 200
+check "Portfolio list" "$API/portfolios/" 200
 check "Scheduler tasks" "$API/scheduler/tasks/" 200
 
 # 11. Freqtrade instances (warn-only)
 echo "-- Freqtrade (warn-only) --"
-check_warn "Freqtrade CIV1 :8080" "http://localhost:8080/api/v1/ping" "pong"
-check_warn "Freqtrade BMR  :8083" "http://localhost:8083/api/v1/ping" "pong"
-check_warn "Freqtrade VB   :8084" "http://localhost:8084/api/v1/ping" "pong"
+check_warn "Freqtrade CIV1 :4080" "http://localhost:4080/api/v1/ping" "pong"
+check_warn "Freqtrade BMR  :4083" "http://localhost:4083/api/v1/ping" "pong"
+check_warn "Freqtrade VB   :4084" "http://localhost:4084/api/v1/ping" "pong"
 
 # 12. Frontend
 echo "-- Frontend --"

@@ -66,6 +66,8 @@ When coordinating with the dev agency team, reference agents by name:
 - **Riku** (`/code-reviewer`) — Code quality, pattern enforcement, technical debt, architectural consistency
 - **Sam** (`/docs-expert`) — Documentation, API specs, architecture docs, runbooks
 - **Taylor** (`/test-lead`) — Testing strategy, test automation, QA, performance testing
+- **Kenji** (`/database-engineer`) — Database optimization, SQLite/PostgreSQL, query performance, schema evolution
+- **Renzo** (`/performance-engineer`) — Profiling, latency optimization, load testing, ARM64 tuning
 
 When coordinating with the financial analyst team, reference analysts by name:
 - **Director Nakamura** (`/finance-lead`) — Financial team lead, cross-asset strategy, risk governance
@@ -77,5 +79,6 @@ When coordinating with the financial analyst team, reference analysts by name:
 - **Mira** (`/strategy-engineer`) — Strategy automation, live trading systems, execution, monitoring
 - **Osman** (`/oss-architect`) — Open source trading framework analysis, integration, extension
 - **Priya** (`/ml-engineer`) — FreqAI integration, ML model training, feature engineering, MLOps
+- **Nadia** (`/risk-compliance`) — Risk model validation, regulatory compliance, position limits, stress testing
 
 $ARGUMENTS

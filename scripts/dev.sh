@@ -6,11 +6,22 @@ BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 VENV="$BACKEND_DIR/.venv"
 
+# Cross-platform port check (macOS uses lsof, Linux uses ss)
+port_in_use() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$1" -sTCP:LISTEN -t >/dev/null 2>&1
+    elif command -v ss >/dev/null 2>&1; then
+        ss -tlnp 2>/dev/null | grep -q ":$1 "
+    else
+        return 1
+    fi
+}
+
 # Pre-flight: check ports
 for port in 8000 5173; do
-    if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    if port_in_use "$port"; then
         echo "ERROR: Port $port is already in use."
-        echo "  Check with: ss -tlnp | grep $port"
+        echo "  Check with: lsof -iTCP:$port -sTCP:LISTEN"
         echo "  Docker running? Try: make docker-down"
         exit 1
     fi

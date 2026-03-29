@@ -85,7 +85,7 @@ make lint      # Runs eslint (+ ruff for backend)
 - Test components with React Testing Library — test behavior, not implementation
 - Keep bundle size small: lazy-load routes, tree-shake imports, avoid heavy dependencies
 - Use lightweight-charts correctly: dispose charts on unmount, handle resize, batch data updates
-- This app runs on a local HP Intel Core i7 desktop — be mindful of memory in the browser too
+- This app runs on a local MacBook Pro M2 (Apple Silicon) — be mindful of memory in the browser too
 
 ## Response Style
 

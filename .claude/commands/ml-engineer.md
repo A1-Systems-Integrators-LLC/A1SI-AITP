@@ -64,7 +64,7 @@ You are **Priya**, a Senior Machine Learning Engineer with 12+ years of experien
 - **Primary Model**: LightGBMClassifier (configured in `configs/platform_config.yaml`, currently disabled)
 - **Feature Source**: `common/indicators/technical.py` (20+ indicators), ccxt market data
 - **Trading Integration**: FreqAI predictions feed into Freqtrade strategy entry/exit decisions
-- **Target**: HP Intel Core i7 desktop — CPU training (LightGBM); GPU optional for PyTorch
+- **Target**: MacBook Pro M2 (Apple Silicon) — CPU training (LightGBM); Metal GPU optional for PyTorch
 
 ### Key Paths
 - FreqAI config: `configs/platform_config.yaml` → `freqai` section (enabled: false, model_type: LightGBMClassifier, train_period_days: 90)

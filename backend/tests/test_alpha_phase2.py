@@ -7,6 +7,7 @@ modifiers, and scheduled task executors.
 
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,7 +20,7 @@ class TestFearGreedIndex:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.market_data.fear_greed import (
             clear_cache,
             fetch_fear_greed,
@@ -98,7 +99,7 @@ class TestRedditSentiment:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.data_pipeline.reddit_adapter import (
             RedditPost,
             clear_cache,
@@ -180,7 +181,7 @@ class TestCoinGeckoExpanded:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.market_data.coingecko import (
             clear_cache,
             fetch_global_defi_data,
@@ -252,7 +253,7 @@ class TestDefiLlamaTVL:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.market_data.defillama import clear_cache, fetch_chain_tvl, get_tvl_signal
         clear_cache()
         return fetch_chain_tvl, get_tvl_signal
@@ -305,7 +306,7 @@ class TestFREDAdapter:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.market_data.fred_adapter import (
             _compute_macro_score,
             clear_cache,
@@ -363,7 +364,7 @@ class TestEconomicCalendar:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.calendar.economic_events import (
             _parse_ff_date,
             clear_ff_cache,
@@ -471,7 +472,7 @@ class TestSignalWeightRebalance:
 
     def test_weights_sum_to_one(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.signals.constants import DEFAULT_WEIGHTS
         assert abs(sum(DEFAULT_WEIGHTS.values()) - 1.0) < 0.001
 
@@ -499,7 +500,7 @@ class TestSignalWeightRebalance:
 def _make_regime_state(regime, confidence=0.8):
     """Helper to create a RegimeState with required fields."""
     import sys
-    sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from common.regime.regime_detector import RegimeState
     return RegimeState(
         regime=regime,
@@ -517,7 +518,7 @@ class TestAggregatorModifiers:
 
     def _import(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.signals.aggregator import SignalAggregator
         return SignalAggregator
 
@@ -625,7 +626,7 @@ class TestScheduledTaskExecutors:
     @pytest.fixture(autouse=True)
     def _setup_path(self):
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         import os
 
         import django
@@ -690,7 +691,7 @@ class TestScheduledTaskSettings:
     def _setup_django(self):
         import os
         import sys
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
         import django
         django.setup()

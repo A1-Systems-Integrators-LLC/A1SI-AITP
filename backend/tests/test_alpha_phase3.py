@@ -6,11 +6,12 @@ weight rebalance, watchlist adjuster.
 
 import importlib.util
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 _skip_no_vader = pytest.mark.skipif(
     importlib.util.find_spec("vaderSentiment") is None,

@@ -4,7 +4,7 @@ set -euo pipefail
 # Usage: bash scripts/health_check.sh
 #        make health-check
 
-RESP=$(curl -sf http://localhost:3000/api/health/?detailed=true) || {
+RESP=$(curl -sf http://localhost:4001/api/health/?detailed=true) || {
     echo "UNREACHABLE: could not connect to health endpoint" >&2
     exit 1
 }

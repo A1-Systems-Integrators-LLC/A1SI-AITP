@@ -49,7 +49,7 @@ You are **Victor**, a Senior Equities Analyst with 15+ years of experience in eq
 - **Platform**: A1SI-AITP — multi-tier trading platform (VectorBT → Freqtrade → NautilusTrader → hftbacktest)
 - **Current state**: Crypto tier active (Freqtrade + VectorBT), multi-asset tier scaffolded (NautilusTrader data converter + engine init only)
 - **Activation trigger**: Victor becomes primary contributor when NautilusTrader equities adapter and equity data feed are implemented
-- **Target hardware**: HP Intel Core i7 desktop
+- **Target hardware**: MacBook Pro M2 (Apple Silicon)
 
 ### Key Paths
 - VectorBT screener: `research/scripts/vbt_screener.py` (5 screens: SMA crossover, RSI mean reversion, Bollinger breakout, EMA+RSI combo, Supertrend)

@@ -8,11 +8,11 @@ This document covers how to set up the A1SI-AITP platform for local development,
 
 ### Hardware
 
-The platform is designed for local desktop deployment (HP Intel Core i7) but runs on any Linux system.
+The platform is designed for local desktop deployment (MacBook Pro M2 (Apple Silicon)) but runs on any macOS or Linux system.
 
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
-| CPU | 4 cores | 8+ cores (Intel Core i7) |
+| CPU | 4 cores | 8+ cores (Apple M2) |
 | RAM | 4 GB | 16+ GB |
 | Storage | 5 GB free | 20+ GB free |
 | GPU | Not required | Optional (for future PyTorch/ML) |
@@ -29,7 +29,7 @@ The platform is designed for local desktop deployment (HP Intel Core i7) but run
 | Docker | 24+ | For containerized deployment (optional) |
 | OpenSSL | 1.1+ | For TLS certificate generation |
 
-**Note:** This platform targets x86_64 Linux. Standard Docker images work out of the box.
+**Note:** This platform targets macOS (Apple Silicon). Docker images are built for `linux/arm64` by default; `linux/amd64` builds are also supported.
 
 ---
 
@@ -234,7 +234,7 @@ make migrate          # Run makemigrations + migrate
 make createsuperuser  # Create a new superuser interactively
 ```
 
-The SQLite database is stored at `backend/data/a1si_aitp.db` with WAL mode for concurrent read performance.
+The SQLite database is stored at `backend/data/a1si_aitp.db` with DELETE journal mode (required for Docker virtiofs compatibility).
 
 ### Testing
 
@@ -267,7 +267,7 @@ make build            # Production frontend build → frontend/dist/
 
 ## Docker Deployment
 
-Docker Compose runs the platform as two containers: backend (Daphne) and frontend (nginx).
+Docker Compose runs the platform as two containers: backend (Daphne) and frontend (nginx). Two environments are available: **dev** (default profile) and **prod** (prod profile).
 
 ### Architecture
 
@@ -276,7 +276,7 @@ Docker Compose runs the platform as two containers: backend (Daphne) and fronten
                     │   User Browser   │
                     └────────┬────────┘
                              │
-                    Port 3000│
+               Dev :4001 / Prod :4101
                              ▼
                     ┌─────────────────┐
                     │    Frontend      │
@@ -286,7 +286,7 @@ Docker Compose runs the platform as two containers: backend (Daphne) and fronten
                     │  SPA routing     │
                     │  /api/ proxy ────┼──────┐
                     └─────────────────┘      │
-                                             │ Port 8000
+                                             │ Dev :4000 / Prod :4100
                                              ▼
                     ┌─────────────────┐
                     │    Backend       │
@@ -300,11 +300,10 @@ Docker Compose runs the platform as two containers: backend (Daphne) and fronten
 
 ### Building and Running
 
-```bash
-# Build and start both containers
-docker compose up --build
+**Dev environment** (default):
 
-# Run in background
+```bash
+# Build and start both containers in background
 docker compose up --build -d
 
 # View logs
@@ -314,17 +313,50 @@ docker compose logs -f
 docker compose down
 ```
 
-Access:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
+**Prod environment:**
+
+```bash
+# Build and start prod containers in background
+docker compose --profile prod up --build -d
+
+# View logs
+docker compose --profile prod logs -f
+
+# Stop
+docker compose --profile prod down
+```
+
+### Dev vs Prod
+
+| Aspect                       | Dev          | Prod                 |
+|------------------------------|--------------|----------------------|
+| Profile                      | (default)    | `--profile prod`     |
+| Backend port                 | 4000         | 4100                 |
+| Frontend port                | 4001         | 4101                 |
+| `DJANGO_DEBUG`               | true         | false                |
+| Secrets                      | Dev fallbacks| Required (enforced)  |
+| Both can run simultaneously  | Yes          | Yes                  |
+
+The dev and prod environments use separate containers and volumes, so they can run side by side without conflict. Use dev for daily development and testing; use prod for staging or deployment verification.
+
+### Access URLs
+
+**Dev:**
+- Frontend: http://localhost:4001
+- Backend API: http://localhost:4000
 - Default login: `admin` / `admin`
+
+**Prod:**
+- Frontend: http://localhost:4101
+- Backend API: http://localhost:4100
+- Default login: `admin` / `admin` (change immediately)
 
 ### Backend Container
 
 **Dockerfile:** `backend/Dockerfile`
 
 ```dockerfile
-FROM python:3.10-slim
+FROM python:3.12-slim
 # Installs gcc, libffi-dev for cryptography/argon2
 # pip install -e . (from pyproject.toml)
 # Entrypoint: docker-entrypoint.sh → Daphne on port 8000
@@ -374,11 +406,36 @@ Key variables for Docker:
 | `DJANGO_DEBUG` | true | Debug mode |
 | `DJANGO_ALLOWED_HOSTS` | localhost,127.0.0.1,backend | Allowed Host header values |
 | `DJANGO_ENCRYPTION_KEY` | dev fallback | Fernet key for credential encryption |
-| `CORS_ALLOWED_ORIGINS` | localhost:3000,localhost:5173 | Allowed CORS origins |
-| `CSRF_TRUSTED_ORIGINS` | localhost:3000,localhost:5173,localhost:8000 | Trusted CSRF origins |
+| `CORS_ALLOWED_ORIGINS` | localhost:4001,localhost:5173 | Allowed CORS origins |
+| `CSRF_TRUSTED_ORIGINS` | localhost:4001,localhost:5173,localhost:4000 | Trusted CSRF origins |
 | `EXCHANGE_ID` | binance | Default exchange |
 | `EXCHANGE_API_KEY` | (empty) | Fallback API key |
 | `EXCHANGE_API_SECRET` | (empty) | Fallback API secret |
+
+---
+
+## Port Allocation
+
+All A1SI-AITP services use the 4000-4199 port range:
+
+| Service                      | Dev/Test | Prod | Notes               |
+|------------------------------|----------|------|---------------------|
+| Backend (Django/Daphne)      | 4000     | 4100 | API + Admin         |
+| Frontend (nginx)             | 4001     | 4101 | SPA + API proxy     |
+| Prometheus                   | 4010     | 4110 | monitoring profile  |
+| Grafana                      | 4011     | 4111 | monitoring profile  |
+| PostgreSQL                   | 4012     | 4112 | postgres profile    |
+| Freqtrade CIV1               | 4080     | 4180 | Bare-metal only     |
+| Freqtrade BMR                | 4083     | 4183 | Bare-metal only     |
+| Freqtrade VB                 | 4084     | 4184 | Bare-metal only     |
+| Freqtrade Short              | 4085     | 4185 | Future              |
+| Freqtrade Grid               | 4086     | 4186 | Future              |
+| Freqtrade Scalp              | 4087     | 4187 | Future              |
+| Freqtrade Sentiment          | 4088     | 4188 | Future              |
+| Freqtrade Reversal           | 4089     | 4189 | Future              |
+| Vite dev server              | 5173     | ---  | Local dev only      |
+
+The 4000-4199 range is exclusive to A1SI-AITP. Other A1SI projects use different ranges to ensure zero port conflicts when running Docker stacks simultaneously.
 
 ---
 
@@ -539,7 +596,7 @@ Add a cron job for daily backups:
 crontab -e
 
 # Add line (daily at 2 AM)
-0 2 * * * cd /home/rredmer/Dev/A1SI-AITP && make backup >> backend/data/logs/backup.log 2>&1
+0 2 * * * cd /path/to/A1SI-AITP && make backup >> backend/data/logs/backup.log 2>&1
 ```
 
 ---
@@ -691,6 +748,11 @@ A1SI-AITP/
 | `make certs` | Generate self-signed TLS certificates |
 | `make backup` | SQLite backup with optional GPG encryption |
 | `make restore` | Restore SQLite database from most recent backup |
+| `make docker-prod-up` | Start prod containers (backend :4100, frontend :4101) |
+| `make docker-prod-down` | Stop prod containers |
+| `make docker-prod-deploy` | Full prod deploy: build + restart + verify |
+| `make monitoring` | Start dev monitoring (Prometheus :4010, Grafana :4011) |
+| `make monitoring-prod` | Start prod monitoring (Prometheus :4110, Grafana :4111) |
 | `make clean` | Remove venv, node_modules, build artifacts, caches |
 
 ---
@@ -738,7 +800,7 @@ The `backend-data` volume persists the SQLite database. If you ran `docker compo
 ### Database
 
 **"database is locked":**
-SQLite with WAL mode supports concurrent reads but only one writer. If multiple processes write simultaneously, you may see this error. The platform is designed for single-user operation — ensure only one backend instance runs at a time.
+SQLite with DELETE journal mode supports only one writer at a time. If multiple processes write simultaneously, you may see this error. The platform is designed for single-user operation — ensure only one backend instance runs at a time. Note: WAL mode is deliberately not used because it is incompatible with Docker virtiofs bind mounts.
 
 **Corrupted database:**
 Restore from the most recent backup:

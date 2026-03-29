@@ -1,6 +1,5 @@
 {
     "trading_mode": "spot",
-    "margin_mode": "",
     "max_open_trades": 5,
     "stake_currency": "USDT",
     "stake_amount": "unlimited",
@@ -57,11 +56,11 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "127.0.0.1",
-        "listen_port": 8080,
+        "listen_port": 4080,
         "verbosity": "error",
         "enable_openapi": true,
         "jwt_secret_key": "CHANGE_ME_GENERATE_WITH_openssl_rand_hex_32",
-        "CORS_origins": ["http://localhost:3000"],
+        "CORS_origins": ["http://localhost:4001"],
         "username": "CHANGE_ME",
         "password": "CHANGE_ME"
     },

@@ -136,9 +136,9 @@ def _check_freqtrade() -> CheckResult:
     ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
 
     urls = {
-        "CIV1": getattr(settings, "FREQTRADE_API_URL", "") or "http://127.0.0.1:8080",
-        "BMR": getattr(settings, "FREQTRADE_BMR_API_URL", "") or "http://127.0.0.1:8083",
-        "VB": getattr(settings, "FREQTRADE_VB_API_URL", "") or "http://127.0.0.1:8084",
+        "CIV1": getattr(settings, "FREQTRADE_API_URL", "") or "http://127.0.0.1:4080",
+        "BMR": getattr(settings, "FREQTRADE_BMR_API_URL", "") or "http://127.0.0.1:4083",
+        "VB": getattr(settings, "FREQTRADE_VB_API_URL", "") or "http://127.0.0.1:4084",
     }
 
     alive = []

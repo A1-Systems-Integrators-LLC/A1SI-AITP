@@ -32,7 +32,7 @@ services:
       - ./data/processed:/freqtrade/data
       - ./common:/freqtrade/common
     ports:
-      - "8080:8080"  # API/WebUI
+      - "4080:4080"  # API/WebUI
     command: trade --config /freqtrade/config.json --strategy CryptoInvestorV1 --strategy-path /freqtrade/user_data/strategies
     environment:
       - KRAKEN_API_KEY=${KRAKEN_API_KEY:-}

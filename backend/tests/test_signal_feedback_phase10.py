@@ -11,6 +11,7 @@ Covers:
 """
 
 import uuid
+from pathlib import Path
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -108,7 +109,7 @@ class TestPerformanceTracker:
     def setup_method(self):
         import sys
 
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.signals.performance_tracker import PerformanceTracker
 
         self.tracker = PerformanceTracker()
@@ -282,7 +283,7 @@ class TestPerformanceFeedback:
     def setup_method(self):
         import sys
 
-        sys.path.insert(0, "/home/rredmer/Dev/Portfolio/A1SI-AITP")
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from common.signals.feedback import PerformanceFeedback
         from common.signals.performance_tracker import PerformanceTracker
 

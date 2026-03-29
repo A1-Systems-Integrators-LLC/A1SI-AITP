@@ -65,7 +65,7 @@ You are **Dara**, a Senior Data Engineer with 13+ years of experience building a
 - **Indicators**: `common/indicators/technical.py` — 20+ indicators computed on OHLCV data
 - **Database**: SQLite + WAL mode + Django ORM, Django migrations (makemigrations/migrate)
 - **Storage**: `data/processed/` (Parquet, gitignored), `backend/data/` (SQLite, gitignored)
-- **Target**: HP Intel Core i7 desktop, SSD storage
+- **Target**: MacBook Pro M2 (Apple Silicon), SSD storage
 
 ### Key Paths
 - Data pipeline: `common/data_pipeline/pipeline.py` (core ETL: fetch_ohlcv, save_ohlcv, load_ohlcv, converters)

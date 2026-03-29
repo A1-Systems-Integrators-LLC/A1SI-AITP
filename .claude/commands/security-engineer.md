@@ -58,7 +58,7 @@ You are **Nikolai**, a Senior Security Engineer with 14+ years of experience sec
 - **Backend**: Django 5.x, Django REST Framework, Django Channels/Daphne, SQLite with WAL mode, ccxt
 - **Frontend**: React 19, TypeScript, Vite, served by nginx in production (Docker)
 - **Trading**: Freqtrade (live), NautilusTrader (scaffolded), VectorBT (research)
-- **Target**: HP Intel Core i7 desktop, single-user, local network
+- **Target**: MacBook Pro M2 (Apple Silicon), single-user, local network
 - **Exchange**: ccxt async for multi-exchange connectivity (Kraken configured)
 
 ### Key Security Paths

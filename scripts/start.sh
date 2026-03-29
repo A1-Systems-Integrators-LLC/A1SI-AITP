@@ -10,6 +10,17 @@ FT_DIR="$ROOT_DIR/freqtrade"
 FT_STRATEGY_PATH="$FT_DIR/user_data/strategies"
 PYTHON="$VENV/bin/python"
 
+# Cross-platform port check (macOS uses lsof, Linux uses ss)
+port_in_use() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$1" -sTCP:LISTEN -t >/dev/null 2>&1
+    elif command -v ss >/dev/null 2>&1; then
+        ss -tlnp 2>/dev/null | grep -q ":$1 "
+    else
+        return 1
+    fi
+}
+
 # ── Configurable: which Freqtrade instances to start ──────────
 # Set FREQTRADE_INSTANCES env var to override (comma-separated)
 # Default: the 3 pilot strategies
@@ -25,9 +36,9 @@ declare -A FT_CONFIGS=(
 )
 
 declare -A FT_PORTS=(
-    [CryptoInvestorV1]=8080
-    [BollingerMeanReversion]=8083
-    [VolatilityBreakout]=8084
+    [CryptoInvestorV1]=4080
+    [BollingerMeanReversion]=4083
+    [VolatilityBreakout]=4084
 )
 
 # ── Pre-flight checks ────────────────────────────────────────
@@ -42,9 +53,9 @@ find "$ROOT_DIR" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Check core ports
 for port in 8000 5173; do
-    if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    if port_in_use "$port"; then
         echo "ERROR: Port $port is already in use."
-        echo "  Check with: ss -tlnp | grep $port"
+        echo "  Check with: lsof -iTCP:$port -sTCP:LISTEN"
         exit 1
     fi
 done
@@ -53,7 +64,7 @@ done
 IFS=',' read -ra FT_LIST <<< "$FT_INSTANCES"
 for strategy in "${FT_LIST[@]}"; do
     port="${FT_PORTS[$strategy]}"
-    if [ -n "$port" ] && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    if [ -n "$port" ] && port_in_use "$port"; then
         echo "WARNING: Port $port ($strategy) already in use — skipping"
     fi
 done
@@ -116,7 +127,7 @@ for strategy in "${FT_LIST[@]}"; do
     fi
 
     # Skip if port already in use
-    if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    if port_in_use "$port"; then
         echo "  ✓ $strategy (:$port) — already running"
         continue
     fi

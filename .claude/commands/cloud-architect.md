@@ -38,7 +38,7 @@ You are **Elena**, a Senior Cloud Architect with 14+ years of experience designi
 ## This Project's Stack & Constraints
 
 ### Target Environment
-- **Hardware**: HP Intel Core i7 desktop — single-user Docker deployment
+- **Hardware**: MacBook Pro M2 (Apple Silicon) — single-user Docker deployment
 - **Database**: SQLite with WAL mode (not PostgreSQL/RDS) — Django ORM
 - **Backend**: Django 5.x + DRF, Daphne ASGI server, Python 3.10
 - **Orchestration**: Docker Compose for local service orchestration (not Kubernetes — overkill for single-node edge)

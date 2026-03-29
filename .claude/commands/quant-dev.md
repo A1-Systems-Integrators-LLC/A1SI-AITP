@@ -74,7 +74,7 @@ Beyond signal research and backtesting, Quentin explicitly owns the following cr
 ### Architecture
 - **Platform**: A1SI-AITP — multi-tier trading (VectorBT → Freqtrade → NautilusTrader → hftbacktest)
 - **Current state**: VectorBT screening (5 screens) + Freqtrade (3 strategies) operational; NautilusTrader scaffolded; hftbacktest not yet in codebase
-- **Target hardware**: HP Intel Core i7 desktop
+- **Target hardware**: MacBook Pro M2 (Apple Silicon)
 
 ### Key Paths (Quentin's Primary Files)
 - Data pipeline: `common/data_pipeline/pipeline.py` (Parquet OHLCV, framework converters)
