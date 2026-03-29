@@ -85,17 +85,19 @@ class MetricsCollector:
             for key, values in sorted(self._histograms.items()):
                 if values:
                     base = key.split("{")[0] if "{" in key else key
+                    labels = key[len(base):] if "{" in key else ""
                     if base not in seen_bases:
                         seen_bases.add(base)
                         lines.append(f"# TYPE {base} summary")
                     sorted_vals = sorted(values)
                     count = len(sorted_vals)
                     total = sum(sorted_vals)
-                    lines.append(f"{key}_count {count}")
-                    lines.append(f"{key}_sum {total:.6f}")
+                    lines.append(f"{base}_count{labels} {count}")
+                    lines.append(f"{base}_sum{labels} {total:.6f}")
                     for q in (0.5, 0.9, 0.99):
                         idx = min(int(q * count), count - 1)
-                        lines.append(f'{key}{{quantile="{q}"}} {sorted_vals[idx]:.6f}')
+                        qlabels = labels.rstrip("}") + f',quantile="{q}"}}' if labels else f'{{quantile="{q}"}}'
+                        lines.append(f"{base}{qlabels} {sorted_vals[idx]:.6f}")
         lines.append("")
         return "\n".join(lines)
 

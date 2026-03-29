@@ -63,10 +63,10 @@ class VolatilityBreakout(IStrategy):
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.05,
-        "120": 0.03,
-        "480": 0.015,
-        "1440": 0.005,
+        "0": 0.12,
+        "120": 0.07,
+        "480": 0.04,
+        "1440": 0.02,
     }
 
     stoploss = -0.03

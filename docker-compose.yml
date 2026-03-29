@@ -1,100 +1,130 @@
+# A1SI-AITP Docker Compose — Isolated container infrastructure
+#
+# Port range: 4000-4199 (exclusive to AITP, no conflicts with CVWS/EMDT/CRM)
+#
+# Environments:
+#   Dev/Test:  docker compose up                    (ports 4000-4099)
+#   Prod:      docker compose --profile prod up     (ports 4100-4199)
+#   Monitor:   docker compose --profile monitoring up
+#   Postgres:  docker compose --profile postgres up
+#
+# The project name ensures container/volume/network isolation:
+name: aitp
+
+# ═══════════════════════════════════════════════════════════════
+# Shared configuration
+# ═══════════════════════════════════════════════════════════════
+
+x-backend-env: &backend-env
+  DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}"
+  DJANGO_ENCRYPTION_KEY: "${DJANGO_ENCRYPTION_KEY:?Set DJANGO_ENCRYPTION_KEY in .env}"
+  DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,backend,backend-prod"
+  EXCHANGE_ID: "${EXCHANGE_ID:-kraken}"
+  EXCHANGE_API_KEY: "${EXCHANGE_API_KEY:-}"
+  EXCHANGE_API_SECRET: "${EXCHANGE_API_SECRET:-}"
+  TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+  TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+  NOTIFICATION_WEBHOOK_URL: "${NOTIFICATION_WEBHOOK_URL:-}"
+  FREQTRADE_USERNAME: "${FREQTRADE_USERNAME:-freqtrader}"
+  FREQTRADE_PASSWORD: "${FREQTRADE_PASSWORD:-freqtrader}"
+  DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"
+  DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-admin@localhost}"
+  DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-}"
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+
+x-backend-base: &backend-base
+  build: *backend-build
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./backend/data:/project/backend/data
+    - ./data:/project/data
+    - ./models:/project/models
+  init: true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "100m"
+      max-file: "3"
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 8g
+        pids: 512
+      reservations:
+        memory: 1g
+  healthcheck:
+    test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -q '\"status\":\"ok\"'"]
+    interval: 15s
+    timeout: 10s
+    retries: 5
+    start_period: 120s
+
+x-frontend-base: &frontend-base
+  build:
+    context: ./frontend
+    dockerfile: Dockerfile
+  init: true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  deploy:
+    resources:
+      limits:
+        cpus: "1"
+        memory: 512m
+        pids: 256
+      reservations:
+        memory: 256m
+
+# ═══════════════════════════════════════════════════════════════
+# DEV/TEST environment (default) — ports 4000-4099
+# ═══════════════════════════════════════════════════════════════
+
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    <<: *backend-base
+    container_name: aitp-backend-dev
     ports:
-      - "8000:8000"
+      - "4000:8000"
     environment:
-      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}"
-      DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
-      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
-      DJANGO_ENCRYPTION_KEY: "${DJANGO_ENCRYPTION_KEY:?Set DJANGO_ENCRYPTION_KEY in .env}"
-      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
-      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8000"
-      EXCHANGE_ID: "${EXCHANGE_ID:-kraken}"
-      EXCHANGE_API_KEY: "${EXCHANGE_API_KEY:-}"
-      EXCHANGE_API_SECRET: "${EXCHANGE_API_SECRET:-}"
-      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
-      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
-      NOTIFICATION_WEBHOOK_URL: "${NOTIFICATION_WEBHOOK_URL:-}"
-      FREQTRADE_API_URL: "http://host.docker.internal:8080"
-      FREQTRADE_BMR_API_URL: "http://host.docker.internal:8083"
-      FREQTRADE_VB_API_URL: "http://host.docker.internal:8084"
-      # Disabled instances — uncomment when deployed:
-      # FREQTRADE_SHORT_API_URL: "http://host.docker.internal:8085"
-      # FREQTRADE_GRID_API_URL: "http://host.docker.internal:8086"
-      # FREQTRADE_SCALP_API_URL: "http://host.docker.internal:8087"
-      # FREQTRADE_SENTIMENT_API_URL: "http://host.docker.internal:8088"
-      # FREQTRADE_REVERSAL_API_URL: "http://host.docker.internal:8089"
-      FREQTRADE_USERNAME: "${FREQTRADE_USERNAME:-freqtrader}"
-      FREQTRADE_PASSWORD: "${FREQTRADE_PASSWORD:-freqtrader}"
-      DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"
-      DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-admin@localhost}"
-      DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-}"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./backend/data:/project/backend/data
-      - ./data:/project/data
-      - ./models:/project/models
-    init: true
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "100m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 8g
-          pids: 512
-        reservations:
-          memory: 1g
-    healthcheck:
-      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -q '\"status\":\"ok\"'"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      <<: *backend-env
+      DJANGO_DEBUG: "true"
+      CORS_ALLOWED_ORIGINS: "http://localhost:4001,http://localhost:5173"
+      CSRF_TRUSTED_ORIGINS: "http://localhost:4001,http://localhost:5173,http://localhost:4000"
+      FREQTRADE_API_URL: "http://host.docker.internal:4080"
+      FREQTRADE_BMR_API_URL: "http://host.docker.internal:4083"
+      FREQTRADE_VB_API_URL: "http://host.docker.internal:4084"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    <<: *frontend-base
+    container_name: aitp-frontend-dev
     ports:
-      - "3000:8080"
-    init: true
+      - "4001:8080"
     volumes:
-      - nginx-logs:/var/log/nginx
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512m
-          pids: 256
-        reservations:
-          memory: 256m
+      - nginx-logs-dev:/var/log/nginx
     depends_on:
       backend:
         condition: service_healthy
 
+  # ── Monitoring (dev) ──────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.51.0
+    container_name: aitp-prometheus-dev
     profiles: ["monitoring"]
     ports:
-      - "9090:9090"
+      - "4010:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
+      - prometheus-data-dev:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=30d'
@@ -105,32 +135,35 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.0
+    container_name: aitp-grafana-dev
     profiles: ["monitoring"]
     ports:
-      - "3001:3000"
+      - "4011:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - grafana-data-dev:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     restart: unless-stopped
     depends_on:
       - prometheus
 
+  # ── PostgreSQL (dev) ──────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: aitp-postgres-dev
     profiles: ["postgres"]
     environment:
       POSTGRES_DB: a1si_aitp
       POSTGRES_USER: a1si
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-a1si_dev_password}"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data-dev:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "4012:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U a1si -d a1si_aitp"]
@@ -138,8 +171,103 @@ services:
       timeout: 5s
       retries: 5
 
+  # ═════════════════════════════════════════════════════════════
+  # PRODUCTION environment — ports 4100-4199
+  # ═════════════════════════════════════════════════════════════
+
+  backend-prod:
+    <<: *backend-base
+    container_name: aitp-backend-prod
+    profiles: ["prod"]
+    ports:
+      - "4100:8000"
+    environment:
+      <<: *backend-env
+      DJANGO_DEBUG: "false"
+      CORS_ALLOWED_ORIGINS: "http://localhost:4101"
+      CSRF_TRUSTED_ORIGINS: "http://localhost:4101,http://localhost:4100"
+      FREQTRADE_API_URL: "http://host.docker.internal:4180"
+      FREQTRADE_BMR_API_URL: "http://host.docker.internal:4183"
+      FREQTRADE_VB_API_URL: "http://host.docker.internal:4184"
+
+  frontend-prod:
+    <<: *frontend-base
+    container_name: aitp-frontend-prod
+    profiles: ["prod"]
+    ports:
+      - "4101:8080"
+    volumes:
+      - nginx-logs-prod:/var/log/nginx
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+
+  # ── Monitoring (prod) ─────────────────────────────────────
+  prometheus-prod:
+    image: prom/prometheus:v2.51.0
+    container_name: aitp-prometheus-prod
+    profiles: ["prod-monitoring"]
+    ports:
+      - "4110:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data-prod:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=90d'
+    restart: unless-stopped
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+
+  grafana-prod:
+    image: grafana/grafana:10.4.0
+    container_name: aitp-grafana-prod
+    profiles: ["prod-monitoring"]
+    ports:
+      - "4111:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-changeme_in_production}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data-prod:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+    depends_on:
+      - prometheus-prod
+
+  # ── PostgreSQL (prod) ─────────────────────────────────────
+  postgres-prod:
+    image: postgres:16-alpine
+    container_name: aitp-postgres-prod
+    profiles: ["prod-postgres"]
+    environment:
+      POSTGRES_DB: a1si_aitp
+      POSTGRES_USER: a1si
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme_in_production}"
+    volumes:
+      - postgres-data-prod:/var/lib/postgresql/data
+    ports:
+      - "4112:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a1si -d a1si_aitp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ═══════════════════════════════════════════════════════════════
+# Volumes — prefixed per environment to avoid cross-contamination
+# ═══════════════════════════════════════════════════════════════
+
 volumes:
-  nginx-logs:
-  prometheus-data:
-  grafana-data:
-  postgres-data:
+  nginx-logs-dev:
+  nginx-logs-prod:
+  prometheus-data-dev:
+  prometheus-data-prod:
+  grafana-data-dev:
+  grafana-data-prod:
+  postgres-data-dev:
+  postgres-data-prod:

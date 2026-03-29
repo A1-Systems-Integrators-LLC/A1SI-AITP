@@ -566,8 +566,13 @@ export function Dashboard() {
 }
 
 function SystemHealthCard({ data }: { data: SystemHealth }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
   const dataAge = data.last_data_refresh
-    ? Math.round((Date.now() - new Date(data.last_data_refresh).getTime()) / 60000)
+    ? Math.round((now - new Date(data.last_data_refresh).getTime()) / 60000)
     : null;
   const dataFresh = dataAge !== null && dataAge < 60;
   const dataStale = dataAge !== null && dataAge >= 240;

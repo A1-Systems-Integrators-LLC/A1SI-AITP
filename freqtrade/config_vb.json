@@ -89,13 +89,13 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "0.0.0.0",
-        "listen_port": 8084,
+        "listen_port": 4084,
         "verbosity": "error",
         "enable_openapi": true,
         "jwt_secret_key": "change_me_vb",
-        "CORS_origins": ["http://localhost:3000"],
-        "username": "freqtrader",
-        "password": "freqtrader"
+        "CORS_origins": ["http://localhost:4001"],
+        "username": "SET_VIA_ENV_FREQTRADE__API_SERVER__USERNAME",
+        "password": "SET_VIA_ENV_FREQTRADE__API_SERVER__PASSWORD"
     },
     "db_url": "sqlite:///tradesv3.vb.dryrun.sqlite",
     "bot_name": "a1si-vb",
@@ -110,5 +110,5 @@
     "internals": {
         "process_throttle_secs": 5
     },
-    "user_data_dir": "/home/rredmer/Dev/Portfolio/A1SI-AITP/freqtrade/user_data"
+    "user_data_dir": "./freqtrade/user_data"
 }

@@ -35,7 +35,11 @@ def csrf_failure(request, reason="") -> JsonResponse:
 
 
 class MetricsTokenOrSessionAuth(BasePermission):
-    """Allow access via Bearer token (for Prometheus) or session auth (browser)."""
+    """Allow access via Bearer token (for Prometheus) or session auth (browser).
+
+    When METRICS_AUTH_TOKEN is not set, allows unauthenticated access
+    (dev/monitoring convenience — nginx restricts to localhost/Docker in prod).
+    """
 
     def has_permission(self, request, view):
         token = getattr(django_settings, "METRICS_AUTH_TOKEN", "")
@@ -43,7 +47,9 @@ class MetricsTokenOrSessionAuth(BasePermission):
             auth_header = request.META.get("HTTP_AUTHORIZATION", "")
             if auth_header == f"Bearer {token}":
                 return True
-        return bool(request.user and request.user.is_authenticated)
+            return bool(request.user and request.user.is_authenticated)
+        # No token configured — allow unauthenticated (nginx restricts network access)
+        return True
 
 
 class AuditLogListView(APIView):

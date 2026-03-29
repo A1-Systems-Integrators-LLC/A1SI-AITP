@@ -8,7 +8,7 @@ A1SI-AITP — Full-stack crypto investment platform with portfolio tracking, mar
 
 ## Tech Stack
 
-- **Backend**: Python 3.10, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), SQLite, ccxt
+- **Backend**: Python 3.12, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), SQLite, ccxt
 - **Frontend**: TypeScript, React 19, Vite 6, TanStack React Query, Tailwind CSS v4, lightweight-charts
 - **Tooling**: Makefile-driven, ruff + mypy (Python), eslint (TS), pytest + vitest
 - **Trading Frameworks**: Freqtrade (crypto engine), NautilusTrader (multi-asset), VectorBT (research), hftbacktest (HFT)
@@ -39,6 +39,16 @@ make harden         # Set file permissions (600 .env, 700 data dirs)
 make audit          # pip-audit + npm audit
 make certs          # Generate self-signed TLS certs
 make backup         # SQLite backup (keeps 7 daily)
+
+# Docker (isolated — port range 4000-4199, project name: aitp)
+make docker-up          # Dev: backend :4000, frontend :4001
+make docker-down        # Stop dev containers
+make docker-deploy      # Build + restart + smoke test (dev)
+make docker-prod-up     # Prod: backend :4100, frontend :4101
+make docker-prod-down   # Stop prod containers
+make docker-prod-deploy # Build + restart + smoke test (prod)
+make monitoring         # Dev: Prometheus :4010, Grafana :4011
+make monitoring-prod    # Prod: Prometheus :4110, Grafana :4111
 
 # Platform orchestrator
 python run.py status                  # Show platform status
@@ -72,7 +82,7 @@ python run.py nautilus test           # Test NautilusTrader engine
 
 ## Memory
 
-After completing any task that changes code, tests, dependencies, or architecture, **always update the memory file** at `~/.claude/projects/-home-rredmer-Dev-Portfolio-A1SI-AITP/memory/MEMORY.md` (and `next-steps.md` if roadmap items changed). Keep test counts, implementation status, and dependency notes current.
+After completing any task that changes code, tests, dependencies, or architecture, **always update the memory file** (MEMORY.md and next-steps.md in the project's Claude memory directory). Keep test counts, implementation status, and dependency notes current.
 
 ## Critical Rules — DO NOT VIOLATE
 

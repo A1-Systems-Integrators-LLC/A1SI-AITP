@@ -1099,12 +1099,9 @@ def add_indicators(df: pd.DataFrame, periods: list = None) -> pd.DataFrame:
         # Exponential Moving Average
         result[f"ema_{p}"] = result["close"].ewm(span=p, adjust=False).mean()
 
-    # RSI (14-period, Wilder's smoothing — matches technical.rsi())
-    delta = result["close"].diff()
-    gain = delta.where(delta > 0, 0.0).ewm(alpha=1 / 14, adjust=False).mean()
-    loss = (-delta.where(delta < 0, 0.0)).ewm(alpha=1 / 14, adjust=False).mean()
-    rs = gain / loss.replace(0, np.nan)
-    result["rsi_14"] = 100 - (100 / (1 + rs))
+    # RSI (14-period, Wilder's smoothing — uses shared technical.rsi())
+    from common.indicators.technical import rsi
+    result["rsi_14"] = rsi(result["close"], 14)
 
     # MACD
     ema12 = result["close"].ewm(span=12, adjust=False).mean()

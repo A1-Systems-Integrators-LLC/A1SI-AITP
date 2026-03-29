@@ -64,10 +64,10 @@ class CryptoInvestorV1(IStrategy):
 
     # ── ROI table (aggressive: take profits faster) ──
     minimal_roi = {
-        "0": 0.04,
-        "120": 0.025,
-        "480": 0.015,
-        "1440": 0.005,
+        "0": 0.10,
+        "120": 0.06,
+        "480": 0.03,
+        "1440": 0.015,
     }
 
     # ── Stop loss ──

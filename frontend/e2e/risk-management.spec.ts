@@ -73,10 +73,6 @@ test.describe("Risk management flows", () => {
     await expect(
       page.locator("h3:has-text('Risk Limits')").first(),
     ).toBeVisible({ timeout: 10_000 });
-    // Find the Edit button near the Risk Limits heading
-    const editButton = page.locator(
-      "h3:has-text('Risk Limits') + button, h3:has-text('Risk Limits') ~ button",
-    );
     // The parent container should have an Edit button
     const limitsSection = page.locator(
       "h3:has-text('Risk Limits')",

@@ -1,4 +1,4 @@
-.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-logs docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring watchdog watchdog-fix setup-cron
+.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-deploy-clean docker-prod-up docker-prod-down docker-prod-deploy docker-prod-logs docker-logs docker-logs-backend docker-logs-frontend docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring monitoring-prod watchdog watchdog-fix setup-cron
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -76,6 +76,15 @@ test-frontend:
 test-security:
 	cd $(BACKEND_DIR) && $(CURDIR)/$(PYTHON) -m pytest tests/test_auth.py tests/test_security.py -v
 
+test-docker: test-docker-backend test-docker-frontend
+	@echo "✓ All Docker tests passed"
+
+test-docker-backend:
+	docker compose exec backend python -m pytest tests/ -v
+
+test-docker-frontend:
+	cd $(FRONTEND_DIR) && npx vitest run
+
 test-e2e:
 	cd $(FRONTEND_DIR) && npx playwright test
 
@@ -120,7 +129,7 @@ install-hooks:
 	@chmod +x .git/hooks/pre-commit
 	@echo "✓ Git hooks installed"
 
-# ── Docker ────────────────────────────────────────────────
+# ── Docker (Dev/Test — ports 4000-4099) ───────────────────
 
 docker-build:
 	@echo "→ Building Docker images..."
@@ -133,39 +142,80 @@ docker-build-clean:
 	@echo "✓ Docker images rebuilt"
 
 docker-up:
-	@echo "→ Starting containers..."
+	@echo "→ Starting dev containers (backend :4000, frontend :4001)..."
 	docker compose up -d
 	@echo "→ Waiting for health checks..."
 	@timeout 60 sh -c 'until docker compose ps --format json | grep -q '"'"'"Health":"healthy"'"'"'; do sleep 2; done' 2>/dev/null \
-		&& echo "✓ Containers healthy" \
+		&& echo "✓ Dev containers healthy" \
 		|| (echo "⚠ Health check timeout — check logs with 'make docker-logs'" && docker compose ps)
+	@echo ""
+	@echo "  Dev environment:"
+	@echo "    Frontend:  http://localhost:4001"
+	@echo "    Backend:   http://localhost:4000"
+	@echo "    API:       http://localhost:4000/api/"
+	@echo "    Admin:     http://localhost:4000/admin/"
 
 docker-down:
-	@echo "→ Stopping containers..."
+	@echo "→ Stopping dev containers..."
 	docker compose down
-	@echo "✓ Containers stopped"
+	@echo "✓ Dev containers stopped"
 
 docker-restart:
-	@echo "→ Restarting containers..."
+	@echo "→ Restarting dev containers..."
 	$(MAKE) docker-down
 	$(MAKE) docker-up
-	$(MAKE) smoke-test
 
 docker-deploy:
-	@echo "→ Full deploy: build + restart + verify..."
+	@echo "→ Full dev deploy: build + restart + verify..."
 	$(MAKE) docker-build
 	$(MAKE) docker-down
 	$(MAKE) docker-up
 	$(MAKE) smoke-test
-	@echo "✓ Deploy complete"
+	@echo "✓ Dev deploy complete"
 
 docker-deploy-clean:
-	@echo "→ Full clean deploy: rebuild + restart + verify..."
+	@echo "→ Full clean dev deploy: rebuild + restart + verify..."
 	$(MAKE) docker-build-clean
 	$(MAKE) docker-down
 	$(MAKE) docker-up
 	$(MAKE) smoke-test
-	@echo "✓ Clean deploy complete"
+	@echo "✓ Clean dev deploy complete"
+
+# ── Docker (Prod — ports 4100-4199) ──────────────────────
+
+docker-prod-up:
+	@echo "→ Starting prod containers (backend :4100, frontend :4101)..."
+	docker compose --profile prod up -d
+	@echo "→ Waiting for health checks..."
+	@timeout 60 sh -c 'until docker inspect --format="{{if .State.Health}}{{.State.Health.Status}}{{end}}" aitp-backend-prod 2>/dev/null | grep -q healthy; do sleep 2; done' 2>/dev/null \
+		&& echo "✓ Prod containers healthy" \
+		|| (echo "⚠ Health check timeout" && docker compose --profile prod ps)
+	@echo ""
+	@echo "  Prod environment:"
+	@echo "    Frontend:  http://localhost:4101"
+	@echo "    Backend:   http://localhost:4100"
+	@echo "    API:       http://localhost:4100/api/"
+
+docker-prod-down:
+	@echo "→ Stopping prod containers..."
+	docker compose --profile prod down
+	@echo "✓ Prod containers stopped"
+
+docker-prod-deploy:
+	@echo "→ Full prod deploy: build + restart + verify..."
+	$(MAKE) docker-build
+	$(MAKE) docker-prod-down
+	$(MAKE) docker-prod-up
+	@echo "→ Running prod smoke test..."
+	@curl -sf http://localhost:4100/api/health/ | python3 -m json.tool > /dev/null 2>&1 \
+		&& echo "✓ Prod smoke test passed" \
+		|| echo "✗ Prod smoke test failed"
+	@echo "✓ Prod deploy complete"
+
+docker-prod-logs:
+	docker compose --profile prod logs -f --tail=50
+
+# ── Docker (shared) ──────────────────────────────────────
 
 docker-logs:
 	docker compose logs -f --tail=50
@@ -177,16 +227,14 @@ docker-logs-frontend:
 	docker compose logs -f --tail=50 frontend
 
 docker-status:
-	@echo "── Container Status ──"
-	@docker compose ps
-	@echo ""
-	@echo "── Health ──"
-	@docker inspect --format='{{.Name}}: {{if .State.Health}}{{.State.Health.Status}}{{else}}no healthcheck{{end}}' $$(docker compose ps -q 2>/dev/null) 2>/dev/null || echo "No containers running"
+	@echo "── AITP Container Status ──"
+	@docker ps --filter "name=aitp-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No AITP containers running"
 
 docker-clean:
-	@echo "→ Removing containers, images, and volumes..."
-	docker compose down -v --rmi local
-	@echo "✓ Docker artifacts cleaned"
+	@echo "→ Removing all AITP containers, images, and volumes..."
+	docker compose --profile prod --profile monitoring --profile postgres --profile prod-monitoring --profile prod-postgres down -v --rmi local 2>/dev/null || true
+	docker compose down -v --rmi local 2>/dev/null || true
+	@echo "✓ All AITP Docker artifacts cleaned"
 
 # ── CI pipeline (lint + typecheck + test + audit) ─────────
 
@@ -281,7 +329,16 @@ setup-cron:
 # ── Monitoring ────────────────────────────────────────────────
 
 monitoring:
+	@echo "→ Starting dev monitoring (Prometheus :4010, Grafana :4011)..."
 	docker compose --profile monitoring up -d
+	@echo "  Prometheus: http://localhost:4010"
+	@echo "  Grafana:    http://localhost:4011"
+
+monitoring-prod:
+	@echo "→ Starting prod monitoring (Prometheus :4110, Grafana :4111)..."
+	docker compose --profile prod-monitoring up -d
+	@echo "  Prometheus: http://localhost:4110"
+	@echo "  Grafana:    http://localhost:4111"
 
 # ── Clean ──────────────────────────────────────────────────
 

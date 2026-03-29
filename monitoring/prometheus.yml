@@ -4,11 +4,8 @@ global:
 
 scrape_configs:
   - job_name: 'a1si-backend'
-    metrics_path: '/api/metrics/'
+    metrics_path: '/metrics/'
     scheme: http
     static_configs:
       - targets: ['backend:8000']
-    # Backend metrics require auth token
-    params:
-      token: ['${METRICS_AUTH_TOKEN}']
     scrape_interval: 30s

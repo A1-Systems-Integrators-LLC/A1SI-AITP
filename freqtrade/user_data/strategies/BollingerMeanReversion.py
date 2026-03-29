@@ -56,10 +56,10 @@ class BollingerMeanReversion(IStrategy):
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.025,
-        "60": 0.015,
-        "120": 0.008,
-        "240": 0.003,
+        "0": 0.06,
+        "60": 0.03,
+        "120": 0.015,
+        "240": 0.008,
     }
 
     stoploss = -0.03

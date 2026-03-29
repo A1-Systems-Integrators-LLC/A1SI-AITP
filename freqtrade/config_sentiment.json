@@ -1,6 +1,5 @@
 {
-    "trading_mode": "futures",
-    "margin_mode": "isolated",
+    "trading_mode": "spot",
     "max_open_trades": 3,
     "stake_currency": "USDT",
     "stake_amount": 60,
@@ -78,13 +77,13 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "0.0.0.0",
-        "listen_port": 8088,
+        "listen_port": 4088,
         "verbosity": "error",
         "enable_openapi": true,
         "jwt_secret_key": "change_me_sentiment",
-        "CORS_origins": ["http://localhost:3000"],
-        "username": "freqtrader",
-        "password": "freqtrader"
+        "CORS_origins": ["http://localhost:4001"],
+        "username": "SET_VIA_ENV_FREQTRADE__API_SERVER__USERNAME",
+        "password": "SET_VIA_ENV_FREQTRADE__API_SERVER__PASSWORD"
     },
     "db_url": "sqlite:///tradesv3.sentiment.dryrun.sqlite",
     "bot_name": "a1si-sentiment-event",
@@ -99,5 +98,5 @@
     "internals": {
         "process_throttle_secs": 5
     },
-    "user_data_dir": "/home/rredmer/Dev/Portfolio/A1SI-AITP/freqtrade/user_data"
+    "user_data_dir": "./freqtrade/user_data"
 }
