@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
-# setup_cron.sh — Install crontab entries for platform automation.
+# setup_cron.sh — Install crontab entries for Docker-based platform automation.
+#
+# All services run in Docker containers. Cron jobs manage container lifecycle
+# and run management commands via docker compose exec.
 #
 # Installs:
-#   @reboot     — Full platform startup
-#   */5 * * * * — Watchdog (check all subsystems, auto-fix)
-#   0 0 * * *   — Daily risk P&L reset (backup to scheduler)
+#   @reboot     — Start all AITP containers
+#   */5 * * * * — Watchdog (check container health, restart if needed)
+#   0 0 * * *   — Daily risk P&L reset
 #
 # Idempotent: removes old entries before adding new ones.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BACKEND_DIR="$ROOT_DIR/backend"
-PYTHON="$BACKEND_DIR/.venv/bin/python"
 MARKER="# A1SI-AITP"
+LOG_DIR="$ROOT_DIR/backend/data/logs"
 
-echo "Setting up cron jobs for A1SI-AITP platform..."
+echo "Setting up cron jobs for A1SI-AITP platform (Docker mode)..."
 
-# Verify prerequisites
-if [ ! -f "$PYTHON" ]; then
-    echo "ERROR: Python venv not found at $PYTHON"
-    echo "Run 'make setup' first."
-    exit 1
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Build Doppler prefix if available
+DOPPLER_CMD=""
+if command -v doppler >/dev/null 2>&1; then
+    DOPPLER_CMD="doppler run --project aitp --config dev --"
 fi
 
 # Remove old entries and add new ones
@@ -28,11 +32,11 @@ fi
     # Keep existing non-A1SI entries
     crontab -l 2>/dev/null | grep -v "$MARKER" || true
 
-    # Add our entries
+    # Add container-based entries
     cat <<EOF
-@reboot cd $ROOT_DIR && bash scripts/start.sh >> $BACKEND_DIR/data/logs/startup.log 2>&1 $MARKER
-*/5 * * * * cd $ROOT_DIR && bash scripts/watchdog.sh --fix --quiet >> $BACKEND_DIR/data/logs/watchdog-cron.log 2>&1 $MARKER
-0 0 * * * cd $BACKEND_DIR && SCHEDULER_DISABLED=1 $PYTHON manage.py watchdog --reset-daily --json >> $BACKEND_DIR/data/logs/daily-reset.log 2>&1 $MARKER
+@reboot cd $ROOT_DIR && bash scripts/start.sh >> $LOG_DIR/startup.log 2>&1 $MARKER
+*/5 * * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose exec -T backend python manage.py watchdog --fix --json >> $LOG_DIR/watchdog-cron.log 2>&1 $MARKER
+0 0 * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose exec -T backend python manage.py watchdog --reset-daily --json >> $LOG_DIR/daily-reset.log 2>&1 $MARKER
 EOF
 ) | crontab -
 
@@ -44,6 +48,8 @@ done
 
 echo ""
 echo "Log locations:"
-echo "  Startup:     $BACKEND_DIR/data/logs/startup.log"
-echo "  Watchdog:    $BACKEND_DIR/data/logs/watchdog.log"
-echo "  Daily reset: $BACKEND_DIR/data/logs/daily-reset.log"
+echo "  Startup:     $LOG_DIR/startup.log"
+echo "  Watchdog:    $LOG_DIR/watchdog-cron.log"
+echo "  Daily reset: $LOG_DIR/daily-reset.log"
+echo ""
+echo "All cron jobs run via Docker containers — no native processes."

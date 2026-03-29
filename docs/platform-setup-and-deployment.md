@@ -26,7 +26,7 @@ The platform is designed for local desktop deployment (MacBook Pro M2 (Apple Sil
 | npm | 9+ | Comes with Node |
 | Git | 2.x | For version control |
 | SQLite3 | 3.37+ | Usually pre-installed |
-| Docker | 24+ | For containerized deployment (optional) |
+| Docker | 24+ | For containerized deployment (required — all code runs in Docker) |
 | OpenSSL | 1.1+ | For TLS certificate generation |
 
 **Note:** This platform targets macOS (Apple Silicon). Docker images are built for `linux/arm64` by default; `linux/amd64` builds are also supported.
@@ -104,7 +104,7 @@ DJANGO_ENCRYPTION_KEY=<generated>
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 
 # ── Exchange API keys (optional, can also configure via web UI) ────
-EXCHANGE_ID=binance
+EXCHANGE_ID=kraken
 BINANCE_API_KEY=
 BINANCE_SECRET=
 
@@ -267,7 +267,7 @@ make build            # Production frontend build → frontend/dist/
 
 ## Docker Deployment
 
-Docker Compose runs the platform as two containers: backend (Daphne) and frontend (nginx). Two environments are available: **dev** (default profile) and **prod** (prod profile).
+Docker Compose runs the platform as two containers: backend (Daphne) and frontend (nginx). Two environments are available: **dev** (docker-compose.yml) and **prod** (docker-compose.prod.yml).
 
 ### Architecture
 
@@ -317,25 +317,25 @@ docker compose down
 
 ```bash
 # Build and start prod containers in background
-docker compose --profile prod up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 
 # View logs
-docker compose --profile prod logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Stop
-docker compose --profile prod down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ### Dev vs Prod
 
-| Aspect                       | Dev          | Prod                 |
-|------------------------------|--------------|----------------------|
-| Profile                      | (default)    | `--profile prod`     |
-| Backend port                 | 4000         | 4100                 |
-| Frontend port                | 4001         | 4101                 |
-| `DJANGO_DEBUG`               | true         | false                |
-| Secrets                      | Dev fallbacks| Required (enforced)  |
-| Both can run simultaneously  | Yes          | Yes                  |
+| Aspect                       | Dev                | Prod                    |
+|------------------------------|--------------------|-------------------------|
+| Compose file                 | docker-compose.yml | docker-compose.prod.yml |
+| Backend port                 | 4000               | 4100                    |
+| Frontend port                | 4001               | 4101                    |
+| `DJANGO_DEBUG`               | true               | false                   |
+| Secrets                      | Dev fallbacks      | Required (enforced)     |
+| Both can run simultaneously  | Yes                | Yes                     |
 
 The dev and prod environments use separate containers and volumes, so they can run side by side without conflict. Use dev for daily development and testing; use prod for staging or deployment verification.
 
@@ -367,9 +367,9 @@ FROM python:3.12-slim
 2. Creates admin superuser if it doesn't exist
 3. Starts Daphne ASGI server
 
-**Health check:** `curl -f http://localhost:8000/api/health/` every 10 seconds.
+**Health check:** `curl -f http://localhost:8000/api/health/` every 15 seconds.
 
-**Data volume:** `backend-data` mounted at `/app/data` — persists the SQLite database across container restarts.
+**Data volume:** Bind mount `./backend/data` mounted at `/project/backend/data` — persists the SQLite database across container restarts.
 
 ### Frontend Container
 
@@ -395,7 +395,7 @@ cp .env.example .env
 # Edit .env with your values
 
 # Or pass inline
-EXCHANGE_ID=binance EXCHANGE_API_KEY=xxx docker compose up
+EXCHANGE_ID=kraken EXCHANGE_API_KEY=xxx docker compose up
 ```
 
 Key variables for Docker:
@@ -480,7 +480,7 @@ Additional security features always active:
 |---------|---------------|
 | Password hashing | Argon2id (primary), PBKDF2 (fallback) |
 | Minimum password length | 12 characters |
-| Rate limiting | 60 req/min general, 5 req/min login |
+| Rate limiting | 120 req/min general, 20 req/min login |
 | Login lockout | 5 failed attempts → 30 minute lockout |
 | Security logging | Rotating file at `backend/data/logs/security.log` (10 MB, 10 backups) |
 | Audit middleware | Logs security-relevant requests |
@@ -523,8 +523,8 @@ This sets:
 | Path | Permission | Purpose |
 |------|-----------|---------|
 | `.env` | 600 | Only owner can read secrets |
-| `backend/data/` | 700 | Database directory |
-| `backend/data/logs/` | 700 | Log directory |
+| `backend/data/` | 770 | Database directory |
+| `backend/data/logs/` | 770 | Log directory |
 | `backend/certs/` | 700 | TLS certificate directory |
 
 It also verifies that critical environment variables are set.
@@ -743,7 +743,7 @@ A1SI-AITP/
 | `make lint-backend` | Python linting (ruff) |
 | `make lint-frontend` | TypeScript linting (eslint) |
 | `make build` | Production frontend build to `frontend/dist/` |
-| `make harden` | Set file permissions (600 .env, 700 data dirs) |
+| `make harden` | Set file permissions (600 .env, 770 data dirs) |
 | `make audit` | Check dependencies for vulnerabilities |
 | `make certs` | Generate self-signed TLS certificates |
 | `make backup` | SQLite backup with optional GPG encryption |
@@ -800,7 +800,7 @@ The `backend-data` volume persists the SQLite database. If you ran `docker compo
 ### Database
 
 **"database is locked":**
-SQLite with DELETE journal mode supports only one writer at a time. If multiple processes write simultaneously, you may see this error. The platform is designed for single-user operation — ensure only one backend instance runs at a time. Note: WAL mode is deliberately not used because it is incompatible with Docker virtiofs bind mounts.
+SQLite with DELETE journal mode supports only one writer at a time. If multiple processes write simultaneously, you may see this error. The platform is designed for single-user operation — ensure only one backend instance runs at a time. Note: the database uses DELETE journal mode exclusively. WAL mode is not used — it is incompatible with Docker virtiofs bind mounts and destroyed the production database three times.
 
 **Corrupted database:**
 Restore from the most recent backup:

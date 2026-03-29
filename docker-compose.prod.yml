@@ -1,18 +1,18 @@
-# A1SI-AITP DEV — Isolated development container group
+# A1SI-AITP PROD — Isolated production container group
 #
-# Port range: 4000-4099 (exclusive to dev, no overlap with prod 4100-4199)
+# Port range: 4100-4199 (exclusive to prod, no overlap with dev 4000-4099)
 #
 # Usage:
-#   docker compose up -d                                   # Core (backend + frontend)
-#   docker compose --profile trading up -d                 # + Freqtrade instances
-#   docker compose --profile research up -d                # + NautilusTrader, VectorBT, Redis, Jupyter
-#   docker compose --profile monitoring up -d              # + Prometheus, Grafana
-#   docker compose --profile trading --profile research --profile monitoring up -d  # Everything
+#   docker compose -f docker-compose.prod.yml up -d                                   # Core
+#   docker compose -f docker-compose.prod.yml --profile trading up -d                  # + Freqtrade
+#   docker compose -f docker-compose.prod.yml --profile research up -d                 # + NautilusTrader, VectorBT, Redis
+#   docker compose -f docker-compose.prod.yml --profile monitoring up -d               # + Prometheus, Grafana
+#   docker compose -f docker-compose.prod.yml --profile trading --profile research --profile monitoring up -d  # Everything
 #
-name: aitp-dev
+name: aitp-prod
 
 # ═══════════════════════════════════════════════════════════════
-# Shared configuration (dev only)
+# Shared configuration (prod only)
 # ═══════════════════════════════════════════════════════════════
 
 x-backend-env: &backend-env
@@ -87,7 +87,7 @@ x-freqtrade-env: &freqtrade-env
   FREQTRADE__USER_DATA_DIR: "/freqtrade/user_data"
   FREQTRADE__API_SERVER__USERNAME: "${FREQTRADE_USERNAME:?Set FREQTRADE_USERNAME}"
   FREQTRADE__API_SERVER__PASSWORD: "${FREQTRADE_PASSWORD:?Set FREQTRADE_PASSWORD}"
-  FREQTRADE__API_SERVER__JWT_SECRET_KEY: "${FREQTRADE__API_SERVER__JWT_SECRET_KEY:-changeme}"
+  FREQTRADE__API_SERVER__JWT_SECRET_KEY: "${FREQTRADE__API_SERVER__JWT_SECRET_KEY:?Set JWT secret}"
   FREQTRADE__EXCHANGE__KEY: "${KRAKEN_API_KEY:-}"
   FREQTRADE__EXCHANGE__SECRET: "${KRAKEN_SECRET:-}"
   RISK_API_URL: "http://backend:8000"
@@ -102,33 +102,33 @@ x-freqtrade-base: &freqtrade-base
   restart: unless-stopped
 
 # ═══════════════════════════════════════════════════════════════
-# DEV Services — ports 4000-4099
+# PROD Services — ports 4100-4199
 # ═══════════════════════════════════════════════════════════════
 
 services:
   # ── Core ────────────────────────────────────────────────────
   backend:
     <<: *backend-base
-    container_name: aitp-dev-backend
+    container_name: aitp-prod-backend
     ports:
-      - "4000:8000"
+      - "4100:8000"
     environment:
       <<: *backend-env
-      DJANGO_DEBUG: "true"
-      CORS_ALLOWED_ORIGINS: "http://localhost:4001,http://localhost:5173"
-      CSRF_TRUSTED_ORIGINS: "http://localhost:4001,http://localhost:5173,http://localhost:4000"
-      FREQTRADE_API_URL: "http://freqtrade-civ1:4080"
-      FREQTRADE_BMR_API_URL: "http://freqtrade-bmr:4083"
-      FREQTRADE_VB_API_URL: "http://freqtrade-vb:4084"
+      DJANGO_DEBUG: "false"
+      CORS_ALLOWED_ORIGINS: "http://localhost:4101"
+      CSRF_TRUSTED_ORIGINS: "http://localhost:4101,http://localhost:4100"
+      FREQTRADE_API_URL: "http://freqtrade-civ1:4180"
+      FREQTRADE_BMR_API_URL: "http://freqtrade-bmr:4183"
+      FREQTRADE_VB_API_URL: "http://freqtrade-vb:4184"
       NAUTILUS_WORKER_URL: "http://nautilus:4090"
       VECTORBT_WORKER_URL: "http://vectorbt:4092"
       INTERNAL_API_ALLOWED_IPS: "127.0.0.1,::1,172.16.0.0/12"
 
   frontend:
     <<: *frontend-base
-    container_name: aitp-dev-frontend
+    container_name: aitp-prod-frontend
     ports:
-      - "4001:8080"
+      - "4101:8080"
     volumes:
       - nginx-logs:/var/log/nginx
     depends_on:
@@ -138,9 +138,9 @@ services:
   # ── Trading ─────────────────────────────────────────────────
   freqtrade-civ1:
     <<: *freqtrade-base
-    container_name: aitp-dev-ft-civ1
+    container_name: aitp-prod-ft-civ1
     ports:
-      - "4080:4080"
+      - "4180:4180"
     volumes:
       - ./freqtrade/user_data:/freqtrade/user_data
       - ./freqtrade/config.json.example:/freqtrade/config.json:ro
@@ -149,10 +149,11 @@ services:
     command: trade --config /freqtrade/config.json --strategy CryptoInvestorV1 --strategy-path /freqtrade/user_data/strategies
     environment:
       <<: *freqtrade-env
+      FREQTRADE__API_SERVER__LISTEN_PORT: "4180"
       FREQTRADE__TELEGRAM__TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
       FREQTRADE__TELEGRAM__CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:4080/api/v1/ping"]
+      test: ["CMD", "curl", "-sf", "http://localhost:4180/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -160,9 +161,9 @@ services:
 
   freqtrade-bmr:
     <<: *freqtrade-base
-    container_name: aitp-dev-ft-bmr
+    container_name: aitp-prod-ft-bmr
     ports:
-      - "4083:4083"
+      - "4183:4183"
     volumes:
       - ./freqtrade/user_data:/freqtrade/user_data
       - ./freqtrade/config_bmr.json:/freqtrade/config.json:ro
@@ -171,8 +172,9 @@ services:
     command: trade --config /freqtrade/config.json --strategy BollingerMeanReversion --strategy-path /freqtrade/user_data/strategies
     environment:
       <<: *freqtrade-env
+      FREQTRADE__API_SERVER__LISTEN_PORT: "4183"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:4083/api/v1/ping"]
+      test: ["CMD", "curl", "-sf", "http://localhost:4183/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -180,9 +182,9 @@ services:
 
   freqtrade-vb:
     <<: *freqtrade-base
-    container_name: aitp-dev-ft-vb
+    container_name: aitp-prod-ft-vb
     ports:
-      - "4084:4084"
+      - "4184:4184"
     volumes:
       - ./freqtrade/user_data:/freqtrade/user_data
       - ./freqtrade/config_vb.json:/freqtrade/config.json:ro
@@ -191,8 +193,9 @@ services:
     command: trade --config /freqtrade/config.json --strategy VolatilityBreakout --strategy-path /freqtrade/user_data/strategies
     environment:
       <<: *freqtrade-env
+      FREQTRADE__API_SERVER__LISTEN_PORT: "4184"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:4084/api/v1/ping"]
+      test: ["CMD", "curl", "-sf", "http://localhost:4184/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -203,10 +206,10 @@ services:
     build:
       context: .
       dockerfile: nautilus/Dockerfile
-    container_name: aitp-dev-nautilus
+    container_name: aitp-prod-nautilus
     profiles: ["research", "trading"]
     ports:
-      - "4090:4090"
+      - "4190:4090"
     volumes:
       - ./data/processed:/project/data/processed
       - ./nautilus/results:/project/nautilus/results
@@ -227,10 +230,10 @@ services:
     build:
       context: .
       dockerfile: research/Dockerfile
-    container_name: aitp-dev-vectorbt
+    container_name: aitp-prod-vectorbt
     profiles: ["research", "trading"]
     ports:
-      - "4092:4092"
+      - "4192:4092"
     volumes:
       - ./data/processed:/project/data/processed
       - ./research/results:/project/research/results
@@ -249,10 +252,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: aitp-dev-redis
+    container_name: aitp-prod-redis
     profiles: ["trading", "research"]
     ports:
-      - "4013:6379"
+      - "4113:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -266,16 +269,16 @@ services:
   # ── Monitoring ──────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: aitp-dev-prometheus
+    container_name: aitp-prod-prometheus
     profiles: ["monitoring"]
     ports:
-      - "4010:9090"
+      - "4110:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.time=90d'
     restart: unless-stopped
     depends_on:
       backend:
@@ -283,13 +286,13 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.0
-    container_name: aitp-dev-grafana
+    container_name: aitp-prod-grafana
     profiles: ["monitoring"]
     ports:
-      - "4011:3000"
+      - "4111:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-changeme_in_production}"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
@@ -302,16 +305,16 @@ services:
   # ── Database ────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: aitp-dev-postgres
+    container_name: aitp-prod-postgres
     profiles: ["postgres"]
     environment:
       POSTGRES_DB: a1si_aitp
       POSTGRES_USER: a1si
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-a1si_dev_password}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD for production}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - "4012:5432"
+      - "4112:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U a1si -d a1si_aitp"]
@@ -320,7 +323,7 @@ services:
       retries: 5
 
 # ═══════════════════════════════════════════════════════════════
-# Volumes (dev only)
+# Volumes (prod only — completely isolated from dev)
 # ═══════════════════════════════════════════════════════════════
 
 volumes:

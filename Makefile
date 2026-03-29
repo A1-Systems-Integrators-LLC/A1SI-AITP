@@ -1,4 +1,4 @@
-.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-deploy-clean docker-prod-up docker-prod-down docker-prod-deploy docker-prod-logs docker-logs docker-logs-backend docker-logs-frontend docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring monitoring-prod watchdog watchdog-fix setup-cron
+.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-deploy-clean docker-prod-up docker-prod-down docker-prod-deploy docker-prod-logs docker-logs docker-logs-backend docker-logs-frontend docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring monitoring-prod watchdog watchdog-fix setup-cron doppler-setup doppler-dev doppler-docker-up doppler-docker-prod-up doppler-secrets trading-up trading-down research-up research-down frameworks-up frameworks-down frameworks-status
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -129,39 +129,36 @@ install-hooks:
 	@chmod +x .git/hooks/pre-commit
 	@echo "✓ Git hooks installed"
 
-# ── Docker (Dev/Test — ports 4000-4099) ───────────────────
+# ── Docker (Dev — aitp-dev group, ports 4000-4099) ────────
+COMPOSE_DEV := docker compose
+COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
 docker-build:
-	@echo "→ Building Docker images..."
-	docker compose build
-	@echo "✓ Docker images built"
+	@echo "→ Building dev Docker images..."
+	$(COMPOSE_DEV) --profile trading --profile research build
+	@echo "✓ Dev images built"
 
 docker-build-clean:
-	@echo "→ Rebuilding Docker images (no cache)..."
-	docker compose build --no-cache
-	@echo "✓ Docker images rebuilt"
+	@echo "→ Rebuilding dev Docker images (no cache)..."
+	$(COMPOSE_DEV) --profile trading --profile research build --no-cache
+	@echo "✓ Dev images rebuilt"
 
 docker-up:
-	@echo "→ Starting dev containers (backend :4000, frontend :4001)..."
-	docker compose up -d
-	@echo "→ Waiting for health checks..."
-	@timeout 60 sh -c 'until docker compose ps --format json | grep -q '"'"'"Health":"healthy"'"'"'; do sleep 2; done' 2>/dev/null \
-		&& echo "✓ Dev containers healthy" \
-		|| (echo "⚠ Health check timeout — check logs with 'make docker-logs'" && docker compose ps)
-	@echo ""
-	@echo "  Dev environment:"
-	@echo "    Frontend:  http://localhost:4001"
-	@echo "    Backend:   http://localhost:4000"
-	@echo "    API:       http://localhost:4000/api/"
-	@echo "    Admin:     http://localhost:4000/admin/"
+	@echo "→ Starting dev containers (aitp-dev group, ports 4000-4099)..."
+	$(COMPOSE_DEV) up -d
+	@echo "→ Waiting for backend health..."
+	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-dev-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
+	@$(COMPOSE_DEV) start frontend 2>/dev/null || true
+	@echo "✓ Dev core containers running"
+	@echo "  Backend:  http://localhost:4000"
+	@echo "  Frontend: http://localhost:4001"
 
 docker-down:
-	@echo "→ Stopping dev containers..."
-	docker compose down
+	@echo "→ Stopping all dev containers (aitp-dev group)..."
+	$(COMPOSE_DEV) --profile trading --profile research --profile monitoring --profile postgres down
 	@echo "✓ Dev containers stopped"
 
 docker-restart:
-	@echo "→ Restarting dev containers..."
 	$(MAKE) docker-down
 	$(MAKE) docker-up
 
@@ -174,66 +171,69 @@ docker-deploy:
 	@echo "✓ Dev deploy complete"
 
 docker-deploy-clean:
-	@echo "→ Full clean dev deploy: rebuild + restart + verify..."
 	$(MAKE) docker-build-clean
 	$(MAKE) docker-down
 	$(MAKE) docker-up
 	$(MAKE) smoke-test
 	@echo "✓ Clean dev deploy complete"
 
-# ── Docker (Prod — ports 4100-4199) ──────────────────────
+# ── Docker (Prod — aitp-prod group, ports 4100-4199) ─────
+
+docker-prod-build:
+	@echo "→ Building prod Docker images..."
+	$(COMPOSE_PROD) --profile trading --profile research build
+	@echo "✓ Prod images built"
 
 docker-prod-up:
-	@echo "→ Starting prod containers (backend :4100, frontend :4101)..."
-	docker compose --profile prod up -d
-	@echo "→ Waiting for health checks..."
-	@timeout 60 sh -c 'until docker inspect --format="{{if .State.Health}}{{.State.Health.Status}}{{end}}" aitp-backend-prod 2>/dev/null | grep -q healthy; do sleep 2; done' 2>/dev/null \
-		&& echo "✓ Prod containers healthy" \
-		|| (echo "⚠ Health check timeout" && docker compose --profile prod ps)
-	@echo ""
-	@echo "  Prod environment:"
-	@echo "    Frontend:  http://localhost:4101"
-	@echo "    Backend:   http://localhost:4100"
-	@echo "    API:       http://localhost:4100/api/"
+	@echo "→ Starting prod containers (aitp-prod group, ports 4100-4199)..."
+	$(COMPOSE_PROD) up -d
+	@echo "→ Waiting for backend health..."
+	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-prod-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
+	@$(COMPOSE_PROD) start frontend 2>/dev/null || true
+	@echo "✓ Prod core containers running"
+	@echo "  Backend:  http://localhost:4100"
+	@echo "  Frontend: http://localhost:4101"
 
 docker-prod-down:
-	@echo "→ Stopping prod containers..."
-	docker compose --profile prod down
+	@echo "→ Stopping all prod containers (aitp-prod group)..."
+	$(COMPOSE_PROD) --profile trading --profile research --profile monitoring --profile postgres down
 	@echo "✓ Prod containers stopped"
 
 docker-prod-deploy:
 	@echo "→ Full prod deploy: build + restart + verify..."
-	$(MAKE) docker-build
+	$(MAKE) docker-prod-build
 	$(MAKE) docker-prod-down
 	$(MAKE) docker-prod-up
-	@echo "→ Running prod smoke test..."
 	@curl -sf http://localhost:4100/api/health/ | python3 -m json.tool > /dev/null 2>&1 \
 		&& echo "✓ Prod smoke test passed" \
 		|| echo "✗ Prod smoke test failed"
 	@echo "✓ Prod deploy complete"
 
 docker-prod-logs:
-	docker compose --profile prod logs -f --tail=50
+	$(COMPOSE_PROD) logs -f --tail=50
 
 # ── Docker (shared) ──────────────────────────────────────
 
 docker-logs:
-	docker compose logs -f --tail=50
+	$(COMPOSE_DEV) logs -f --tail=50
 
 docker-logs-backend:
-	docker compose logs -f --tail=50 backend
+	$(COMPOSE_DEV) logs -f --tail=50 backend
 
 docker-logs-frontend:
-	docker compose logs -f --tail=50 frontend
+	$(COMPOSE_DEV) logs -f --tail=50 frontend
 
 docker-status:
-	@echo "── AITP Container Status ──"
-	@docker ps --filter "name=aitp-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No AITP containers running"
+	@echo "── aitp-dev Containers ──"
+	@docker ps --filter "name=aitp-dev-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  No dev containers"
+	@echo ""
+	@echo "── aitp-prod Containers ──"
+	@docker ps --filter "name=aitp-prod-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  No prod containers"
 
 docker-clean:
 	@echo "→ Removing all AITP containers, images, and volumes..."
-	docker compose --profile prod --profile monitoring --profile postgres --profile prod-monitoring --profile prod-postgres down -v --rmi local 2>/dev/null || true
-	docker compose down -v --rmi local 2>/dev/null || true
+	$(COMPOSE_DEV) --profile trading --profile research --profile monitoring --profile postgres down -v --rmi local 2>/dev/null || true
+	$(COMPOSE_PROD) --profile trading --profile research --profile monitoring --profile postgres down -v --rmi local 2>/dev/null || true
 	@echo "✓ All AITP Docker artifacts cleaned"
 
 # ── CI pipeline (lint + typecheck + test + audit) ─────────
@@ -249,10 +249,16 @@ harden:
 	@chmod 770 $(BACKEND_DIR)/data
 	@mkdir -p $(BACKEND_DIR)/data/logs && chmod 770 $(BACKEND_DIR)/data/logs
 	@test -d $(BACKEND_DIR)/certs && chmod 700 $(BACKEND_DIR)/certs || true
-	@echo "→ Checking required env vars..."
-	@test -f .env && grep -q '^DJANGO_SECRET_KEY=' .env && echo "  DJANGO_SECRET_KEY ✓" || echo "  WARNING: DJANGO_SECRET_KEY not set"
-	@test -f .env && grep -q '^DJANGO_ENCRYPTION_KEY=' .env && echo "  DJANGO_ENCRYPTION_KEY ✓" || echo "  WARNING: DJANGO_ENCRYPTION_KEY not set"
-	@test -f .env && grep -q '^BACKUP_ENCRYPTION_KEY=' .env && echo "  BACKUP_ENCRYPTION_KEY ✓" || echo "  WARNING: BACKUP_ENCRYPTION_KEY not set"
+	@echo "→ Checking required secrets (Doppler)..."
+	@doppler secrets get DJANGO_SECRET_KEY --plain --project aitp --config dev > /dev/null 2>&1 \
+		&& echo "  DJANGO_SECRET_KEY ✓ (Doppler)" \
+		|| (test -f .env && grep -q '^DJANGO_SECRET_KEY=' .env && echo "  DJANGO_SECRET_KEY ✓ (.env)" || echo "  WARNING: DJANGO_SECRET_KEY not set")
+	@doppler secrets get DJANGO_ENCRYPTION_KEY --plain --project aitp --config dev > /dev/null 2>&1 \
+		&& echo "  DJANGO_ENCRYPTION_KEY ✓ (Doppler)" \
+		|| (test -f .env && grep -q '^DJANGO_ENCRYPTION_KEY=' .env && echo "  DJANGO_ENCRYPTION_KEY ✓ (.env)" || echo "  WARNING: DJANGO_ENCRYPTION_KEY not set")
+	@doppler secrets get KRAKEN_API_KEY --plain --project aitp --config dev 2>/dev/null | grep -q . \
+		&& echo "  KRAKEN_API_KEY ✓ (Doppler)" \
+		|| echo "  WARNING: KRAKEN_API_KEY not set"
 	@echo "✓ Permissions hardened"
 
 audit:
@@ -339,6 +345,72 @@ monitoring-prod:
 	docker compose --profile prod-monitoring up -d
 	@echo "  Prometheus: http://localhost:4110"
 	@echo "  Grafana:    http://localhost:4111"
+
+# ── Doppler ─────────────────────────────────────────────────
+
+doppler-setup:
+	@echo "→ Setting up Doppler for this project..."
+	doppler setup --project aitp --config dev --no-interactive
+	@echo "✓ Doppler linked to project aitp (dev config)"
+
+doppler-dev:
+	@echo "→ Starting dev server via Doppler..."
+	doppler run -- bash scripts/dev.sh
+
+doppler-docker-up:
+	@echo "→ Starting dev containers via Doppler (aitp-dev group)..."
+	doppler run -- $(COMPOSE_DEV) up -d
+	@echo "→ Waiting for health..."
+	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-dev-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
+	@doppler run -- $(COMPOSE_DEV) start frontend 2>/dev/null || true
+	@echo "✓ Dev containers healthy"
+
+doppler-docker-prod-up:
+	@echo "→ Starting prod containers via Doppler (aitp-prod group)..."
+	doppler run --config prd -- $(COMPOSE_PROD) up -d
+	@echo "→ Waiting for health..."
+	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-prod-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
+	@doppler run --config prd -- $(COMPOSE_PROD) start frontend 2>/dev/null || true
+	@echo "✓ Prod containers healthy"
+
+doppler-secrets:
+	@echo "── Doppler Secrets (aitp) ──"
+	doppler secrets --only-names
+
+# ── Trading Frameworks ─────────────────────────────────────
+
+trading-up:
+	@echo "→ Starting dev trading containers..."
+	$(COMPOSE_DEV) --profile trading up -d
+	@echo "✓ Trading containers started (CIV1 :4080, BMR :4083, VB :4084)"
+
+trading-down:
+	@echo "→ Stopping dev trading containers..."
+	$(COMPOSE_DEV) --profile trading stop freqtrade-civ1 freqtrade-bmr freqtrade-vb
+	@echo "✓ Trading containers stopped"
+
+research-up:
+	@echo "→ Starting dev research containers..."
+	$(COMPOSE_DEV) --profile research up -d
+	@echo "✓ Research containers started (NautilusTrader :4090, VectorBT :4092, Redis :4013, Jupyter :4020)"
+
+research-down:
+	@echo "→ Stopping dev research containers..."
+	$(COMPOSE_DEV) --profile research stop nautilus vectorbt redis jupyter
+	@echo "✓ Research containers stopped"
+
+frameworks-up: trading-up research-up
+	@echo "✓ All dev framework containers running"
+
+frameworks-down: trading-down research-down
+	@echo "✓ All dev framework containers stopped"
+
+frameworks-status:
+	@echo "── Dev Frameworks ──"
+	@docker ps --filter "name=aitp-dev-ft" --filter "name=aitp-dev-nautilus" --filter "name=aitp-dev-vectorbt" --filter "name=aitp-dev-redis" --filter "name=aitp-dev-jupyter" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+	@echo ""
+	@echo "── Prod Frameworks ──"
+	@docker ps --filter "name=aitp-prod-ft" --filter "name=aitp-prod-nautilus" --filter "name=aitp-prod-vectorbt" --filter "name=aitp-prod-redis" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
 
 # ── Clean ──────────────────────────────────────────────────
 

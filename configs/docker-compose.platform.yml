@@ -58,7 +58,7 @@ services:
       - "8888:8888"
     environment:
       - JUPYTER_ENABLE_LAB=yes
-    command: start-notebook.sh --NotebookApp.token='a1si-aitp'
+    command: start-notebook.sh --NotebookApp.token='${JUPYTER_TOKEN:-}'
     profiles: ["research", "full"]
 
   # ──────────────────────────────────────────────

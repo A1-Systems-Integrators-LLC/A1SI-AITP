@@ -183,8 +183,8 @@ DEFAULT_WATCHDOG_FT="CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout"
 WATCHDOG_FT_INSTANCES="${WATCHDOG_FT_INSTANCES:-$DEFAULT_WATCHDOG_FT}"
 
 check_freqtrade() {
-    local ft_user="${FREQTRADE_USERNAME:-freqtrader}"
-    local ft_pass="${FREQTRADE_PASSWORD:-freqtrader}"
+    local ft_user="${FREQTRADE_USERNAME:?Set FREQTRADE_USERNAME in Doppler or .env}"
+    local ft_pass="${FREQTRADE_PASSWORD:?Set FREQTRADE_PASSWORD in Doppler or .env}"
     local all_ok=true
 
     IFS=',' read -ra FT_LIST <<< "$WATCHDOG_FT_INSTANCES"

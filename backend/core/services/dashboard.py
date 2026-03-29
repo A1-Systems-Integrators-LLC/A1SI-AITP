@@ -383,8 +383,8 @@ class DashboardService:
                         r = req_lib.get(
                             f"http://localhost:{port}/api/v1/ping",
                             auth=(
-                                cfg.get("username", "freqtrader"),
-                                cfg.get("password", "freqtrader"),
+                                cfg.get("username", ""),
+                                cfg.get("password", ""),
                             ),
                             timeout=2,
                         )

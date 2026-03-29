@@ -60,7 +60,7 @@ Prompts for the backup file to restore. Performs decrypt, decompress, integrity 
 make maintain-db
 ```
 
-Runs SQLite WAL checkpoint + integrity check inside the backend container.
+Runs SQLite journal mode verification + integrity check inside the backend container.
 
 ### Data Cleanup
 
@@ -73,7 +73,7 @@ Removes old completed/failed background jobs, audit logs, and news articles.
 
 ## Exchange Configuration
 
-1. Log into Django admin: `http://localhost:3000/admin/`
+1. Log into Django admin: `http://localhost:4000/admin/`
 2. Navigate to Market > Exchange Configs
 3. Add a new config with exchange ID, API key, and secret
 4. Keys are encrypted at rest using `DJANGO_ENCRYPTION_KEY`

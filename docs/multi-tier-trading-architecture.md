@@ -170,7 +170,7 @@ Every Freqtrade strategy calls the Django backend before executing a trade:
 ```python
 # In confirm_trade_entry() — called on every entry signal
 resp = requests.post(
-    "http://127.0.0.1:8000/api/risk/{portfolio_id}/check-trade",
+    "http://127.0.0.1:8000/api/risk/{portfolio_id}/check-trade/",
     json={
         "symbol": pair,
         "side": side,
@@ -211,12 +211,12 @@ python run.py freqtrade list-strategies
 The runner converts shared OHLCV Parquet files into Nautilus-compatible CSV:
 
 ```python
-convert_ohlcv_to_nautilus_csv(symbol="BTC/USDT", timeframe="1h", exchange="binance")
-# Output: nautilus/catalog/BTCUSDT_BINANCE_1h_bars.csv
+convert_ohlcv_to_nautilus_csv(symbol="BTC/USDT", timeframe="1h", exchange="kraken")
+# Output: nautilus/catalog/BTCUSDT_KRAKEN_1h_bars.csv
 ```
 
 Bar type format: `{SYMBOL}.{VENUE}-{TIMEFRAME}-LAST-EXTERNAL`
-Example: `BTCUSDT.BINANCE-1-HOUR-LAST-EXTERNAL`
+Example: `BTCUSDT.KRAKEN-1-HOUR-LAST-EXTERNAL`
 
 ### Engine Configuration
 
@@ -282,7 +282,7 @@ fetch_ohlcv()          ← Paginated fetching, rate-limit handling, retry logic
 save_ohlcv()           ← Parquet (snappy compression), auto-merge, dedup
     │
     ▼
-data/processed/        ← binance_BTC_USDT_1h.parquet
+data/processed/        ← kraken_BTC_USDT_1h.parquet
     │
     ├── load_ohlcv()           → pandas DataFrame (any tier)
     ├── to_freqtrade_format()  → Freqtrade-compatible DataFrame
@@ -314,9 +314,14 @@ python run.py data generate-sample    # Synthetic data, no API keys needed
 Defined in `configs/platform_config.yaml`:
 
 ```
-BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, XRP/USDT,
-ADA/USDT, AVAX/USDT, DOGE/USDT, DOT/USDT, LINK/USDT
+BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, DOGE/USDT,
+LTC/USDT, BNB/USDT, BCH/USDT, LINK/USDT, ADA/USDT,
+AVAX/USDT, DOT/USDT, ATOM/USDT, TON/USDT, SHIB/USDT,
+XMR/USDT, ALGO/USDT, KAS/USDT, XTZ/USDT, CRO/USDT,
+MANA/USDT, VET/USDT
 ```
+
+This is the full list of 22 crypto symbols. A subset of 10 may appear in older documentation.
 
 Available timeframes: `1m, 5m, 15m, 1h, 4h, 1d`
 
@@ -411,9 +416,9 @@ A centralized risk layer that wraps all trading tiers. Every trade must pass thr
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `max_portfolio_drawdown` | 15% | Halt all trading if breached |
-| `max_single_trade_risk` | 3% | Maximum portfolio risk per trade |
-| `max_daily_loss` | 5% | Halt trading for the day |
+| `max_portfolio_drawdown` | 20% | Halt all trading if breached |
+| `max_single_trade_risk` | 5% | Maximum portfolio risk per trade |
+| `max_daily_loss` | 8% | Halt trading for the day |
 | `max_open_positions` | 10 | Maximum concurrent positions |
 | `max_position_size_pct` | 20% | Maximum portfolio % in one position |
 | `max_correlation` | 0.70 | Maximum correlation between positions |
@@ -467,18 +472,18 @@ The risk manager is exposed via REST endpoints at `/api/risk/{portfolio_id}/`:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/status` | GET | Current equity, drawdown, PnL |
-| `/limits` | GET/PUT | View or update risk limits |
-| `/equity-update` | POST | Feed current equity value |
-| `/check-trade` | POST | Gate a proposed trade (approve/reject) |
-| `/position-size` | POST | Calculate position size for a trade |
-| `/reset-daily` | POST | Reset daily loss tracking |
-| `/var` | GET | VaR/CVaR calculation |
-| `/heat-check` | GET | Full portfolio health assessment |
-| `/halt-trading` | POST | Emergency halt |
-| `/resume-trading` | POST | Resume after halt |
-| `/alerts` | GET | Recent risk alerts |
-| `/trade-log` | GET | Trade check audit trail |
+| `/status/` | GET | Current equity, drawdown, PnL |
+| `/limits/` | GET/PUT | View or update risk limits |
+| `/equity/` | POST | Feed current equity value |
+| `/check-trade/` | POST | Gate a proposed trade (approve/reject) |
+| `/position-size/` | POST | Calculate position size for a trade |
+| `/reset-daily/` | POST | Reset daily loss tracking |
+| `/var/` | GET | VaR/CVaR calculation |
+| `/heat-check/` | GET | Full portfolio health assessment |
+| `/halt/` | POST | Emergency halt |
+| `/resume/` | POST | Resume after halt |
+| `/alerts/` | GET | Recent risk alerts |
+| `/trade-log/` | GET | Trade check audit trail |
 
 ---
 
@@ -513,7 +518,7 @@ python run.py freqtrade hyperopt --strategy CryptoInvestorV1 --epochs 100
 - Event-driven simulation with realistic order fills
 - Full fee and slippage modeling
 - Hyperopt refines parameters using Sharpe optimization
-- Requirement to proceed: Sharpe > 1.0, max drawdown < 15%
+- Requirement to proceed: Sharpe > 1.0, max drawdown < 20%
 
 **Gate to Phase 3:** Strategy must meet performance thresholds.
 
@@ -536,11 +541,11 @@ python run.py freqtrade dry-run --strategy CryptoInvestorV1
 
 **Duration:** Ongoing.
 
-Set `"dry_run": false` in `freqtrade/config.json` and configure real API keys.
+Set `"dry_run": false` in `freqtrade/config.json.example` and configure real API keys.
 
 - Risk manager gates every trade in real-time
-- Drawdown monitoring with automatic halt at 15%
-- Daily loss limit with automatic halt at 5%
+- Drawdown monitoring with automatic halt at 20%
+- Daily loss limit with automatic halt at 8%
 - All trades logged to Django `Order` model for audit
 - Telegram alerts on halts and rejections
 
@@ -567,9 +572,9 @@ Set `"dry_run": false` in `freqtrade/config.json` and configure real API keys.
 ```yaml
 # Risk limits applied across all tiers
 risk_management:
-  max_portfolio_drawdown: 0.15
-  max_single_trade_risk: 0.02
-  max_daily_loss: 0.05
+  max_portfolio_drawdown: 0.20
+  max_single_trade_risk: 0.05
+  max_daily_loss: 0.08
   max_correlation: 0.7
   min_paper_trade_days: 14
 
@@ -598,7 +603,7 @@ data:
   timeframes: [1m, 5m, 15m, 1h, 4h, 1d]
 ```
 
-### Freqtrade Config (`freqtrade/config.json`)
+### Freqtrade Config (`freqtrade/config.json.example`)
 
 ```json
 {
@@ -608,7 +613,7 @@ data:
   "stake_currency": "USDT",
   "trading_mode": "spot",
   "exchange": {
-    "name": "binanceus",
+    "name": "kraken",
     "pair_whitelist": ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
   }
 }

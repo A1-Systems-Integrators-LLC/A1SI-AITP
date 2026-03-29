@@ -22,6 +22,7 @@ Risk Management:
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from functools import reduce
 
@@ -59,7 +60,7 @@ class CryptoInvestorV1(IStrategy):
     startup_candle_count = 150
 
     # ── Risk API integration ──
-    risk_api_url = "http://127.0.0.1:8000"
+    risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
     # ── ROI table (aggressive: take profits faster) ──
@@ -92,11 +93,12 @@ class CryptoInvestorV1(IStrategy):
     # ── Hyperopt parameters ──
     # Pilot-tuned: relaxed from 50/200/40 to generate trades in sideways markets.
     # Run hyperopt (--epochs 200) on recent kraken data to further optimize.
-    buy_ema_fast = IntParameter(10, 80, default=21, space="buy", optimize=True)
-    buy_ema_slow = IntParameter(50, 300, default=100, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 55, default=42, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(65, 90, default=75, space="sell", optimize=True)
-    atr_multiplier = DecimalParameter(1.5, 4.0, default=2.5, decimals=1, space="buy", optimize=True)
+    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    buy_ema_fast = IntParameter(10, 80, default=17, space="buy", optimize=True)
+    buy_ema_slow = IntParameter(50, 300, default=102, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 55, default=25, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(65, 90, default=86, space="sell", optimize=True)
+    atr_multiplier = DecimalParameter(1.5, 4.0, default=3.8, decimals=1, space="buy", optimize=True)
 
     # ── Informative pairs ──
     def informative_pairs(self):
@@ -105,8 +107,10 @@ class CryptoInvestorV1(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Calculate all technical indicators."""
         # ── Moving Averages ──
-        for period in [7, 14, 21, 50, 100, 200]:
+        # Full range for hyperopt: buy_ema_fast 10-80, buy_ema_slow 50-300
+        for period in range(10, 301):
             dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
+        for period in [7, 14, 21, 50, 100, 200]:
             dataframe[f"sma_{period}"] = ta.SMA(dataframe, timeperiod=period)
 
         # ── RSI ──
@@ -302,7 +306,6 @@ class CryptoInvestorV1(IStrategy):
         current_time: datetime,
         current_rate: float,
         current_profit: float,
-        after_fill: bool,
         **kwargs,
     ) -> str | None:
         """Custom exit logic: conviction advisor + trend/stale checks."""

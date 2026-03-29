@@ -2,12 +2,12 @@
     "trading_mode": "spot",
     "max_open_trades": 5,
     "stake_currency": "USDT",
-    "stake_amount": "unlimited",
-    "tradable_balance_ratio": 0.99,
+    "stake_amount": 100,
+    "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,
-    "dry_run_wallet": 10000,
-    "cancel_open_orders_on_exit": false,
+    "dry_run_wallet": 500,
+    "cancel_open_orders_on_exit": true,
     "unfilledtimeout": {
         "entry": 10,
         "exit": 10,
@@ -30,22 +30,55 @@
         "order_book_top": 1
     },
     "exchange": {
-        "name": "binanceus",
+        "name": "kraken",
         "key": "",
         "secret": "",
         "ccxt_config": {},
         "ccxt_sync_config": {},
         "ccxt_async_config": {},
-        "pair_whitelist": [
-            "BTC/USDT",
-            "ETH/USDT",
-            "SOL/USDT"
-        ],
-        "pair_blacklist": []
+        "pair_whitelist": [],
+        "pair_blacklist": [
+            ".*DOWN/.*",
+            ".*UP/.*",
+            ".*BEAR/.*",
+            ".*BULL/.*",
+            "(USDC|ZUSD)/.*",
+            "USDG/.*",
+            "(DAI|XDAI)/.*",
+            "(TUSD|TUSDT)/.*",
+            "PYUSD/.*",
+            "XAUT/.*",
+            "FARTCOIN/.*",
+            "TRUMP/.*",
+            "PENGU/.*",
+            "FIDD/.*",
+            "RAVE/.*",
+            "CC/.*",
+            "MELANIA/.*",
+            "SIDEKICK/.*",
+            "OBOL/.*",
+            "S/.*",
+            "BERA/.*",
+            "ALEO/.*",
+            "APE/.*",
+            "VIRTUAL/.*"
+        ]
     },
     "pairlists": [
         {
-            "method": "StaticPairList"
+            "method": "VolumePairList",
+            "number_assets": 20,
+            "sort_key": "quoteVolume",
+            "min_value": 500000,
+            "refresh_period": 1800
+        },
+        {
+            "method": "AgeFilter",
+            "min_days_listed": 30
+        },
+        {
+            "method": "SpreadFilter",
+            "max_spread_ratio": 0.005
         }
     ],
     "telegram": {
@@ -55,7 +88,7 @@
     },
     "api_server": {
         "enabled": true,
-        "listen_ip_address": "127.0.0.1",
+        "listen_ip_address": "0.0.0.0",
         "listen_port": 4080,
         "verbosity": "error",
         "enable_openapi": true,
@@ -64,7 +97,8 @@
         "username": "CHANGE_ME",
         "password": "CHANGE_ME"
     },
-    "bot_name": "a1si-aitp-ft",
+    "db_url": "sqlite:///tradesv3.civ1.dryrun.sqlite",
+    "bot_name": "a1si-civ1",
     "initial_state": "running",
     "force_entry_enable": false,
     "internals": {

@@ -47,10 +47,10 @@ class PaperTradingService:
                 port = api_cfg.get("listen_port", 8080)
                 self._ft_api_url = f"http://{host}:{port}"
         self._ft_username = (
-            os.environ.get("FREQTRADE_USERNAME") or api_cfg.get("username", "freqtrader")
+            os.environ.get("FREQTRADE_USERNAME") or api_cfg.get("username", "")
         )
         self._ft_password = (
-            os.environ.get("FREQTRADE_PASSWORD") or api_cfg.get("password", "freqtrader")
+            os.environ.get("FREQTRADE_PASSWORD") or api_cfg.get("password", "")
         )
 
         log_base = log_dir or (PROJECT_ROOT / "data")

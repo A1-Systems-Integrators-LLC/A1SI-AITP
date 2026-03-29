@@ -21,8 +21,8 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
     from django.conf import settings as django_settings
 
     ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
-    ft_user = getattr(django_settings, "FREQTRADE_USERNAME", "freqtrader")
-    ft_pass = getattr(django_settings, "FREQTRADE_PASSWORD", "freqtrader")
+    ft_user = getattr(django_settings, "FREQTRADE_USERNAME", "")
+    ft_pass = getattr(django_settings, "FREQTRADE_PASSWORD", "")
 
     # Build instance list from settings
     instances_cfg = []

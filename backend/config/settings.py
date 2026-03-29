@@ -4,10 +4,9 @@ Security-hardened configuration with DRF, Channels, and session-based auth.
 """
 
 import os
+import shutil
 import sys
 from pathlib import Path
-
-from dotenv import load_dotenv
 
 TESTING = "pytest" in sys.modules or "test" in sys.argv
 
@@ -15,8 +14,13 @@ TESTING = "pytest" in sys.modules or "test" in sys.argv
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 
-load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv(BASE_DIR / ".env")
+# Prefer Doppler for secrets injection; fall back to .env files when Doppler is
+# not available (e.g. bare-metal dev without the CLI installed).
+if not shutil.which("doppler") or os.environ.get("DOPPLER_DISABLE") == "1":
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_ROOT / ".env")
+    load_dotenv(BASE_DIR / ".env")
 
 # ── Core ──────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-key-change-me")
@@ -676,8 +680,21 @@ WORKFLOW_TEMPLATES: dict = {
 FREQTRADE_API_URL = os.environ.get("FREQTRADE_API_URL", "")
 FREQTRADE_BMR_API_URL = os.environ.get("FREQTRADE_BMR_API_URL", "")
 FREQTRADE_VB_API_URL = os.environ.get("FREQTRADE_VB_API_URL", "")
-FREQTRADE_USERNAME = os.environ.get("FREQTRADE_USERNAME", "freqtrader")
-FREQTRADE_PASSWORD = os.environ.get("FREQTRADE_PASSWORD", "freqtrader")
+
+# ── Framework worker URLs (Docker containers) ────────────────
+NAUTILUS_WORKER_URL = os.environ.get("NAUTILUS_WORKER_URL", "http://localhost:4090")
+VECTORBT_WORKER_URL = os.environ.get("VECTORBT_WORKER_URL", "http://localhost:4092")
+FREQTRADE_USERNAME = os.environ.get("FREQTRADE_USERNAME", "")
+FREQTRADE_PASSWORD = os.environ.get("FREQTRADE_PASSWORD", "")
+
+if not DEBUG and not FREQTRADE_PASSWORD:
+    import warnings
+
+    warnings.warn(
+        "FREQTRADE_PASSWORD is not set — Freqtrade API calls will fail. "
+        "Set FREQTRADE_PASSWORD in Doppler or .env.",
+        stacklevel=1,
+    )
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")

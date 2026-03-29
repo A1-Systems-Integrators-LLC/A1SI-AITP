@@ -132,8 +132,8 @@ def _check_risk_state(portfolio_id: int) -> CheckResult:
 
 def _check_freqtrade() -> CheckResult:
     """Ping all configured Freqtrade instances."""
-    ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
-    ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
+    ft_user = getattr(settings, "FREQTRADE_USERNAME", "")
+    ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "")
 
     urls = {
         "CIV1": getattr(settings, "FREQTRADE_API_URL", "") or "http://127.0.0.1:4080",

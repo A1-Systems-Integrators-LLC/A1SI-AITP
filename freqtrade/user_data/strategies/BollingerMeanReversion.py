@@ -20,6 +20,7 @@ bounces in downtrends with tighter risk management.
 """
 
 import logging
+import os
 from datetime import datetime
 from functools import reduce
 
@@ -52,7 +53,7 @@ class BollingerMeanReversion(IStrategy):
     startup_candle_count = 50
 
     # ── Risk API integration ──
-    risk_api_url = "http://127.0.0.1:8000"
+    risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
     minimal_roi = {
@@ -76,23 +77,24 @@ class BollingerMeanReversion(IStrategy):
         "stoploss_on_exchange": True,
     }
 
-    # Hyperopt parameters — aggressive defaults for high trade frequency
-    buy_bb_period = IntParameter(15, 30, default=20, space="buy", optimize=True)
-    buy_bb_std = DecimalParameter(0.8, 3.0, default=1.5, decimals=1, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 50, default=40, space="buy", optimize=True)
+    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    buy_bb_period = IntParameter(15, 30, default=16, space="buy", optimize=True)
+    buy_bb_std = DecimalParameter(0.8, 3.0, default=2.8, decimals=1, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 50, default=26, space="buy", optimize=True)
     buy_volume_factor = DecimalParameter(
-        0.0, 2.5, default=0.5, decimals=1, space="buy", optimize=True,
+        0.0, 2.5, default=2.2, decimals=1, space="buy", optimize=True,
     )
-    buy_adx_ceiling = IntParameter(25, 60, default=40, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(55, 75, default=60, space="sell", optimize=True)
+    buy_adx_ceiling = IntParameter(25, 60, default=27, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(55, 75, default=72, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         from freqtrade.enums import RunMode
 
         # Full BB grid only needed for hyperopt optimization
         if self.dp and self.dp.runmode == RunMode.HYPEROPT:
-            for period in [15, 20, 25, 30]:
-                for std in [1.0, 1.2, 1.5, 2.0, 2.5, 3.0]:
+            for period in range(15, 31):
+                for std_x10 in range(8, 31):  # 0.8 to 3.0 in 0.1 steps
+                    std = std_x10 / 10.0
                     suffix = f"_{period}_{str(std).replace('.', '')}"
                     bollinger = ta.BBANDS(dataframe, timeperiod=period, nbdevup=std, nbdevdn=std)
                     dataframe[f"bb_upper{suffix}"] = bollinger["upperband"]
@@ -285,7 +287,6 @@ class BollingerMeanReversion(IStrategy):
         current_time: datetime,
         current_rate: float,
         current_profit: float,
-        after_fill: bool,
         **kwargs,
     ) -> str | None:
         """Conviction-based exit: regime deterioration, time limits."""

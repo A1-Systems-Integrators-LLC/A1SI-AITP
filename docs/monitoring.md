@@ -16,7 +16,6 @@ Returns JSON with component status:
   "memory": {"status": "ok", "used_pct": 45.2},
   "scheduler": {"status": "running", "job_count": 9},
   "circuit_breaker": {"binance": "closed"},
-  "wal_size": 1024,
   "channel_layer": "ok",
   "job_queue_staleness": 0
 }
@@ -56,7 +55,6 @@ Requires authentication (session or `METRICS_AUTH_TOKEN`). Restricted to localho
 | Drawdown >= 80% of limit | Warning | Auto-notification sent |
 | Drawdown >= limit | Critical | Auto-halt triggered |
 | Daily loss >= limit | Critical | Auto-halt triggered |
-| WAL size > 100MB | Warning | Run `make maintain-db` |
 
 ## Log Locations
 
@@ -102,15 +100,15 @@ POST /api/scheduler/tasks/{id}/resume/
 
 | Task | Interval | Description |
 |------|----------|-------------|
-| data_refresh_crypto | 1h | Refresh crypto OHLCV |
+| data_refresh_crypto | 30m | Refresh crypto OHLCV |
 | data_refresh_equity | 24h | Refresh equity OHLCV |
-| data_refresh_forex | 4h | Refresh forex OHLCV |
-| regime_detection | 15m | Detect market regimes |
+| data_refresh_forex | 1h | Refresh forex OHLCV |
+| regime_detection | 30m | Detect market regimes |
 | order_sync | 5m | Sync live orders with exchange |
 | data_quality_check | 1h | Validate data files |
 | news_fetch | 30m | Fetch news articles |
 | risk_monitoring | 5m | Periodic risk check |
-| db_maintenance | 24h | SQLite WAL checkpoint |
+| db_maintenance | 24h | SQLite integrity check |
 
 ## Audit Trail
 

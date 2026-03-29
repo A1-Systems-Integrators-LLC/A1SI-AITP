@@ -19,7 +19,7 @@ This is an intra-connection conflict during savepoints/FK checks, not inter-conn
 
 **Cause**: Concurrent operations within Django test transactions, or FK constraint checks conflicting with savepoints.
 
-**Fix**: The `pytest-rerunfailures` plugin retries these automatically (configured in `pyproject.toml`). In production, SQLite WAL mode + 30s timeout handles most cases.
+**Fix**: The `pytest-rerunfailures` plugin retries these automatically (configured in `pyproject.toml`). In production, SQLite DELETE journal mode + 30s timeout handles most cases.
 
 ### "database is locked" (SQLITE_BUSY, error 5)
 
@@ -29,17 +29,12 @@ Inter-connection conflict — another process holds a write lock.
 
 **Fix**:
 1. Check for stuck processes: `docker compose exec backend python manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute('PRAGMA busy_timeout'); print(c.fetchone())"`
-2. Run WAL checkpoint: `make maintain-db`
+2. Run integrity check: `make maintain-db`
 3. If persistent, restart the backend container
 
-### WAL File Growing Large
+### WAL Mode Warning
 
-**Cause**: No periodic checkpointing.
-
-**Fix**: The `db_maintenance` scheduled task runs daily. Force a checkpoint:
-```bash
-make maintain-db
-```
+> **NEVER enable SQLite WAL mode.** WAL mode is incompatible with Docker virtiofs bind mounts — the SHM file uses mmap which virtiofs cannot handle, causing stale file descriptors, "disk I/O error", and database corruption. The platform uses DELETE journal mode exclusively.
 
 ## Exchange Connectivity
 
@@ -86,7 +81,7 @@ make docker-clean
 
 ```bash
 # Check detailed health
-curl -sf http://localhost:3000/api/health/?detailed=true | python3 -m json.tool
+curl -sf http://localhost:4000/api/health/?detailed=true | python3 -m json.tool
 
 # Common issues:
 # - database: SQLite file permissions
@@ -134,8 +129,10 @@ docker compose exec backend ps aux | wc -l
 
 ### Rate Limiting (429)
 
-Nginx rate limits: 10 req/s for API, 2 req/s for login.
+**Nginx rate limits**: 10 req/s for API, 2 req/s for login.
 
-If hitting limits legitimately, the burst settings allow:
+Burst settings allow:
 - API: burst of 20 requests
 - Login: burst of 5 requests
+
+**Django rate limits**: 120 req/min general, 20 req/min login.

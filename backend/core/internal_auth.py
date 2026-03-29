@@ -16,6 +16,7 @@ Or as a standalone permission class:
 
 import hashlib
 import hmac
+import ipaddress
 import logging
 import time
 
@@ -86,11 +87,24 @@ class InternalEndpointPermission(BasePermission):
         if verify_hmac_signature(request):
             return True
 
-        # 2. Check IP allowlist
+        # 2. Check IP allowlist (supports exact IPs and CIDR ranges)
         client_ip = _get_client_ip(request)
         allowed_ips = getattr(settings, "INTERNAL_API_ALLOWED_IPS", [])
-        if client_ip in allowed_ips:
-            return True
+        try:
+            addr = ipaddress.ip_address(client_ip)
+            for allowed in allowed_ips:
+                try:
+                    if "/" in allowed:
+                        if addr in ipaddress.ip_network(allowed, strict=False):
+                            return True
+                    elif client_ip == allowed:
+                        return True
+                except ValueError:
+                    if client_ip == allowed:
+                        return True
+        except ValueError:
+            if client_ip in allowed_ips:
+                return True
 
         # 3. Fall back to session auth (allows dashboard/admin to call these endpoints)
         if request.user and request.user.is_authenticated:

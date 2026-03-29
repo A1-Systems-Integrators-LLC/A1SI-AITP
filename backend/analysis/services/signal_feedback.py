@@ -133,8 +133,8 @@ class SignalFeedbackService:
         from analysis.models import MLPrediction
 
         ft_instances = getattr(settings, "FREQTRADE_INSTANCES", [])
-        ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
-        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
+        ft_user = getattr(settings, "FREQTRADE_USERNAME", "")
+        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "")
 
         matched = 0
         unmatched = 0

@@ -109,8 +109,8 @@ class PDFReportDataCollector:
         results: list[dict[str, Any]] = []
 
         ft_instances = getattr(settings, "FREQTRADE_INSTANCES", [])
-        ft_user = getattr(settings, "FREQTRADE_USERNAME", "freqtrader")
-        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "freqtrader")
+        ft_user = getattr(settings, "FREQTRADE_USERNAME", "")
+        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "")
 
         for instance in ft_instances:
             name = instance.get("name", "unknown")

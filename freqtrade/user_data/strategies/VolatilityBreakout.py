@@ -28,6 +28,7 @@ Risk Management:
 """
 
 import logging
+import os
 from datetime import datetime
 
 import talib.abstract as ta
@@ -59,7 +60,7 @@ class VolatilityBreakout(IStrategy):
     startup_candle_count = 80
 
     # ── Risk API integration ──
-    risk_api_url = "http://127.0.0.1:8000"
+    risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
     minimal_roi = {
@@ -84,21 +85,21 @@ class VolatilityBreakout(IStrategy):
         "stoploss_on_exchange": True,
     }
 
-    # Hyperopt parameters — aggressive defaults for high trade frequency
-    breakout_period = IntParameter(10, 30, default=20, space="buy", optimize=True)
-    volume_factor = DecimalParameter(0.8, 3.0, default=1.5, decimals=1, space="buy", optimize=True)
-    adx_low = IntParameter(5, 30, default=20, space="buy", optimize=True)
-    adx_high = IntParameter(25, 65, default=55, space="buy", optimize=True)
-    rsi_low = IntParameter(20, 40, default=25, space="buy", optimize=True)
-    rsi_high = IntParameter(65, 80, default=75, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(75, 95, default=80, space="sell", optimize=True)
-    adx_tolerance = DecimalParameter(0.0, 3.0, default=2.0, decimals=1, space="buy", optimize=True)
-    atr_multiplier = DecimalParameter(1.0, 3.5, default=2.0, decimals=1, space="buy", optimize=True)
+    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    breakout_period = IntParameter(10, 30, default=11, space="buy", optimize=True)
+    volume_factor = DecimalParameter(0.8, 3.0, default=2.4, decimals=1, space="buy", optimize=True)
+    adx_low = IntParameter(5, 30, default=29, space="buy", optimize=True)
+    adx_high = IntParameter(25, 65, default=60, space="buy", optimize=True)
+    rsi_low = IntParameter(20, 40, default=38, space="buy", optimize=True)
+    rsi_high = IntParameter(65, 80, default=68, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(75, 95, default=75, space="sell", optimize=True)
+    adx_tolerance = DecimalParameter(0.0, 3.0, default=0.4, decimals=1, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 3.5, default=3.5, decimals=1, space="buy", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
-        # N-period high/low for breakout detection (multiple periods for optimization)
-        for period in [10, 15, 20, 25, 30]:
+        # N-period high/low for breakout detection (full range for hyperopt)
+        for period in range(10, 31):
             dataframe[f"high_{period}"] = dataframe["high"].rolling(window=period).max()
             dataframe[f"low_{period}"] = dataframe["low"].rolling(window=period).min()
 
@@ -281,7 +282,6 @@ class VolatilityBreakout(IStrategy):
         current_time: datetime,
         current_rate: float,
         current_profit: float,
-        after_fill: bool,
         **kwargs,
     ) -> str | None:
         """Conviction-based exit: regime deterioration, time limits."""

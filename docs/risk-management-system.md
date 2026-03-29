@@ -18,7 +18,7 @@ This document describes the risk management system used by the A1SI-AITP platfor
 ┌────────────────────────────────┐
 │     Django REST API             │
 │  backend/risk/views.py          │
-│  14 endpoints per portfolio     │
+│  16 endpoints per portfolio     │
 └──────────┬─────────────────────┘
            │
            ▼
@@ -66,9 +66,9 @@ Each portfolio has configurable risk limits stored in the `RiskLimits` database 
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `max_portfolio_drawdown` | 0.15 (15%) | Maximum peak-to-trough decline before halting all trading |
-| `max_single_trade_risk` | 0.03 (3%) | Maximum portfolio risk per individual trade |
-| `max_daily_loss` | 0.05 (5%) | Maximum daily loss before halting for the day |
+| `max_portfolio_drawdown` | 0.20 (20%) | Maximum peak-to-trough decline before halting all trading |
+| `max_single_trade_risk` | 0.05 (5%) | Maximum portfolio risk per individual trade |
+| `max_daily_loss` | 0.08 (8%) | Maximum daily loss before halting for the day |
 | `max_open_positions` | 10 | Maximum number of concurrent open positions |
 | `max_position_size_pct` | 0.20 (20%) | Maximum portfolio percentage in a single position |
 | `max_correlation` | 0.70 | Maximum allowed correlation between any two open positions |
@@ -96,7 +96,7 @@ Freqtrade strategies call the gate in their `confirm_trade_entry()` method:
 
 ```python
 resp = requests.post(
-    "http://127.0.0.1:8000/api/risk/1/check-trade",
+    "http://127.0.0.1:8000/api/risk/1/check-trade/",
     json={
         "symbol": "BTC/USDT",
         "side": "buy",
@@ -121,7 +121,7 @@ When a trade request arrives, these checks run in order. The first failure stops
 ```
 1. Halt status check
    └─ Is trading currently halted?
-      "Trading halted: Max drawdown breached: 15.20% >= 15.00%"
+      "Trading halted: Max drawdown breached: 20.20% >= 20.00%"
 
 2. Open positions limit
    └─ Are we at max_open_positions?
@@ -239,9 +239,9 @@ drawdown = 1.0 - (current_equity / peak_equity)
 
 Every equity update triggers two checks:
 
-1. **Portfolio drawdown** — if `drawdown >= max_portfolio_drawdown` (default 15%), trading is **halted** immediately. The halt persists until manually resumed.
+1. **Portfolio drawdown** — if `drawdown >= max_portfolio_drawdown` (default 20%), trading is **halted** immediately. The halt persists until manually resumed.
 
-2. **Daily loss** — if `(current_equity - daily_start_equity) / daily_start_equity <= -max_daily_loss` (default 5%), trading is **halted** for the day. Daily halts clear automatically on the next daily reset.
+2. **Daily loss** — if `(current_equity - daily_start_equity) / daily_start_equity <= -max_daily_loss` (default 8%), trading is **halted** for the day. Daily halts clear automatically on the next daily reset.
 
 ### Equity Updates
 
@@ -274,8 +274,8 @@ Trading can be halted automatically (drawdown/daily loss breach) or manually (em
 
 | Trigger | Threshold | Halt Behavior |
 |---------|-----------|---------------|
-| Portfolio drawdown | >= 15% | Permanent until manual resume |
-| Daily loss | >= 5% | Clears on next daily reset |
+| Portfolio drawdown | >= 20% | Permanent until manual resume |
+| Daily loss | >= 8% | Clears on next daily reset |
 
 When a halt triggers:
 - All subsequent `check-trade` calls are rejected with the halt reason
@@ -419,7 +419,7 @@ The heat check flags issues before they trigger halts:
 
 | Warning | Condition |
 |---------|-----------|
-| Drawdown approaching limit | Drawdown > 80% of `max_portfolio_drawdown` (e.g., >12% when limit is 15%) |
+| Drawdown approaching limit | Drawdown > 80% of `max_portfolio_drawdown` (e.g., >16% when limit is 20%) |
 | High correlation | Any pair exceeds `max_correlation` |
 | Concentration warning | Single position > 90% of `max_position_size_pct` (e.g., >18% when limit is 20%) |
 | VaR warning | 99% VaR exceeds 10% of total equity |
@@ -434,7 +434,7 @@ Response:
 {
     "healthy": false,
     "issues": [
-        "Drawdown warning: 12.50% approaching limit 15.00%",
+        "Drawdown warning: 16.50% approaching limit 20.00%",
         "Concentration warning: 18.50% in single position"
     ],
     "drawdown": 0.125,
@@ -555,7 +555,7 @@ GET /api/risk/{portfolio_id}/alerts/?limit=50
 Alerts arrive as HTML-formatted messages:
 
 ```
-[CRITICAL] Trading HALTED: Max drawdown breached: 15.20% >= 15.00%
+[CRITICAL] Trading HALTED: Max drawdown breached: 20.20% >= 20.00%
 [WARNING] Trade REJECTED: BTC/USDT buy x0.05 @ 42000.0 — Max open positions reached (10)
 ```
 
@@ -563,7 +563,7 @@ Alerts arrive as HTML-formatted messages:
 
 ## Database Models
 
-The risk system uses five Django models in the `risk` app.
+The risk system uses six Django models in the `risk` app.
 
 ### RiskState
 
@@ -588,9 +588,9 @@ Configurable risk parameters. One row per portfolio.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `max_portfolio_drawdown` | float | 0.15 |
-| `max_single_trade_risk` | float | 0.03 |
-| `max_daily_loss` | float | 0.05 |
+| `max_portfolio_drawdown` | float | 0.20 |
+| `max_single_trade_risk` | float | 0.05 |
+| `max_daily_loss` | float | 0.08 |
 | `max_open_positions` | int | 10 |
 | `max_position_size_pct` | float | 0.20 |
 | `max_correlation` | float | 0.70 |
@@ -608,6 +608,20 @@ Time series of risk metric snapshots (VaR, CVaR, drawdown, equity).
 ### AlertLog
 
 Record of all notifications sent across all channels.
+
+### RiskLimitChange
+
+Audit trail of every change to risk limit parameters. Created automatically when limits are updated via the API.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `portfolio_id` | int | Portfolio identifier |
+| `field_name` | string (max 50) | Name of the limit field that changed |
+| `old_value` | string (max 50) | Previous value (stored as string) |
+| `new_value` | string (max 50) | New value (stored as string) |
+| `changed_by` | string (max 150) | User who made the change |
+| `reason` | string (max 500) | Optional reason for the change |
+| `changed_at` | datetime | Timestamp of the change |
 
 ---
 
@@ -654,7 +668,7 @@ class CryptoInvestorV1(IStrategy):
         try:
             stop_loss_price = rate * (1 + self.stoploss)
             resp = requests.post(
-                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade",
+                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
                 json={...},
                 timeout=5,
             )
@@ -692,14 +706,14 @@ If regime detection confidence is below 0.4, the modifier is further halved.
 
 ```yaml
 risk_management:
-  max_portfolio_drawdown: 0.15
-  max_single_trade_risk: 0.02
-  max_daily_loss: 0.05
+  max_portfolio_drawdown: 0.20
+  max_single_trade_risk: 0.05
+  max_daily_loss: 0.08
   max_correlation: 0.7
   min_paper_trade_days: 14
 ```
 
-### Freqtrade Config (`freqtrade/config.json`)
+### Freqtrade Config (`freqtrade/config.json.example`)
 
 ```json
 {
@@ -729,8 +743,8 @@ NOTIFICATION_WEBHOOK_URL=https://hooks.slack.com/services/...
 | File | Purpose |
 |------|---------|
 | `common/risk/risk_manager.py` | Core risk engine — position sizing, drawdown, correlation, VaR |
-| `backend/risk/models.py` | Django models — RiskState, RiskLimits, TradeCheckLog, AlertLog, RiskMetricHistory |
-| `backend/risk/views.py` | REST API views — 14 endpoints |
+| `backend/risk/models.py` | Django models — RiskState, RiskLimits, TradeCheckLog, AlertLog, RiskMetricHistory, RiskLimitChange |
+| `backend/risk/views.py` | REST API views — 16 endpoints |
 | `backend/risk/services/risk.py` | Service layer — bridges engine with Django ORM |
 | `backend/risk/serializers.py` | DRF serializers for request/response validation |
 | `backend/risk/urls.py` | URL routing |

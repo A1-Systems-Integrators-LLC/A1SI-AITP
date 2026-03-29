@@ -44,7 +44,7 @@ def _check_freqtrade() -> CheckResult:
         try:
             r = requests.get(
                 f"http://localhost:{port}/api/v1/ping",
-                auth=(cfg.get("username", "freqtrader"), cfg.get("password", "freqtrader")),
+                auth=(cfg.get("username", ""), cfg.get("password", "")),
                 timeout=3,
             )
             running = r.status_code == 200
