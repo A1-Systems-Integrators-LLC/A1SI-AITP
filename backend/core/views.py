@@ -233,24 +233,16 @@ class HealthView(APIView):
         except Exception as e:
             checks["job_queue"] = {"status": "error", "detail": str(e)}
 
-        # Journal mode check
+        # Database backend check
         try:
             from django.db import connection as db_conn
 
-            with db_conn.cursor() as cur:
-                cur.execute("PRAGMA journal_mode")
-                mode = cur.fetchone()[0]
-            if mode not in ("delete", "memory"):
-                checks["journal"] = {
-                    "status": "error",
-                    "mode": mode,
-                    "detail": f"Expected DELETE journal mode, got {mode.upper()}. "
-                    "WAL mode is incompatible with Docker virtiofs.",
-                }
-            else:
-                checks["journal"] = {"status": "ok", "mode": mode}
+            checks["database_backend"] = {
+                "status": "ok",
+                "engine": db_conn.vendor,
+            }
         except Exception as e:
-            checks["journal"] = {"status": "error", "detail": str(e)}
+            checks["database_backend"] = {"status": "error", "detail": str(e)}
 
         overall = "ok" if all(
             c.get("status", "ok") == "ok" for c in checks.values() if isinstance(c, dict)

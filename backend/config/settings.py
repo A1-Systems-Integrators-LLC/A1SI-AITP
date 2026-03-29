@@ -95,40 +95,21 @@ TEMPLATES = [
 ]
 
 # ── Database ──────────────────────────────────────────────────
-USE_POSTGRES = os.environ.get("USE_POSTGRES", "false").lower() in ("true", "1", "yes")
-
-if USE_POSTGRES:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("POSTGRES_DB", "a1si_aitp"),
-            "USER": os.environ.get("POSTGRES_USER", "a1si"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
-            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-            "CONN_MAX_AGE": 0 if TESTING else 600,
-            "CONN_HEALTH_CHECKS": True,
-            "OPTIONS": {
-                "connect_timeout": 10,
-            },
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "a1si_aitp"),
+        "USER": os.environ.get("POSTGRES_USER", "a1si"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+        "HOST": os.environ.get("POSTGRES_HOST", "postgres"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": 0 if TESTING else 600,
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {
+            "connect_timeout": 10,
         },
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "data" / "a1si_aitp.db",
-            "OPTIONS": {
-                "timeout": 30,
-            },
-            "CONN_HEALTH_CHECKS": True,
-            # Persistent connections: avoid constant open/close which causes
-            # WAL file descriptor churn and "disk I/O error" under Docker bind mounts.
-            # None = keep connections open indefinitely (single-user desktop app).
-            # In tests, use default (0) to avoid connection leaks between tests.
-            "CONN_MAX_AGE": 0 if TESTING else None,
-        },
-    }
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -8,7 +8,7 @@ A1SI-AITP — Full-stack crypto investment platform with portfolio tracking, mar
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), SQLite, ccxt
+- **Backend**: Python 3.12, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), PostgreSQL 16, ccxt
 - **Frontend**: TypeScript, React 19, Vite 6, TanStack React Query, Tailwind CSS v4, lightweight-charts
 - **Tooling**: Makefile-driven, ruff + mypy (Python), eslint (TS), pytest + vitest
 - **Trading Frameworks**: Freqtrade (crypto engine), NautilusTrader (multi-asset), VectorBT (research), hftbacktest (HFT)
@@ -16,7 +16,7 @@ A1SI-AITP — Full-stack crypto investment platform with portfolio tracking, mar
 ## Architecture
 
 - **Monorepo**: `backend/` + `frontend/` (web app) alongside platform modules (`common/`, `research/`, `nautilus/`, `freqtrade/`)
-- **Database**: SQLite with DELETE journal mode — single-user desktop deployment
+- **Database**: PostgreSQL 16 (Docker volume) — concurrent-safe, no more SQLite corruption
 - **Auth**: Django session-based authentication, CSRF protection, DRF SessionAuthentication + IsAuthenticated defaults
 - **ASGI**: Django Channels + Daphne server, async views for ccxt exchange calls
 - **Django apps**: core (auth, health, platform), portfolio, trading, market, risk, analysis
@@ -67,7 +67,7 @@ python run.py nautilus test           # Test NautilusTrader engine
 - Django URLs: `backend/config/urls.py`
 - Backend tests: `backend/tests/`
 - Frontend source: `frontend/src/`
-- Database files: `backend/data/` (gitignored)
+- Database: PostgreSQL in Docker volume (no local files)
 - Django migrations: `backend/<app>/migrations/`
 - Shared data pipeline: `common/data_pipeline/pipeline.py`
 - Technical indicators: `common/indicators/technical.py`
@@ -86,9 +86,8 @@ After completing any task that changes code, tests, dependencies, or architectur
 
 ## Critical Rules — DO NOT VIOLATE
 
-- **NEVER use SQLite WAL mode.** The database MUST use DELETE journal mode (`PRAGMA journal_mode=DELETE`). WAL mode is incompatible with Docker virtiofs bind mounts — the SHM file uses mmap which virtiofs cannot handle across processes, causing stale file descriptors, "disk I/O error" on all queries, and database corruption. This destroyed the production database three times in March 2026. The DELETE mode pragma is enforced in `core/apps.py`, asserted in `docker-entrypoint.sh` at startup, and verified by regression tests. If you change any of these, you will break the system.
+- **Database is PostgreSQL — NEVER revert to SQLite.** SQLite corrupted the production database repeatedly in March 2026 due to Docker virtiofs bind mount incompatibility. PostgreSQL runs in a Docker volume, handles concurrent writes from Daphne/scheduler/job runner, and survives container restarts. The `postgres` service is a default (non-profile) dependency of `backend` in both compose files.
 - **NEVER tell the user the system is fixed without providing curl/test evidence.** Verify endpoints return HTTP 200 with valid JSON before claiming anything works.
-- **NEVER modify SQLite PRAGMAs without testing under Docker bind mounts.** Any PRAGMA change must be verified with the container running, not just in local pytest (which uses `:memory:`).
 
 ## Conventions
 

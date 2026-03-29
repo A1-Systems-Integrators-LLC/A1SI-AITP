@@ -93,25 +93,16 @@ def _check_data_freshness() -> CheckResult:
 
 
 def _check_database() -> CheckResult:
-    """Check SQLite journal mode and integrity."""
+    """Check database connectivity."""
     from django.db import connection
 
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA journal_mode;")
-        mode = cursor.fetchone()[0]
-        cursor.execute("PRAGMA integrity_check;")
-        integrity = cursor.fetchone()[0]
+        cursor.execute("SELECT 1")
 
-    if integrity != "ok":
-        return {
-            "name": "Database Health",
-            "status": "fail",
-            "detail": f"Integrity check: {integrity}",
-        }
     return {
         "name": "Database Health",
         "status": "pass",
-        "detail": f"journal={mode}, integrity=ok",
+        "detail": f"engine={connection.vendor}, connected=ok",
     }
 
 

@@ -25,20 +25,16 @@ CheckResult = dict[str, Any]
 
 
 def _check_database() -> CheckResult:
-    """Verify SQLite connectivity and journal mode."""
+    """Verify database connectivity."""
     from django.db import connection
 
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            cursor.execute("PRAGMA journal_mode;")
-            mode = cursor.fetchone()[0]
     except Exception as e:
         return {"name": "Database", "status": "fail", "detail": str(e)}
 
-    if mode == "wal":
-        return {"name": "Database", "status": "fail", "detail": "CRITICAL: WAL mode detected"}
-    return {"name": "Database", "status": "pass", "detail": f"journal={mode}"}
+    return {"name": "Database", "status": "pass", "detail": f"engine={connection.vendor}"}
 
 
 def _check_scheduler() -> CheckResult:

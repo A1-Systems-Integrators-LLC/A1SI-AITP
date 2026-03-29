@@ -47,7 +47,7 @@ COPY run.py ./run.py
 # - sentiment: vaderSentiment
 COPY backend/ ./backend/
 WORKDIR /project/backend
-RUN pip install --no-cache-dir -e ".[dev,analysis,ml,trading,sentiment]" vectorbt
+RUN pip install --no-cache-dir -e ".[dev,analysis,ml,trading,sentiment,postgres]" vectorbt
 
 
 # ── Stage 2: Runtime (minimal image without build tools) ──

@@ -5,23 +5,8 @@ import threading
 
 from django.apps import AppConfig
 from django.conf import settings
-from django.db.backends.signals import connection_created
 
 logger = logging.getLogger("scheduler")
-
-
-def _set_sqlite_pragmas(sender, connection, **kwargs):
-    """Tune SQLite for performance.
-
-    Uses DELETE journal mode (SQLite default) instead of WAL.
-    WAL mode is incompatible with Docker virtiofs bind mounts — the shared
-    memory file (SHM) uses mmap which virtiofs doesn't handle correctly
-    across processes, causing stale file descriptors and 'disk I/O error'.
-    """
-    if connection.vendor == "sqlite":
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA journal_mode=DELETE;")
-        cursor.execute("PRAGMA synchronous=NORMAL;")
 
 
 def _maybe_start_order_sync() -> None:
@@ -103,8 +88,6 @@ class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
-        connection_created.connect(_set_sqlite_pragmas)
-
         # Start scheduler once per process.
         # RUN_MAIN is only set by Django's autoreload (runserver).
         # Under Daphne/gunicorn/Docker, it's never set — so we also start

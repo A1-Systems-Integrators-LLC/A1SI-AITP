@@ -123,6 +123,14 @@ services:
       NAUTILUS_WORKER_URL: "http://nautilus:4090"
       VECTORBT_WORKER_URL: "http://vectorbt:4092"
       INTERNAL_API_ALLOWED_IPS: "127.0.0.1,::1,172.16.0.0/12"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "a1si_aitp"
+      POSTGRES_USER: "a1si"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-a1si_dev_password}"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     <<: *frontend-base
@@ -303,7 +311,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: aitp-dev-postgres
-    profiles: ["postgres"]
     environment:
       POSTGRES_DB: a1si_aitp
       POSTGRES_USER: a1si
