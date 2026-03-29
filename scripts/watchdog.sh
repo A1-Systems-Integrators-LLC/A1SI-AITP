@@ -15,6 +15,18 @@ VENV="$BACKEND_DIR/.venv"
 PYTHON="$VENV/bin/python"
 FT_DIR="$ROOT_DIR/freqtrade"
 FT_STRATEGY_PATH="$FT_DIR/user_data/strategies"
+
+# Cross-platform port check (macOS uses lsof, Linux uses ss)
+port_in_use() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$1" -sTCP:LISTEN -t >/dev/null 2>&1
+    elif command -v ss >/dev/null 2>&1; then
+        ss -tlnp 2>/dev/null | grep -q ":$1 "
+    else
+        return 1
+    fi
+}
+
 LOG_DIR="$BACKEND_DIR/data/logs"
 LOG_FILE="$LOG_DIR/watchdog.log"
 
@@ -148,31 +160,40 @@ check_frontend() {
 }
 
 # ─── 3. Check Freqtrade Instances ──────────────────────────────
-declare -A FT_CONFIGS=(
-    [CryptoInvestorV1]="config.json"
-    [BollingerMeanReversion]="config_bmr.json"
-    [VolatilityBreakout]="config_vb.json"
-)
-declare -A FT_PORTS=(
-    [CryptoInvestorV1]=8080
-    [BollingerMeanReversion]=8083
-    [VolatilityBreakout]=8084
-)
+# Bash 3.2 compatible (no associative arrays — macOS ships bash 3.2)
+ft_config_for() {
+    case "$1" in
+        CryptoInvestorV1)       echo "config.json" ;;
+        BollingerMeanReversion) echo "config_bmr.json" ;;
+        VolatilityBreakout)     echo "config_vb.json" ;;
+        *)                      echo "" ;;
+    esac
+}
+ft_port_for() {
+    case "$1" in
+        CryptoInvestorV1)       echo "4080" ;;
+        BollingerMeanReversion) echo "4083" ;;
+        VolatilityBreakout)     echo "4084" ;;
+        *)                      echo "0" ;;
+    esac
+}
 
 # Full 3-strategy operation (restored 2026-03-24 operational overhaul)
 DEFAULT_WATCHDOG_FT="CryptoInvestorV1,BollingerMeanReversion,VolatilityBreakout"
 WATCHDOG_FT_INSTANCES="${WATCHDOG_FT_INSTANCES:-$DEFAULT_WATCHDOG_FT}"
 
 check_freqtrade() {
-    local ft_user="freqtrader"
-    local ft_pass="freqtrader"
+    local ft_user="${FREQTRADE_USERNAME:-freqtrader}"
+    local ft_pass="${FREQTRADE_PASSWORD:-freqtrader}"
     local all_ok=true
 
     IFS=',' read -ra FT_LIST <<< "$WATCHDOG_FT_INSTANCES"
     for strategy in "${FT_LIST[@]}"; do
         strategy=$(echo "$strategy" | xargs)  # trim whitespace
-        local port="${FT_PORTS[$strategy]}"
-        local config="${FT_CONFIGS[$strategy]}"
+        local port
+        port=$(ft_port_for "$strategy")
+        local config
+        config=$(ft_config_for "$strategy")
 
         if curl -sf "http://localhost:${port}/api/v1/ping" --user "${ft_user}:${ft_pass}" > /dev/null 2>&1; then
             log "INFO" "Freqtrade $strategy (:$port): running"
@@ -185,7 +206,7 @@ check_freqtrade() {
                 local config_path="$FT_DIR/$config"
                 if [ -f "$config_path" ]; then
                     # Check if port is in use by something else
-                    if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+                    if port_in_use "$port"; then
                         log "WARN" "Port $port in use but Freqtrade not responding — skipping restart"
                         continue
                     fi
