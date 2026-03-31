@@ -8,16 +8,9 @@ ticker_poller, management commands, fields, serializers, routing, regime.
 import asyncio
 import os
 import sys
-from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
-
-
-@contextmanager
-def _noop_timed(*args, **kwargs):
-    yield
-
 
 import pandas as pd
 import pytest
@@ -579,8 +572,7 @@ class TestExchangeService:
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            result = await svc.fetch_ticker("BTC/USDT")
+        result = await svc.fetch_ticker("BTC/USDT")
         assert result["symbol"] == "BTC/USDT"
         assert result["price"] == 50000.0
         _breakers.clear()
@@ -613,7 +605,6 @@ class TestExchangeService:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(Exception, match="Network error"),
         ):
             await svc.fetch_ticker("BTC/USDT")
@@ -645,8 +636,7 @@ class TestExchangeService:
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            result = await svc.fetch_tickers(["BTC/USDT"])
+        result = await svc.fetch_tickers(["BTC/USDT"])
         assert len(result) == 1
         assert result[0]["symbol"] == "BTC/USDT"
         _breakers.clear()
@@ -678,7 +668,6 @@ class TestExchangeService:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(RuntimeError),
         ):
             await svc.fetch_tickers(["BTC/USDT"])
@@ -699,8 +688,7 @@ class TestExchangeService:
         )
         svc._exchange = mock_exchange
 
-        with patch("core.services.metrics.timed", side_effect=_noop_timed):
-            result = await svc.fetch_ohlcv("BTC/USDT", "1h", 100)
+        result = await svc.fetch_ohlcv("BTC/USDT", "1h", 100)
         assert len(result) == 1
         assert result[0]["open"] == 50000
         _breakers.clear()
@@ -732,7 +720,6 @@ class TestExchangeService:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(RuntimeError),
         ):
             await svc.fetch_ohlcv("BTC/USDT")
@@ -3216,7 +3203,6 @@ class TestExchangeServiceDeferredLoad:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(CircuitBreakerOpenError),
         ):
             await svc.fetch_ticker("BTC/USDT")
@@ -3236,7 +3222,6 @@ class TestExchangeServiceDeferredLoad:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(CircuitBreakerOpenError),
         ):
             await svc.fetch_tickers(["BTC/USDT"])
@@ -3256,7 +3241,6 @@ class TestExchangeServiceDeferredLoad:
         svc._exchange = mock_exchange
 
         with (
-            patch("core.services.metrics.timed", side_effect=_noop_timed),
             pytest.raises(CircuitBreakerOpenError),
         ):
             await svc.fetch_ohlcv("BTC/USDT")

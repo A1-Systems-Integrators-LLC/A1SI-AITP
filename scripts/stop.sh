@@ -22,8 +22,6 @@ echo ""
 echo "→ Stopping aitp-dev group..."
 $DOPPLER_PREFIX $COMPOSE_DEV \
     --profile trading \
-    --profile research \
-    --profile monitoring \
     --profile postgres \
     down 2>/dev/null || true
 
@@ -32,8 +30,6 @@ echo ""
 echo "→ Stopping aitp-prod group..."
 $DOPPLER_PREFIX $COMPOSE_PROD \
     --profile trading \
-    --profile research \
-    --profile monitoring \
     --profile postgres \
     down 2>/dev/null || true
 

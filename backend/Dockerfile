@@ -47,7 +47,7 @@ COPY run.py ./run.py
 # - sentiment: vaderSentiment
 COPY backend/ ./backend/
 WORKDIR /project/backend
-RUN pip install --no-cache-dir -e ".[dev,analysis,ml,trading,sentiment,postgres]" vectorbt
+RUN pip install --no-cache-dir -e ".[dev,analysis,ml,trading,sentiment,postgres,pdf]" vectorbt
 
 
 # ── Stage 2: Runtime (minimal image without build tools) ──
@@ -55,9 +55,13 @@ FROM python:3.12-slim
 
 WORKDIR /project
 
-# Runtime-only system deps: libffi for cryptography, libgomp for lightgbm, TA-Lib shared library
+# Runtime-only system deps: libffi for cryptography, libgomp for lightgbm,
+# TA-Lib shared library, pango/gdk-pixbuf/fontconfig for weasyprint PDF generation
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libffi8 libgomp1 curl && \
+    apt-get install -y --no-install-recommends \
+        libffi8 libgomp1 curl \
+        libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+        libfontconfig1 fonts-dejavu-core && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy TA-Lib shared library from builder

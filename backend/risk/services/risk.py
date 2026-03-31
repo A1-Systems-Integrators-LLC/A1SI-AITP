@@ -335,131 +335,128 @@ class RiskManagementService:
 
     @staticmethod
     def periodic_risk_check(portfolio_id: int) -> dict:
-        """Periodic risk check — record metrics, auto-halt on limit breach, warn at 80%."""
-        from core.services.metrics import timed
+        """Periodic risk check — auto-halt on limit breach, warn at 80%."""
+        state = RiskManagementService._get_or_create_state(portfolio_id)
+        limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
 
-        with timed("risk_check_duration_seconds"):
-            state = RiskManagementService._get_or_create_state(portfolio_id)
-            limits_config = RiskManagementService._get_or_create_limits(portfolio_id)
+        # Record metrics snapshot
+        try:
+            RiskManagementService.record_metrics(portfolio_id)
+        except Exception as e:
+            logger.warning("Failed to record metrics for portfolio %s: %s", portfolio_id, e)
 
-            # Record metrics snapshot
-            try:
-                RiskManagementService.record_metrics(portfolio_id)
-            except Exception as e:
-                logger.warning("Failed to record metrics for portfolio %s: %s", portfolio_id, e)
+        # Skip checks if already halted
+        if state.is_halted:
+            return {"status": "halted", "portfolio_id": portfolio_id}
 
-            # Skip checks if already halted
-            if state.is_halted:
-                return {"status": "halted", "portfolio_id": portfolio_id}
+        peak = state.peak_equity if state.peak_equity > 0 else 1
+        drawdown = 1.0 - (state.total_equity / peak)
+        daily_loss_pct = (
+            max(0.0, -state.daily_pnl / state.total_equity)
+            if state.total_equity > 0
+            else 0.0
+        )
 
-            peak = state.peak_equity if state.peak_equity > 0 else 1
-            drawdown = 1.0 - (state.total_equity / peak)
-            daily_loss_pct = (
-                max(0.0, -state.daily_pnl / state.total_equity)
-                if state.total_equity > 0
-                else 0.0
+        # Adaptive risk tightening based on regime
+        regime_multiplier, regime_name = RiskManagementService._get_regime_risk_multiplier()
+        effective_daily_loss = limits_config.max_daily_loss * regime_multiplier
+        effective_drawdown = limits_config.max_portfolio_drawdown * regime_multiplier
+
+        result = {
+            "status": "ok",
+            "portfolio_id": portfolio_id,
+            "drawdown": round(drawdown, 4),
+        }
+
+        # Log regime-based tightening when active
+        if regime_multiplier < 1.0:
+            result["regime_tightening"] = {
+                "regime": regime_name,
+                "multiplier": regime_multiplier,
+                "effective_daily_loss": round(effective_daily_loss, 4),
+                "effective_drawdown": round(effective_drawdown, 4),
+            }
+            logger.info(
+                "Regime %s: adaptive risk tightening %.0f%%"
+                " (daily_loss %.1f%%→%.1f%%,"
+                " drawdown %.1f%%→%.1f%%)",
+                regime_name,
+                (1 - regime_multiplier) * 100,
+                limits_config.max_daily_loss * 100,
+                effective_daily_loss * 100,
+                limits_config.max_portfolio_drawdown * 100,
+                effective_drawdown * 100,
             )
 
-            # Adaptive risk tightening based on regime
-            regime_multiplier, regime_name = RiskManagementService._get_regime_risk_multiplier()
-            effective_daily_loss = limits_config.max_daily_loss * regime_multiplier
-            effective_drawdown = limits_config.max_portfolio_drawdown * regime_multiplier
-
-            result = {
-                "status": "ok",
-                "portfolio_id": portfolio_id,
-                "drawdown": round(drawdown, 4),
-            }
-
-            # Log regime-based tightening when active
+        # Check drawdown limit (regime-adjusted)
+        if drawdown >= effective_drawdown:
+            reason = f"Drawdown {drawdown:.1%} exceeded limit {effective_drawdown:.1%}"
             if regime_multiplier < 1.0:
-                result["regime_tightening"] = {
-                    "regime": regime_name,
-                    "multiplier": regime_multiplier,
-                    "effective_daily_loss": round(effective_daily_loss, 4),
-                    "effective_drawdown": round(effective_drawdown, 4),
-                }
-                logger.info(
-                    "Regime %s: adaptive risk tightening %.0f%%"
-                    " (daily_loss %.1f%%→%.1f%%,"
-                    " drawdown %.1f%%→%.1f%%)",
-                    regime_name,
-                    (1 - regime_multiplier) * 100,
-                    limits_config.max_daily_loss * 100,
-                    effective_daily_loss * 100,
-                    limits_config.max_portfolio_drawdown * 100,
-                    effective_drawdown * 100,
+                reason += (
+                    f" (tightened from"
+                    f" {limits_config.max_portfolio_drawdown:.1%}"
+                    f" due to {regime_name})"
                 )
-
-            # Check drawdown limit (regime-adjusted)
-            if drawdown >= effective_drawdown:
-                reason = f"Drawdown {drawdown:.1%} exceeded limit {effective_drawdown:.1%}"
-                if regime_multiplier < 1.0:
-                    reason += (
-                        f" (tightened from"
-                        f" {limits_config.max_portfolio_drawdown:.1%}"
-                        f" due to {regime_name})"
-                    )
-                RiskManagementService.halt_trading(portfolio_id, reason)
-                try:
-                    RiskManagementService.send_notification(
-                        portfolio_id,
-                        "risk_auto_halt",
-                        "critical",
-                        reason,
-                    )
-                except Exception as e:
-                    logger.error("Failed to send auto-halt notification: %s", e)
-                result["status"] = "auto_halted"
-                result["reason"] = reason
-                return result
-
-            # Check daily loss limit (regime-adjusted)
-            if daily_loss_pct >= effective_daily_loss:
-                reason = (
-                    f"Daily loss {daily_loss_pct:.1%} exceeded limit {effective_daily_loss:.1%}"
+            RiskManagementService.halt_trading(portfolio_id, reason)
+            try:
+                RiskManagementService.send_notification(
+                    portfolio_id,
+                    "risk_auto_halt",
+                    "critical",
+                    reason,
                 )
-                if regime_multiplier < 1.0:
-                    reason += (
-                        f" (tightened from {limits_config.max_daily_loss:.1%} due to {regime_name})"
-                    )
-                RiskManagementService.halt_trading(portfolio_id, reason)
-                try:
-                    RiskManagementService.send_notification(
-                        portfolio_id,
-                        "risk_auto_halt",
-                        "critical",
-                        reason,
-                    )
-                except Exception as e:
-                    logger.error("Failed to send auto-halt notification: %s", e)
-                result["status"] = "auto_halted"
-                result["reason"] = reason
-                return result
-
-            # Warning at 80% of limits (using effective limits)
-            if drawdown >= effective_drawdown * 0.8:
-                msg = (
-                    f"Drawdown warning: {drawdown:.1%} is at "
-                    f"{drawdown / effective_drawdown:.0%} of limit"
-                )
-                if regime_multiplier < 1.0:
-                    msg += f" (tightened by {regime_name})"
-                try:
-                    RiskManagementService.send_notification(
-                        portfolio_id,
-                        "risk_warning",
-                        "warning",
-                        msg,
-                        telegram_rate_key=f"risk_warning:{portfolio_id}",
-                        telegram_cooldown=3600.0,
-                    )
-                except Exception as e:
-                    logger.error("Failed to send risk warning: %s", e)
-                result["status"] = "warning"
-                result["warning"] = msg
-
+            except Exception as e:
+                logger.error("Failed to send auto-halt notification: %s", e)
+            result["status"] = "auto_halted"
+            result["reason"] = reason
             return result
+
+        # Check daily loss limit (regime-adjusted)
+        if daily_loss_pct >= effective_daily_loss:
+            reason = (
+                f"Daily loss {daily_loss_pct:.1%} exceeded limit {effective_daily_loss:.1%}"
+            )
+            if regime_multiplier < 1.0:
+                reason += (
+                    f" (tightened from {limits_config.max_daily_loss:.1%} due to {regime_name})"
+                )
+            RiskManagementService.halt_trading(portfolio_id, reason)
+            try:
+                RiskManagementService.send_notification(
+                    portfolio_id,
+                    "risk_auto_halt",
+                    "critical",
+                    reason,
+                )
+            except Exception as e:
+                logger.error("Failed to send auto-halt notification: %s", e)
+            result["status"] = "auto_halted"
+            result["reason"] = reason
+            return result
+
+        # Warning at 80% of limits (using effective limits)
+        if drawdown >= effective_drawdown * 0.8:
+            msg = (
+                f"Drawdown warning: {drawdown:.1%} is at "
+                f"{drawdown / effective_drawdown:.0%} of limit"
+            )
+            if regime_multiplier < 1.0:
+                msg += f" (tightened by {regime_name})"
+            try:
+                RiskManagementService.send_notification(
+                    portfolio_id,
+                    "risk_warning",
+                    "warning",
+                    msg,
+                    telegram_rate_key=f"risk_warning:{portfolio_id}",
+                    telegram_cooldown=3600.0,
+                )
+            except Exception as e:
+                logger.error("Failed to send risk warning: %s", e)
+            result["status"] = "warning"
+            result["warning"] = msg
+
+        return result
 
     @staticmethod
     def get_metric_history(portfolio_id: int, hours: int = 168) -> list:

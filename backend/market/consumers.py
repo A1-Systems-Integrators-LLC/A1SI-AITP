@@ -173,6 +173,15 @@ class SystemEventsConsumer(ConnectionLimiterMixin, AsyncJsonWebsocketConsumer):
             },
         )
 
+    async def strategy_status(self, event):
+        """Handle strategy_status messages from the strategy orchestrator."""
+        await self.send_json(
+            {
+                "type": "strategy_status",
+                "data": event["data"],
+            },
+        )
+
     @database_sync_to_async
     def _is_authenticated(self) -> bool:
         user = self.scope.get("user")

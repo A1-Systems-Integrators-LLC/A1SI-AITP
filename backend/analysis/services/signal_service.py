@@ -21,6 +21,12 @@ _signal_cache_lock = threading.Lock()
 _signal_cache_order: list[str] = []  # LRU order tracking
 SIGNAL_CACHE_MAX_SIZE = 500
 
+# Per-key computation locks: prevents multiple threads computing the same signal
+# simultaneously, which causes threadpool exhaustion under Daphne.
+_computation_locks: dict[str, threading.Lock] = {}
+_computation_locks_lock = threading.Lock()
+SIGNAL_COMPUTATION_TIMEOUT = 30  # seconds — fail-open if computation takes too long
+
 # Regime-aware TTL mapping (seconds)
 SIGNAL_CACHE_TTL_MAP = {
     "HIGH_VOLATILITY": 30,
@@ -368,6 +374,8 @@ class SignalService:
         global _cache_hits, _cache_misses
         cache_key = f"{symbol}:{asset_class}:{strategy_name}"
         now = time.monotonic()
+
+        # Fast path: check cache without holding computation lock
         with _signal_cache_lock:
             cached = _signal_cache.get(cache_key)
             if cached:
@@ -375,73 +383,119 @@ class SignalService:
                 ttl = _get_cache_ttl(cached_regime)
                 if (now - cached[0]) < ttl:
                     _cache_hits += 1
-                    # Move to end of LRU order
                     if cache_key in _signal_cache_order:
                         _signal_cache_order.remove(cache_key)
                     _signal_cache_order.append(cache_key)
                     return cached[1]
+
+        # Per-key lock: only one thread computes a given signal at a time.
+        # Other threads for the same key wait for the result instead of
+        # all running the heavy computation and exhausting the threadpool.
+        with _computation_locks_lock:
+            if cache_key not in _computation_locks:
+                _computation_locks[cache_key] = threading.Lock()
+            key_lock = _computation_locks[cache_key]
+
+        if not key_lock.acquire(timeout=SIGNAL_COMPUTATION_TIMEOUT):
+            # Another thread is computing this signal and timed out — fail open
+            logger.warning("Signal computation timeout waiting for %s", cache_key)
             _cache_misses += 1
+            return cls._fail_open_signal(symbol, asset_class)
 
-        aggregator = cls._get_aggregator()
+        try:
+            # Re-check cache — another thread may have populated it while we waited
+            with _signal_cache_lock:
+                cached = _signal_cache.get(cache_key)
+                if cached:
+                    cached_regime = cached[1].get("_regime")
+                    ttl = _get_cache_ttl(cached_regime)
+                    if (time.monotonic() - cached[0]) < ttl:
+                        _cache_hits += 1
+                        return cached[1]
+                _cache_misses += 1
 
-        regime_state = cls._get_regime_state(symbol, asset_class)
-        technical = cls._get_technical_score(symbol, asset_class, strategy_name)
-        ml_prob, ml_conf = cls._get_ml_prediction(symbol, asset_class)
-        sent_score, sent_conv = cls._get_sentiment_signal(symbol, asset_class)
-        scanner = cls._get_scanner_score(symbol, asset_class)
-        win_rate = cls._get_win_rate(strategy_name)
-        macro = cls._get_macro_score()
+            aggregator = cls._get_aggregator()
 
-        signal = aggregator.compute(
-            symbol=symbol,
-            asset_class=asset_class,
-            strategy_name=strategy_name,
-            technical_score=technical,
-            regime_state=regime_state,
-            ml_probability=ml_prob,
-            ml_confidence=ml_conf,
-            sentiment_signal=sent_score,
-            sentiment_conviction=sent_conv,
-            scanner_score=scanner,
-            win_rate=win_rate,
-            macro_score=macro,
-        )
+            regime_state = cls._get_regime_state(symbol, asset_class)
+            technical = cls._get_technical_score(symbol, asset_class, strategy_name)
+            ml_prob, ml_conf = cls._get_ml_prediction(symbol, asset_class)
+            sent_score, sent_conv = cls._get_sentiment_signal(symbol, asset_class)
+            scanner = cls._get_scanner_score(symbol, asset_class)
+            win_rate = cls._get_win_rate(strategy_name)
+            macro = cls._get_macro_score()
 
-        result = {
-            "symbol": signal.symbol,
-            "asset_class": signal.asset_class,
-            "timestamp": signal.timestamp.isoformat(),
-            "composite_score": signal.composite_score,
-            "signal_label": signal.signal_label,
-            "entry_approved": signal.entry_approved,
-            "position_modifier": signal.position_modifier,
-            "hard_disabled": signal.hard_disabled,
-            "components": {
-                "technical": signal.technical_score,
-                "regime": signal.regime_score,
-                "ml": signal.ml_score,
-                "sentiment": signal.sentiment_score,
-                "scanner": signal.scanner_score,
-                "win_rate": signal.screen_score,
-            },
-            "confidences": {
-                "ml": signal.ml_confidence,
-                "sentiment": signal.sentiment_conviction,
-                "regime": signal.regime_confidence,
-            },
-            "sources_available": signal.sources_available,
-            "reasoning": signal.reasoning,
+            signal = aggregator.compute(
+                symbol=symbol,
+                asset_class=asset_class,
+                strategy_name=strategy_name,
+                technical_score=technical,
+                regime_state=regime_state,
+                ml_probability=ml_prob,
+                ml_confidence=ml_conf,
+                sentiment_signal=sent_score,
+                sentiment_conviction=sent_conv,
+                scanner_score=scanner,
+                win_rate=win_rate,
+                macro_score=macro,
+            )
+
+            result = {
+                "symbol": signal.symbol,
+                "asset_class": signal.asset_class,
+                "timestamp": signal.timestamp.isoformat(),
+                "composite_score": signal.composite_score,
+                "signal_label": signal.signal_label,
+                "entry_approved": signal.entry_approved,
+                "position_modifier": signal.position_modifier,
+                "hard_disabled": signal.hard_disabled,
+                "components": {
+                    "technical": signal.technical_score,
+                    "regime": signal.regime_score,
+                    "ml": signal.ml_score,
+                    "sentiment": signal.sentiment_score,
+                    "scanner": signal.scanner_score,
+                    "win_rate": signal.screen_score,
+                },
+                "confidences": {
+                    "ml": signal.ml_confidence,
+                    "sentiment": signal.sentiment_conviction,
+                    "regime": signal.regime_confidence,
+                },
+                "sources_available": signal.sources_available,
+                "reasoning": signal.reasoning,
+            }
+            regime_name = regime_state.regime.value if regime_state else None
+            result["_regime"] = regime_name
+            with _signal_cache_lock:
+                _signal_cache[cache_key] = (time.monotonic(), result)
+                if cache_key in _signal_cache_order:
+                    _signal_cache_order.remove(cache_key)
+                _signal_cache_order.append(cache_key)
+                _evict_lru()
+            return result
+        finally:
+            key_lock.release()
+
+    @staticmethod
+    def _fail_open_signal(symbol: str, asset_class: str) -> dict[str, Any]:
+        """Return a neutral signal when computation times out (fail-open)."""
+        from datetime import datetime, timezone
+
+        return {
+            "symbol": symbol,
+            "asset_class": asset_class,
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "composite_score": 0.0,
+            "signal_label": "neutral",
+            "entry_approved": True,
+            "position_modifier": 1.0,
+            "hard_disabled": False,
+            "components": {},
+            "confidences": {},
+            "sources_available": 0,
+            "reasoning": ["Signal computation timed out — fail-open"],
+            "_regime": None,
         }
-        # Store regime for TTL lookup
-        regime_name = regime_state.regime.value if regime_state else None
-        result["_regime"] = regime_name
-        with _signal_cache_lock:
-            _signal_cache[cache_key] = (time.monotonic(), result)
-            if cache_key in _signal_cache_order:
-                _signal_cache_order.remove(cache_key)
-            _signal_cache_order.append(cache_key)
-            _evict_lru()
-        return result
 
     @classmethod
     def get_signals_batch(

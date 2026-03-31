@@ -78,128 +78,125 @@ def execute_workflow(params: dict, progress_cb: Any) -> dict[str, Any]:
         - steps: list[dict] with step_id, order, name, step_type, etc.
         - workflow_params: dict (global workflow params)
     """
-    from core.services.metrics import timed
+    from analysis.models import WorkflowRun, WorkflowStepRun
+    from analysis.services.step_registry import STEP_REGISTRY
 
-    with timed("workflow_execution_seconds"):
-        from analysis.models import WorkflowRun, WorkflowStepRun
-        from analysis.services.step_registry import STEP_REGISTRY
+    run_id = params["workflow_run_id"]
+    steps = params["steps"]
+    workflow_params = params.get("workflow_params", {})
 
-        run_id = params["workflow_run_id"]
-        steps = params["steps"]
-        workflow_params = params.get("workflow_params", {})
+    try:
+        run = WorkflowRun.objects.get(id=run_id)
+    except WorkflowRun.DoesNotExist:
+        return {"status": "error", "error": f"WorkflowRun {run_id} not found"}
 
+    run.status = "running"
+    run.started_at = datetime.now(tz=timezone.utc)
+    run.total_steps = len(steps)
+    run.save(update_fields=["status", "started_at", "total_steps"])
+
+    prev_result: dict[str, Any] = {}
+    completed_steps = 0
+
+    for i, step_info in enumerate(steps):
+        step_order = step_info["order"]
+        step_type = step_info["step_type"]
+        step_params = {**workflow_params, **step_info.get("params", {})}
+        condition = step_info.get("condition", "")
+
+        run.current_step = step_order
+        run.save(update_fields=["current_step"])
+
+        progress_cb(i / len(steps), f"Running step {step_order}: {step_info['name']}")
+
+        # Get step run record
         try:
-            run = WorkflowRun.objects.get(id=run_id)
-        except WorkflowRun.DoesNotExist:
-            return {"status": "error", "error": f"WorkflowRun {run_id} not found"}
+            step_run = WorkflowStepRun.objects.get(
+                workflow_run=run,
+                order=step_order,
+            )
+        except WorkflowStepRun.DoesNotExist:
+            logger.error("StepRun not found for run=%s order=%d", run_id, step_order)
+            continue
 
-        run.status = "running"
-        run.started_at = datetime.now(tz=timezone.utc)
-        run.total_steps = len(steps)
-        run.save(update_fields=["status", "started_at", "total_steps"])
+        # Evaluate condition
+        if condition and not _evaluate_condition(condition, prev_result):
+            step_run.status = "skipped"
+            step_run.condition_met = False
+            step_run.completed_at = datetime.now(tz=timezone.utc)
+            step_run.save()
+            logger.info("Step %d skipped: condition not met (%s)", step_order, condition)
+            continue
 
-        prev_result: dict[str, Any] = {}
-        completed_steps = 0
+        # Find executor
+        executor = STEP_REGISTRY.get(step_type)
+        if not executor:
+            step_run.status = "failed"
+            step_run.error = f"Unknown step type: {step_type}"
+            step_run.completed_at = datetime.now(tz=timezone.utc)
+            step_run.save()
+            run.status = "failed"
+            run.error = f"Unknown step type: {step_type}"
+            run.completed_at = datetime.now(tz=timezone.utc)
+            run.save()
+            return {"status": "error", "error": f"Unknown step type: {step_type}"}
 
-        for i, step_info in enumerate(steps):
-            step_order = step_info["order"]
-            step_type = step_info["step_type"]
-            step_params = {**workflow_params, **step_info.get("params", {})}
-            condition = step_info.get("condition", "")
+        # Execute step
+        step_run.status = "running"
+        step_run.started_at = datetime.now(tz=timezone.utc)
+        step_run.input_data = {"_prev_result": prev_result, **step_params}
+        step_run.save()
 
-            run.current_step = step_order
-            run.save(update_fields=["current_step"])
+        start_time = time.monotonic()
+        try:
+            # Pass previous result in params
+            exec_params = {**step_params, "_prev_result": prev_result}
+            step_result = executor(exec_params, lambda p, m: None)
 
-            progress_cb(i / len(steps), f"Running step {step_order}: {step_info['name']}")
-
-            # Get step run record
-            try:
-                step_run = WorkflowStepRun.objects.get(
-                    workflow_run=run,
-                    order=step_order,
-                )
-            except WorkflowStepRun.DoesNotExist:
-                logger.error("StepRun not found for run=%s order=%d", run_id, step_order)
-                continue
-
-            # Evaluate condition
-            if condition and not _evaluate_condition(condition, prev_result):
-                step_run.status = "skipped"
-                step_run.condition_met = False
-                step_run.completed_at = datetime.now(tz=timezone.utc)
-                step_run.save()
-                logger.info("Step %d skipped: condition not met (%s)", step_order, condition)
-                continue
-
-            # Find executor
-            executor = STEP_REGISTRY.get(step_type)
-            if not executor:
-                step_run.status = "failed"
-                step_run.error = f"Unknown step type: {step_type}"
-                step_run.completed_at = datetime.now(tz=timezone.utc)
-                step_run.save()
-                run.status = "failed"
-                run.error = f"Unknown step type: {step_type}"
-                run.completed_at = datetime.now(tz=timezone.utc)
-                run.save()
-                return {"status": "error", "error": f"Unknown step type: {step_type}"}
-
-            # Execute step
-            step_run.status = "running"
-            step_run.started_at = datetime.now(tz=timezone.utc)
-            step_run.input_data = {"_prev_result": prev_result, **step_params}
+            duration = time.monotonic() - start_time
+            step_run.status = "completed"
+            step_run.result = step_result
+            step_run.duration_seconds = round(duration, 3)
+            step_run.completed_at = datetime.now(tz=timezone.utc)
             step_run.save()
 
-            start_time = time.monotonic()
-            try:
-                # Pass previous result in params
-                exec_params = {**step_params, "_prev_result": prev_result}
-                step_result = executor(exec_params, lambda p, m: None)
+            prev_result = step_result
+            completed_steps += 1
 
-                duration = time.monotonic() - start_time
-                step_run.status = "completed"
-                step_run.result = step_result
-                step_run.duration_seconds = round(duration, 3)
-                step_run.completed_at = datetime.now(tz=timezone.utc)
-                step_run.save()
+        except Exception as e:
+            duration = time.monotonic() - start_time
+            step_run.status = "failed"
+            step_run.error = str(e)
+            step_run.duration_seconds = round(duration, 3)
+            step_run.completed_at = datetime.now(tz=timezone.utc)
+            step_run.save()
 
-                prev_result = step_result
-                completed_steps += 1
+            run.status = "failed"
+            run.error = f"Step {step_order} ({step_info['name']}) failed: {e}"
+            run.completed_at = datetime.now(tz=timezone.utc)
+            run.save()
+            return {"status": "error", "error": str(e), "failed_step": step_order}
 
-            except Exception as e:
-                duration = time.monotonic() - start_time
-                step_run.status = "failed"
-                step_run.error = str(e)
-                step_run.duration_seconds = round(duration, 3)
-                step_run.completed_at = datetime.now(tz=timezone.utc)
-                step_run.save()
+    # All steps completed
+    run.status = "completed"
+    run.result = prev_result
+    run.completed_at = datetime.now(tz=timezone.utc)
+    run.save()
 
-                run.status = "failed"
-                run.error = f"Step {step_order} ({step_info['name']}) failed: {e}"
-                run.completed_at = datetime.now(tz=timezone.utc)
-                run.save()
-                return {"status": "error", "error": str(e), "failed_step": step_order}
+    # Update workflow stats
+    from analysis.models import Workflow
 
-        # All steps completed
-        run.status = "completed"
-        run.result = prev_result
-        run.completed_at = datetime.now(tz=timezone.utc)
-        run.save()
+    Workflow.objects.filter(id=run.workflow_id).update(
+        last_run_at=datetime.now(tz=timezone.utc),
+        run_count=run.workflow.run_count + 1,
+    )
 
-        # Update workflow stats
-        from analysis.models import Workflow
-
-        Workflow.objects.filter(id=run.workflow_id).update(
-            last_run_at=datetime.now(tz=timezone.utc),
-            run_count=run.workflow.run_count + 1,
-        )
-
-        return {
-            "status": "completed",
-            "completed_steps": completed_steps,
-            "total_steps": len(steps),
-            "result": prev_result,
-        }
+    return {
+        "status": "completed",
+        "completed_steps": completed_steps,
+        "total_steps": len(steps),
+        "result": prev_result,
+    }
 
 
 class WorkflowEngine:

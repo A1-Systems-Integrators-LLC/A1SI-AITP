@@ -72,7 +72,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.CSPMiddleware",
     "core.middleware.RateLimitMiddleware",
-    "core.middleware.MetricsMiddleware",
     "core.middleware.AuditMiddleware",
 ]
 
@@ -288,24 +287,24 @@ FREQTRADE_INSTANCES = [
     {
         "name": "CryptoInvestorV1",
         "config": "config.json",
-        "port": 4080,
-        "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:4080"),
+        "port": 4180,
+        "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:4180"),
         "dry_run_wallet": 500.0,
         "enabled": True,
     },
     {
         "name": "BollingerMeanReversion",
         "config": "config_bmr.json",
-        "port": 4083,
-        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:4083"),
+        "port": 4183,
+        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:4183"),
         "dry_run_wallet": 500.0,
         "enabled": True,
     },
     {
         "name": "VolatilityBreakout",
         "config": "config_vb.json",
-        "port": 4084,
-        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:4084"),
+        "port": 4184,
+        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:4184"),
         "dry_run_wallet": 300.0,
         "enabled": True,
     },
@@ -316,7 +315,6 @@ SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "true").lower() in ("tru
 SCHEDULER_MAX_WORKERS = int(os.environ.get("SCHEDULER_MAX_WORKERS", "2"))
 
 NEWSAPI_KEY = os.environ.get("NEWSAPI_KEY", "")
-METRICS_AUTH_TOKEN = os.environ.get("METRICS_AUTH_TOKEN", "")
 
 # ── Internal API authentication ──────────────────────────────
 # HMAC secret for Freqtrade/NautilusTrader → Django internal API calls.
@@ -662,9 +660,6 @@ FREQTRADE_API_URL = os.environ.get("FREQTRADE_API_URL", "")
 FREQTRADE_BMR_API_URL = os.environ.get("FREQTRADE_BMR_API_URL", "")
 FREQTRADE_VB_API_URL = os.environ.get("FREQTRADE_VB_API_URL", "")
 
-# ── Framework worker URLs (Docker containers) ────────────────
-NAUTILUS_WORKER_URL = os.environ.get("NAUTILUS_WORKER_URL", "http://localhost:4090")
-VECTORBT_WORKER_URL = os.environ.get("VECTORBT_WORKER_URL", "http://localhost:4092")
 FREQTRADE_USERNAME = os.environ.get("FREQTRADE_USERNAME", "")
 FREQTRADE_PASSWORD = os.environ.get("FREQTRADE_PASSWORD", "")
 

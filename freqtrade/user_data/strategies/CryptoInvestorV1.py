@@ -94,9 +94,11 @@ class CryptoInvestorV1(IStrategy):
     # Pilot-tuned: relaxed from 50/200/40 to generate trades in sideways markets.
     # Run hyperopt (--epochs 200) on recent kraken data to further optimize.
     # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    # RSI threshold raised 25→38: RSI<25 is extremely rare on 1h candles, causing
+    # zero entries across 7 pairs over 2+ days of live running.
     buy_ema_fast = IntParameter(10, 80, default=17, space="buy", optimize=True)
     buy_ema_slow = IntParameter(50, 300, default=102, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 55, default=25, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 55, default=38, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(65, 90, default=86, space="sell", optimize=True)
     atr_multiplier = DecimalParameter(1.5, 4.0, default=3.8, decimals=1, space="buy", optimize=True)
 
@@ -106,10 +108,17 @@ class CryptoInvestorV1(IStrategy):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Calculate all technical indicators."""
+        from freqtrade.enums import RunMode
+
         # ── Moving Averages ──
-        # Full range for hyperopt: buy_ema_fast 10-80, buy_ema_slow 50-300
-        for period in range(10, 301):
-            dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
+        if self.dp and self.dp.runmode == RunMode.HYPEROPT:
+            # Full range for hyperopt: buy_ema_fast 10-80, buy_ema_slow 50-300
+            for period in range(10, 301):
+                dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
+        else:
+            # Only compute the selected EMA periods (eliminates 291-column fragmentation)
+            for period in {self.buy_ema_fast.value, self.buy_ema_slow.value, 21, 50, 200}:
+                dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
         for period in [7, 14, 21, 50, 100, 200]:
             dataframe[f"sma_{period}"] = ta.SMA(dataframe, timeperiod=period)
 
@@ -184,12 +193,11 @@ class CryptoInvestorV1(IStrategy):
         # Required: ADX confirms trend strength (relaxed from 20 for weak-trend markets)
         adx_filter = dataframe["adx"] > 15
 
-        # Required: both MACD and volume confirmation
+        # MACD confirmation (trend momentum improving)
         macd_improving = (
             (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
             | (dataframe["macd"] > dataframe["macdsignal"])
         )
-        volume_spike = dataframe["volume_ratio"] > 1.0
 
         # Basic filters
         has_volume = dataframe["volume"] > 0
@@ -197,7 +205,7 @@ class CryptoInvestorV1(IStrategy):
 
         entry = (
             rsi_pullback & ema_directional & adx_filter
-            & macd_improving & volume_spike & has_volume & not_overbought
+            & macd_improving & has_volume & not_overbought
         )
         dataframe.loc[entry, "enter_long"] = 1
 

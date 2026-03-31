@@ -2181,11 +2181,7 @@ class TestExecuteWorkflowEdgeCases(TestCase):
         run = WorkflowRun.objects.create(workflow=wf, trigger="api", total_steps=1)
         # Don't create WorkflowStepRun — it should be skipped
 
-        with patch(
-            "core.services.metrics.timed",
-            return_value=MagicMock(__enter__=MagicMock(), __exit__=MagicMock()),
-        ):
-            result = execute_workflow(
+        result = execute_workflow(
                 {
                     "workflow_run_id": str(run.id),
                     "steps": [

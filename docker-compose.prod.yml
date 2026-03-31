@@ -5,9 +5,7 @@
 # Usage:
 #   docker compose -f docker-compose.prod.yml up -d                                   # Core
 #   docker compose -f docker-compose.prod.yml --profile trading up -d                  # + Freqtrade
-#   docker compose -f docker-compose.prod.yml --profile research up -d                 # + NautilusTrader, VectorBT, Redis
-#   docker compose -f docker-compose.prod.yml --profile monitoring up -d               # + Prometheus, Grafana
-#   docker compose -f docker-compose.prod.yml --profile trading --profile research --profile monitoring up -d  # Everything
+#   docker compose -f docker-compose.prod.yml --profile trading up -d                  # + Freqtrade instances
 #
 name: aitp-prod
 
@@ -120,8 +118,6 @@ services:
       FREQTRADE_API_URL: "http://freqtrade-civ1:4180"
       FREQTRADE_BMR_API_URL: "http://freqtrade-bmr:4183"
       FREQTRADE_VB_API_URL: "http://freqtrade-vb:4184"
-      NAUTILUS_WORKER_URL: "http://nautilus:4090"
-      VECTORBT_WORKER_URL: "http://vectorbt:4092"
       INTERNAL_API_ALLOWED_IPS: "127.0.0.1,::1,172.16.0.0/12"
       POSTGRES_HOST: "postgres"
       POSTGRES_PORT: "5432"
@@ -209,107 +205,6 @@ services:
       retries: 3
       start_period: 30s
 
-  # ── Research ────────────────────────────────────────────────
-  nautilus:
-    build:
-      context: .
-      dockerfile: nautilus/Dockerfile
-    container_name: aitp-prod-nautilus
-    profiles: ["research", "trading"]
-    ports:
-      - "4190:4090"
-    volumes:
-      - ./data/processed:/project/data/processed
-      - ./nautilus/results:/project/nautilus/results
-      - ./common:/project/common:ro
-      - ./configs:/project/configs:ro
-    environment:
-      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 4g
-        reservations:
-          memory: 512m
-
-  vectorbt:
-    build:
-      context: .
-      dockerfile: research/Dockerfile
-    container_name: aitp-prod-vectorbt
-    profiles: ["research", "trading"]
-    ports:
-      - "4192:4092"
-    volumes:
-      - ./data/processed:/project/data/processed
-      - ./research/results:/project/research/results
-      - ./common:/project/common:ro
-      - ./configs:/project/configs:ro
-    environment:
-      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 4g
-        reservations:
-          memory: 512m
-
-  redis:
-    image: redis:7-alpine
-    container_name: aitp-prod-redis
-    profiles: ["trading", "research"]
-    ports:
-      - "4113:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ── Monitoring ──────────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:v2.51.0
-    container_name: aitp-prod-prometheus
-    profiles: ["monitoring"]
-    ports:
-      - "4110:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=90d'
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-
-  grafana:
-    image: grafana/grafana:10.4.0
-    container_name: aitp-prod-grafana
-    profiles: ["monitoring"]
-    ports:
-      - "4111:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-changeme_in_production}"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    restart: unless-stopped
-    depends_on:
-      - prometheus
-
   # ── Database ────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -335,7 +230,4 @@ services:
 
 volumes:
   nginx-logs:
-  prometheus-data:
-  grafana-data:
-  redis-data:
   postgres-data:

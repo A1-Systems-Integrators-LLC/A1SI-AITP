@@ -166,36 +166,6 @@ class RateLimitMiddleware:
             return True, remaining, reset_time
 
 
-class MetricsMiddleware:
-    """Count HTTP requests and record response time."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        start = time.time()
-        response = self.get_response(request)
-        duration = time.time() - start
-
-        # Skip metrics endpoint itself to avoid recursion
-        if request.path != "/metrics/":
-            from core.services.metrics import metrics
-
-            labels = {
-                "method": request.method,
-                "path": request.path,
-                "status": str(response.status_code),
-            }
-            metrics.counter_inc("http_requests_total", labels)
-            metrics.histogram_observe(
-                "http_request_duration_seconds",
-                duration,
-                {"method": request.method, "path": request.path},
-            )
-
-        return response
-
-
 class AuditMiddleware:
     """Log state-changing requests to AuditLog with batched writes.
 

@@ -442,60 +442,6 @@ class TestPlatformBridge:
 # ── metrics.py ────────────────────────────────────────────────
 
 
-class TestMetricsCollector:
-    def test_gauge_and_collect(self):
-        from core.services.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        mc.gauge("test_gauge", 42.0, {"env": "test"})
-        output = mc.collect()
-        assert 'test_gauge{env="test"} 42.0' in output
-
-    def test_counter_and_collect(self):
-        from core.services.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        mc.counter_inc("test_counter", {"method": "GET"}, amount=3)
-        output = mc.collect()
-        assert "test_counter" in output
-
-    def test_histogram_and_collect(self):
-        from core.services.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        mc.histogram_observe("test_hist", 0.5, {"path": "/api"})
-        mc.histogram_observe("test_hist", 1.0, {"path": "/api"})
-        output = mc.collect()
-        assert "test_hist" in output
-        assert "_count 2" in output
-        assert "_sum" in output
-        assert 'quantile="0.5"' in output
-
-    def test_key_without_labels(self):
-        from core.services.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        assert mc._key("mymetric") == "mymetric"
-
-    def test_key_with_labels(self):
-        from core.services.metrics import MetricsCollector
-
-        mc = MetricsCollector()
-        key = mc._key("mymetric", {"a": "1", "b": "2"})
-        assert key == 'mymetric{a="1",b="2"}'
-
-
-class TestTimed:
-    def test_timed_records_histogram(self):
-        from core.services.metrics import MetricsCollector, timed
-
-        mc = MetricsCollector()
-        with timed("test_timer"):
-            time.sleep(0.01)
-        output = mc.collect()
-        assert "test_timer_count" in output
-
-
 # ── ws_broadcast.py ───────────────────────────────────────────
 
 
@@ -1469,49 +1415,6 @@ class TestCsrfFailure:
 
 
 @pytest.mark.django_db
-class TestMetricsTokenOrSessionAuth:
-    def test_bearer_token_valid(self):
-        from core.views import MetricsTokenOrSessionAuth
-
-        perm = MetricsTokenOrSessionAuth()
-        request = MagicMock()
-        request.META = {"HTTP_AUTHORIZATION": "Bearer test-token"}
-        request.user = MagicMock(is_authenticated=False)
-        with override_settings(METRICS_AUTH_TOKEN="test-token"):
-            assert perm.has_permission(request, None)
-
-    def test_bearer_token_invalid(self):
-        from core.views import MetricsTokenOrSessionAuth
-
-        perm = MetricsTokenOrSessionAuth()
-        request = MagicMock()
-        request.META = {"HTTP_AUTHORIZATION": "Bearer wrong"}
-        request.user = MagicMock(is_authenticated=False)
-        with override_settings(METRICS_AUTH_TOKEN="test-token"):
-            assert not perm.has_permission(request, None)
-
-    def test_session_auth(self):
-        from core.views import MetricsTokenOrSessionAuth
-
-        perm = MetricsTokenOrSessionAuth()
-        request = MagicMock()
-        request.META = {}
-        request.user = MagicMock(is_authenticated=True)
-        with override_settings(METRICS_AUTH_TOKEN=""):
-            assert perm.has_permission(request, None)
-
-    def test_no_token_no_session(self):
-        from core.views import MetricsTokenOrSessionAuth
-
-        perm = MetricsTokenOrSessionAuth()
-        request = MagicMock()
-        request.META = {}
-        request.user = MagicMock(is_authenticated=False)
-        with override_settings(METRICS_AUTH_TOKEN=""):
-            assert not perm.has_permission(request, None)
-
-
-@pytest.mark.django_db
 class TestHealthView:
     def setup_method(self):
         self.client = APIClient()
@@ -1697,60 +1600,6 @@ class TestNotificationPreferencesView:
         )
         assert resp.status_code == 200
         assert resp.data["telegram_enabled"] is False
-
-
-@pytest.mark.django_db
-class TestMetricsView:
-    def setup_method(self):
-        self.client = APIClient()
-        from django.contrib.auth import get_user_model
-
-        user_model = get_user_model()
-        user_model.objects.create_user(username="metricsuser", password="pass!")
-        self.client.login(username="metricsuser", password="pass!")
-
-    def test_get_metrics(self):
-        with (
-            patch("market.services.circuit_breaker.get_all_breakers", return_value=[]),
-            patch("core.services.scheduler.get_scheduler") as mock_gs,
-        ):
-            mock_gs.return_value = MagicMock(running=True)
-            resp = self.client.get("/metrics/")
-        assert resp.status_code == 200
-        assert resp["Content-Type"].startswith("text/plain")
-
-    def test_get_metrics_with_data(self):
-        from portfolio.models import Portfolio
-        from risk.models import RiskState
-
-        Portfolio.objects.create(name="Test", exchange_id="kraken")
-        RiskState.objects.create(
-            portfolio_id=1,
-            total_equity=10000.0,
-            peak_equity=10000.0,
-            is_halted=False,
-        )
-        with (
-            patch(
-                "market.services.circuit_breaker.get_all_breakers",
-                return_value=[
-                    {"exchange_id": "kraken", "state": "closed"},
-                ],
-            ),
-            patch("core.services.scheduler.get_scheduler") as mock_gs,
-        ):
-            mock_gs.return_value = MagicMock(running=True)
-            resp = self.client.get("/metrics/")
-        assert resp.status_code == 200
-
-    def test_metrics_snapshot_exceptions_handled(self):
-        """All metric snapshot sections handle exceptions gracefully."""
-        with (
-            patch("market.services.circuit_breaker.get_all_breakers", side_effect=RuntimeError),
-            patch("core.services.scheduler.get_scheduler", side_effect=RuntimeError),
-        ):
-            resp = self.client.get("/metrics/")
-        assert resp.status_code == 200
 
 
 @pytest.mark.django_db
@@ -3446,39 +3295,6 @@ class TestHealthViewDetailedBranches:
             created_at=dj_tz.now() - timedelta(minutes=45),
         )
         resp = self.client.get("/api/health/?detailed=true")
-        assert resp.status_code == 200
-
-
-@pytest.mark.django_db
-class TestMetricsViewExceptionBranches:
-    """Cover views.py lines 354-355, 366-367, 377-378 — metrics exception paths."""
-
-    def setup_method(self):
-        self.client = APIClient()
-        from django.contrib.auth import get_user_model
-
-        user_model = get_user_model()
-        u, _ = user_model.objects.get_or_create(username="metricsex", defaults={"is_staff": True})
-        u.set_password("pass!")
-        u.save()
-        self.client.login(username="metricsex", password="pass!")
-
-    def test_metrics_order_exception(self):
-        """Cover lines 354-355."""
-        with patch("trading.models.Order.objects.filter", side_effect=RuntimeError("db")):
-            resp = self.client.get("/metrics/")
-        assert resp.status_code == 200
-
-    def test_metrics_risk_exception(self):
-        """Cover lines 366-367."""
-        with patch("portfolio.models.Portfolio.objects.order_by", side_effect=RuntimeError("db")):
-            resp = self.client.get("/metrics/")
-        assert resp.status_code == 200
-
-    def test_metrics_job_queue_exception(self):
-        """Cover lines 377-378."""
-        with patch("analysis.models.BackgroundJob.objects.filter", side_effect=RuntimeError("db")):
-            resp = self.client.get("/metrics/")
         assert resp.status_code == 200
 
 

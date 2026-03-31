@@ -13,30 +13,27 @@ class DashboardService:
 
     @staticmethod
     def get_kpis(asset_class: str | None = None) -> dict:
-        from core.services.metrics import timed
+        portfolio_data = DashboardService._get_portfolio_kpis(asset_class)
+        trading_data = DashboardService._get_trading_kpis(asset_class)
+        risk_data = DashboardService._get_risk_kpis()
+        platform_data = DashboardService._get_platform_kpis()
 
-        with timed("dashboard_kpi_latency_seconds"):
-            portfolio_data = DashboardService._get_portfolio_kpis(asset_class)
-            trading_data = DashboardService._get_trading_kpis(asset_class)
-            risk_data = DashboardService._get_risk_kpis()
-            platform_data = DashboardService._get_platform_kpis()
+        paper_trading_data = DashboardService._get_paper_trading_kpis()
+        system_health = DashboardService._get_system_health()
+        activity_feed = DashboardService._get_activity_feed()
+        learning_status = DashboardService._get_learning_status()
 
-            paper_trading_data = DashboardService._get_paper_trading_kpis()
-            system_health = DashboardService._get_system_health()
-            activity_feed = DashboardService._get_activity_feed()
-            learning_status = DashboardService._get_learning_status()
-
-            return {
-                "portfolio": portfolio_data,
-                "trading": trading_data,
-                "risk": risk_data,
-                "platform": platform_data,
-                "paper_trading": paper_trading_data,
-                "system_health": system_health,
-                "activity_feed": activity_feed,
-                "learning_status": learning_status,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            }
+        return {
+            "portfolio": portfolio_data,
+            "trading": trading_data,
+            "risk": risk_data,
+            "platform": platform_data,
+            "paper_trading": paper_trading_data,
+            "system_health": system_health,
+            "activity_feed": activity_feed,
+            "learning_status": learning_status,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     @staticmethod
     def _get_portfolio_kpis(asset_class: str | None = None) -> dict:
@@ -374,18 +371,21 @@ class DashboardService:
             import requests as req_lib
 
             ft_instances = getattr(django_settings, "FREQTRADE_INSTANCES", [])
+            ft_user = getattr(django_settings, "FREQTRADE_API_URL", "")
+            ft_creds = (
+                getattr(django_settings, "FREQTRADE_USERNAME", ""),
+                getattr(django_settings, "FREQTRADE_PASSWORD", ""),
+            )
             for cfg in ft_instances:
                 name = cfg.get("name", "unknown")
                 port = cfg.get("port", 0)
+                url = cfg.get("url", "")
                 running = False
-                if cfg.get("enabled") and port:
+                if cfg.get("enabled") and url:
                     try:
                         r = req_lib.get(
-                            f"http://localhost:{port}/api/v1/ping",
-                            auth=(
-                                cfg.get("username", ""),
-                                cfg.get("password", ""),
-                            ),
+                            f"{url}/api/v1/ping",
+                            auth=ft_creds,
                             timeout=2,
                         )
                         running = r.status_code == 200

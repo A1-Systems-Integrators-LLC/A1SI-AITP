@@ -86,12 +86,15 @@ class VolatilityBreakout(IStrategy):
     }
 
     # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    # Relaxed 2026-03-31: volume_factor 2.4→1.2 (was requiring 2.4x avg volume —
+    # extremely rare), ADX low 29→15 (catch emerging trends earlier),
+    # RSI range widened 38-68→30-72.
     breakout_period = IntParameter(10, 30, default=11, space="buy", optimize=True)
-    volume_factor = DecimalParameter(0.8, 3.0, default=2.4, decimals=1, space="buy", optimize=True)
-    adx_low = IntParameter(5, 30, default=29, space="buy", optimize=True)
+    volume_factor = DecimalParameter(0.8, 3.0, default=1.2, decimals=1, space="buy", optimize=True)
+    adx_low = IntParameter(5, 30, default=15, space="buy", optimize=True)
     adx_high = IntParameter(25, 65, default=60, space="buy", optimize=True)
-    rsi_low = IntParameter(20, 40, default=38, space="buy", optimize=True)
-    rsi_high = IntParameter(65, 80, default=68, space="buy", optimize=True)
+    rsi_low = IntParameter(20, 40, default=30, space="buy", optimize=True)
+    rsi_high = IntParameter(65, 80, default=72, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(75, 95, default=75, space="sell", optimize=True)
     adx_tolerance = DecimalParameter(0.0, 3.0, default=0.4, decimals=1, space="buy", optimize=True)
     atr_multiplier = DecimalParameter(1.0, 3.5, default=3.5, decimals=1, space="buy", optimize=True)

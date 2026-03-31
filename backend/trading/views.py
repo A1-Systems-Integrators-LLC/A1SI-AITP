@@ -131,10 +131,6 @@ class OrderListView(APIView):
             timestamp=datetime.now(timezone.utc),
         )
 
-        from core.services.metrics import metrics as order_metrics
-
-        order_metrics.counter_inc("orders_created_total", {"mode": mode, "side": data["side"]})
-
         if mode == TradingMode.LIVE:
             from trading.services.live_trading import LiveTradingService
             from trading.services.order_sync import start_order_sync

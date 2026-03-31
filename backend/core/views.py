@@ -1,12 +1,11 @@
-"""Core views — health, platform status, platform config, metrics, CSRF failure."""
+"""Core views — health, platform status, platform config, CSRF failure."""
 
 import contextlib
 import logging
 
-from django.conf import settings as django_settings
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -32,24 +31,6 @@ def csrf_failure(request, reason="") -> JsonResponse:
         {"error": "CSRF verification failed.", "detail": reason},
         status=403,
     )
-
-
-class MetricsTokenOrSessionAuth(BasePermission):
-    """Allow access via Bearer token (for Prometheus) or session auth (browser).
-
-    When METRICS_AUTH_TOKEN is not set, allows unauthenticated access
-    (dev/monitoring convenience — nginx restricts to localhost/Docker in prod).
-    """
-
-    def has_permission(self, request, view):
-        token = getattr(django_settings, "METRICS_AUTH_TOKEN", "")
-        if token:
-            auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-            if auth_header == f"Bearer {token}":
-                return True
-            return bool(request.user and request.user.is_authenticated)
-        # No token configured — allow unauthenticated (nginx restricts network access)
-        return True
 
 
 class AuditLogListView(APIView):
@@ -341,109 +322,6 @@ class NotificationPreferencesView(APIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
-
-
-class MetricsView(APIView):
-    permission_classes = [MetricsTokenOrSessionAuth]
-
-    @extend_schema(tags=["Core"], exclude=True)
-    def get(self, request: Request) -> HttpResponse:
-        from core.services.metrics import metrics
-        from portfolio.models import Portfolio
-        from risk.models import RiskState
-        from trading.models import Order, OrderStatus, TradingMode
-
-        # Snapshot current state into gauges
-        try:
-            live_orders = Order.objects.filter(
-                mode=TradingMode.LIVE,
-                status__in=[OrderStatus.SUBMITTED, OrderStatus.OPEN, OrderStatus.PARTIAL_FILL],
-            ).count()
-            paper_orders = Order.objects.filter(
-                mode=TradingMode.PAPER,
-                status__in=[OrderStatus.SUBMITTED, OrderStatus.OPEN, OrderStatus.PARTIAL_FILL],
-            ).count()
-            metrics.gauge("active_orders", live_orders, {"mode": "live"})
-            metrics.gauge("active_orders", paper_orders, {"mode": "paper"})
-        except Exception:
-            logger.warning("Failed to snapshot order metrics", exc_info=True)
-
-        try:
-            primary = Portfolio.objects.order_by("id").values_list("id", flat=True).first()
-            if primary:
-                state = RiskState.objects.filter(portfolio_id=primary).first()
-                if state:
-                    metrics.gauge("portfolio_equity", state.total_equity)
-                    peak = state.peak_equity if state.peak_equity > 0 else 1
-                    metrics.gauge("portfolio_drawdown", 1.0 - (state.total_equity / peak))
-                    metrics.gauge("risk_halt_active", 1.0 if state.is_halted else 0.0)
-        except Exception:
-            logger.warning("Failed to snapshot risk metrics", exc_info=True)
-
-        # Job queue depth
-        try:
-            from analysis.models import BackgroundJob
-
-            pending = BackgroundJob.objects.filter(status="pending").count()
-            running = BackgroundJob.objects.filter(status="running").count()
-            metrics.gauge("job_queue_pending", pending)
-            metrics.gauge("job_queue_running", running)
-        except Exception:
-            logger.warning("Failed to snapshot job queue metrics", exc_info=True)
-
-        # Circuit breaker state
-        try:
-            from market.services.circuit_breaker import get_all_breakers
-
-            for breaker_info in get_all_breakers():
-                state_val = {"open": 1, "half_open": 0.5, "closed": 0}.get(
-                    breaker_info["state"], 0,
-                )
-                metrics.gauge(
-                    "circuit_breaker_state",
-                    state_val,
-                    {"exchange": breaker_info["exchange_id"]},
-                )
-        except Exception:
-            logger.warning("Failed to snapshot circuit breaker metrics", exc_info=True)
-
-        # Scheduler health
-        try:
-            from core.services.scheduler import get_scheduler
-
-            sched = get_scheduler()
-            metrics.gauge("scheduler_running", 1 if sched.running else 0)
-        except Exception:
-            logger.warning("Failed to snapshot scheduler metrics", exc_info=True)
-
-        # ML model count
-        try:
-            from common.ml.registry import ModelRegistry
-
-            ml_count = len(ModelRegistry().list_models())
-            metrics.gauge("ml_models_total", ml_count)
-        except Exception:
-            logger.debug("Failed to snapshot ML model count", exc_info=True)
-
-        # Orchestrator paused strategies
-        try:
-            from trading.services.strategy_orchestrator import ACTION_PAUSE, StrategyOrchestrator
-
-            orch = StrategyOrchestrator.get_instance()
-            paused = sum(1 for s in orch.get_all_states() if s.action == ACTION_PAUSE)
-            metrics.gauge("orchestrator_strategies_paused", paused)
-        except Exception:
-            logger.debug("Failed to snapshot orchestrator metrics", exc_info=True)
-
-        # Signal cache size
-        try:
-            from analysis.services.signal_service import _signal_cache
-
-            metrics.gauge("signal_cache_size", len(_signal_cache))
-        except Exception:
-            pass
-
-        return HttpResponse(metrics.collect(), content_type="text/plain; charset=utf-8")
 
 
 # ── Scheduler views ──────────────────────────────────────────

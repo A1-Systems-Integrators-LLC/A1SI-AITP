@@ -1,4 +1,4 @@
-.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-deploy-clean docker-prod-up docker-prod-down docker-prod-deploy docker-prod-logs docker-logs docker-logs-backend docker-logs-frontend docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify monitoring monitoring-prod watchdog watchdog-fix setup-cron doppler-setup doppler-dev doppler-docker-up doppler-docker-prod-up doppler-secrets trading-up trading-down research-up research-down frameworks-up frameworks-down frameworks-status
+.PHONY: setup dev start stop test lint build clean harden audit certs backup restore analyze test-security test-e2e ci typecheck docker-build check-schema-freshness generate-types install-hooks docker-up docker-down docker-restart docker-deploy docker-deploy-clean docker-prod-up docker-prod-down docker-prod-deploy docker-prod-logs docker-logs docker-logs-backend docker-logs-frontend docker-status docker-clean maintain-db health-check clean-data pilot-preflight pilot-preflight-json pilot-status pilot-status-json pilot-status-full smoke-test verify watchdog watchdog-fix setup-cron doppler-setup doppler-dev doppler-docker-up doppler-docker-prod-up doppler-secrets trading-up trading-down prod-trading-up prod-trading-down prod-frameworks-status prod-core-only prod-all-up
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
@@ -135,12 +135,12 @@ COMPOSE_PROD := docker compose -f docker-compose.prod.yml
 
 docker-build:
 	@echo "→ Building dev Docker images..."
-	$(COMPOSE_DEV) --profile trading --profile research build
+	$(COMPOSE_DEV) --profile trading build
 	@echo "✓ Dev images built"
 
 docker-build-clean:
 	@echo "→ Rebuilding dev Docker images (no cache)..."
-	$(COMPOSE_DEV) --profile trading --profile research build --no-cache
+	$(COMPOSE_DEV) --profile trading build --no-cache
 	@echo "✓ Dev images rebuilt"
 
 docker-up:
@@ -155,7 +155,7 @@ docker-up:
 
 docker-down:
 	@echo "→ Stopping all dev containers (aitp-dev group)..."
-	$(COMPOSE_DEV) --profile trading --profile research --profile monitoring --profile postgres down
+	$(COMPOSE_DEV) --profile trading --profile postgres down
 	@echo "✓ Dev containers stopped"
 
 docker-restart:
@@ -181,22 +181,22 @@ docker-deploy-clean:
 
 docker-prod-build:
 	@echo "→ Building prod Docker images..."
-	$(COMPOSE_PROD) --profile trading --profile research build
+	doppler run -- $(COMPOSE_PROD) --profile trading build
 	@echo "✓ Prod images built"
 
 docker-prod-up:
 	@echo "→ Starting prod containers (aitp-prod group, ports 4100-4199)..."
-	$(COMPOSE_PROD) up -d
+	doppler run -- $(COMPOSE_PROD) up -d
 	@echo "→ Waiting for backend health..."
 	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-prod-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
-	@$(COMPOSE_PROD) start frontend 2>/dev/null || true
+	@doppler run -- $(COMPOSE_PROD) start frontend 2>/dev/null || true
 	@echo "✓ Prod core containers running"
 	@echo "  Backend:  http://localhost:4100"
 	@echo "  Frontend: http://localhost:4101"
 
 docker-prod-down:
 	@echo "→ Stopping all prod containers (aitp-prod group)..."
-	$(COMPOSE_PROD) --profile trading --profile research --profile monitoring --profile postgres down
+	doppler run -- $(COMPOSE_PROD) --profile trading --profile postgres down
 	@echo "✓ Prod containers stopped"
 
 docker-prod-deploy:
@@ -210,7 +210,7 @@ docker-prod-deploy:
 	@echo "✓ Prod deploy complete"
 
 docker-prod-logs:
-	$(COMPOSE_PROD) logs -f --tail=50
+	doppler run -- $(COMPOSE_PROD) logs -f --tail=50
 
 # ── Docker (shared) ──────────────────────────────────────
 
@@ -232,8 +232,8 @@ docker-status:
 
 docker-clean:
 	@echo "→ Removing all AITP containers, images, and volumes..."
-	$(COMPOSE_DEV) --profile trading --profile research --profile monitoring --profile postgres down -v --rmi local 2>/dev/null || true
-	$(COMPOSE_PROD) --profile trading --profile research --profile monitoring --profile postgres down -v --rmi local 2>/dev/null || true
+	$(COMPOSE_DEV) --profile trading --profile postgres down -v --rmi local 2>/dev/null || true
+	doppler run -- $(COMPOSE_PROD) --profile trading --profile postgres down -v --rmi local 2>/dev/null || true
 	@echo "✓ All AITP Docker artifacts cleaned"
 
 # ── CI pipeline (lint + typecheck + test + audit) ─────────
@@ -332,20 +332,6 @@ watchdog-shell:
 setup-cron:
 	@bash scripts/setup_cron.sh
 
-# ── Monitoring ────────────────────────────────────────────────
-
-monitoring:
-	@echo "→ Starting dev monitoring (Prometheus :4010, Grafana :4011)..."
-	docker compose --profile monitoring up -d
-	@echo "  Prometheus: http://localhost:4010"
-	@echo "  Grafana:    http://localhost:4011"
-
-monitoring-prod:
-	@echo "→ Starting prod monitoring (Prometheus :4110, Grafana :4111)..."
-	docker compose --profile prod-monitoring up -d
-	@echo "  Prometheus: http://localhost:4110"
-	@echo "  Grafana:    http://localhost:4111"
-
 # ── Doppler ─────────────────────────────────────────────────
 
 doppler-setup:
@@ -367,10 +353,10 @@ doppler-docker-up:
 
 doppler-docker-prod-up:
 	@echo "→ Starting prod containers via Doppler (aitp-prod group)..."
-	doppler run --config prd -- $(COMPOSE_PROD) up -d
+	doppler run -- $(COMPOSE_PROD) up -d
 	@echo "→ Waiting for health..."
 	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-prod-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
-	@doppler run --config prd -- $(COMPOSE_PROD) start frontend 2>/dev/null || true
+	@doppler run -- $(COMPOSE_PROD) start frontend 2>/dev/null || true
 	@echo "✓ Prod containers healthy"
 
 doppler-secrets:
@@ -389,28 +375,50 @@ trading-down:
 	$(COMPOSE_DEV) --profile trading stop freqtrade-civ1 freqtrade-bmr freqtrade-vb
 	@echo "✓ Trading containers stopped"
 
-research-up:
-	@echo "→ Starting dev research containers..."
-	$(COMPOSE_DEV) --profile research up -d
-	@echo "✓ Research containers started (NautilusTrader :4090, VectorBT :4092, Redis :4013, Jupyter :4020)"
-
-research-down:
-	@echo "→ Stopping dev research containers..."
-	$(COMPOSE_DEV) --profile research stop nautilus vectorbt redis jupyter
-	@echo "✓ Research containers stopped"
-
-frameworks-up: trading-up research-up
-	@echo "✓ All dev framework containers running"
-
-frameworks-down: trading-down research-down
-	@echo "✓ All dev framework containers stopped"
-
 frameworks-status:
-	@echo "── Dev Frameworks ──"
-	@docker ps --filter "name=aitp-dev-ft" --filter "name=aitp-dev-nautilus" --filter "name=aitp-dev-vectorbt" --filter "name=aitp-dev-redis" --filter "name=aitp-dev-jupyter" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+	@echo "── Dev Trading ──"
+	@docker ps --filter "name=aitp-dev-ft" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
 	@echo ""
-	@echo "── Prod Frameworks ──"
-	@docker ps --filter "name=aitp-prod-ft" --filter "name=aitp-prod-nautilus" --filter "name=aitp-prod-vectorbt" --filter "name=aitp-prod-redis" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+	@echo "── Prod Trading ──"
+	@docker ps --filter "name=aitp-prod-ft" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+
+# ── Prod Service Management ──────────────────────────────────
+#
+# Prod containers are split into tiers:
+#   Core (always-on): postgres, backend, frontend
+#   Trading (on-demand): freqtrade-civ1, freqtrade-bmr, freqtrade-vb
+#
+# Use these targets to start/stop trading containers as needed.
+
+prod-trading-up:
+	@echo "→ Starting prod trading containers..."
+	doppler run -- $(COMPOSE_PROD) --profile trading up -d
+	@echo "✓ Prod trading started (CIV1 :4180, BMR :4183, VB :4184)"
+
+prod-trading-down:
+	@echo "→ Stopping prod trading containers..."
+	docker stop aitp-prod-ft-civ1 aitp-prod-ft-bmr aitp-prod-ft-vb 2>/dev/null || true
+	@echo "✓ Prod trading stopped"
+
+prod-core-only:
+	@echo "→ Stopping all non-core prod containers..."
+	docker stop aitp-prod-ft-civ1 aitp-prod-ft-bmr aitp-prod-ft-vb 2>/dev/null || true
+	@echo "✓ Prod running core-only (postgres, backend, frontend)"
+
+prod-all-up:
+	@echo "→ Starting all prod containers..."
+	doppler run -- $(COMPOSE_PROD) --profile trading up -d
+	@echo "✓ All prod containers running"
+
+prod-frameworks-status:
+	@echo "── Prod Core ──"
+	@docker ps --filter "name=aitp-prod-postgres" --filter "name=aitp-prod-backend" --filter "name=aitp-prod-frontend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+	@echo ""
+	@echo "── Prod Trading ──"
+	@docker ps --filter "name=aitp-prod-ft" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "  None running"
+	@echo ""
+	@echo "── Resource Usage ──"
+	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" $$(docker ps --filter "name=aitp-prod-" -q) 2>/dev/null || echo "  No prod containers running"
 
 # ── Clean ──────────────────────────────────────────────────
 

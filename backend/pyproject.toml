@@ -57,6 +57,10 @@ nautilus = [
 postgres = [
     "psycopg[binary]>=3.1,<4",
 ]
+pdf = [
+    "weasyprint>=63,<64",
+    "jinja2>=3.1,<4",
+]
 trading = [
     "freqtrade>=2024,<2027",
     "ta-lib>=0.5,<1",

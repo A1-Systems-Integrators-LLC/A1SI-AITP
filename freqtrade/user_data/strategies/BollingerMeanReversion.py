@@ -78,13 +78,16 @@ class BollingerMeanReversion(IStrategy):
     }
 
     # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
+    # Relaxed 2026-03-31: BB std 2.8→2.2 (wider band = more entries), RSI 26→35,
+    # volume_factor 2.2→0.0 (disabled — volume gate was too restrictive),
+    # ADX ceiling 27→45 (allow entries in moderate trends, not just dead ranges).
     buy_bb_period = IntParameter(15, 30, default=16, space="buy", optimize=True)
-    buy_bb_std = DecimalParameter(0.8, 3.0, default=2.8, decimals=1, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 50, default=26, space="buy", optimize=True)
+    buy_bb_std = DecimalParameter(0.8, 3.0, default=2.2, decimals=1, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 50, default=35, space="buy", optimize=True)
     buy_volume_factor = DecimalParameter(
-        0.0, 2.5, default=2.2, decimals=1, space="buy", optimize=True,
+        0.0, 2.5, default=0.0, decimals=1, space="buy", optimize=True,
     )
-    buy_adx_ceiling = IntParameter(25, 60, default=27, space="buy", optimize=True)
+    buy_adx_ceiling = IntParameter(25, 60, default=45, space="buy", optimize=True)
     sell_rsi_threshold = IntParameter(55, 75, default=72, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
