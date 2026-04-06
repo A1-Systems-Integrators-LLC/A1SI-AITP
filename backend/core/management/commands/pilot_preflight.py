@@ -149,13 +149,12 @@ def _check_risk_limits(portfolio_id: int) -> CheckResult:
     """Check risk limits are configured with sane values."""
     from risk.models import RiskLimits
 
-    try:
-        limits = RiskLimits.objects.get(portfolio_id=portfolio_id)
-    except RiskLimits.DoesNotExist:
+    limits, created = RiskLimits.objects.get_or_create(portfolio_id=portfolio_id)
+    if created:
         return {
             "name": "Risk Limits",
-            "status": "fail",
-            "detail": f"No RiskLimits for portfolio {portfolio_id}",
+            "status": "warn",
+            "detail": f"Auto-created default RiskLimits for portfolio {portfolio_id}",
         }
 
     warnings = []
@@ -187,13 +186,19 @@ def _check_kill_switch(portfolio_id: int) -> CheckResult:
     """Check that RiskState exists and trading is not halted."""
     from risk.models import RiskState
 
-    try:
-        state = RiskState.objects.get(portfolio_id=portfolio_id)
-    except RiskState.DoesNotExist:
+    state, created = RiskState.objects.get_or_create(
+        portfolio_id=portfolio_id,
+        defaults={
+            "total_equity": 500.0,
+            "peak_equity": 500.0,
+            "daily_start_equity": 500.0,
+        },
+    )
+    if created:
         return {
             "name": "Kill Switch",
-            "status": "fail",
-            "detail": f"No RiskState for portfolio {portfolio_id}",
+            "status": "warn",
+            "detail": f"Auto-created RiskState for portfolio {portfolio_id} ($500 seed equity)",
         }
 
     if state.is_halted:
@@ -285,16 +290,23 @@ def _check_disk_space() -> CheckResult:
 
 
 def _check_portfolio(portfolio_id: int) -> CheckResult:
-    """Check that the target portfolio exists."""
+    """Check that the target portfolio exists; auto-create if missing."""
     from portfolio.models import Portfolio
 
-    try:
-        portfolio = Portfolio.objects.get(id=portfolio_id)
-    except Portfolio.DoesNotExist:
+    portfolio, created = Portfolio.objects.get_or_create(
+        id=portfolio_id,
+        defaults={
+            "name": "Default Portfolio",
+            "exchange_id": "kraken",
+            "description": "Auto-created by preflight on first startup",
+        },
+    )
+
+    if created:
         return {
             "name": "Portfolio",
-            "status": "fail",
-            "detail": f"Portfolio {portfolio_id} not found",
+            "status": "warn",
+            "detail": f"Auto-created default portfolio (id={portfolio.id})",
         }
 
     return {

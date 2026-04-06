@@ -1,24 +1,26 @@
 """CryptoInvestorStrategy v1 — Freqtrade Strategy
 =================================================
-Trend-following strategy using EMA alignment + RSI pullback entries.
+Trend-following dip-buyer: enters on RSI pullbacks within confirmed uptrends.
+
+The KEY INSIGHT is that this is a DIP-BUYER, not a breakout strategy.
+In an uptrend (EMA fast > EMA slow), wait for RSI to pull back to 30-45
+(price dipped), then buy the dip. Price will naturally be near or slightly
+below the fast EMA during a pullback — that's the whole point.
 
 Logic:
     ENTRY (Long):
-        - Price above EMA 50 AND EMA 50 above EMA 200 (uptrend confirmed)
-        - RSI 14 pulls back below 40 (momentum reset in uptrend)
-        - Volume above 20-period SMA (confirming interest)
-        - MACD histogram > 0 or turning positive (momentum confirmation)
+        - EMA 20 > EMA 50 (uptrend structure confirmed)
+        - RSI 14 pulls back to 30-45 (dip in uptrend)
+        - MACD histogram improving (momentum recovering)
+        - Volume present
 
     EXIT:
         - ROI targets (tiered)
         - Trailing stop loss (ATR-based)
         - RSI > 80 (overbought exit)
-        - Price closes below EMA 50 (trend breakdown)
+        - EMA cross bearish (trend breakdown)
 
-Risk Management:
-    - ATR-based stop loss (2x ATR below entry)
-    - Trailing stop activates at 3% profit
-    - Maximum 5 concurrent trades
+LEARNING PHASE: Conviction/risk gates DISABLED to observe raw strategy behavior.
 """
 
 import logging
@@ -27,15 +29,6 @@ from datetime import datetime, timedelta
 from functools import reduce
 
 import talib.abstract as ta
-from _conviction_helpers import (
-    check_conviction,
-    check_exit_advice,
-    get_position_modifier,
-    get_regime_stop_multiplier,
-    record_entry_regime,
-    record_signal_attribution,
-    refresh_signals,
-)
 from freqtrade.strategy import (
     DecimalParameter,
     IntParameter,
@@ -45,9 +38,12 @@ from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
+# ── Learning phase: conviction system disabled ──
+LEARNING_PHASE = True
+
 
 class CryptoInvestorV1(IStrategy):
-    """Trend-following strategy with RSI pullback entries.
+    """Trend-following dip-buyer: RSI pullback entries in confirmed uptrends.
 
     Designed for spot crypto trading on 1h timeframe.
     """
@@ -56,19 +52,19 @@ class CryptoInvestorV1(IStrategy):
     INTERFACE_VERSION = 3
     timeframe = "1h"
     can_short = False
-    # Warm-up: need at least buy_ema_slow (100) candles for indicators to be valid.
-    startup_candle_count = 150
+    # Warm-up: need at least EMA 50 + some buffer.
+    startup_candle_count = 80
 
-    # ── Risk API integration ──
+    # ── Risk API integration (disabled during learning phase) ──
     risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
-    # ── ROI table (aggressive: take profits faster) ──
+    # ── ROI table ──
     minimal_roi = {
-        "0": 0.10,
-        "120": 0.06,
-        "480": 0.03,
-        "1440": 0.015,
+        "0": 0.08,
+        "120": 0.04,
+        "480": 0.02,
+        "1440": 0.01,
     }
 
     # ── Stop loss ──
@@ -90,17 +86,16 @@ class CryptoInvestorV1(IStrategy):
     }
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
 
-    # ── Hyperopt parameters ──
-    # Pilot-tuned: relaxed from 50/200/40 to generate trades in sideways markets.
-    # Run hyperopt (--epochs 200) on recent kraken data to further optimize.
-    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
-    # RSI threshold raised 25→38: RSI<25 is extremely rare on 1h candles, causing
-    # zero entries across 7 pairs over 2+ days of live running.
-    buy_ema_fast = IntParameter(10, 80, default=17, space="buy", optimize=True)
-    buy_ema_slow = IntParameter(50, 300, default=102, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 55, default=38, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(65, 90, default=86, space="sell", optimize=True)
-    atr_multiplier = DecimalParameter(1.5, 4.0, default=3.8, decimals=1, space="buy", optimize=True)
+    # ── Parameters — fixed for learning phase (2026-04-06) ──
+    # EMA 20/50: standard trend-following pair, not the broken 17/102 combo
+    # RSI 45: pullback zone in uptrend (30-45 is where dips happen)
+    # Sell RSI 75: take profits before extreme overbought
+    # ATR mult 2.5: balanced stop distance
+    buy_ema_fast = IntParameter(10, 80, default=20, space="buy", optimize=True)
+    buy_ema_slow = IntParameter(50, 300, default=50, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 55, default=45, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(65, 90, default=75, space="sell", optimize=True)
+    atr_multiplier = DecimalParameter(1.5, 4.0, default=2.5, decimals=1, space="buy", optimize=True)
 
     # ── Informative pairs ──
     def informative_pairs(self):
@@ -112,15 +107,11 @@ class CryptoInvestorV1(IStrategy):
 
         # ── Moving Averages ──
         if self.dp and self.dp.runmode == RunMode.HYPEROPT:
-            # Full range for hyperopt: buy_ema_fast 10-80, buy_ema_slow 50-300
             for period in range(10, 301):
                 dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
         else:
-            # Only compute the selected EMA periods (eliminates 291-column fragmentation)
-            for period in {self.buy_ema_fast.value, self.buy_ema_slow.value, 21, 50, 200}:
+            for period in {self.buy_ema_fast.value, self.buy_ema_slow.value, 20, 50}:
                 dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
-        for period in [7, 14, 21, 50, 100, 200]:
-            dataframe[f"sma_{period}"] = ta.SMA(dataframe, timeperiod=period)
 
         # ── RSI ──
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
@@ -170,43 +161,36 @@ class CryptoInvestorV1(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Define entry (buy) conditions.
+        """Dip-buyer: RSI pullback within a confirmed uptrend.
 
-        Aggressive mode: RSI pullback + any ONE confirmation signal.
-        EMA alignment removed — trades in any trend direction.
+        The logic is simple and non-contradictory:
+        1. Uptrend confirmed: EMA fast > EMA slow (structure)
+        2. RSI dipped: price pulled back (RSI 25-45 zone)
+        3. MACD recovering: momentum turning back up
+        4. NOT requiring price > EMA (that contradicts the pullback!)
+
+        During a pullback in an uptrend, price SHOULD be near/below the
+        fast EMA — that's the buying opportunity.
         """
-        # Required: RSI pullback (core signal)
-        rsi_pullback = dataframe["rsi"] < self.buy_rsi_threshold.value
-
-        # Required: EMA directional filter — broad uptrend confirmed.
-        # Previous version required close > ema_fast which contradicted the RSI
-        # pullback condition (oversold price is typically BELOW the fast EMA).
-        # This produced zero trades in 3+ months. Now: require EMA cross OR
-        # slow EMA rising, which allows entries during RSI dips in uptrends.
         ema_fast = f"ema_{self.buy_ema_fast.value}"
         ema_slow = f"ema_{self.buy_ema_slow.value}"
-        ema_directional = (
-            (dataframe[ema_fast] > dataframe[ema_slow])
-            | (dataframe[ema_slow] > dataframe[ema_slow].shift(5))
+
+        # 1. Uptrend structure: fast EMA above slow EMA
+        uptrend = dataframe[ema_fast] > dataframe[ema_slow]
+
+        # 2. RSI pullback: price has dipped (this is the entry trigger)
+        rsi_pullback = (
+            (dataframe["rsi"] < self.buy_rsi_threshold.value)
+            & (dataframe["rsi"] > 15)  # not in freefall
         )
 
-        # Required: ADX confirms trend strength (relaxed from 20 for weak-trend markets)
-        adx_filter = dataframe["adx"] > 15
+        # 3. MACD recovering: momentum turning back up after the dip
+        macd_recovering = dataframe["macdhist"] > dataframe["macdhist"].shift(1)
 
-        # MACD confirmation (trend momentum improving)
-        macd_improving = (
-            (dataframe["macdhist"] > dataframe["macdhist"].shift(1))
-            | (dataframe["macd"] > dataframe["macdsignal"])
-        )
-
-        # Basic filters
+        # 4. Volume present
         has_volume = dataframe["volume"] > 0
-        not_overbought = dataframe["rsi"] > 10  # not in freefall
 
-        entry = (
-            rsi_pullback & ema_directional & adx_filter
-            & macd_improving & has_volume & not_overbought
-        )
+        entry = uptrend & rsi_pullback & macd_recovering & has_volume
         dataframe.loc[entry, "enter_long"] = 1
 
         return dataframe
@@ -233,8 +217,8 @@ class CryptoInvestorV1(IStrategy):
         return dataframe
 
     def bot_loop_start(self, current_time=None, **kwargs) -> None:
-        """Fetch and cache composite signals for all active pairs (every 5 min)."""
-        refresh_signals(self)
+        """Learning phase: no conviction signals fetched."""
+        pass
 
     def custom_stake_amount(
         self,
@@ -249,22 +233,8 @@ class CryptoInvestorV1(IStrategy):
         side: str,
         **kwargs,
     ) -> float:
-        """Scale position size by conviction score modifier."""
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return proposed_stake
-
-        modifier = get_position_modifier(self, pair)
-        adjusted = proposed_stake * modifier
-        effective_min = min_stake if min_stake is not None else 0.0
-        result = max(min(adjusted, max_stake), effective_min)
-        if modifier != 1.0:
-            logger.info(
-                "Stake adjusted %s: %.2f × %.2f = %.2f",
-                pair, proposed_stake, modifier, result,
-            )
-        return result
+        """Learning phase: use config stake amount directly."""
+        return proposed_stake
 
     def custom_stoploss(
         self,
@@ -276,12 +246,7 @@ class CryptoInvestorV1(IStrategy):
         after_fill: bool,
         **kwargs,
     ) -> float:
-        """ATR-based dynamic stop loss with regime-aware tightening.
-
-        - Initial: 2x ATR below entry
-        - Tightens as profit increases
-        - Further tightened in unfavorable regimes
-        """
+        """ATR-based dynamic stop loss (no regime dependency)."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
 
         if dataframe.empty:
@@ -293,17 +258,13 @@ class CryptoInvestorV1(IStrategy):
         if atr == 0 or (isinstance(atr, float) and (atr != atr)):
             return self.stoploss
 
-        # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)
-        regime_mult = get_regime_stop_multiplier(self, pair)
-
-        # ATR-based stop distance, tightened by regime
-        atr_stop = -(atr * float(self.atr_multiplier.value) * regime_mult) / current_rate
+        atr_stop = -(atr * float(self.atr_multiplier.value)) / current_rate
 
         # Tighten stop as profit increases
         if current_profit > 0.03:
-            atr_stop = max(atr_stop, -0.015)  # Tighten to -1.5% at 3%+
+            atr_stop = max(atr_stop, -0.015)
         elif current_profit > 0.02:
-            atr_stop = max(atr_stop, -0.025)  # Tighten to -2.5% at 2%+
+            atr_stop = max(atr_stop, -0.025)
 
         return max(atr_stop, self.stoploss)
 
@@ -316,13 +277,7 @@ class CryptoInvestorV1(IStrategy):
         current_profit: float,
         **kwargs,
     ) -> str | None:
-        """Custom exit logic: conviction advisor + trend/stale checks."""
-        # 1. Conviction-based exit (regime deterioration, time limits)
-        exit_tag = check_exit_advice(self, pair, trade, current_time, current_profit)
-        if exit_tag:
-            return exit_tag
-
-        # 2. Technical exit checks
+        """Technical exit checks only (no conviction system)."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
 
         if dataframe.empty:
@@ -356,57 +311,9 @@ class CryptoInvestorV1(IStrategy):
         side: str,
         **kwargs,
     ) -> bool:
-        """Gate trades through risk API + conviction system (fail-open).
-
-        In backtesting/hyperopt mode, skip API calls since the backend
-        may not be running and checks are not meaningful for historical sims.
-        """
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return True
-
-        # 1. Risk gate (existing)
-        try:
-            import json as json_mod
-
-            import requests
-            from _conviction_helpers import _internal_headers
-
-            stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
-            payload = {
-                "symbol": pair,
-                "side": side,
-                "size": amount,
-                "entry_price": rate,
-                "stop_loss_price": stop_loss_price,
-            }
-            body = json_mod.dumps(payload).encode()
-            resp = requests.post(
-                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
-                data=body,
-                headers=_internal_headers(body),
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if not data.get("approved", False):
-                    logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
-                    return False
-                logger.info(f"Risk gate approved {pair}")
-            else:
-                logger.warning(f"Risk API returned {resp.status_code}, approving (fail-open)")
-        except Exception as e:
-            logger.warning(f"Risk API unreachable ({e}), approving (fail-open)")
-
-        # 2. Conviction gate
-        if not check_conviction(self, pair):
-            return False
-
-        # Record entry regime for exit advisor
-        record_entry_regime(self, pair)
-
-        # Record signal attribution for performance feedback loop
-        record_signal_attribution(self, pair, str(kwargs.get("trade_id", "")))
-
+        """Learning phase: no conviction/risk gates — let every signal through."""
+        logger.info(
+            "ENTRY SIGNAL %s: %s @ %.6f (dip-buy signal, no gates)",
+            pair, side, rate,
+        )
         return True

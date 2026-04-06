@@ -157,7 +157,13 @@ class JobRunner:
         _job_progress[job_id] = {"progress": 0.0, "progress_message": "Queued"}
         # Route critical tasks to a dedicated pool so they're never blocked
         pool = self._critical_executor if job_type in CRITICAL_TASK_TYPES else self._executor
-        pool.submit(self._run_job, job_id, run_fn, params or {})
+        try:
+            pool.submit(self._run_job, job_id, run_fn, params or {})
+        except RuntimeError:
+            # Executor already shutdown (container restart race condition)
+            logger.warning("Cannot submit %s: executor is shutdown", job_type)
+            BackgroundJob.objects.filter(id=job_id).update(status="failed")
+            return job_id
         return job_id
 
     def _run_job(self, job_id: str, run_fn: Callable, params: dict) -> None:

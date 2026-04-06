@@ -59,7 +59,14 @@ class TaskScheduler:
             logger.exception("Failed to recover stale jobs on startup")
 
         self._scheduler = BackgroundScheduler(
-            job_defaults={"coalesce": True, "max_instances": 1},
+            job_defaults={
+                "coalesce": True,
+                "max_instances": 1,
+                # Allow tasks to fire up to 5 minutes late instead of marking
+                # them as "missed." With 38 tasks sharing the default thread
+                # pool, bursts of work can easily delay execution by 20-30s.
+                "misfire_grace_time": 300,
+            },
             timezone="UTC",
         )
 

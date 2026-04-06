@@ -1,30 +1,23 @@
-"""VolatilityBreakout — Freqtrade Strategy
-========================================
-Volatility breakout strategy that catches momentum expansions.
+"""VolatilityBreakout — Freqtrade Strategy (4h timeframe)
+=======================================================
+Volatility breakout strategy on 4h candles — catches larger momentum expansions.
 
-Complements CryptoInvestorV1 (trend-following) and BollingerMeanReversion
-(range-bound). Designed for transitional periods when volatility is
-expanding and a new directional move is beginning.
+Uses 4h timeframe for timeframe diversity (BMR=1h, CIV1=1h, VB=4h, Scalper=15m).
+4h breakouts are higher conviction and less noisy than 1h breakouts.
 
 Logic:
     ENTRY (Long):
-        - Close > N-period high (breakout)
-        - Volume > factor * SMA(20) (volume confirmation)
-        - BB width expanding (volatility expanding)
-        - ADX 15-45 rising (emerging-to-moderate trend)
-        - RSI 30-70 (recovering from oversold or neutral — fresh move)
+        - Close > N-period high (breakout confirmed)
+        - Volume > 1.5x SMA(20) (volume confirms the move)
+        - ADX 20-50 and rising (emerging trend, not choppy)
+        - RSI 35-70 (fresh move, not already exhausted)
 
     EXIT:
-        - RSI > 85 (exhaustion)
+        - RSI > 80 (exhaustion)
         - OR close crosses below EMA(20) with volume
         - Tiered ROI targets
-        - Hard stop -3% (breakouts fail fast)
 
-Risk Management:
-    - 3% hard stop (breakouts that fail, fail fast)
-    - ATR-based dynamic stop
-    - Trailing stop at 2% profit / 4% offset
-    - Maximum 5 concurrent trades
+LEARNING PHASE: Conviction/risk gates DISABLED.
 """
 
 import logging
@@ -32,15 +25,6 @@ import os
 from datetime import datetime
 
 import talib.abstract as ta
-from _conviction_helpers import (
-    check_conviction,
-    check_exit_advice,
-    get_position_modifier,
-    get_regime_stop_multiplier,
-    record_entry_regime,
-    record_signal_attribution,
-    refresh_signals,
-)
 from freqtrade.strategy import (
     DecimalParameter,
     IntParameter,
@@ -50,32 +34,33 @@ from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
+LEARNING_PHASE = True
+
 
 class VolatilityBreakout(IStrategy):
 
     INTERFACE_VERSION = 3
-    timeframe = "1h"
+    timeframe = "4h"  # Changed from 1h for timeframe diversity
     can_short = False
-    # Warm-up: breakout period up to 30, EMA 50, plus BB/RSI/ADX/ATR.
     startup_candle_count = 80
 
-    # ── Risk API integration ──
+    # ── Risk API (disabled during learning phase) ──
     risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
     minimal_roi = {
-        "0": 0.12,
-        "120": 0.07,
-        "480": 0.04,
-        "1440": 0.02,
+        "0": 0.10,
+        "60": 0.06,
+        "240": 0.03,
+        "720": 0.015,
     }
 
-    stoploss = -0.03
+    stoploss = -0.04  # 4h candles need slightly wider stop
     use_custom_stoploss = True
 
     trailing_stop = True
-    trailing_stop_positive = 0.015
-    trailing_stop_positive_offset = 0.025
+    trailing_stop_positive = 0.02
+    trailing_stop_positive_offset = 0.03
     trailing_only_offset_is_reached = True
 
     order_types = {
@@ -85,24 +70,27 @@ class VolatilityBreakout(IStrategy):
         "stoploss_on_exchange": True,
     }
 
-    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
-    # Relaxed 2026-03-31: volume_factor 2.4→1.2 (was requiring 2.4x avg volume —
-    # extremely rare), ADX low 29→15 (catch emerging trends earlier),
-    # RSI range widened 38-68→30-72.
-    breakout_period = IntParameter(10, 30, default=11, space="buy", optimize=True)
-    volume_factor = DecimalParameter(0.8, 3.0, default=1.2, decimals=1, space="buy", optimize=True)
-    adx_low = IntParameter(5, 30, default=15, space="buy", optimize=True)
-    adx_high = IntParameter(25, 65, default=60, space="buy", optimize=True)
-    rsi_low = IntParameter(20, 40, default=30, space="buy", optimize=True)
-    rsi_high = IntParameter(65, 80, default=72, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(75, 95, default=75, space="sell", optimize=True)
-    adx_tolerance = DecimalParameter(0.0, 3.0, default=0.4, decimals=1, space="buy", optimize=True)
-    atr_multiplier = DecimalParameter(1.0, 3.5, default=3.5, decimals=1, space="buy", optimize=True)
+    # ── Parameters — fixed for learning phase (2026-04-06) ──
+    # 4h breakouts: longer period (20), need real volume (1.5x), clean ADX range
+    breakout_period = IntParameter(10, 30, default=20, space="buy", optimize=True)
+    volume_factor = DecimalParameter(0.8, 3.0, default=1.5, decimals=1, space="buy", optimize=True)
+    adx_low = IntParameter(5, 30, default=20, space="buy", optimize=True)
+    adx_high = IntParameter(25, 65, default=50, space="buy", optimize=True)
+    rsi_low = IntParameter(20, 40, default=35, space="buy", optimize=True)
+    rsi_high = IntParameter(65, 80, default=70, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(75, 95, default=80, space="sell", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 3.5, default=2.5, decimals=1, space="buy", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        from freqtrade.enums import RunMode
 
-        # N-period high/low for breakout detection (full range for hyperopt)
-        for period in range(10, 31):
+        # N-period high/low for breakout detection
+        if self.dp and self.dp.runmode == RunMode.HYPEROPT:
+            for period in range(10, 31):
+                dataframe[f"high_{period}"] = dataframe["high"].rolling(window=period).max()
+                dataframe[f"low_{period}"] = dataframe["low"].rolling(window=period).min()
+        else:
+            period = self.breakout_period.value
             dataframe[f"high_{period}"] = dataframe["high"].rolling(window=period).max()
             dataframe[f"low_{period}"] = dataframe["low"].rolling(window=period).min()
 
@@ -135,30 +123,26 @@ class VolatilityBreakout(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Aggressive breakout entries: price breaks N-period high + volume OR price above EMA20.
-
-        BB width expansion and ADX rising removed as hard requirements.
-        """
+        """Breakout entries: price breaks N-period high + volume + rising ADX."""
         # Required: breakout above N-period high
         breakout = dataframe["close"] > dataframe[f"high_{self.breakout_period.value}"].shift(1)
 
-        # Required: volume confirms the breakout (no weak alternatives)
+        # Required: volume confirms the breakout
         vol_confirm = dataframe["volume_ratio"] > float(self.volume_factor.value)
 
-        # ADX in acceptable range with rising requirement (momentum building)
+        # ADX in acceptable range and rising (momentum building)
         adx_ok = (
             (dataframe["adx"] >= self.adx_low.value)
             & (dataframe["adx"] <= self.adx_high.value)
             & (dataframe["adx"] > dataframe["adx"].shift(3))
         )
 
-        # RSI in acceptable range (wide: 25-75 default)
+        # RSI in acceptable range (not already exhausted)
         rsi_ok = (
             (dataframe["rsi"] >= self.rsi_low.value)
             & (dataframe["rsi"] <= self.rsi_high.value)
         )
 
-        # Volume present
         has_volume = dataframe["volume"] > 0
 
         dataframe.loc[
@@ -184,8 +168,8 @@ class VolatilityBreakout(IStrategy):
         return dataframe
 
     def bot_loop_start(self, current_time=None, **kwargs) -> None:
-        """Fetch and cache composite signals for all active pairs (every 5 min)."""
-        refresh_signals(self)
+        """Learning phase: no conviction signals."""
+        pass
 
     def custom_stake_amount(
         self,
@@ -200,22 +184,8 @@ class VolatilityBreakout(IStrategy):
         side: str,
         **kwargs,
     ) -> float:
-        """Scale position size by conviction score modifier."""
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return proposed_stake
-
-        modifier = get_position_modifier(self, pair)
-        adjusted = proposed_stake * modifier
-        effective_min = min_stake if min_stake is not None else 0.0
-        result = max(min(adjusted, max_stake), effective_min)
-        if modifier != 1.0:
-            logger.info(
-                "Stake adjusted %s: %.2f × %.2f = %.2f",
-                pair, proposed_stake, modifier, result,
-            )
-        return result
+        """Learning phase: use config stake amount."""
+        return proposed_stake
 
     def confirm_trade_entry(
         self,
@@ -229,53 +199,8 @@ class VolatilityBreakout(IStrategy):
         side: str,
         **kwargs,
     ) -> bool:
-        """Gate trades through risk API + conviction system (fail-open).
-
-        In backtesting/hyperopt mode, skip API calls since the backend
-        may not be running and checks are not meaningful for historical sims.
-        """
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return True
-
-        # 1. Risk gate (existing)
-        try:
-            import requests
-
-            stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
-            resp = requests.post(
-                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
-                json={
-                    "symbol": pair,
-                    "side": side,
-                    "size": amount,
-                    "entry_price": rate,
-                    "stop_loss_price": stop_loss_price,
-                },
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if not data.get("approved", False):
-                    logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
-                    return False
-                logger.info(f"Risk gate approved {pair}")
-            else:
-                logger.warning(f"Risk API returned {resp.status_code}, approving (fail-open)")
-        except Exception as e:
-            logger.warning(f"Risk API unreachable ({e}), approving (fail-open)")
-
-        # 2. Conviction gate
-        if not check_conviction(self, pair):
-            return False
-
-        # Record entry regime for exit advisor
-        record_entry_regime(self, pair)
-
-        # Record signal attribution for performance feedback loop
-        record_signal_attribution(self, pair, str(kwargs.get("trade_id", "")))
-
+        """Learning phase: no gates."""
+        logger.info("ENTRY SIGNAL %s: %s @ %.6f (breakout, no gates)", pair, side, rate)
         return True
 
     def custom_exit(
@@ -287,13 +212,13 @@ class VolatilityBreakout(IStrategy):
         current_profit: float,
         **kwargs,
     ) -> str | None:
-        """Conviction-based exit: regime deterioration, time limits."""
-        return check_exit_advice(self, pair, trade, current_time, current_profit)
+        """Learning phase: rely on ROI/stoploss/exit_trend."""
+        return None
 
     def custom_stoploss(
         self, pair, trade, current_time, current_rate, current_profit, after_fill, **kwargs,
     ):
-        """ATR-based dynamic stop loss with regime-aware tightening."""
+        """ATR-based dynamic stop loss (no regime dependency)."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if dataframe.empty:
             return self.stoploss
@@ -303,16 +228,11 @@ class VolatilityBreakout(IStrategy):
         if atr == 0 or (isinstance(atr, float) and (atr != atr)):
             return self.stoploss
 
-        # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)
-        regime_mult = get_regime_stop_multiplier(self, pair)
+        atr_stop = -(atr * float(self.atr_multiplier.value)) / current_rate
 
-        # ATR-based stop distance, tightened by regime
-        atr_stop = -(atr * float(self.atr_multiplier.value) * regime_mult) / current_rate
-
-        # Tighten as profit increases (breakouts: protect gains quickly)
         if current_profit > 0.03:
-            atr_stop = max(atr_stop, -0.015)  # Tight at 3%+
+            atr_stop = max(atr_stop, -0.015)
         elif current_profit > 0.015:
-            atr_stop = max(atr_stop, -0.025)  # Moderate at 1.5%+
+            atr_stop = max(atr_stop, -0.025)
 
         return max(atr_stop, self.stoploss)

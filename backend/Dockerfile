@@ -78,7 +78,7 @@ COPY --from=builder /project/ /project/
 
 WORKDIR /project/backend
 
-RUN mkdir -p /project/backend/data/logs /project/data/processed /project/models
+RUN mkdir -p /project/backend/data/logs /project/data/raw /project/data/processed /project/models
 
 # Ensure common/, research/, nautilus/, freqtrade strategies are importable
 ENV PYTHONPATH="/project:/project/freqtrade/user_data/strategies:${PYTHONPATH}"
@@ -86,8 +86,9 @@ ENV PYTHONPATH="/project:/project/freqtrade/user_data/strategies:${PYTHONPATH}"
 COPY backend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Create non-root user and set ownership
-RUN groupadd -r appuser && useradd -r -g appuser -d /project appuser && \
+# Create non-root user with UID 1000 to match typical host user UID,
+# so bind-mounted volumes (./data, ./models) are readable/writable.
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 -d /project appuser && \
     chown -R appuser:appuser /project
 USER appuser
 

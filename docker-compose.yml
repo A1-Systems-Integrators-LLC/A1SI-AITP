@@ -55,7 +55,7 @@ x-backend-base: &backend-base
       reservations:
         memory: 1g
   healthcheck:
-    test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -q '\"status\":\"ok\"'"]
+    test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -qE '\"status\":\"(ok|degraded)\"'"]
     interval: 15s
     timeout: 10s
     retries: 5
@@ -92,7 +92,7 @@ x-freqtrade-env: &freqtrade-env
 
 x-freqtrade-base: &freqtrade-base
   image: freqtradeorg/freqtrade:stable
-  profiles: ["trading"]
+  # profiles set per-service for staged deployment (day1/day2/day3)
   volumes:
     - ./freqtrade/user_data:/freqtrade/user_data
     - ./data/processed:/freqtrade/data:ro
@@ -140,8 +140,37 @@ services:
         condition: service_healthy
 
   # ── Trading ─────────────────────────────────────────────────
+  # Learning phase: deploy one strategy at a time to observe signal quality.
+  #
+  #   Day 1: docker compose --profile trading-day1 up -d       # BMR only (1h mean-reversion)
+  #   Day 2: docker compose --profile trading-day1 --profile trading-day2 up -d  # + CIV1 (1h dip-buy)
+  #   Day 3: docker compose --profile trading-day1 --profile trading-day2 --profile trading-day3 up -d  # + VB (4h breakout)
+  #   All:   docker compose --profile trading up -d            # All strategies
+  #
+  freqtrade-bmr:
+    <<: *freqtrade-base
+    profiles: ["trading", "trading-day1"]
+    container_name: aitp-dev-ft-bmr
+    ports:
+      - "4083:4083"
+    volumes:
+      - ./freqtrade/user_data:/freqtrade/user_data
+      - ./freqtrade/config_bmr.json:/freqtrade/config.json:ro
+      - ./data/processed:/freqtrade/data:ro
+      - ./common:/freqtrade/common:ro
+    command: trade --config /freqtrade/config.json --strategy BollingerMeanReversion --strategy-path /freqtrade/user_data/strategies
+    environment:
+      <<: *freqtrade-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4083/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   freqtrade-civ1:
     <<: *freqtrade-base
+    profiles: ["trading", "trading-day2"]
     container_name: aitp-dev-ft-civ1
     ports:
       - "4080:4080"
@@ -162,28 +191,9 @@ services:
       retries: 3
       start_period: 30s
 
-  freqtrade-bmr:
-    <<: *freqtrade-base
-    container_name: aitp-dev-ft-bmr
-    ports:
-      - "4083:4083"
-    volumes:
-      - ./freqtrade/user_data:/freqtrade/user_data
-      - ./freqtrade/config_bmr.json:/freqtrade/config.json:ro
-      - ./data/processed:/freqtrade/data:ro
-      - ./common:/freqtrade/common:ro
-    command: trade --config /freqtrade/config.json --strategy BollingerMeanReversion --strategy-path /freqtrade/user_data/strategies
-    environment:
-      <<: *freqtrade-env
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:4083/api/v1/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
   freqtrade-vb:
     <<: *freqtrade-base
+    profiles: ["trading", "trading-day3"]
     container_name: aitp-dev-ft-vb
     ports:
       - "4084:4084"

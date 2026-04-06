@@ -282,31 +282,35 @@ MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "2"))
 
 ORDER_SYNC_TIMEOUT_HOURS = int(os.environ.get("ORDER_SYNC_TIMEOUT_HOURS", "24"))
 
-# ── Freqtrade Instances (multi-strategy paper trading) ───────
+# ── Freqtrade Instances (learning-phase staged deployment) ──
+# Day 1: BMR only (1h mean-reversion) — observe raw signal quality
+# Day 2: + CIV1 (1h dip-buyer) — compare with BMR
+# Day 3: + VB (4h breakout) — timeframe diversity
+# Enable via env: FREQTRADE_CIV1_ENABLED=true, FREQTRADE_VB_ENABLED=true
 FREQTRADE_INSTANCES = [
-    {
-        "name": "CryptoInvestorV1",
-        "config": "config.json",
-        "port": 4180,
-        "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:4180"),
-        "dry_run_wallet": 500.0,
-        "enabled": True,
-    },
     {
         "name": "BollingerMeanReversion",
         "config": "config_bmr.json",
-        "port": 4183,
-        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:4183"),
+        "port": 4083,
+        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://127.0.0.1:4083"),
         "dry_run_wallet": 500.0,
-        "enabled": True,
+        "enabled": True,  # Day 1: always on
+    },
+    {
+        "name": "CryptoInvestorV1",
+        "config": "config.json",
+        "port": 4080,
+        "url": os.environ.get("FREQTRADE_API_URL", "http://127.0.0.1:4080"),
+        "dry_run_wallet": 500.0,
+        "enabled": os.environ.get("FREQTRADE_CIV1_ENABLED", "false").lower() in ("true", "1"),
     },
     {
         "name": "VolatilityBreakout",
         "config": "config_vb.json",
-        "port": 4184,
-        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:4184"),
+        "port": 4084,
+        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://127.0.0.1:4084"),
         "dry_run_wallet": 300.0,
-        "enabled": True,
+        "enabled": os.environ.get("FREQTRADE_VB_ENABLED", "false").lower() in ("true", "1"),
     },
 ]
 

@@ -1,8 +1,8 @@
 {
     "trading_mode": "spot",
-    "max_open_trades": 1,
+    "max_open_trades": 3,
     "stake_currency": "USDT",
-    "stake_amount": 40,
+    "stake_amount": 60,
     "tradable_balance_ratio": 0.95,
     "fiat_display_currency": "USD",
     "dry_run": true,

@@ -3,6 +3,8 @@
 Targets overbought conditions with bearish momentum confirmation.
 EMA bearish alignment + RSI overbought + MACD cross down + volume.
 Tight stops (-6%), fast ROI targets.
+
+LEARNING PHASE: Conviction/risk gates DISABLED.
 """
 
 import logging
@@ -13,20 +15,7 @@ from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
-# Conviction helpers (fail-open)
-try:
-    from freqtrade.user_data.strategies._conviction_helpers import (
-        check_conviction,
-        check_exit_advice,
-        get_position_modifier,
-        get_regime_stop_multiplier,
-        record_entry_regime,
-        refresh_signals,
-    )
-
-    HAS_CONVICTION = True
-except ImportError:
-    HAS_CONVICTION = False
+LEARNING_PHASE = True
 
 
 class MomentumShort(IStrategy):
@@ -109,31 +98,22 @@ class MomentumShort(IStrategy):
         return min(3.0, max_leverage)
 
     def bot_loop_start(self, **kwargs) -> None:
-        if HAS_CONVICTION:
-            refresh_signals(self)
+        pass
 
     def confirm_trade_entry(self, pair, order_type, amount, rate, time_in_force,
                             current_time, entry_tag, side, **kwargs) -> bool:
-        if HAS_CONVICTION:
-            if not check_conviction(self, pair):
-                return False
-            record_entry_regime(self, pair)
+        logger.info("ENTRY SIGNAL %s: %s @ %.6f (short, no gates)", pair, side, rate)
         return True
 
     def custom_stake_amount(self, current_time, current_rate, proposed_stake,
                             min_stake, max_stake, leverage, entry_tag, side,
                             **kwargs) -> float:
-        if HAS_CONVICTION:
-            modifier = get_position_modifier(self, kwargs.get("pair", ""))
-            return proposed_stake * modifier
         return proposed_stake
 
     def custom_stoploss(self, pair, trade, current_time, current_rate,
                         current_profit, after_fill, **kwargs) -> float:
         atr = self.dp.get_pair_dataframe(pair, self.timeframe)["atr"].iloc[-1]
         regime_mult = 1.0
-        if HAS_CONVICTION:
-            regime_mult = get_regime_stop_multiplier(self, pair)
 
         atr_stop = (atr / current_rate) * self.atr_multiplier.value * regime_mult
         stop = -atr_stop
@@ -148,8 +128,4 @@ class MomentumShort(IStrategy):
 
     def custom_exit(self, pair, trade, current_time, current_rate,
                     current_profit, **kwargs):
-        if HAS_CONVICTION:
-            advice = check_exit_advice(self, pair, trade, current_time, current_profit)
-            if advice:
-                return advice
         return None

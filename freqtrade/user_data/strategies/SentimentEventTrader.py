@@ -1,5 +1,7 @@
 """SentimentEventTrader — News-driven extreme sentiment strategy.
 
+LEARNING PHASE: Conviction/risk gates DISABLED.
+
 Trades extreme sentiment spikes detected by the NLP pipeline (FinBERT/VADER).
 Long on sentiment > 0.7, short on sentiment < -0.7.
 Gate: RSI must not already be extended in the direction of the trade.
@@ -13,19 +15,7 @@ from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
-try:
-    from freqtrade.user_data.strategies._conviction_helpers import (
-        check_conviction,
-        check_exit_advice,
-        get_position_modifier,
-        get_regime_stop_multiplier,
-        record_entry_regime,
-        refresh_signals,
-    )
-
-    HAS_CONVICTION = True
-except ImportError:
-    HAS_CONVICTION = False
+LEARNING_PHASE = True
 
 # Sentiment signal access
 try:
@@ -129,9 +119,6 @@ class SentimentEventTrader(IStrategy):
         return dataframe
 
     def bot_loop_start(self, **kwargs) -> None:
-        if HAS_CONVICTION:
-            refresh_signals(self)
-
         # Refresh sentiment scores for active pairs
         if HAS_SENTIMENT and hasattr(self, "dp") and self.dp is not None:
             try:
@@ -145,10 +132,7 @@ class SentimentEventTrader(IStrategy):
 
     def _get_cached_signal(self, pair: str) -> dict | None:
         """Get cached conviction signal with sentiment data."""
-        if not HAS_CONVICTION:
-            return None
-        signals = getattr(self, "_signals", {})
-        return signals.get(pair)
+        return None
 
     def custom_leverage(self, pair: str, current_time, current_rate, proposed_leverage,
                         max_leverage, entry_tag, side, **kwargs) -> float:
@@ -156,26 +140,18 @@ class SentimentEventTrader(IStrategy):
 
     def confirm_trade_entry(self, pair, order_type, amount, rate, time_in_force,
                             current_time, entry_tag, side, **kwargs) -> bool:
-        if HAS_CONVICTION:
-            if not check_conviction(self, pair):
-                return False
-            record_entry_regime(self, pair)
+        logger.info("ENTRY SIGNAL %s: %s @ %.6f (sentiment, no gates)", pair, side, rate)
         return True
 
     def custom_stake_amount(self, current_time, current_rate, proposed_stake,
                             min_stake, max_stake, leverage, entry_tag, side,
                             **kwargs) -> float:
-        if HAS_CONVICTION:
-            modifier = get_position_modifier(self, kwargs.get("pair", ""))
-            return proposed_stake * modifier
         return proposed_stake
 
     def custom_stoploss(self, pair, trade, current_time, current_rate,
                         current_profit, after_fill, **kwargs) -> float:
         atr = self.dp.get_pair_dataframe(pair, self.timeframe)["atr"].iloc[-1]
         regime_mult = 1.0
-        if HAS_CONVICTION:
-            regime_mult = get_regime_stop_multiplier(self, pair)
 
         atr_stop = (atr / current_rate) * self.atr_multiplier.value * regime_mult
         stop = -atr_stop
@@ -189,8 +165,4 @@ class SentimentEventTrader(IStrategy):
 
     def custom_exit(self, pair, trade, current_time, current_rate,
                     current_profit, **kwargs):
-        if HAS_CONVICTION:
-            advice = check_exit_advice(self, pair, trade, current_time, current_profit)
-            if advice:
-                return advice
         return None

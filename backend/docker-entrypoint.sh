@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Ensure data directories exist and are writable by appuser.
+# Volume mounts from the host override Dockerfile mkdir, so we must
+# fix ownership at runtime when bind-mounted dirs are root-owned.
+for dir in /project/data/raw /project/data/processed /project/models /project/backend/data/logs; do
+    mkdir -p "$dir" 2>/dev/null || true
+done
+
 echo "→ Waiting for PostgreSQL..."
 python -c "
 import time, os, socket

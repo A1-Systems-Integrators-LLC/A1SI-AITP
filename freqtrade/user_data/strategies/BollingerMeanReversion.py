@@ -5,18 +5,17 @@ Mean-reversion strategy using Bollinger Bands with volume and RSI confirmation.
 Logic:
     ENTRY (Long):
         - Price closes below lower Bollinger Band (2 std dev)
-        - RSI < 35 (oversold confirmation)
-        - Volume spike (volume > 1.5x 20-period average)
-        - ADX < 50 (allows oversold bounces in moderate-to-strong trends)
-        - Tighter stoploss when ADX > 35 (risk-adjusted for trend strength)
+        - RSI < 40 (oversold confirmation)
+        - Volume spike (volume > 1.2x 20-period average) — validates institutional interest
+        - ADX < 35 (ranging/weak-trend market, where mean-reversion works)
 
     EXIT:
         - Price reaches Bollinger middle band (SMA 20)
         - RSI > 65
         - Tiered ROI
 
-Best suited for ranging/consolidating markets, but also catches oversold
-bounces in downtrends with tighter risk management.
+LEARNING PHASE: Conviction/risk gates DISABLED to observe raw strategy behavior.
+Best suited for ranging/consolidating markets.
 """
 
 import logging
@@ -25,15 +24,6 @@ from datetime import datetime
 from functools import reduce
 
 import talib.abstract as ta
-from _conviction_helpers import (
-    check_conviction,
-    check_exit_advice,
-    get_position_modifier,
-    get_regime_stop_multiplier,
-    record_entry_regime,
-    record_signal_attribution,
-    refresh_signals,
-)
 from freqtrade.strategy import (
     DecimalParameter,
     IntParameter,
@@ -42,6 +32,10 @@ from freqtrade.strategy import (
 from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
+
+# ── Learning phase: conviction system disabled ──
+# Re-enable after 2+ weeks of observing raw strategy signal quality.
+LEARNING_PHASE = True
 
 
 class BollingerMeanReversion(IStrategy):
@@ -52,7 +46,7 @@ class BollingerMeanReversion(IStrategy):
     # Warm-up: BB period up to 30, plus RSI/ADX/ATR 14 — need at least 30 candles.
     startup_candle_count = 50
 
-    # ── Risk API integration ──
+    # ── Risk API integration (disabled during learning phase) ──
     risk_api_url = os.environ.get("RISK_API_URL", "http://127.0.0.1:8000")
     risk_portfolio_id = 1
 
@@ -77,18 +71,19 @@ class BollingerMeanReversion(IStrategy):
         "stoploss_on_exchange": True,
     }
 
-    # Hyperopt-tuned 2026-03-29 on Kraken 1h data (200 epochs, SharpeHyperOptLoss)
-    # Relaxed 2026-03-31: BB std 2.8→2.2 (wider band = more entries), RSI 26→35,
-    # volume_factor 2.2→0.0 (disabled — volume gate was too restrictive),
-    # ADX ceiling 27→45 (allow entries in moderate trends, not just dead ranges).
-    buy_bb_period = IntParameter(15, 30, default=16, space="buy", optimize=True)
-    buy_bb_std = DecimalParameter(0.8, 3.0, default=2.2, decimals=1, space="buy", optimize=True)
-    buy_rsi_threshold = IntParameter(25, 50, default=35, space="buy", optimize=True)
+    # ── Parameters — fixed for learning phase (2026-04-06) ──
+    # BB std 2.0: standard 2-sigma band, proven mean-reversion level
+    # RSI 40: generous enough to catch pullbacks, not so loose it's noise
+    # Volume 1.2x: re-enabled — confirms real selling pressure at the band
+    # ADX 35: ranging-to-moderate trend only (mean-reversion needs range)
+    buy_bb_period = IntParameter(15, 30, default=20, space="buy", optimize=True)
+    buy_bb_std = DecimalParameter(0.8, 3.0, default=2.0, decimals=1, space="buy", optimize=True)
+    buy_rsi_threshold = IntParameter(25, 50, default=40, space="buy", optimize=True)
     buy_volume_factor = DecimalParameter(
-        0.0, 2.5, default=0.0, decimals=1, space="buy", optimize=True,
+        0.5, 2.5, default=1.2, decimals=1, space="buy", optimize=True,
     )
-    buy_adx_ceiling = IntParameter(25, 60, default=45, space="buy", optimize=True)
-    sell_rsi_threshold = IntParameter(55, 75, default=72, space="sell", optimize=True)
+    buy_adx_ceiling = IntParameter(25, 60, default=35, space="buy", optimize=True)
+    sell_rsi_threshold = IntParameter(55, 75, default=65, space="sell", optimize=True)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         from freqtrade.enums import RunMode
@@ -137,10 +132,7 @@ class BollingerMeanReversion(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Aggressive mean-reversion entries: price near lower BB + RSI oversold.
-
-        Volume factor defaults to 0.0 (disabled) for maximum trade frequency.
-        """
+        """Mean-reversion entries: price at lower BB + RSI oversold + volume confirms."""
         std_str = str(float(self.buy_bb_std.value)).replace(".", "")
         bb_suffix = f"_{self.buy_bb_period.value}_{std_str}"
 
@@ -151,20 +143,18 @@ class BollingerMeanReversion(IStrategy):
             # RSI oversold
             dataframe["rsi"] < self.buy_rsi_threshold.value,
 
-            # ADX ceiling — allow entry in moderate-to-strong trends
+            # ADX ceiling — mean-reversion works in ranging markets
             dataframe["adx"] < self.buy_adx_ceiling.value,
 
-            # Not in extreme downtrend (some floor)
+            # Not in freefall
             dataframe["rsi"] > 10,
+
+            # Volume confirms selling pressure (ALWAYS required — this validates the setup)
+            dataframe["volume_ratio"] > float(self.buy_volume_factor.value),
 
             # Volume present
             dataframe["volume"] > 0,
         ]
-
-        # Volume spike is optional (only apply if factor > 0)
-        vol_factor = float(self.buy_volume_factor.value)
-        if vol_factor > 0:
-            conditions.append(dataframe["volume_ratio"] > vol_factor)
 
         dataframe.loc[reduce(lambda x, y: x & y, conditions), "enter_long"] = 1
 
@@ -189,8 +179,8 @@ class BollingerMeanReversion(IStrategy):
         return dataframe
 
     def bot_loop_start(self, current_time=None, **kwargs) -> None:
-        """Fetch and cache composite signals for all active pairs (every 5 min)."""
-        refresh_signals(self)
+        """Learning phase: no conviction signals fetched."""
+        pass
 
     def custom_stake_amount(
         self,
@@ -205,22 +195,8 @@ class BollingerMeanReversion(IStrategy):
         side: str,
         **kwargs,
     ) -> float:
-        """Scale position size by conviction score modifier."""
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return proposed_stake
-
-        modifier = get_position_modifier(self, pair)
-        adjusted = proposed_stake * modifier
-        effective_min = min_stake if min_stake is not None else 0.0
-        result = max(min(adjusted, max_stake), effective_min)
-        if modifier != 1.0:
-            logger.info(
-                "Stake adjusted %s: %.2f × %.2f = %.2f",
-                pair, proposed_stake, modifier, result,
-            )
-        return result
+        """Learning phase: use config stake amount directly."""
+        return proposed_stake
 
     def confirm_trade_entry(
         self,
@@ -234,53 +210,15 @@ class BollingerMeanReversion(IStrategy):
         side: str,
         **kwargs,
     ) -> bool:
-        """Gate trades through risk API + conviction system (fail-open).
+        """Learning phase: no conviction/risk gates — let every signal through.
 
-        In backtesting/hyperopt mode, skip API calls since the backend
-        may not be running and checks are not meaningful for historical sims.
+        We want to observe raw strategy signal quality without any external
+        pipeline blocking trades. This is paper trading with fake money.
         """
-        from freqtrade.enums import RunMode
-
-        if self.dp and self.dp.runmode in (RunMode.BACKTEST, RunMode.HYPEROPT):
-            return True
-
-        # 1. Risk gate (existing)
-        try:
-            import requests
-
-            stop_loss_price = rate * (1 + self.stoploss)  # stoploss is negative
-            resp = requests.post(
-                f"{self.risk_api_url}/api/risk/{self.risk_portfolio_id}/check-trade/",
-                json={
-                    "symbol": pair,
-                    "side": side,
-                    "size": amount,
-                    "entry_price": rate,
-                    "stop_loss_price": stop_loss_price,
-                },
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if not data.get("approved", False):
-                    logger.warning(f"Risk gate REJECTED {pair}: {data.get('reason')}")
-                    return False
-                logger.info(f"Risk gate approved {pair}")
-            else:
-                logger.warning(f"Risk API returned {resp.status_code}, approving (fail-open)")
-        except Exception as e:
-            logger.warning(f"Risk API unreachable ({e}), approving (fail-open)")
-
-        # 2. Conviction gate
-        if not check_conviction(self, pair):
-            return False
-
-        # Record entry regime for exit advisor
-        record_entry_regime(self, pair)
-
-        # Record signal attribution for performance feedback loop
-        record_signal_attribution(self, pair, str(kwargs.get("trade_id", "")))
-
+        logger.info(
+            "ENTRY SIGNAL %s: %s @ %.6f (RSI/BB signal, no gates)",
+            pair, side, rate,
+        )
         return True
 
     def custom_exit(
@@ -292,14 +230,14 @@ class BollingerMeanReversion(IStrategy):
         current_profit: float,
         **kwargs,
     ) -> str | None:
-        """Conviction-based exit: regime deterioration, time limits."""
-        return check_exit_advice(self, pair, trade, current_time, current_profit)
+        """Learning phase: no conviction-based exits — rely on ROI/stoploss/exit_trend."""
+        return None
 
     def custom_stoploss(
         self, pair, trade, current_time, current_rate,
         current_profit, after_fill, **kwargs,
     ):
-        """ATR-based dynamic stop loss with regime-aware tightening."""
+        """ATR-based dynamic stop loss (no regime dependency)."""
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if dataframe.empty:
             return self.stoploss
@@ -310,12 +248,9 @@ class BollingerMeanReversion(IStrategy):
         if atr == 0 or (isinstance(atr, float) and (atr != atr)):
             return self.stoploss
 
-        # Regime-aware stop multiplier (0.5 in STRONG_TREND_DOWN, 1.0 in STRONG_TREND_UP)
-        regime_mult = get_regime_stop_multiplier(self, pair)
-
         # Tighter stop in strong trends (ADX > 35) — mean reversion is riskier
         atr_mult = 1.5 if adx > 35 else 2.0
-        atr_stop = -(atr * atr_mult * regime_mult) / current_rate
+        atr_stop = -(atr * atr_mult) / current_rate
 
         if current_profit > 0.015:
             atr_stop = max(atr_stop, -0.01)  # Tighten to -1% at 1.5%+
