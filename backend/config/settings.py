@@ -430,10 +430,16 @@ SCHEDULED_TASKS = {
     },
     "ml_training": {
         "name": "ML Model Training",
-        "description": "Weekly LightGBM model training on BTC/ETH/SOL",
+        "description": "Daily LightGBM model training on top crypto symbols",
         "task_type": "ml_training",
-        "interval_seconds": 604800,
-        "params": {"symbols": ["BTC/USDT", "ETH/USDT", "SOL/USDT"], "timeframe": "1h"},
+        "interval_seconds": 86400,
+        "params": {
+            "symbols": [
+                "BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT",
+                "BNB/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
+            ],
+            "timeframe": "1h",
+        },
     },
     "market_scan_crypto": {
         "name": "Crypto Market Scanner",

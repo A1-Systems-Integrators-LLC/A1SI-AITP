@@ -118,6 +118,11 @@ services:
       FREQTRADE_API_URL: "http://freqtrade-civ1:4080"
       FREQTRADE_BMR_API_URL: "http://freqtrade-bmr:4083"
       FREQTRADE_VB_API_URL: "http://freqtrade-vb:4084"
+      FREQTRADE_SHORT_API_URL: "http://freqtrade-short:4085"
+      FREQTRADE_GRID_API_URL: "http://freqtrade-grid:4086"
+      FREQTRADE_SCALP_API_URL: "http://freqtrade-scalp:4087"
+      FREQTRADE_SENTIMENT_API_URL: "http://freqtrade-sentiment:4088"
+      FREQTRADE_REVERSAL_API_URL: "http://freqtrade-reversal:4089"
       INTERNAL_API_ALLOWED_IPS: "127.0.0.1,::1,172.16.0.0/12"
       POSTGRES_HOST: "postgres"
       POSTGRES_PORT: "5432"
@@ -140,16 +145,13 @@ services:
         condition: service_healthy
 
   # ── Trading ─────────────────────────────────────────────────
-  # Learning phase: deploy one strategy at a time to observe signal quality.
+  # All 8 strategies deployed together — staged rollout completed 2026-04-07
   #
-  #   Day 1: docker compose --profile trading-day1 up -d       # BMR only (1h mean-reversion)
-  #   Day 2: docker compose --profile trading-day1 --profile trading-day2 up -d  # + CIV1 (1h dip-buy)
-  #   Day 3: docker compose --profile trading-day1 --profile trading-day2 --profile trading-day3 up -d  # + VB (4h breakout)
-  #   All:   docker compose --profile trading up -d            # All strategies
+  #   docker compose --profile trading up -d            # All strategies
   #
   freqtrade-bmr:
     <<: *freqtrade-base
-    profiles: ["trading", "trading-day1"]
+    profiles: ["trading"]
     container_name: aitp-dev-ft-bmr
     ports:
       - "4083:4083"
@@ -170,7 +172,7 @@ services:
 
   freqtrade-civ1:
     <<: *freqtrade-base
-    profiles: ["trading", "trading-day2"]
+    profiles: ["trading"]
     container_name: aitp-dev-ft-civ1
     ports:
       - "4080:4080"
@@ -193,7 +195,7 @@ services:
 
   freqtrade-vb:
     <<: *freqtrade-base
-    profiles: ["trading", "trading-day3"]
+    profiles: ["trading"]
     container_name: aitp-dev-ft-vb
     ports:
       - "4084:4084"
@@ -207,6 +209,93 @@ services:
       <<: *freqtrade-env
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4084/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  freqtrade-scalp:
+    <<: *freqtrade-base
+    profiles: ["trading"]
+    container_name: aitp-dev-ft-scalp
+    ports:
+      - "4087:4087"
+    volumes:
+      - ./freqtrade/user_data:/freqtrade/user_data
+      - ./freqtrade/config_scalp.json:/freqtrade/config.json:ro
+      - ./data/processed:/freqtrade/data:ro
+      - ./common:/freqtrade/common:ro
+    command: trade --config /freqtrade/config.json --strategy MomentumScalper15m --strategy-path /freqtrade/user_data/strategies
+    environment:
+      <<: *freqtrade-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4087/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # freqtrade-short: DISABLED — MomentumShort is short-only, requires futures exchange (not Kraken spot)
+  # Will be enabled when Binance futures integration is added
+
+  freqtrade-grid:
+    <<: *freqtrade-base
+    profiles: ["trading"]
+    container_name: aitp-dev-ft-grid
+    ports:
+      - "4086:4086"
+    volumes:
+      - ./freqtrade/user_data:/freqtrade/user_data
+      - ./freqtrade/config_grid.json:/freqtrade/config.json:ro
+      - ./data/processed:/freqtrade/data:ro
+      - ./common:/freqtrade/common:ro
+    command: trade --config /freqtrade/config.json --strategy GridDCA --strategy-path /freqtrade/user_data/strategies
+    environment:
+      <<: *freqtrade-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4086/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  freqtrade-sentiment:
+    <<: *freqtrade-base
+    profiles: ["trading"]
+    container_name: aitp-dev-ft-sentiment
+    ports:
+      - "4088:4088"
+    volumes:
+      - ./freqtrade/user_data:/freqtrade/user_data
+      - ./freqtrade/config_sentiment.json:/freqtrade/config.json:ro
+      - ./data/processed:/freqtrade/data:ro
+      - ./common:/freqtrade/common:ro
+    command: trade --config /freqtrade/config.json --strategy SentimentEventTrader --strategy-path /freqtrade/user_data/strategies
+    environment:
+      <<: *freqtrade-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4088/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  freqtrade-reversal:
+    <<: *freqtrade-base
+    profiles: ["trading"]
+    container_name: aitp-dev-ft-reversal
+    ports:
+      - "4089:4089"
+    volumes:
+      - ./freqtrade/user_data:/freqtrade/user_data
+      - ./freqtrade/config_reversal.json:/freqtrade/config.json:ro
+      - ./data/processed:/freqtrade/data:ro
+      - ./common:/freqtrade/common:ro
+    command: trade --config /freqtrade/config.json --strategy TrendReversal --strategy-path /freqtrade/user_data/strategies
+    environment:
+      <<: *freqtrade-env
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4089/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3

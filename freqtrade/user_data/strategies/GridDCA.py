@@ -22,7 +22,7 @@ class GridDCA(IStrategy):
 
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = True
+    can_short = False  # Kraken spot only — short signals ignored until futures exchange added
     startup_candle_count = 50
 
     stoploss = -0.04

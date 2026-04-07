@@ -1,3 +1,5 @@
+- [Performance Plan](project_performance_plan.md) — 4-week plan to activate ML, all strategies, alt data, multi-asset (approved 2026-04-07)
+- [Stop Building](feedback_stop_building.md) — User directive: stop adding infra, activate existing code, generate results
 - [Learning Phase](project_learning_phase.md) — Trading system in learning phase since 2026-04-06, conviction gates disabled
 - [Strategy Deployment](project_strategy_deployment.md) — Staged strategy rollout: BMR Day1, CIV1 Day2, VB Day3
 - [Strategy Fixes](project_strategy_fixes.md) — Five root causes fixed 2026-04-06 after 3+ months of no results

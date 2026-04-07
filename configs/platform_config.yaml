@@ -271,7 +271,7 @@ freqtrade:
 
   # FreqAI configuration (Freqtrade-specific)
   freqai:
-    enabled: false  # Enable after initial strategy validation
+    enabled: false  # FreqAI requires separate activation per-strategy in FT config
     model_type: "LightGBMClassifier"
     train_period_days: 90
     backtest_period_days: 7
@@ -291,7 +291,7 @@ freqtrade:
 
   # Standalone ML pipeline (common/ml/)
   ml:
-    enabled: false  # Disabled: insufficient training data (30d/3 symbols). Re-enable after 6+ months.
+    enabled: true  # Enabled 2026-04-07: 66 crypto pairs with 1h data available, LightGBM handles small datasets well
     model_storage_path: "models"  # Relative to project root
 
     # Feature engineering

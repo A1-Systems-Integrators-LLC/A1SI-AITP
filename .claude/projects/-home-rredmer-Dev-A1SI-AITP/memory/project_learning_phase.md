@@ -1,14 +1,31 @@
 ---
-name: Learning Phase
-description: Trading system in learning phase — conviction/risk gates disabled to observe raw strategy signal quality
+name: Learning Phase — ML Activated
+description: Trading system exited pure learning phase 2026-04-07 — ML models trained, 7 strategies live, alt data flowing
 type: project
 ---
 
-All 8 Freqtrade strategies have conviction/risk API gates DISABLED since 2026-04-06.
-This is the "learning phase" — paper trading with fake money to observe raw strategy behavior.
+## Status as of 2026-04-07
 
-**Why:** After 3+ months and 181 commits, the system produced zero profitable trades. The conviction pipeline (`_conviction_helpers.py`) was silently blocking trades, and strategy parameters had been over-relaxed in a death spiral. Stripping all gates lets us see whether the strategies themselves generate viable signals.
+**ML Pipeline**: ACTIVE — 10 LightGBM models trained (BTC, ETH, SOL, XRP, DOGE, BNB, ADA, AVAX, DOT, LINK)
+- Best: AVAX 66.3% accuracy, BTC 61.3%
+- Daily retraining scheduled (was weekly)
+- ML predictions feed into SignalAggregator compute()
 
-**How to apply:** Do NOT re-enable conviction gates until at least 2 weeks of raw signal data has been collected. When re-enabling, add logging/metrics to track how often conviction approves vs. rejects trades before blocking anything.
+**Strategies Running** (7 of 8):
+- BMR (1h mean-reversion), CIV1 (1h dip-buy), VB (4h breakout)
+- MomentumScalper15m, GridDCA, SentimentEventTrader, TrendReversal
+- All on Kraken spot mode, dry_run=true
+- MomentumShort DISABLED (short-only, needs futures exchange)
 
-ML is also disabled (`platform_config.yaml: ml.enabled: false`) due to insufficient training data. Re-enable after 6+ months of data collection.
+**Conviction Gates**: Still disabled for Freqtrade strategies (learning phase).
+The SignalAggregator IS computing composite scores for the API — it just doesn't gate Freqtrade entries yet.
+
+**Alternative Data**: All connected and flowing through SignalAggregator:
+- Fear & Greed index, Reddit sentiment, BTC dominance, CoinGecko trending
+- Funding rates, FRED macro data (VIX, yield curve, fed funds, DXY)
+- News sentiment (RSS + optional NewsAPI)
+- All feed as modifiers into composite score computation
+
+**Why:** User directive 2026-04-07 to stop building and start trading. All existing infrastructure activated.
+
+**How to apply:** Focus on PERFORMANCE now, not features. Monitor trade outcomes, retrain models, tune strategy parameters based on results.
