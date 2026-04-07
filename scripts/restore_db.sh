@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-DB_FILE="$ROOT_DIR/backend/data/a1si_aitp.db"
 BACKUP_DIR="$ROOT_DIR/backend/data/backups"
 TEMP_DIR=""
 
@@ -17,12 +16,12 @@ trap cleanup EXIT
 usage() {
     echo "Usage: $0 [BACKUP_FILE]"
     echo ""
-    echo "Restore the SQLite database from a backup file."
+    echo "Restore the PostgreSQL database from a backup file."
     echo "If no file is specified, the most recent backup is used."
     echo ""
     echo "Supported formats:"
-    echo "  .db.gz      Compressed backup"
-    echo "  .db.gz.gpg  Encrypted + compressed backup (requires BACKUP_ENCRYPTION_KEY)"
+    echo "  .sql.gz      Compressed backup"
+    echo "  .sql.gz.gpg  Encrypted + compressed backup (requires BACKUP_ENCRYPTION_KEY)"
     exit 1
 }
 
@@ -42,9 +41,9 @@ else
     fi
 
     # Try encrypted first, then compressed
-    BACKUP_FILE=$(ls -t "$BACKUP_DIR"/a1si_aitp_*.db.gz.gpg 2>/dev/null | head -1)
+    BACKUP_FILE=$(ls -t "$BACKUP_DIR"/a1si_aitp_*.sql.gz.gpg 2>/dev/null | head -1)
     if [ -z "$BACKUP_FILE" ]; then
-        BACKUP_FILE=$(ls -t "$BACKUP_DIR"/a1si_aitp_*.db.gz 2>/dev/null | head -1)
+        BACKUP_FILE=$(ls -t "$BACKUP_DIR"/a1si_aitp_*.sql.gz 2>/dev/null | head -1)
     fi
 
     if [ -z "$BACKUP_FILE" ]; then
@@ -56,7 +55,7 @@ else
 fi
 
 TEMP_DIR=$(mktemp -d)
-WORK_FILE="$TEMP_DIR/restore.db"
+WORK_FILE="$TEMP_DIR/restore.sql"
 
 echo "Restoring from: $BACKUP_FILE"
 
@@ -79,14 +78,14 @@ if [[ "$BACKUP_FILE" == *.gpg ]]; then
     fi
 
     echo "Decrypting..."
-    DECRYPTED="$TEMP_DIR/backup.db.gz"
+    DECRYPTED="$TEMP_DIR/backup.sql.gz"
     echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
         --decrypt --output "$DECRYPTED" "$BACKUP_FILE"
     COMPRESSED="$DECRYPTED"
 elif [[ "$BACKUP_FILE" == *.gz ]]; then
     COMPRESSED="$BACKUP_FILE"
 else
-    echo "ERROR: Unsupported file format. Expected .db.gz or .db.gz.gpg"
+    echo "ERROR: Unsupported file format. Expected .sql.gz or .sql.gz.gpg"
     exit 1
 fi
 
@@ -94,29 +93,18 @@ fi
 echo "Decompressing..."
 gunzip -c "$COMPRESSED" > "$WORK_FILE"
 
-# Step 3: Verify SQLite integrity
-echo "Verifying database integrity..."
-INTEGRITY=$(sqlite3 "$WORK_FILE" "PRAGMA integrity_check;" 2>&1)
-if [ "$INTEGRITY" != "ok" ]; then
-    echo "ERROR: Database integrity check failed: $INTEGRITY"
-    exit 1
-fi
-echo "Integrity check passed."
+DB_NAME="${POSTGRES_DB:-a1si_aitp}"
+DB_USER="${POSTGRES_USER:-a1si}"
 
-# Step 4: Back up current database as safety net
-if [ -f "$DB_FILE" ]; then
-    PRE_RESTORE="${DB_FILE}.pre-restore"
-    echo "Saving current database to $PRE_RESTORE"
-    cp "$DB_FILE" "$PRE_RESTORE"
-    # Also remove WAL/SHM files if present
-    rm -f "${DB_FILE}-wal" "${DB_FILE}-shm"
-fi
+# Step 3: Create a pre-restore backup as safety net
+echo "Creating pre-restore backup..."
+docker compose exec -T postgres pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$TEMP_DIR/pre-restore.sql.gz"
 
-# Step 5: Restore
+# Step 4: Restore
 echo "Restoring database..."
-cp "$WORK_FILE" "$DB_FILE"
+docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" < "$WORK_FILE"
 
-echo "Restore complete: $DB_FILE"
+echo "Restore complete."
 echo ""
 echo "Next steps:"
 echo "  1. Run 'make migrate' to apply any pending migrations"

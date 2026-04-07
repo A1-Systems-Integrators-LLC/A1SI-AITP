@@ -402,7 +402,7 @@ SCHEDULED_TASKS = {
     },
     "db_maintenance": {
         "name": "Database Maintenance",
-        "description": "SQLite integrity check",
+        "description": "PostgreSQL health check and maintenance",
         "task_type": "db_maintenance",
         "interval_seconds": 86400,
         "params": {},
@@ -592,7 +592,7 @@ SCHEDULED_TASKS = {
     },
     "db_backup_daily": {
         "name": "Daily Database Backup",
-        "description": "SQLite backup with compression at 2 AM Eastern",
+        "description": "PostgreSQL backup with compression at 2 AM Eastern",
         "task_type": "db_backup",
         "interval_seconds": None,
         "cron_schedule": "0 2 * * *|US/Eastern",

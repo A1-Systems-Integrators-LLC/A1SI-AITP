@@ -108,7 +108,7 @@ POST /api/scheduler/tasks/{id}/resume/
 | data_quality_check | 1h | Validate data files |
 | news_fetch | 30m | Fetch news articles |
 | risk_monitoring | 5m | Periodic risk check |
-| db_maintenance | 24h | SQLite integrity check |
+| db_maintenance | 24h | PostgreSQL health check |
 
 ## Audit Trail
 

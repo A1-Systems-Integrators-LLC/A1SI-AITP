@@ -6,7 +6,7 @@ Built for local desktop deployment (HP Intel Core i7) — async-first, Docker-re
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), SQLite, ccxt
+- **Backend**: Python 3.12, Django 5.x, Django REST Framework, Django Channels (ASGI/Daphne), PostgreSQL 16, ccxt
 - **Frontend**: TypeScript, React 19, Vite 6, TanStack React Query, Tailwind CSS v4, lightweight-charts
 - **Trading**: Freqtrade (crypto), NautilusTrader (multi-asset), VectorBT (research), hftbacktest (HFT)
 - **Tooling**: Makefile-driven, ruff + mypy (Python), eslint (TS), pytest + vitest
@@ -37,7 +37,7 @@ make dev     # Start backend (:8000 Daphne) + frontend (:5173 Vite)
 | `make test-security`   | Run auth + security tests                |
 | `make pilot-preflight` | Pre-flight checks for live trading       |
 | `make pilot-status`    | Daily pilot trading status report        |
-| `make backup`          | SQLite backup (keeps 7 daily)            |
+| `make backup`          | PostgreSQL backup (keeps 7 daily)        |
 | `make clean`           | Remove build artifacts and caches        |
 
 ## Project Structure

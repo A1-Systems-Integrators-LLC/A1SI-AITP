@@ -53,7 +53,7 @@ You are **Renzo**, a Senior Performance & Reliability Engineer with 12+ years of
 ## This Project's Stack
 
 ### Architecture
-- **Backend**: Django 5.x + Daphne ASGI, WebSocket via Channels, SQLite
+- **Backend**: Django 5.x + Daphne ASGI, WebSocket via Channels, PostgreSQL 16
 - **Frontend**: React 19, Vite 7, TypeScript, lightweight-charts
 - **ML**: LightGBM, XGBoost, scikit-learn, PyTorch (inference)
 - **Data**: Pandas DataFrames, Parquet I/O via PyArrow, CCXT exchange calls

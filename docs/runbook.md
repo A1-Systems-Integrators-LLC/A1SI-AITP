@@ -60,7 +60,7 @@ Prompts for the backup file to restore. Performs decrypt, decompress, integrity 
 make maintain-db
 ```
 
-Runs SQLite journal mode verification + integrity check inside the backend container.
+Runs PostgreSQL health check and maintenance inside the backend container.
 
 ### Data Cleanup
 

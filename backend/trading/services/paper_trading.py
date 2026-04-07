@@ -72,7 +72,8 @@ class PaperTradingService:
         """Check if Freqtrade API is responding."""
         try:
             resp = httpx.get(
-                f"{self._ft_api_url}/api/v1/ping", timeout=2.0,
+                f"{self._ft_api_url}/api/v1/ping",
+                timeout=httpx.Timeout(2.0, connect=1.0),
             )
             return resp.status_code == 200
         except Exception:
@@ -202,7 +203,7 @@ class PaperTradingService:
                 resp = httpx.get(
                     f"{self._ft_api_url}/api/v1/show_config",
                     auth=auth,
-                    timeout=3.0,
+                    timeout=httpx.Timeout(3.0, connect=1.0),
                 )
                 if resp.status_code == 200:
                     cfg = resp.json()
@@ -233,7 +234,7 @@ class PaperTradingService:
                 resp = await client.get(
                     f"{self._ft_api_url}/api/v1/{endpoint}",
                     auth=auth,
-                    timeout=5.0,
+                    timeout=httpx.Timeout(3.0, connect=1.0),
                 )
                 if resp.status_code == 200:
                     return resp.json()

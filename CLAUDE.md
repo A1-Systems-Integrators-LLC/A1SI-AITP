@@ -38,7 +38,7 @@ make test-security  # Run auth + security tests only
 make harden         # Set file permissions (600 .env, 700 data dirs)
 make audit          # pip-audit + npm audit
 make certs          # Generate self-signed TLS certs
-make backup         # SQLite backup (keeps 7 daily)
+make backup         # PostgreSQL backup (keeps 7 daily)
 
 # Docker (isolated — port range 4000-4199, project name: aitp)
 make docker-up          # Dev: backend :4000, frontend :4001

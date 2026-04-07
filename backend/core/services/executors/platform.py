@@ -83,7 +83,7 @@ def _run_pdf_report(params: dict, progress_cb: ProgressCallback) -> dict[str, An
 
 
 def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Run automated SQLite database backup."""
+    """Run automated PostgreSQL database backup via pg_dump."""
     import shutil
     import subprocess
     from pathlib import Path as PathLib
@@ -92,30 +92,41 @@ def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any
     try:
         from django.conf import settings as django_settings
 
-        db_path = django_settings.DATABASES["default"]["NAME"]
-        backup_dir = PathLib(db_path).parent / "backups"
+        db_cfg = django_settings.DATABASES["default"]
+        backup_dir = PathLib(django_settings.BASE_DIR) / "data" / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = backup_dir / f"a1si_aitp_{timestamp}.db"
+        sql_path = backup_dir / f"a1si_aitp_{timestamp}.sql"
 
-        # Use SQLite .backup command for atomic copy
+        # Use pg_dump for PostgreSQL backup
+        env = {
+            **__import__("os").environ,
+            "PGPASSWORD": db_cfg.get("PASSWORD", ""),
+        }
         result = subprocess.run(
-            ["sqlite3", str(db_path), f".backup '{backup_path}'"],
-            capture_output=True, text=True, timeout=120,
+            [
+                "pg_dump",
+                "-h", db_cfg.get("HOST", "postgres"),
+                "-p", str(db_cfg.get("PORT", "5432")),
+                "-U", db_cfg.get("USER", "a1si"),
+                "-d", db_cfg.get("NAME", "a1si_aitp"),
+                "-f", str(sql_path),
+            ],
+            capture_output=True, text=True, timeout=300, env=env,
         )
         if result.returncode != 0:
-            return {"status": "error", "error": f"sqlite3 backup failed: {result.stderr}"}
+            return {"status": "error", "error": f"pg_dump failed: {result.stderr}"}
 
         progress_cb(0.5, "Compressing backup")
 
         # Compress
         import gzip
 
-        gz_path = PathLib(f"{backup_path}.gz")
-        with open(backup_path, "rb") as f_in, gzip.open(gz_path, "wb") as f_out:
+        gz_path = PathLib(f"{sql_path}.gz")
+        with open(sql_path, "rb") as f_in, gzip.open(gz_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
-        backup_path.unlink()
+        sql_path.unlink()
 
         progress_cb(0.8, "Applying GFS retention policy")
 
@@ -123,7 +134,7 @@ def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any
         from datetime import datetime, timedelta
 
         now = datetime.now()
-        all_backups = sorted(backup_dir.glob("a1si_aitp_*.db.gz"), reverse=True)
+        all_backups = sorted(backup_dir.glob("a1si_aitp_*.sql.gz"), reverse=True)
         keep = set()
 
         # Keep 7 most recent (daily)
@@ -135,7 +146,7 @@ def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any
             cutoff = now - timedelta(weeks=weeks_ago)
             for b in all_backups:
                 try:
-                    ts = b.stem.replace("a1si_aitp_", "").replace(".db", "")
+                    ts = b.stem.replace("a1si_aitp_", "").replace(".sql", "")
                     btime = datetime.strptime(ts, "%Y%m%d_%H%M%S")
                     if btime <= cutoff:
                         keep.add(b)
@@ -149,7 +160,7 @@ def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any
             month = now.month - months_ago if now.month > months_ago else 12 + now.month - months_ago
             for b in all_backups:
                 try:
-                    ts = b.stem.replace("a1si_aitp_", "").replace(".db", "")
+                    ts = b.stem.replace("a1si_aitp_", "").replace(".sql", "")
                     btime = datetime.strptime(ts, "%Y%m%d_%H%M%S")
                     if btime.year == year and btime.month == month:
                         keep.add(b)
@@ -192,21 +203,23 @@ def _run_db_backup(params: dict, progress_cb: ProgressCallback) -> dict[str, Any
 
 
 def _run_db_maintenance(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Run SQLite maintenance: integrity check and optimize.
-
-    No WAL checkpoint needed — using DELETE journal mode (not WAL)
-    because WAL is incompatible with Docker virtiofs bind mounts.
-    """
+    """Run PostgreSQL maintenance: connection check, VACUUM ANALYZE, and table stats."""
     from django.db import connection
 
-    progress_cb(0.1, "Running integrity check")
+    progress_cb(0.1, "Running PostgreSQL health check")
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA integrity_check")
-        result = cursor.fetchone()[0]
-        cursor.execute("PRAGMA journal_mode")
-        mode = cursor.fetchone()[0]
+        cursor.execute("SELECT version()")
+        version = cursor.fetchone()[0]
+        cursor.execute("SELECT pg_database_size(current_database())")
+        db_size = cursor.fetchone()[0]
+        cursor.execute("VACUUM ANALYZE")
     progress_cb(0.9, "Maintenance complete")
-    return {"status": "completed", "integrity": result, "journal_mode": mode}
+    return {
+        "status": "completed",
+        "version": version,
+        "db_size_bytes": db_size,
+        "db_size_mb": round(db_size / (1024 * 1024), 1),
+    }
 
 
 def _run_workflow(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:

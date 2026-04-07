@@ -259,7 +259,7 @@ class TestTaskRetryMechanism:
 
 
 class TestTaskRetryExecution:
-    """Test retry loop logic at a unit level (avoids SQLite table lock in threads)."""
+    """Test retry loop logic at a unit level (avoids DB lock contention in threads)."""
 
     def test_retry_loop_max_attempts_for_retryable(self):
         """Retryable tasks should get MAX_RETRIES + 1 attempts."""

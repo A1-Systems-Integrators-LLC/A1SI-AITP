@@ -1,49 +1,33 @@
-"""Tests for PostgreSQL configuration support."""
+"""Tests for PostgreSQL database configuration."""
 
-import os
-from unittest.mock import patch
+import pytest
+from django.conf import settings
 
 
 class TestDatabaseConfig:
-    def test_default_is_sqlite(self):
-        """Without USE_POSTGRES, database should be SQLite."""
-        from django.conf import settings
-        assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
+    def test_default_engine_is_postgresql(self):
+        """Database engine must be PostgreSQL."""
+        assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
 
-    def test_use_postgres_false_is_sqlite(self):
-        """USE_POSTGRES=false should use SQLite."""
-        # Current test environment has USE_POSTGRES unset -> SQLite
-        from django.conf import settings
-        assert "sqlite3" in settings.DATABASES["default"]["ENGINE"]
+    def test_conn_max_age_zero_in_tests(self):
+        """CONN_MAX_AGE should be 0 in tests to avoid connection leaks."""
+        assert settings.DATABASES["default"]["CONN_MAX_AGE"] == 0
 
-    @patch.dict(os.environ, {
-        "USE_POSTGRES": "true",
-        "POSTGRES_DB": "test_db",
-        "POSTGRES_USER": "test_user",
-        "POSTGRES_PASSWORD": "test_pass",
-        "POSTGRES_HOST": "localhost",
-        "POSTGRES_PORT": "5433",
-    })
-    def test_use_postgres_true_config(self):
-        """USE_POSTGRES=true should configure PostgreSQL engine."""
-        # Re-evaluate the setting logic
-        use_pg = os.environ.get("USE_POSTGRES", "false").lower() in ("true", "1", "yes")
-        assert use_pg is True
+    def test_conn_health_checks_enabled(self):
+        """Connection health checks should be enabled."""
+        assert settings.DATABASES["default"]["CONN_HEALTH_CHECKS"] is True
 
-        # Verify the env vars are available
-        assert os.environ["POSTGRES_DB"] == "test_db"
-        assert os.environ["POSTGRES_USER"] == "test_user"
-
-    def test_postgres_optional_deps_in_pyproject(self):
-        """pyproject.toml should have postgres optional deps."""
+    def test_postgres_deps_in_pyproject(self):
+        """pyproject.toml should have postgres deps."""
         from pathlib import Path
+
         pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
         content = pyproject.read_text()
-        assert "postgres" in content
         assert "psycopg" in content
 
-    def test_sqlite_conn_max_age_none_in_production(self):
-        """SQLite should use CONN_MAX_AGE=None outside tests for persistent connections."""
-        # In tests, CONN_MAX_AGE is 0 to avoid leaks
-        from django.conf import settings
-        assert settings.DATABASES["default"]["CONN_MAX_AGE"] == 0  # We're in test mode
+    @pytest.mark.django_db
+    def test_database_connection_is_postgresql(self):
+        """Live database connection must be PostgreSQL."""
+        from django.db import connection
+
+        assert connection.vendor == "postgresql"

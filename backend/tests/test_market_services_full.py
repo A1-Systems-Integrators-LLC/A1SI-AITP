@@ -302,7 +302,7 @@ class TestNewsServiceFetchAndStore:
             patch("common.sentiment.scorer.score_article", return_value=(0.8, "positive")),
         ):
             count = s.fetch_and_store("crypto")
-            assert count >= 0  # bulk_create ignore_conflicts may not return count on sqlite
+            assert count >= 0  # bulk_create ignore_conflicts may return 0
 
     def test_cap_enforcement(self):
         from market.models import NewsArticle

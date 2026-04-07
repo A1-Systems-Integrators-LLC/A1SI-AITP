@@ -1,75 +1,54 @@
-# PostgreSQL Migration Guide
+# PostgreSQL Database
 
 ## Overview
 
-A1SI-AITP uses SQLite with DELETE journal mode by default (single-user desktop deployment). PostgreSQL is available as an optional backend for scaling to multi-user or multi-process deployments.
+A1SI-AITP uses PostgreSQL 16 as its sole database backend. PostgreSQL runs in a Docker volume, handles concurrent writes from Daphne/scheduler/job runner, and survives container restarts.
 
-> **WARNING:** SQLite WAL mode must NEVER be used. WAL mode is incompatible with Docker virtiofs bind mounts — the SHM file uses mmap which virtiofs cannot handle across processes, causing stale file descriptors, "disk I/O error" on all queries, and database corruption. DELETE journal mode is enforced in `core/apps.py`, asserted in `docker-entrypoint.sh` at startup, and verified by regression tests.
-
-**SQLite remains the default.** PostgreSQL is opt-in via environment variables.
-
-## Prerequisites
-
-```bash
-# Inside the Docker container:
-pip install 'psycopg[binary]>=3.1,<4'
-```
+> **CRITICAL:** SQLite was removed from this project in March 2026 after repeated database corruption caused by Docker virtiofs bind mount incompatibility. **Never revert to SQLite.**
 
 ## Configuration
 
-Set these environment variables to switch to PostgreSQL:
+PostgreSQL is configured via environment variables (managed by Doppler):
 
 ```bash
-USE_POSTGRES=true
 POSTGRES_DB=a1si_aitp
 POSTGRES_USER=a1si
 POSTGRES_PASSWORD=<secure-password>
-POSTGRES_HOST=localhost  # or 'postgres' in Docker
+POSTGRES_HOST=postgres    # Docker service name
 POSTGRES_PORT=5432
 ```
 
 ## Docker Deployment
 
-Start with the postgres profile:
+The `postgres` service is a default (non-profile) dependency of `backend` in both compose files:
 
 ```bash
-# Add POSTGRES_PASSWORD to .env first
-echo "POSTGRES_PASSWORD=your-secure-password" >> .env
+# Dev
+doppler run -- docker compose up -d
 
-# Start with PostgreSQL
-docker compose --profile postgres up -d
-
-# Backend needs USE_POSTGRES=true in its environment
-# Add to docker-compose.yml backend.environment:
-#   USE_POSTGRES: "true"
-#   POSTGRES_HOST: postgres
-#   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+# Prod
+doppler run -c prod -- docker compose -f docker-compose.prod.yml up -d
 ```
 
-## Data Migration
+## Connection Settings
 
-To migrate existing SQLite data to PostgreSQL:
+- `CONN_MAX_AGE=600` — 10-minute persistent connections
+- `CONN_HEALTH_CHECKS=True` — verify connections before use
+- `connect_timeout=10` — fail fast on unreachable host
 
-1. Export from SQLite:
-   ```bash
-   python manage.py dumpdata --natural-foreign --natural-primary -o backup.json
-   ```
+For high-traffic deployments, consider PgBouncer for connection pooling.
 
-2. Switch to PostgreSQL config (set env vars above)
+## Backup & Recovery
 
-3. Run migrations:
-   ```bash
-   python manage.py migrate
-   ```
+Daily automated backups run at 2 AM Eastern via the `db_backup_daily` scheduled task. Manual backup:
 
-4. Import data:
-   ```bash
-   python manage.py loaddata backup.json
-   ```
+```bash
+# Inside the backend container
+pg_dump -U a1si a1si_aitp | gzip > backup_$(date +%Y%m%d).sql.gz
+```
 
 ## Notes
 
-- **WAL mode concerns do not apply** to PostgreSQL. The DELETE journal mode safeguards in `core/apps.py` only activate for SQLite. Note: SQLite WAL mode must never be used in this project — it is incompatible with Docker virtiofs bind mounts and has caused database corruption. See the warning at the top of this document.
-- **Connection pooling**: PostgreSQL uses `CONN_MAX_AGE=600` (10 minutes) vs SQLite's `None` (indefinite). For high-traffic deployments, consider using `django-db-connection-pool` or PgBouncer.
-- **Full-text search**: PostgreSQL enables Django's `SearchVector` / `SearchRank` for advanced text queries (not available in SQLite).
-- **Concurrent writes**: PostgreSQL handles concurrent writes natively (no file locking needed).
+- **Full-text search**: PostgreSQL enables Django's `SearchVector` / `SearchRank` for advanced text queries.
+- **Concurrent writes**: PostgreSQL handles concurrent writes natively via MVCC — no file locking concerns.
+- **Data lives in Docker volume** — not a bind mount. This avoids the virtiofs I/O issues that corrupted the previous SQLite database.

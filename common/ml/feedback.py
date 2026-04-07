@@ -1,7 +1,7 @@
 """ML Feedback Tracker
 ===================
 Tracks prediction outcomes, computes model accuracy, and triggers retraining.
-Storage: JSONL files in models/_feedback/ to avoid SQLite write contention.
+Storage: JSONL files in models/_feedback/ for lightweight local persistence.
 """
 
 import json

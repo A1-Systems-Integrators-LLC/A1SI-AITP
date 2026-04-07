@@ -89,7 +89,7 @@ python -m pytest backend/tests/ --cov       # With coverage
 
 ### Key Testing Boundaries
 - **Exchange API** (ccxt): Always mock — never hit real exchanges in tests
-- **Database**: Use test fixtures with transaction rollback or in-memory SQLite
+- **Database**: Use test fixtures with transaction rollback (pytest-django)
 - **File I/O**: Mock or use tmp directories for Parquet files
 - **Time-dependent**: Use freezegun/time-machine for market time tests
 

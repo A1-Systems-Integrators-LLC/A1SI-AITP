@@ -25,7 +25,7 @@ The platform is designed for local desktop deployment (MacBook Pro M2 (Apple Sil
 | Node.js | 20+ | Via nvm recommended |
 | npm | 9+ | Comes with Node |
 | Git | 2.x | For version control |
-| SQLite3 | 3.37+ | Usually pre-installed |
+| PostgreSQL | 16+ | Via Docker (included in compose) |
 | Docker | 24+ | For containerized deployment (required — all code runs in Docker) |
 | OpenSSL | 1.1+ | For TLS certificate generation |
 
@@ -137,7 +137,7 @@ This runs the following steps:
    - Bootstraps pip via `get-pip.py` if needed
 2. **Install Python dependencies** from `backend/pyproject.toml` (editable install with dev extras)
 3. **Create data directory** at `backend/data/`
-4. **Run database migrations** (creates SQLite database at `backend/data/a1si_aitp.db`)
+4. **Run database migrations** (applies migrations to PostgreSQL)
 5. **Create admin superuser** (`admin`/`admin`) or re-hash existing password with Argon2id
 
 ### Python Dependencies
@@ -234,7 +234,7 @@ make migrate          # Run makemigrations + migrate
 make createsuperuser  # Create a new superuser interactively
 ```
 
-The SQLite database is stored at `backend/data/a1si_aitp.db` with DELETE journal mode (required for Docker virtiofs compatibility).
+The PostgreSQL database runs in a Docker container with data stored in a Docker volume.
 
 ### Testing
 
@@ -294,7 +294,7 @@ Docker Compose runs the platform as two containers: backend (Daphne) and fronten
                     │                  │
                     │  Django + DRF    │
                     │  ASGI/Channels   │
-                    │  SQLite (volume) │
+                    │  PostgreSQL 16   │
                     └─────────────────┘
 ```
 
@@ -369,7 +369,7 @@ FROM python:3.12-slim
 
 **Health check:** `curl -f http://localhost:8000/api/health/` every 15 seconds.
 
-**Data volume:** Bind mount `./backend/data` mounted at `/project/backend/data` — persists the SQLite database across container restarts.
+**Data volume:** PostgreSQL data is persisted in a Docker volume. The `backend/data` bind mount stores logs and backups.
 
 ### Frontend Container
 
@@ -551,7 +551,7 @@ make backup
 
 This runs `scripts/backup_db.sh`, which:
 
-1. Creates a SQLite `.backup` of `backend/data/a1si_aitp.db`
+1. Runs `pg_dump` of the PostgreSQL database
 2. Compresses with gzip
 3. If `BACKUP_ENCRYPTION_KEY` is set:
    - Encrypts with GPG symmetric AES-256
@@ -674,7 +674,7 @@ A1SI-AITP/
 │   ├── risk/                    #   Risk management service + API
 │   ├── analysis/                #   Background jobs, backtest results
 │   ├── tests/                   #   Backend test suite
-│   ├── data/                    #   SQLite DB, logs, backups (gitignored)
+│   ├── data/                    #   Logs, backups (gitignored; DB in Docker volume)
 │   ├── certs/                   #   TLS certificates (gitignored)
 │   ├── Dockerfile
 │   ├── docker-entrypoint.sh
@@ -746,8 +746,8 @@ A1SI-AITP/
 | `make harden` | Set file permissions (600 .env, 770 data dirs) |
 | `make audit` | Check dependencies for vulnerabilities |
 | `make certs` | Generate self-signed TLS certificates |
-| `make backup` | SQLite backup with optional GPG encryption |
-| `make restore` | Restore SQLite database from most recent backup |
+| `make backup` | PostgreSQL backup with optional GPG encryption |
+| `make restore` | Restore PostgreSQL database from most recent backup |
 | `make docker-prod-up` | Start prod containers (backend :4100, frontend :4101) |
 | `make docker-prod-down` | Stop prod containers |
 | `make docker-prod-deploy` | Full prod deploy: build + restart + verify |
@@ -795,12 +795,12 @@ Check logs with `docker compose logs backend`. Common causes:
 The nginx config proxies `/api/` to `http://backend:8000`. Ensure the backend container is healthy before the frontend starts (the `depends_on` condition handles this).
 
 **Data not persisting:**
-The `backend-data` volume persists the SQLite database. If you ran `docker compose down -v`, the volume was deleted. Use `docker compose down` (without `-v`) to keep data.
+The PostgreSQL Docker volume persists the database. If you ran `docker compose down -v`, the volume was deleted. Use `docker compose down` (without `-v`) to keep data.
 
 ### Database
 
-**"database is locked":**
-SQLite with DELETE journal mode supports only one writer at a time. If multiple processes write simultaneously, you may see this error. The platform is designed for single-user operation — ensure only one backend instance runs at a time. Note: the database uses DELETE journal mode exclusively. WAL mode is not used — it is incompatible with Docker virtiofs bind mounts and destroyed the production database three times.
+**Connection refused:**
+Ensure the `postgres` container is running: `docker compose ps postgres`. Check logs: `docker compose logs postgres`.
 
 **Corrupted database:**
 Restore from the most recent backup:

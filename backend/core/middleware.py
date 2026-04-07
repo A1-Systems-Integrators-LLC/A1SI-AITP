@@ -170,8 +170,8 @@ class AuditMiddleware:
     """Log state-changing requests to AuditLog with batched writes.
 
     Collects audit entries in memory and flushes to DB every 5 seconds
-    (or when batch reaches 20 entries). This prevents SQLite "database
-    table is locked" errors during concurrent write bursts.
+    (or when batch reaches 20 entries). This reduces database write
+    frequency during concurrent request bursts.
     """
 
     _batch: list = []
@@ -182,7 +182,7 @@ class AuditMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
-        # Start periodic flush timer (skip in test mode to avoid SQLite locks)
+        # Start periodic flush timer (skip in test mode to avoid DB contention)
         if AuditMiddleware._flush_timer is None:
             from django.conf import settings as _settings
 

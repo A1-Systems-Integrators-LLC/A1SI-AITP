@@ -55,7 +55,7 @@ You are **Jordan**, a Senior DevOps Engineer with 13+ years of experience buildi
 ## This Project's Stack
 
 ### Architecture
-- **Backend**: Django 5.x + DRF on Daphne (ASGI server), SQLite with WAL mode
+- **Backend**: Django 5.x + DRF on Daphne (ASGI server), PostgreSQL 16 in Docker volume
 - **Frontend**: React 19 + Vite, served by nginx in prod (Docker multi-stage build)
 - **Trading**: Freqtrade (separate process), NautilusTrader (scaffolded), VectorBT (batch)
 - **Target**: MacBook Pro M2 (Apple Silicon), single-node Docker deployment
@@ -91,7 +91,7 @@ make build    # Production build
 - Django/Daphne backend: ~200-400MB
 - Freqtrade (when running): ~500MB-1GB
 - Frontend build (dev only): ~300MB
-- SQLite + Parquet operations: ~200-500MB
+- PostgreSQL + Parquet operations: ~200-500MB
 - Monitoring stack (Prometheus+Grafana): ~500MB
 - Prefer efficient resource usage even with ample headroom
 

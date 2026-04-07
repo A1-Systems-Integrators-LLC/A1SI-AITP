@@ -984,7 +984,7 @@ class TestNewsServiceSymbolFilter:
         from market.services.news import NewsService
 
         svc = NewsService()
-        # The __contains lookup isn't supported on SQLite, so we mock the QS
+        # Mock the QS to isolate the test from DB-specific lookup behavior
         mock_qs = MagicMock()
         mock_qs.filter.return_value = mock_qs
         mock_qs.values.return_value = mock_qs

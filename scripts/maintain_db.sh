@@ -1,19 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# SQLite maintenance: integrity check
+# PostgreSQL maintenance: health check and VACUUM/ANALYZE
 # Usage: bash scripts/maintain_db.sh
 #        make maintain-db
 
-echo "=== SQLite Maintenance ==="
-docker compose exec -T backend python manage.py shell -c "
-from django.db import connection
-with connection.cursor() as c:
-    c.execute('PRAGMA journal_mode')
-    print('Journal mode:', c.fetchone())
-    c.execute('PRAGMA integrity_check')
-    result = c.fetchone()
-    print('Integrity check:', result)
-    if result[0] != 'ok':
-        raise SystemExit('INTEGRITY CHECK FAILED')
+echo "=== PostgreSQL Maintenance ==="
+docker compose exec -T postgres psql -U "${POSTGRES_USER:-a1si}" -d "${POSTGRES_DB:-a1si_aitp}" -c "
+SELECT version();
+SELECT pg_database_size(current_database()) AS db_size_bytes;
+VACUUM ANALYZE;
 "
 echo "=== Maintenance complete ==="

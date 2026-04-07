@@ -11,30 +11,23 @@
 | 429 | Too Many Requests | Rate limit exceeded (nginx or Django) |
 | 503 | Service Unavailable | Exchange unreachable or circuit breaker open |
 
-## SQLite Issues
+## Database Issues
 
-### "database table is locked" (SQLITE_LOCKED, error 6)
-
-This is an intra-connection conflict during savepoints/FK checks, not inter-connection.
+### "database table is locked"
 
 **Cause**: Concurrent operations within Django test transactions, or FK constraint checks conflicting with savepoints.
 
-**Fix**: The `pytest-rerunfailures` plugin retries these automatically (configured in `pyproject.toml`). In production, SQLite DELETE journal mode + 30s timeout handles most cases.
+**Fix**: The `pytest-rerunfailures` plugin retries these automatically (configured in `pyproject.toml`). In production, PostgreSQL handles concurrent writes natively via MVCC.
 
-### "database is locked" (SQLITE_BUSY, error 5)
+### Connection Refused / Timeout
 
-Inter-connection conflict — another process holds a write lock.
-
-**Cause**: Long-running write transaction blocking others.
+**Cause**: PostgreSQL container not running or unreachable.
 
 **Fix**:
-1. Check for stuck processes: `docker compose exec backend python manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute('PRAGMA busy_timeout'); print(c.fetchone())"`
-2. Run integrity check: `make maintain-db`
-3. If persistent, restart the backend container
-
-### WAL Mode Warning
-
-> **NEVER enable SQLite WAL mode.** WAL mode is incompatible with Docker virtiofs bind mounts — the SHM file uses mmap which virtiofs cannot handle, causing stale file descriptors, "disk I/O error", and database corruption. The platform uses DELETE journal mode exclusively.
+1. Check container status: `docker compose ps postgres`
+2. Check logs: `docker compose logs postgres`
+3. Verify connection: `docker compose exec backend python manage.py dbshell -c "SELECT 1;"`
+4. If persistent, restart: `docker compose restart postgres`
 
 ## Exchange Connectivity
 
@@ -84,7 +77,7 @@ make docker-clean
 curl -sf http://localhost:4000/api/health/?detailed=true | python3 -m json.tool
 
 # Common issues:
-# - database: SQLite file permissions
+# - database: PostgreSQL connection issues
 # - disk: Low disk space
 # - memory: Backend using too much RAM
 # - scheduler: Scheduler not started

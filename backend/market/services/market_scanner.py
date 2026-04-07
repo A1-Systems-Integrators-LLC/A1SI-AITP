@@ -416,7 +416,7 @@ class MarketScannerService:
         """Save or update an opportunity, deduplicating by (symbol, type, asset_class).
 
         Returns True if a new record was created, False if an existing one was updated.
-        Uses transaction.atomic() with retry on SQLite OperationalError (database locked).
+        Uses transaction.atomic() with retry on OperationalError (database locked).
         """
         for attempt in range(_max_retries):
             try:

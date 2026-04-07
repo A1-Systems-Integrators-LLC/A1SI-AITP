@@ -338,7 +338,7 @@ class TestConcurrentTradeChecks:
     def test_sequential_service_trade_checks(self):
         """Service-level check_trade executes correctly in sequence.
 
-        Note: SQLite does not support concurrent write transactions, so we
+        Note: We
         verify that the service handles multiple sequential calls correctly
         and creates proper audit logs.
         """

@@ -1,0 +1,4 @@
+- [Learning Phase](project_learning_phase.md) — Trading system in learning phase since 2026-04-06, conviction gates disabled
+- [Strategy Deployment](project_strategy_deployment.md) — Staged strategy rollout: BMR Day1, CIV1 Day2, VB Day3
+- [Strategy Fixes](project_strategy_fixes.md) — Five root causes fixed 2026-04-06 after 3+ months of no results
+- [Doppler Secrets](reference_doppler.md) — Secrets managed via Doppler CLI (project: aitp, config: dev)
