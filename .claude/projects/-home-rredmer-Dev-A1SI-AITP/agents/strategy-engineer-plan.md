@@ -36,3 +36,9 @@ Live trading operations, execution monitoring, strategy health, conviction pipel
 ## Lessons Learned
 - Conviction pipeline was silently blocking all trades for months. When re-enabling, use LOGGING mode first.
 - All strategies on 1h timeframe caused signal collision. Maintain timeframe diversity.
+- CIV1 crashed on every candle (KeyError ema_200) — populate_indicators didn't compute EMAs referenced by trend flags. Fixed 2026-04-08.
+- SentimentEventTrader had stub `_get_cached_signal()` returning None — sentiment always 0.0. Added technical fallback for learning phase. Fixed 2026-04-08.
+- MomentumScalper15m crossover signal only fired for 1 candle (15 min) — added 3-candle persistence window. Fixed 2026-04-08.
+- VolatilityBreakout required ADX rising AND in 20-50 range on 4h — simplified to minimum threshold. Fixed 2026-04-08.
+- TrendReversal required divergence AND MACD AND volume surge simultaneously — changed to divergence OR MACD. Fixed 2026-04-08.
+- Pattern: every strategy had 5+ AND conditions. Mathematically improbable in noisy data. Use OR for alternative signals, AND only for filters.
