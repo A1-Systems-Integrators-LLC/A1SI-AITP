@@ -64,11 +64,22 @@ class MomentumScalper15m(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Long: fast EMA crosses above slow + momentum confirmation
+        # Long: fast EMA above slow with recent crossover (within 3 candles).
+        # The crossover persistence window avoids missing signals that only
+        # fire on the exact crossover bar (1 candle = 15 min, easily missed).
+        crossover_long = (
+            (dataframe["ema_fast"] > dataframe["ema_slow"])
+            & (dataframe["ema_fast"].shift(1) <= dataframe["ema_slow"].shift(1))
+        )
+        recent_crossover_long = (
+            crossover_long
+            | crossover_long.shift(1).fillna(False)
+            | crossover_long.shift(2).fillna(False)
+        )
         dataframe.loc[
             (
-                (dataframe["ema_fast"] > dataframe["ema_slow"])
-                & (dataframe["ema_fast"].shift(1) <= dataframe["ema_slow"].shift(1))
+                recent_crossover_long
+                & (dataframe["ema_fast"] > dataframe["ema_slow"])
                 & (dataframe["rsi"] > self.buy_rsi_threshold.value)
                 & (dataframe["rsi"] < 75)
                 & (dataframe["volume_ratio"] > self.buy_volume_factor.value)
@@ -78,11 +89,20 @@ class MomentumScalper15m(IStrategy):
             "enter_long",
         ] = 1
 
-        # Short: fast EMA crosses below slow + bearish momentum
+        # Short: fast EMA below slow with recent crossover (within 3 candles)
+        crossover_short = (
+            (dataframe["ema_fast"] < dataframe["ema_slow"])
+            & (dataframe["ema_fast"].shift(1) >= dataframe["ema_slow"].shift(1))
+        )
+        recent_crossover_short = (
+            crossover_short
+            | crossover_short.shift(1).fillna(False)
+            | crossover_short.shift(2).fillna(False)
+        )
         dataframe.loc[
             (
-                (dataframe["ema_fast"] < dataframe["ema_slow"])
-                & (dataframe["ema_fast"].shift(1) >= dataframe["ema_slow"].shift(1))
+                recent_crossover_short
+                & (dataframe["ema_fast"] < dataframe["ema_slow"])
                 & (dataframe["rsi"] < (100 - self.buy_rsi_threshold.value))
                 & (dataframe["rsi"] > 25)
                 & (dataframe["volume_ratio"] > self.buy_volume_factor.value)

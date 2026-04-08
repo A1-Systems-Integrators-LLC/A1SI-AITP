@@ -110,7 +110,7 @@ class CryptoInvestorV1(IStrategy):
             for period in range(10, 301):
                 dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
         else:
-            for period in {self.buy_ema_fast.value, self.buy_ema_slow.value, 20, 50}:
+            for period in {self.buy_ema_fast.value, self.buy_ema_slow.value, 20, 21, 50, 200}:
                 dataframe[f"ema_{period}"] = ta.EMA(dataframe, timeperiod=period)
 
         # ── RSI ──

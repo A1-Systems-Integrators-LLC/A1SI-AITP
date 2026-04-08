@@ -130,12 +130,10 @@ class VolatilityBreakout(IStrategy):
         # Required: volume confirms the breakout
         vol_confirm = dataframe["volume_ratio"] > float(self.volume_factor.value)
 
-        # ADX in acceptable range and rising (momentum building)
-        adx_ok = (
-            (dataframe["adx"] >= self.adx_low.value)
-            & (dataframe["adx"] <= self.adx_high.value)
-            & (dataframe["adx"] > dataframe["adx"].shift(3))
-        )
+        # ADX confirms trending conditions (minimum threshold only).
+        # Previously required ADX in 20-50 range AND rising over 3 candles,
+        # which was too strict on 4h — most breakouts happen at ADX > 15.
+        adx_ok = dataframe["adx"] >= self.adx_low.value
 
         # RSI in acceptable range (not already exhausted)
         rsi_ok = (

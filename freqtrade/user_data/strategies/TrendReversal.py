@@ -96,27 +96,39 @@ class TrendReversal(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Long: bullish divergence + MACD turning up + volume surge
-        # Targets bottom fishing after downtrend exhaustion
+        # Long: bullish divergence OR MACD turning up from oversold.
+        # Previously required ALL conditions simultaneously, which was too
+        # strict — divergence alone is a strong reversal signal.
+        reversal_signal = (
+            dataframe["bullish_divergence"]
+            | (
+                (dataframe["macd_hist"] > dataframe["macd_hist_prev"])
+                & (dataframe["rsi"] < self.buy_rsi_threshold.value)
+            )
+        )
         dataframe.loc[
             (
-                (dataframe["bullish_divergence"])
-                & (dataframe["macd_hist"] > dataframe["macd_hist_prev"])
+                reversal_signal
                 & (dataframe["rsi"] < self.buy_rsi_threshold.value + 15)
-                & (dataframe["volume_ratio"] > self.buy_volume_surge.value)
+                & (dataframe["volume_ratio"] > 1.2)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
         ] = 1
 
-        # Short: bearish divergence + MACD turning down + volume surge
-        # Targets top reversal after uptrend exhaustion
+        # Short: bearish divergence OR MACD turning down from overbought
+        reversal_signal_short = (
+            dataframe["bearish_divergence"]
+            | (
+                (dataframe["macd_hist"] < dataframe["macd_hist_prev"])
+                & (dataframe["rsi"] > self.sell_rsi_threshold.value)
+            )
+        )
         dataframe.loc[
             (
-                (dataframe["bearish_divergence"])
-                & (dataframe["macd_hist"] < dataframe["macd_hist_prev"])
+                reversal_signal_short
                 & (dataframe["rsi"] > self.sell_rsi_threshold.value - 15)
-                & (dataframe["volume_ratio"] > self.buy_volume_surge.value)
+                & (dataframe["volume_ratio"] > 1.2)
                 & (dataframe["volume"] > 0)
             ),
             "enter_short",

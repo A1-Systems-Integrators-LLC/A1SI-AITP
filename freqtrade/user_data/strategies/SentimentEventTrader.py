@@ -73,26 +73,29 @@ class SentimentEventTrader(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Long: extreme positive sentiment + RSI not overbought
+        # LEARNING PHASE: Sentiment pipeline not yet connected to Freqtrade.
+        # Use technical proxy: RSI mean-reversion + volume surge as sentiment
+        # stand-in. Real sentiment scoring will be wired in Week 2 when
+        # conviction pipeline is re-enabled in logging mode.
+        has_sentiment = dataframe["sentiment_score"] > self.buy_sentiment_threshold.value
+
+        # Technical fallback: RSI oversold bounce + volume surge (proxy for
+        # capitulation → recovery pattern that sentiment would normally catch)
+        technical_proxy = (
+            (dataframe["rsi"] < 35)
+            & (dataframe["rsi"].shift(1) < dataframe["rsi"])  # RSI turning up
+            & (dataframe["volume_ratio"] > 1.3)
+        )
+
+        # Long: sentiment signal OR technical proxy, plus basic filters
         dataframe.loc[
             (
-                (dataframe["sentiment_score"] > self.buy_sentiment_threshold.value)
+                (has_sentiment | technical_proxy)
                 & (dataframe["rsi"] < self.buy_rsi_max.value)
                 & (dataframe["rsi"] > 20)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
-        ] = 1
-
-        # Short: extreme negative sentiment + RSI not oversold
-        dataframe.loc[
-            (
-                (dataframe["sentiment_score"] < self.sell_sentiment_threshold.value)
-                & (dataframe["rsi"] > self.sell_rsi_min.value)
-                & (dataframe["rsi"] < 80)
-                & (dataframe["volume"] > 0)
-            ),
-            "enter_short",
         ] = 1
 
         return dataframe
