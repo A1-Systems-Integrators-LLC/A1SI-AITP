@@ -58,13 +58,20 @@ class TaskScheduler:
         except Exception:
             logger.exception("Failed to recover stale jobs on startup")
 
+        from apscheduler.executors.pool import ThreadPoolExecutor as APThreadPool
+
         self._scheduler = BackgroundScheduler(
+            executors={
+                # Default 10 threads was insufficient for 38+ scheduled tasks.
+                # Long-running jobs (ML training, backtests) would saturate the
+                # pool, starving critical tasks and blocking the event loop.
+                "default": APThreadPool(max_workers=20),
+            },
             job_defaults={
                 "coalesce": True,
                 "max_instances": 1,
                 # Allow tasks to fire up to 5 minutes late instead of marking
-                # them as "missed." With 38 tasks sharing the default thread
-                # pool, bursts of work can easily delay execution by 20-30s.
+                # them as "missed."
                 "misfire_grace_time": 300,
             },
             timezone="UTC",

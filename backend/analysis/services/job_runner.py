@@ -126,12 +126,15 @@ NO_RETRY_TYPES = CRITICAL_TASK_TYPES | frozenset({"data_quality_check", "autonom
 
 
 class JobRunner:
-    def __init__(self, max_workers: int = 2):
-        # Batch pool for compute-heavy tasks (VBT screens, backtests, ML training)
+    def __init__(self, max_workers: int = 4):
+        # Batch pool for compute-heavy tasks (VBT screens, backtests, ML training).
+        # These are the tasks with 7200s timeouts that caused thread starvation.
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="job")
-        # Critical pool for safety-sensitive tasks (risk, order sync, orchestration)
+        # Critical pool for safety-sensitive tasks (risk, order sync, orchestration).
+        # Sized independently — must NEVER be starved by batch work, even if all
+        # batch slots are occupied by multi-hour backtests or ML training.
         self._critical_executor = ThreadPoolExecutor(
-            max_workers=max(2, max_workers),
+            max_workers=max(4, max_workers),
             thread_name_prefix="critical",
         )
 

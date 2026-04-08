@@ -95,4 +95,10 @@ USER appuser
 EXPOSE 8000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+# Daphne is single-process (no --workers flag) but handles HTTP + WebSocket
+# via Django Channels. The scheduler must run in exactly one process, which
+# rules out multi-process ASGI servers like uvicorn --workers.
+# --proxy-headers: trust X-Forwarded-* from nginx frontend.
+# -t 30: HTTP request timeout (30s) prevents requests from queueing
+#   indefinitely when the event loop is under pressure.
+CMD ["python", "-m", "daphne", "-b", "0.0.0.0", "-p", "8000", "--proxy-headers", "-t", "30", "config.asgi:application"]

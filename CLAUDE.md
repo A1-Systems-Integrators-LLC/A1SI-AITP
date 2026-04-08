@@ -80,9 +80,26 @@ python run.py nautilus test           # Test NautilusTrader engine
 - Market data: `data/processed/` (Parquet, gitignored)
 - Platform orchestrator: `run.py`
 
-## Memory
+## Session Startup Protocol — MANDATORY
 
-After completing any task that changes code, tests, dependencies, or architecture, **always update the memory file** (MEMORY.md and next-steps.md in the project's Claude memory directory). Keep test counts, implementation status, and dependency notes current.
+Every new session MUST begin with these steps before doing any other work:
+
+1. **Read the plan**: Load MEMORY.md → read the Performance Plan → identify which week we're in
+2. **Check prod health**: `docker ps --filter name=aitp-prod` — all 10 containers must be healthy
+3. **Check trading performance**: Query Freqtrade APIs for trade counts, open positions, P&L across all 7 strategies
+4. **Check daily report**: Verify today's PDF report exists in backend/data/reports/
+5. **Report status to user**: Summarize what's running, what's trading, any issues, and what's next on the plan
+6. **Update agent plans**: After completing work, update the relevant agent plan file in `.claude/projects/.../agents/`
+
+If prod is broken, fix it first. If strategies aren't trading, investigate before doing anything else. Infrastructure work is only justified if it's blocking trading performance.
+
+## Memory & Agent Plans
+
+- **Main memory** (MEMORY.md): Lightweight index — directives, project status pointers, agent plan pointers
+- **Agent plans** (agents/*.md): Each of the 6 key agents owns a plan file with their daily checklist, active tasks, and lessons learned. Update the relevant agent's plan after completing work in their domain.
+- **After any session**: Commit memory and agent plan changes to git so they persist
+
+Key agents: Nakamura (finance lead), Mira (strategy engineer), Priya (ML engineer), Quentin (quant dev), Jordan (DevOps), Dara (data engineer)
 
 ## Critical Rules — DO NOT VIOLATE
 

@@ -1,5 +1,6 @@
 """Core views — health, platform status, platform config, CSRF failure."""
 
+import asyncio
 import contextlib
 import logging
 
@@ -100,7 +101,21 @@ class AuditLogListView(APIView):
 
 
 class HealthView(APIView):
+    """Health endpoint — must always respond, even under heavy load.
+
+    The basic check (no query params) is pure in-memory: no DB, no I/O, no
+    thread pool dependency. This ensures Docker/orchestrator health checks
+    never time out even when the scheduler or job runner threads are saturated.
+
+    The detailed check (?detailed=true) runs each sub-check in a separate
+    thread with a per-check timeout so a single slow check can't block the
+    entire response.
+    """
+
     permission_classes = [AllowAny]
+
+    # Timeout per individual sub-check in the detailed health response.
+    _CHECK_TIMEOUT_S = 5.0
 
     @extend_schema(
         responses={200: DetailedHealthResponseSerializer},
@@ -108,127 +123,137 @@ class HealthView(APIView):
     )
     def get(self, request: Request) -> Response:
         if request.query_params.get("detailed") != "true":
+            # Basic liveness — no I/O, no DB, no thread pool. Always fast.
             return Response({"status": "ok"})
 
-        checks = {}
+        # Run detailed checks concurrently with per-check timeouts.
+        # Uses asyncio internally but the DRF view method stays sync
+        # (DRF APIView.dispatch doesn't support async def).
+        from asgiref.sync import async_to_sync
 
-        # Database check
-        try:
-            from django.db import connection
-
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
-            checks["database"] = {"status": "ok"}
-        except Exception as e:
-            checks["database"] = {"status": "error", "detail": str(e)}
-
-        # Disk check
-        try:
-            import os
-            import shutil
-
-            from core.platform_bridge import get_processed_dir
-
-            data_dir = get_processed_dir()
-            data_dir.mkdir(parents=True, exist_ok=True)
-            usage = shutil.disk_usage(str(data_dir))
-            writable = os.access(str(data_dir), os.W_OK)
-            checks["disk"] = {
-                "status": "ok" if writable else "error",
-                "total_gb": round(usage.total / (1024**3), 2),
-                "free_gb": round(usage.free / (1024**3), 2),
-                "used_pct": round(usage.used / usage.total * 100, 1),
-                "writable": writable,
-            }
-        except Exception as e:
-            checks["disk"] = {"status": "error", "detail": str(e)}
-
-        # Memory check
-        try:
-            import platform
-            import resource
-
-            usage_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            # On Linux, ru_maxrss is in KB; on macOS it's in bytes
-            if platform.system() == "Darwin":
-                usage_mb = usage_kb / (1024 * 1024)
-            else:
-                usage_mb = usage_kb / 1024
-            checks["memory"] = {
-                "status": "ok",
-                "rss_mb": round(usage_mb, 1),
-            }
-        except Exception as e:
-            checks["memory"] = {"status": "error", "detail": str(e)}
-
-        # Scheduler check
-        try:
-            from core.services.scheduler import get_scheduler
-
-            sched = get_scheduler()
-            checks["scheduler"] = {
-                "status": "ok" if sched.running else "warning",
-                "running": sched.running,
-            }
-        except Exception as e:
-            checks["scheduler"] = {"status": "error", "detail": str(e)}
-
-        # Circuit breaker check
-        try:
-            from market.services.circuit_breaker import get_all_breakers
-
-            breaker_states = {b["exchange_id"]: b["state"] for b in get_all_breakers()}
-            checks["circuit_breakers"] = breaker_states
-        except Exception as e:
-            checks["circuit_breakers"] = {"status": "error", "detail": str(e)}
-
-        # Channel layer check
-        try:
-            from channels.layers import get_channel_layer
-
-            layer = get_channel_layer()
-            checks["channel_layer"] = {
-                "status": "ok" if layer is not None else "warning",
-                "backend": type(layer).__name__ if layer else "none",
-            }
-        except Exception as e:
-            checks["channel_layer"] = {"status": "error", "detail": str(e)}
-
-        # Job queue staleness check
-        try:
-            from django.utils import timezone
-
-            from analysis.models import BackgroundJob
-
-            pending_jobs = BackgroundJob.objects.filter(status="pending").order_by("created_at")
-            oldest = pending_jobs.first()
-            if oldest:
-                age_minutes = (timezone.now() - oldest.created_at).total_seconds() / 60
-                checks["job_queue"] = {
-                    "status": "warning" if age_minutes > 30 else "ok",
-                    "oldest_pending_minutes": round(age_minutes, 1),
-                    "pending_count": pending_jobs.count(),
-                }
-            else:
-                checks["job_queue"] = {"status": "ok", "pending_count": 0}
-        except Exception as e:
-            checks["job_queue"] = {"status": "error", "detail": str(e)}
-
-        # Database backend check
-        try:
-            from django.db import connection as db_conn
-
-            checks["database_backend"] = {
-                "status": "ok",
-                "engine": db_conn.vendor,
-            }
-        except Exception as e:
-            checks["database_backend"] = {"status": "error", "detail": str(e)}
+        checks = async_to_sync(self._run_detailed_checks)()
 
         overall = "ok" if all(
             c.get("status", "ok") == "ok" for c in checks.values() if isinstance(c, dict)
         ) else "degraded"
         return Response({"status": overall, "checks": checks})
+
+    async def _run_detailed_checks(self) -> dict:
+        check_fns = [
+            ("database", self._check_database),
+            ("disk", self._check_disk),
+            ("memory", self._check_memory),
+            ("scheduler", self._check_scheduler),
+            ("circuit_breakers", self._check_circuit_breakers),
+            ("channel_layer", self._check_channel_layer),
+            ("job_queue", self._check_job_queue),
+            ("database_backend", self._check_database_backend),
+        ]
+
+        async def _guarded(name: str, fn):
+            try:
+                return name, await asyncio.wait_for(fn(), timeout=self._CHECK_TIMEOUT_S)
+            except asyncio.TimeoutError:
+                return name, {"status": "error", "detail": f"check timed out ({self._CHECK_TIMEOUT_S}s)"}
+            except Exception as e:
+                return name, {"status": "error", "detail": str(e)}
+
+        results = await asyncio.gather(*[_guarded(n, fn) for n, fn in check_fns])
+        return dict(results)
+
+    @staticmethod
+    async def _check_database() -> dict:
+        from django.db import connection
+
+        await asyncio.to_thread(lambda: connection.cursor().execute("SELECT 1"))
+        return {"status": "ok"}
+
+    @staticmethod
+    async def _check_disk() -> dict:
+        import os
+        import shutil
+
+        from core.platform_bridge import get_processed_dir
+
+        def _disk_info():
+            data_dir = get_processed_dir()
+            data_dir.mkdir(parents=True, exist_ok=True)
+            usage = shutil.disk_usage(str(data_dir))
+            writable = os.access(str(data_dir), os.W_OK)
+            return usage, writable
+
+        usage, writable = await asyncio.to_thread(_disk_info)
+        return {
+            "status": "ok" if writable else "error",
+            "total_gb": round(usage.total / (1024**3), 2),
+            "free_gb": round(usage.free / (1024**3), 2),
+            "used_pct": round(usage.used / usage.total * 100, 1),
+            "writable": writable,
+        }
+
+    @staticmethod
+    async def _check_memory() -> dict:
+        import platform
+        import resource
+
+        usage_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if platform.system() == "Darwin":
+            usage_mb = usage_kb / (1024 * 1024)
+        else:
+            usage_mb = usage_kb / 1024
+        return {"status": "ok", "rss_mb": round(usage_mb, 1)}
+
+    @staticmethod
+    async def _check_scheduler() -> dict:
+        from core.services.scheduler import get_scheduler
+
+        sched = get_scheduler()
+        return {"status": "ok" if sched.running else "warning", "running": sched.running}
+
+    @staticmethod
+    async def _check_circuit_breakers() -> dict:
+        from market.services.circuit_breaker import get_all_breakers
+
+        breaker_states = await asyncio.to_thread(
+            lambda: {b["exchange_id"]: b["state"] for b in get_all_breakers()}
+        )
+        return breaker_states
+
+    @staticmethod
+    async def _check_channel_layer() -> dict:
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        return {
+            "status": "ok" if layer is not None else "warning",
+            "backend": type(layer).__name__ if layer else "none",
+        }
+
+    @staticmethod
+    async def _check_job_queue() -> dict:
+        from django.utils import timezone
+
+        from analysis.models import BackgroundJob
+
+        def _query():
+            pending_jobs = BackgroundJob.objects.filter(status="pending").order_by("created_at")
+            oldest = pending_jobs.first()
+            if oldest:
+                age_minutes = (timezone.now() - oldest.created_at).total_seconds() / 60
+                return {
+                    "status": "warning" if age_minutes > 30 else "ok",
+                    "oldest_pending_minutes": round(age_minutes, 1),
+                    "pending_count": pending_jobs.count(),
+                }
+            return {"status": "ok", "pending_count": 0}
+
+        return await asyncio.to_thread(_query)
+
+    @staticmethod
+    async def _check_database_backend() -> dict:
+        from django.db import connection as db_conn
+
+        return {"status": "ok", "engine": db_conn.vendor}
 
 
 class DashboardKPIView(APIView):

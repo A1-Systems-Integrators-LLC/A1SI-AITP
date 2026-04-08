@@ -278,7 +278,10 @@ if EXCHANGE_API_KEY and not TESTING:
         stacklevel=1,
     )
 
-MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "2"))
+# Job runner thread pool size. Default was 2, which caused thread starvation
+# when multiple long-running tasks (ML training, backtests) ran concurrently,
+# blocking critical safety tasks (risk monitoring, order sync).
+MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "4"))
 
 ORDER_SYNC_TIMEOUT_HOURS = int(os.environ.get("ORDER_SYNC_TIMEOUT_HOURS", "24"))
 
