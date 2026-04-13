@@ -197,6 +197,124 @@ class SignalFeedbackService:
         return {"matched": matched, "unmatched": unmatched, "errors": errors}
 
     @staticmethod
+    def create_attributions_from_freqtrade() -> dict[str, Any]:
+        """Create SignalAttribution records from Freqtrade closed trades.
+
+        This is the BRIDGE between Freqtrade (which trades directly with exchanges)
+        and the Django learning engine (which needs SignalAttribution records to
+        analyze what works and what doesn't).
+
+        For each closed trade found in Freqtrade:
+        1. Skip if we already have an attribution for this trade (idempotent)
+        2. Compute signal scores at the time of entry (if SignalAggregator available)
+        3. Create a SignalAttribution record with outcome and PnL filled in
+
+        Returns:
+            Dict with created, skipped, and error counts.
+        """
+        from django.conf import settings
+
+        from analysis.models import SignalAttribution
+
+        ft_instances = getattr(settings, "FREQTRADE_INSTANCES", [])
+        ft_user = getattr(settings, "FREQTRADE_USERNAME", "")
+        ft_pass = getattr(settings, "FREQTRADE_PASSWORD", "")
+
+        created = 0
+        skipped = 0
+        errors = 0
+
+        # Get all existing attribution order_ids to avoid duplicates
+        existing_order_ids = set(
+            SignalAttribution.objects.values_list("order_id", flat=True)
+        )
+
+        # Try to get SignalAggregator for real signal scores
+        signal_aggregator = _get_signal_aggregator()
+
+        for instance in ft_instances:
+            if not instance.get("enabled", True):
+                continue
+            url = instance.get("url", "")
+            strategy_name = instance.get("name", "unknown")
+            if not url:
+                continue
+
+            try:
+                resp = requests.get(
+                    f"{url}/api/v1/trades",
+                    auth=(ft_user, ft_pass),
+                    params={"limit": 200},
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                trades = data.get("trades", [])
+
+                for trade in trades:
+                    if not trade.get("close_date"):
+                        continue  # Still open
+
+                    # Use Freqtrade's trade_id + strategy as unique key
+                    ft_trade_id = f"ft_{strategy_name}_{trade['trade_id']}"
+
+                    if ft_trade_id in existing_order_ids:
+                        skipped += 1
+                        continue
+
+                    symbol = trade.get("pair", "")
+                    profit_abs = trade.get("profit_abs", 0.0)
+                    outcome = "win" if profit_abs > 0 else "loss"
+                    exit_reason = trade.get("exit_reason", "")
+
+                    # Compute signal scores if aggregator available
+                    signal_data = _compute_signal_for_trade(
+                        signal_aggregator, symbol, strategy_name,
+                    )
+
+                    try:
+                        SignalAttribution.objects.create(
+                            order_id=ft_trade_id,
+                            symbol=symbol,
+                            asset_class="crypto",
+                            strategy=strategy_name,
+                            composite_score=signal_data.get("composite_score", 0.0),
+                            technical_contribution=signal_data.get("technical", 0.0),
+                            ml_contribution=signal_data.get("ml", 0.0),
+                            sentiment_contribution=signal_data.get("sentiment", 0.0),
+                            regime_contribution=signal_data.get("regime", 0.0),
+                            scanner_contribution=signal_data.get("scanner", 0.0),
+                            screen_contribution=signal_data.get("scanner", 0.0),
+                            win_rate_contribution=signal_data.get("win_rate", 0.0),
+                            position_modifier=1.0,
+                            entry_regime=signal_data.get("regime_name", ""),
+                            outcome=outcome,
+                            pnl=round(profit_abs, 4),
+                            resolved_at=tz.now(),
+                        )
+                        existing_order_ids.add(ft_trade_id)
+                        created += 1
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to create attribution for %s trade %s: %s",
+                            strategy_name, ft_trade_id, e,
+                        )
+                        errors += 1
+
+            except Exception as e:
+                logger.warning(
+                    "Freqtrade trade fetch failed for %s (%s): %s",
+                    strategy_name, url, e,
+                )
+                errors += 1
+
+        logger.info(
+            "Freqtrade attribution bridge: created=%d, skipped=%d, errors=%d",
+            created, skipped, errors,
+        )
+        return {"created": created, "skipped": skipped, "errors": errors}
+
+    @staticmethod
     def get_source_accuracy(
         asset_class: str | None = None,
         strategy: str | None = None,
@@ -296,6 +414,65 @@ class SignalFeedbackService:
         except Exception as e:
             logger.warning("Weight recommendation failed: %s", e)
             return {"error": str(e)}
+
+
+def _get_signal_aggregator():
+    """Try to initialize the SignalAggregator for computing signal scores.
+
+    Returns None if the platform imports aren't available (e.g., during testing).
+    """
+    try:
+        from core.platform_bridge import ensure_platform_imports
+
+        ensure_platform_imports()
+        from common.indicators.signal_aggregator import SignalAggregator
+
+        return SignalAggregator()
+    except Exception as e:
+        logger.debug("SignalAggregator not available: %s", e)
+        return None
+
+
+def _compute_signal_for_trade(
+    aggregator,
+    symbol: str,
+    strategy: str,
+) -> dict[str, Any]:
+    """Compute signal component scores for a trade's symbol.
+
+    If the aggregator is available, computes real signal scores from current data.
+    Otherwise returns zeros (we still record the attribution for outcome tracking).
+    """
+    defaults = {
+        "composite_score": 0.0,
+        "technical": 0.0,
+        "ml": 0.0,
+        "sentiment": 0.0,
+        "regime": 0.0,
+        "scanner": 0.0,
+        "win_rate": 0.0,
+        "regime_name": "",
+    }
+
+    if aggregator is None:
+        return defaults
+
+    try:
+        result = aggregator.compute(symbol=symbol, asset_class="crypto")
+        components = result.get("components", {})
+        return {
+            "composite_score": result.get("composite_score", 0.0),
+            "technical": components.get("technical", 0.0),
+            "ml": components.get("ml", 0.0),
+            "sentiment": components.get("sentiment", 0.0),
+            "regime": components.get("regime", 0.0),
+            "scanner": components.get("scanner", 0.0),
+            "win_rate": components.get("win_rate", 0.0),
+            "regime_name": result.get("_regime", ""),
+        }
+    except Exception as e:
+        logger.debug("Signal computation failed for %s: %s", symbol, e)
+        return defaults
 
 
 def _compute_pnl(order) -> float | None:

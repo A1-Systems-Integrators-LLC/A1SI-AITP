@@ -26,7 +26,7 @@ class TrendReversal(IStrategy):
     can_short = False  # Kraken spot only — short signals ignored until futures exchange added
     startup_candle_count = 100
 
-    stoploss = -0.06
+    stoploss = -0.15
     use_custom_stoploss = True
 
     minimal_roi = {

@@ -22,23 +22,23 @@ logger = logging.getLogger("risk_manager")
 class RiskLimits:
     """Global risk parameters."""
 
-    max_portfolio_drawdown: float = 0.15  # 15% max drawdown -> halt
-    max_single_trade_risk: float = 0.03  # 3% portfolio risk per trade
-    max_daily_loss: float = 0.05  # 5% max daily loss
-    max_open_positions: int = 10
-    max_position_size_pct: float = 0.20  # 20% max in single position
-    max_correlation: float = 0.70  # Max correlation between positions
-    min_risk_reward: float = 1.5  # Minimum risk/reward ratio
-    max_leverage: float = 1.0  # No leverage by default
+    max_portfolio_drawdown: float = 0.99  # No drawdown limit (learning phase, $500 capital)
+    max_single_trade_risk: float = 0.20  # 20% portfolio risk per trade — aggressive
+    max_daily_loss: float = 0.50  # 50% max daily loss — effectively unlimited
+    max_open_positions: int = 15
+    max_position_size_pct: float = 0.50  # 50% max in single position
+    max_correlation: float = 0.85  # Allow correlated positions for learning
+    min_risk_reward: float = 0.5  # Allow riskier bets
+    max_leverage: float = 3.0  # Moderate leverage OK
 
 
 @dataclass
 class PortfolioState:
     """Track current portfolio state for risk checks."""
 
-    total_equity: float = 10000.0
-    peak_equity: float = 10000.0
-    daily_start_equity: float = 10000.0
+    total_equity: float = 500.0
+    peak_equity: float = 500.0
+    daily_start_equity: float = 500.0
     open_positions: dict = field(default_factory=dict)
     daily_pnl: float = 0.0
     total_pnl: float = 0.0
@@ -213,13 +213,13 @@ class RiskManager:
     # Crypto uses global limits (no entry here).
     _ASSET_CLASS_OVERRIDES: dict[str, dict[str, float]] = {
         "equity": {
-            "max_position_size_pct": 0.05,
-            "max_daily_loss": 0.03,
-            "max_single_trade_risk": 0.03,
+            "max_position_size_pct": 0.50,
+            "max_daily_loss": 0.50,
+            "max_single_trade_risk": 0.20,
         },
         "forex": {
-            "max_position_size_pct": 0.35,
-            "max_daily_loss": 0.15,
+            "max_position_size_pct": 0.50,
+            "max_daily_loss": 0.50,
         },
     }
 
@@ -417,7 +417,7 @@ class RiskManager:
             if self.state.total_equity <= 0:
                 return False, "Portfolio equity is zero or negative — cannot evaluate trade"
             position_pct = trade_value / self.state.total_equity
-            if position_pct > eff_max_position_size_pct:
+            if position_pct > eff_max_position_size_pct + 0.001:
                 return False, (
                     f"Position too large: {position_pct:.2%}"
                     f" > {eff_max_position_size_pct:.2%}"

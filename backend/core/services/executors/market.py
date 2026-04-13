@@ -280,35 +280,50 @@ def _run_funding_rate_refresh(params: dict, progress_cb: ProgressCallback) -> di
 
 
 def _run_signal_feedback(params: dict, progress_cb: ProgressCallback) -> dict[str, Any]:
-    """Backfill signal attribution outcomes and compute source accuracy."""
-    progress_cb(0.1, "Backfilling signal attribution outcomes")
-
+    """Create attributions from Freqtrade trades, backfill outcomes, compute accuracy."""
     from analysis.services.signal_feedback import SignalFeedbackService
 
-    window_hours = params.get("window_hours", 24)
-    backfill_result = SignalFeedbackService.backfill_outcomes(window_hours=window_hours)
-    progress_cb(0.5, f"Backfilled {backfill_result.get('resolved', 0)} outcomes")
+    # Step 1: Create SignalAttribution records from Freqtrade closed trades.
+    # This is the bridge: Freqtrade trades directly with exchanges and bypasses
+    # Django, so we must pull trade data and create attribution records for the
+    # learning engine to analyze.
+    attribution_bridge = {"created": 0, "errors": 0}
+    try:
+        progress_cb(0.1, "Creating attributions from Freqtrade trades")
+        attribution_bridge = SignalFeedbackService.create_attributions_from_freqtrade()
+    except Exception as e:
+        logger.error("Freqtrade attribution bridge failed: %s", e)
 
-    # Also backfill from Freqtrade paper trades
+    # Step 2: Backfill outcomes for any attributions created via the API
+    # (forex paper trading, etc.)
+    window_hours = params.get("window_hours", 24)
+    progress_cb(0.3, "Backfilling attribution outcomes")
+    backfill_result = SignalFeedbackService.backfill_outcomes(window_hours=window_hours)
+
+    # Step 3: Match ML predictions to Freqtrade trade outcomes
     ft_backfill = {"matched": 0, "errors": 0}
     try:
+        progress_cb(0.5, "Matching ML predictions to trade outcomes")
         ft_backfill = SignalFeedbackService.backfill_from_freqtrade(
             window_hours=window_hours,
         )
     except Exception as e:
         logger.error(
-            "Freqtrade backfill failed: %s — signal weights will not update from paper trades",
+            "Freqtrade ML backfill failed: %s — signal weights will not update",
             e,
         )
 
+    # Step 4: Compute per-source accuracy from all resolved attributions
+    progress_cb(0.7, "Computing source accuracy")
     accuracy = SignalFeedbackService.get_source_accuracy(
         asset_class=params.get("asset_class"),
         window_days=params.get("window_days", 30),
     )
-    progress_cb(0.8, "Computed source accuracy")
 
+    progress_cb(0.9, "Signal feedback complete")
     return {
         "status": "completed",
+        "attribution_bridge": attribution_bridge,
         "backfill": backfill_result,
         "freqtrade_backfill": ft_backfill,
         "accuracy": accuracy,

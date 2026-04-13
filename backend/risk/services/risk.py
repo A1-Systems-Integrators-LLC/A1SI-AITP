@@ -323,12 +323,10 @@ class RiskManagementService:
             regime = detector.detect(df)
             regime_name = regime.regime.value if regime else "UNKNOWN"
 
-            multipliers = {
-                "STRONG_TREND_DOWN": 0.75,
-                "HIGH_VOLATILITY": 0.80,
-                "WEAK_TREND_DOWN": 0.85,
-            }
-            return multipliers.get(regime_name, 1.0), regime_name
+            # Regime-based tightening DISABLED for learning phase ($500 aggressive capital).
+            # All regimes return 1.0 multiplier — no adaptive tightening.
+            # Re-enable when portfolio > $5,000.
+            return 1.0, regime_name
         except Exception as e:
             logger.warning("Regime detection failed for adaptive risk: %s", e)
             return 1.0, "UNKNOWN"

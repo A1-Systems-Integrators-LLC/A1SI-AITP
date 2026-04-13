@@ -55,7 +55,7 @@ class VolatilityBreakout(IStrategy):
         "720": 0.015,
     }
 
-    stoploss = -0.04  # 4h candles need slightly wider stop
+    stoploss = -0.12  # Wide stop for aggressive learning
     use_custom_stoploss = True
 
     trailing_stop = True
@@ -123,28 +123,27 @@ class VolatilityBreakout(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Breakout entries: price breaks N-period high + volume + rising ADX."""
-        # Required: breakout above N-period high
+        """Breakout entries: use OR-based alternative signal paths.
+
+        Two paths to entry (either triggers a trade):
+        Path A: Price breakout + volume confirmation (classic breakout)
+        Path B: Price breakout + strong trend (ADX confirms momentum)
+        RSI filter only blocks extreme exhaustion (>85), not normal momentum.
+        """
         breakout = dataframe["close"] > dataframe[f"high_{self.breakout_period.value}"].shift(1)
-
-        # Required: volume confirms the breakout
         vol_confirm = dataframe["volume_ratio"] > float(self.volume_factor.value)
-
-        # ADX confirms trending conditions (minimum threshold only).
-        # Previously required ADX in 20-50 range AND rising over 3 candles,
-        # which was too strict on 4h — most breakouts happen at ADX > 15.
         adx_ok = dataframe["adx"] >= self.adx_low.value
-
-        # RSI in acceptable range (not already exhausted)
-        rsi_ok = (
-            (dataframe["rsi"] >= self.rsi_low.value)
-            & (dataframe["rsi"] <= self.rsi_high.value)
-        )
-
+        not_exhausted = dataframe["rsi"] <= 85
         has_volume = dataframe["volume"] > 0
 
+        # Path A: breakout + volume surge (classic)
+        path_a = breakout & vol_confirm & has_volume
+
+        # Path B: breakout + strong trend (ADX confirms, volume not required)
+        path_b = breakout & adx_ok & has_volume
+
         dataframe.loc[
-            breakout & vol_confirm & adx_ok & rsi_ok & has_volume,
+            (path_a | path_b) & not_exhausted,
             "enter_long",
         ] = 1
 

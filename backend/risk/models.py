@@ -50,14 +50,14 @@ class CapitalLedger(models.Model):
 
 class RiskLimits(models.Model):
     portfolio_id = models.IntegerField(unique=True, db_index=True)
-    max_portfolio_drawdown = models.FloatField(default=0.15)
-    max_single_trade_risk = models.FloatField(default=0.03)
-    max_daily_loss = models.FloatField(default=0.05)
-    max_open_positions = models.IntegerField(default=10)
-    max_position_size_pct = models.FloatField(default=0.20)
-    max_correlation = models.FloatField(default=0.70)
-    min_risk_reward = models.FloatField(default=1.5)
-    max_leverage = models.FloatField(default=1.0)
+    max_portfolio_drawdown = models.FloatField(default=0.99)
+    max_single_trade_risk = models.FloatField(default=0.20)
+    max_daily_loss = models.FloatField(default=0.50)
+    max_open_positions = models.IntegerField(default=15)
+    max_position_size_pct = models.FloatField(default=0.50)
+    max_correlation = models.FloatField(default=0.85)
+    min_risk_reward = models.FloatField(default=0.5)
+    max_leverage = models.FloatField(default=3.0)
 
     def clean(self) -> None:
         errors: dict[str, list[str]] = {}

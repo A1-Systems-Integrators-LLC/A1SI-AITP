@@ -25,13 +25,14 @@ class MomentumScalper15m(IStrategy):
     can_short = False  # Kraken spot only — short signals ignored until futures exchange added
     startup_candle_count = 100
 
-    stoploss = -0.015
+    stoploss = -0.10
     use_custom_stoploss = True
 
     minimal_roi = {
-        "0": 0.008,
-        "15": 0.005,
-        "45": 0.003,
+        "0": 0.02,
+        "15": 0.012,
+        "45": 0.006,
+        "90": 0.003,
     }
 
     # Hyperopt parameters
@@ -115,20 +116,21 @@ class MomentumScalper15m(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit long: RSI overbought or EMA cross back
+        # Exit long: RSI overbought AND EMA cross back (both must confirm reversal)
+        # Previously used OR which exited on any single-candle EMA wiggle
         dataframe.loc[
             (
                 (dataframe["rsi"] > self.sell_rsi_threshold.value)
-                | (dataframe["ema_fast"] < dataframe["ema_slow"])
+                & (dataframe["ema_fast"] < dataframe["ema_slow"])
             ),
             "exit_long",
         ] = 1
 
-        # Exit short: RSI oversold or EMA cross back
+        # Exit short: RSI oversold AND EMA cross back
         dataframe.loc[
             (
                 (dataframe["rsi"] < (100 - self.sell_rsi_threshold.value))
-                | (dataframe["ema_fast"] > dataframe["ema_slow"])
+                & (dataframe["ema_fast"] > dataframe["ema_slow"])
             ),
             "exit_short",
         ] = 1
@@ -161,10 +163,13 @@ class MomentumScalper15m(IStrategy):
         atr_stop = (atr / current_rate) * self.atr_multiplier.value
         stop = -atr_stop
 
-        if current_profit > 0.005:
-            stop = max(stop, -0.008)
-        if current_profit > 0.008:
-            stop = max(stop, -0.004)
+        # Wider trailing stops — let winners breathe on volatile 15m candles.
+        # Old: tightened to -0.8% at 0.5% profit, -0.4% at 0.8% — too tight,
+        # normal 15m volatility (0.5-1.0%) would stop out every winning trade.
+        if current_profit > 0.01:
+            stop = max(stop, -0.006)
+        if current_profit > 0.02:
+            stop = max(stop, -0.003)
 
         return stop
 

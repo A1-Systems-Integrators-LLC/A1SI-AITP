@@ -425,30 +425,30 @@ vectorbt:
 # Risk management (global)
 # ──────────────────────────────────────────────
 risk_management:
-  max_portfolio_drawdown: 0.20  # 20% max drawdown — tightened for paper trading
-  max_single_trade_risk: 0.05   # 5% of portfolio per trade
-  max_daily_loss: 0.08          # 8% daily loss limit
-  max_correlation: 0.7          # Max correlation between concurrent positions
-  min_paper_trade_days: 14      # Minimum paper trading before live
-  max_leverage: 5.0             # Kraken futures isolated margin cap
-  max_position_size_pct: 0.35   # 35% of portfolio per position
-  min_risk_reward: 1.0          # 1:1 minimum R:R
+  max_portfolio_drawdown: 0.99  # No drawdown limit until $5K portfolio (learning phase)
+  max_single_trade_risk: 0.20   # 20% of portfolio per trade — aggressive learning
+  max_daily_loss: 0.50          # 50% daily loss limit — effectively unlimited for $500
+  max_correlation: 0.85         # Allow correlated positions for learning
+  min_paper_trade_days: 0       # No paper trading gate — go live immediately
+  max_leverage: 3.0             # Moderate leverage OK
+  max_position_size_pct: 0.50   # 50% of portfolio per position
+  min_risk_reward: 0.5          # Allow riskier bets for learning
 
 # ──────────────────────────────────────────────
 # Per-asset-class risk overrides
 # ──────────────────────────────────────────────
 equity:
   risk:
-    stoploss: -0.03
-    max_position_size_pct: 0.05
-    max_daily_loss: 0.03
+    stoploss: -0.15
+    max_position_size_pct: 0.50
+    max_daily_loss: 0.50
 
 forex:
   risk:
-    stoploss: -0.02
+    stoploss: -0.10
     max_leverage: 5.0
-    max_position_size_pct: 0.35
-    max_daily_loss: 0.15
+    max_position_size_pct: 0.50
+    max_daily_loss: 0.50
 
 # ──────────────────────────────────────────────
 # hftbacktest configuration (Tier 4 — HFT)
@@ -465,7 +465,7 @@ hftbacktest:
       skew_factor: 0.0005      # Inventory skew per unit
       order_size: 0.01         # Base currency units per quote
       max_position: 1.0        # Max absolute position
-      drawdown_halt_pct: 0.05  # Halt at 5% drawdown
+      drawdown_halt_pct: 0.50  # Wide stop for learning phase
       quote_interval: 4        # Requote every N ticks
     MomentumScalper:
       lookback: 20             # EMA lookback for momentum
@@ -474,20 +474,20 @@ hftbacktest:
       order_size: 0.01
       max_hold_ticks: 50       # Forced exit after N ticks
       max_position: 1.0
-      drawdown_halt_pct: 0.03
+      drawdown_halt_pct: 0.50
     GridTrader:
       grid_spacing: 0.002      # 20 bps between grid levels
       num_levels: 3            # Levels on each side
       order_size: 0.01
       max_position: 1.0
-      drawdown_halt_pct: 0.05
+      drawdown_halt_pct: 0.50
     MeanReversionScalper:
       lookback: 50             # Rolling VWAP window (ticks)
       deviation_threshold: 0.001  # 10 bps deviation to enter
       order_size: 0.01
       max_hold_ticks: 40       # Forced exit after N ticks
       max_position: 1.0
-      drawdown_halt_pct: 0.04
+      drawdown_halt_pct: 0.50
 
 # ──────────────────────────────────────────────
 # News & Sentiment

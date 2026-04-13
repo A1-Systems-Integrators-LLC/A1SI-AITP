@@ -26,7 +26,7 @@ class MomentumShort(IStrategy):
     can_short = True
     startup_candle_count = 100
 
-    stoploss = -0.06
+    stoploss = -0.15
     use_custom_stoploss = True
 
     minimal_roi = {

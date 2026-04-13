@@ -37,7 +37,7 @@ class SentimentEventTrader(IStrategy):
     can_short = False  # Kraken spot only — short signals ignored until futures exchange added
     startup_candle_count = 50
 
-    stoploss = -0.05
+    stoploss = -0.12
     use_custom_stoploss = True
 
     minimal_roi = {

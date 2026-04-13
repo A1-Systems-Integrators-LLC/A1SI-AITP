@@ -118,6 +118,17 @@ CRITICAL_TASK_TYPES = frozenset(
     }
 )
 
+# Data pipeline tasks — run in isolated pool to prevent thread starvation.
+# These tasks do sequential blocking I/O (66+ HTTP requests per refresh)
+# and MUST NOT compete with HTTP-serving threads or critical tasks.
+# Job types are prefixed with "scheduled_" by the scheduler (see scheduler.py:348).
+DATA_PIPELINE_TASK_TYPES = frozenset(
+    {
+        "scheduled_data_refresh",
+        "scheduled_data_quality",
+    }
+)
+
 # Retry configuration for failed tasks
 MAX_RETRIES = 3
 RETRY_BASE_DELAY_S = 5  # Exponential backoff: 5s, 10s, 20s
@@ -136,6 +147,15 @@ class JobRunner:
         self._critical_executor = ThreadPoolExecutor(
             max_workers=max(4, max_workers),
             thread_name_prefix="critical",
+        )
+        # Data pipeline pool — ISOLATED from batch and critical pools.
+        # Data refreshes do 66+ sequential blocking HTTP requests per run (30-60s).
+        # Without isolation, they starve the Daphne event loop's sync_to_async
+        # thread pool, causing HTTP requests (including login) to hang.
+        # 2 workers: one for crypto refresh, one for forex/equity — never more.
+        self._data_executor = ThreadPoolExecutor(
+            max_workers=2,
+            thread_name_prefix="data",
         )
 
     def submit(
@@ -158,8 +178,16 @@ class JobRunner:
             params=params,
         )
         _job_progress[job_id] = {"progress": 0.0, "progress_message": "Queued"}
-        # Route critical tasks to a dedicated pool so they're never blocked
-        pool = self._critical_executor if job_type in CRITICAL_TASK_TYPES else self._executor
+        # Route tasks to isolated pools by type:
+        # - Critical (risk, order sync): never starved by batch or data work
+        # - Data pipeline (refresh, quality): never starves HTTP threads
+        # - Batch (everything else): backtests, ML, VBT screens
+        if job_type in CRITICAL_TASK_TYPES:
+            pool = self._critical_executor
+        elif job_type in DATA_PIPELINE_TASK_TYPES:
+            pool = self._data_executor
+        else:
+            pool = self._executor
         try:
             pool.submit(self._run_job, job_id, run_fn, params or {})
         except RuntimeError:
