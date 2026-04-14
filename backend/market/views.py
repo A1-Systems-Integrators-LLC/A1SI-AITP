@@ -900,6 +900,76 @@ class OpportunitySummaryView(APIView):
         })
 
 
+# ── PDF Report Viewer ──────────────────────────────────────────
+
+
+class PDFReportListView(APIView):
+    """List available PDF reports with metadata for the dashboard viewer."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        from pathlib import Path
+
+        reports_dir = Path(__file__).resolve().parents[1] / "data" / "reports"
+        if not reports_dir.exists():
+            return Response([])
+
+        reports = []
+        for pdf in sorted(reports_dir.glob("daily_report_*.pdf"), reverse=True):
+            # Extract date from filename: daily_report_YYYY-MM-DD.pdf
+            name = pdf.stem  # daily_report_2026-04-13
+            date_str = name.replace("daily_report_", "")
+            try:
+                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            reports.append({
+                "filename": pdf.name,
+                "date": date_str,
+                "year": date.year,
+                "month": date.month,
+                "size_bytes": pdf.stat().st_size,
+            })
+
+        return Response(reports)
+
+
+class PDFReportDownloadView(APIView):
+    """Serve a PDF report file by filename."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, filename: str) -> Response:
+        import re
+        from pathlib import Path
+
+        from django.http import FileResponse
+
+        # Validate filename to prevent path traversal
+        if not re.match(r"^daily_report_\d{4}-\d{2}-\d{2}\.pdf$", filename):
+            return Response(
+                {"error": "Invalid filename"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reports_dir = Path(__file__).resolve().parents[1] / "data" / "reports"
+        file_path = reports_dir / filename
+
+        if not file_path.exists():
+            return Response(
+                {"error": "Report not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return FileResponse(
+            open(file_path, "rb"),
+            content_type="application/pdf",
+            filename=filename,
+        )
+
+
 # ── Daily Report ─────────────────────────────────────────────
 
 

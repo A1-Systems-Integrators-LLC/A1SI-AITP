@@ -62,10 +62,12 @@ class TaskScheduler:
 
         self._scheduler = BackgroundScheduler(
             executors={
-                # Default 10 threads was insufficient for 38+ scheduled tasks.
-                # Long-running jobs (ML training, backtests) would saturate the
-                # pool, starving critical tasks and blocking the event loop.
-                "default": APThreadPool(max_workers=20),
+                # Keep thread count low: scheduler threads share Daphne's process
+                # and GIL. Too many CPU-bound threads starve the async event loop,
+                # causing ERR_CONNECTION_RESET on HTTP/WebSocket requests.
+                # coalesce + max_instances=1 prevent pile-ups; 6 threads is enough
+                # for the mix of quick DB tasks + occasional heavy work.
+                "default": APThreadPool(max_workers=6),
             },
             job_defaults={
                 "coalesce": True,

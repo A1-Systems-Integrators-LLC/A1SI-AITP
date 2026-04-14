@@ -16,6 +16,7 @@ import {
   GitBranch,
   Crosshair,
   Target,
+  FileText,
   Settings,
   LogOut,
   Menu,
@@ -51,6 +52,7 @@ const navItems = [
   { to: "/workflows", icon: GitBranch, label: "Workflows" },
   { to: "/opportunities", icon: Crosshair, label: "Opportunities" },
   { to: "/conviction", icon: Target, label: "Conviction" },
+  { to: "/reports", icon: FileText, label: "Reports" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

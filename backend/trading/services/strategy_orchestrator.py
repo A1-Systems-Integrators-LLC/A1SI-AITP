@@ -60,9 +60,11 @@ class StrategyOrchestrator:
         "forex": "EUR/USD",
     }
 
-    # Alignment thresholds
-    PAUSE_THRESHOLD = 15
-    REDUCE_THRESHOLD = 35
+    # Alignment thresholds — set to 0 during learning phase ($500 capital).
+    # Strategies should NEVER be paused or reduced for learning; only for errors.
+    # Re-enable when portfolio > $5,000.
+    PAUSE_THRESHOLD = 0
+    REDUCE_THRESHOLD = 0
 
     # Persistence path for state snapshot
     _STATE_FILE = Path(__file__).resolve().parents[2] / "data" / "orchestrator_state.json"

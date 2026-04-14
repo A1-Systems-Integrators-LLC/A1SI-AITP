@@ -74,7 +74,7 @@ class DashboardService:
         # Run all independent KPI collectors in parallel to avoid sequential
         # HTTP timeouts (Freqtrade instances) stacking up to ~60s.
         futures = {}
-        with ThreadPoolExecutor(max_workers=8, thread_name_prefix="kpi") as pool:
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="kpi") as pool:
             futures["portfolio"] = pool.submit(svc._get_portfolio_kpis, portfolio_id, asset_class)
             futures["trading"] = pool.submit(svc._get_trading_kpis, portfolio_id, asset_class)
             futures["risk"] = pool.submit(svc._get_risk_kpis, portfolio_id)

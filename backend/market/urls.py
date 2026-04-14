@@ -5,6 +5,8 @@ from market.views import (
     DailyReportHistoryView,
     DailyReportView,
     DataSourceConfigDetailView,
+    PDFReportDownloadView,
+    PDFReportListView,
     DataSourceConfigListView,
     ExchangeConfigDetailView,
     ExchangeConfigListView,
@@ -103,5 +105,12 @@ urlpatterns = [
         "market/daily-report/history/",
         DailyReportHistoryView.as_view(),
         name="daily-report-history",
+    ),
+    # PDF reports viewer
+    path("market/reports/", PDFReportListView.as_view(), name="report-list"),
+    path(
+        "market/reports/<str:filename>/",
+        PDFReportDownloadView.as_view(),
+        name="report-download",
     ),
 ]

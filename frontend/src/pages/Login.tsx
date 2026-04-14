@@ -18,13 +18,17 @@ export function Login({ onLogin }: LoginProps) {
     setError(null);
     setLoading(true);
 
-    const err = await onLogin(username, password);
-    setLoading(false);
-
-    if (err) {
-      setError(err);
-    } else {
-      navigate("/", { replace: true });
+    try {
+      const err = await onLogin(username, password);
+      if (err) {
+        setError(err);
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch {
+      setError("Unable to reach the server. Please try again in a moment.");
+    } finally {
+      setLoading(false);
     }
   }
 
