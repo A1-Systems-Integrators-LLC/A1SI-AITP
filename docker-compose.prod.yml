@@ -113,6 +113,7 @@ services:
     environment:
       <<: *backend-env
       DJANGO_DEBUG: "false"
+      SCHEDULER_ENABLED: "false"  # Scheduler runs in the worker container
       CORS_ALLOWED_ORIGINS: "http://localhost:4101"
       CSRF_TRUSTED_ORIGINS: "http://localhost:4101,http://localhost:4100"
       FREQTRADE_API_URL: "http://freqtrade-civ1:4180"
@@ -132,6 +133,51 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Scheduler worker — runs all background tasks (data pipeline, ML, regime
+  # detection, market scans, etc.) in a separate process so they can't starve
+  # Daphne's event loop. Same image as backend, different entrypoint.
+  worker:
+    <<: *backend-base
+    container_name: aitp-prod-worker
+    entrypoint: ["/worker-entrypoint.sh"]
+    command: []
+    environment:
+      <<: *backend-env
+      SCHEDULER_ENABLED: "true"
+      FREQTRADE_API_URL: "http://freqtrade-civ1:4180"
+      FREQTRADE_BMR_API_URL: "http://freqtrade-bmr:4183"
+      FREQTRADE_VB_API_URL: "http://freqtrade-vb:4184"
+      FREQTRADE_SHORT_API_URL: "http://freqtrade-short:4185"
+      FREQTRADE_GRID_API_URL: "http://freqtrade-grid:4186"
+      FREQTRADE_SCALP_API_URL: "http://freqtrade-scalp:4187"
+      FREQTRADE_SENTIMENT_API_URL: "http://freqtrade-sentiment:4188"
+      FREQTRADE_REVERSAL_API_URL: "http://freqtrade-reversal:4189"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "a1si_aitp"
+      POSTGRES_USER: "a1si"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD for production}"
+    ports: []
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.path.exists('/tmp/scheduler_alive') or exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 6g
+          pids: 512
+        reservations:
+          memory: 512m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
   frontend:
     <<: *frontend-base

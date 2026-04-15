@@ -62,12 +62,9 @@ class TaskScheduler:
 
         self._scheduler = BackgroundScheduler(
             executors={
-                # Keep thread count low: scheduler threads share Daphne's process
-                # and GIL. Too many CPU-bound threads starve the async event loop,
-                # causing ERR_CONNECTION_RESET on HTTP/WebSocket requests.
-                # coalesce + max_instances=1 prevent pile-ups; 6 threads is enough
-                # for the mix of quick DB tasks + occasional heavy work.
-                "default": APThreadPool(max_workers=6),
+                # Scheduler runs in its own process (worker container), separate
+                # from Daphne. 10 threads is safe — no GIL contention with HTTP.
+                "default": APThreadPool(max_workers=10),
             },
             job_defaults={
                 "coalesce": True,
@@ -93,6 +90,18 @@ class TaskScheduler:
 
         logger.info("TaskScheduler started with %d tasks", self._active_task_count())
 
+        # Write heartbeat file for health check (worker container)
+        self._touch_heartbeat()
+
+        # Periodic heartbeat so the health check knows we're alive
+        self._scheduler.add_job(
+            self._touch_heartbeat,
+            "interval",
+            seconds=15,
+            id="__heartbeat__",
+            replace_existing=True,
+        )
+
         # Bootstrap: run ML training if no models exist (deferred to avoid
         # ThreadPoolExecutor shutdown race during early startup)
         def _ml_bootstrap() -> None:
@@ -115,6 +124,12 @@ class TaskScheduler:
         threading.Thread(
             target=self._validate_watchlist, daemon=True, name="watchlist-validator",
         ).start()
+
+    @staticmethod
+    def _touch_heartbeat() -> None:
+        """Write a heartbeat file so the Docker health check knows we're alive."""
+        from pathlib import Path
+        Path("/tmp/scheduler_alive").touch()
 
     def shutdown(self) -> None:
         """Gracefully stop the scheduler."""

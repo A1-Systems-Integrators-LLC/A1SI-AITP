@@ -84,7 +84,8 @@ RUN mkdir -p /project/backend/data/logs /project/data/raw /project/data/processe
 ENV PYTHONPATH="/project:/project/freqtrade/user_data/strategies:${PYTHONPATH}"
 
 COPY backend/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY backend/worker-entrypoint.sh /worker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh /worker-entrypoint.sh
 
 # Create non-root user with UID 1000 to match typical host user UID,
 # so bind-mounted volumes (./data, ./models) are readable/writable.
