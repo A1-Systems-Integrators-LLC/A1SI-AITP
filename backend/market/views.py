@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.error_response import error_response
+from core.internal_auth import InternalEndpointPermission
 from core.utils import safe_int as _safe_int
 from market.models import DataSourceConfig, ExchangeConfig
 from market.serializers import (
@@ -85,7 +86,8 @@ class NewsSentimentView(APIView):
 
 
 class SentimentSignalView(APIView):
-    permission_classes = [IsAuthenticated]
+    # Allow both authenticated users (dashboard) and internal network (Freqtrade)
+    permission_classes = [IsAuthenticated | InternalEndpointPermission]
 
     @extend_schema(responses=SentimentSignalSerializer, tags=["Market"])
     def get(self, request: Request) -> Response:

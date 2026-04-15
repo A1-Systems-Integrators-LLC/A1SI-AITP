@@ -1,13 +1,14 @@
-"""SentimentEventTrader — News-driven extreme sentiment strategy.
+"""SentimentEventTrader — News-driven sentiment strategy.
 
 LEARNING PHASE: Conviction/risk gates DISABLED.
 
-Trades extreme sentiment spikes detected by the NLP pipeline (FinBERT/VADER).
-Long on sentiment > 0.7, short on sentiment < -0.7.
-Gate: RSI must not already be extended in the direction of the trade.
+Trades sentiment signals from the NLP pipeline (FinBERT/VADER) via the backend API.
+Long when aggregate sentiment is bullish + technical confirmation.
+Technical fallback when sentiment is unavailable.
 """
 
 import logging
+import time
 
 import talib.abstract as ta
 from freqtrade.strategy import DecimalParameter, IntParameter, IStrategy
@@ -17,24 +18,53 @@ logger = logging.getLogger(__name__)
 
 LEARNING_PHASE = True
 
-# Sentiment signal access
-try:
-    import importlib
+# Backend API for sentiment data (Docker internal network)
+BACKEND_URL = "http://backend:8000"
+_SENTIMENT_CACHE: dict[str, tuple[float, float]] = {}  # asset_class -> (score, timestamp)
+_CACHE_TTL = 300  # 5 minutes
 
-    HAS_SENTIMENT = (
-        importlib.util.find_spec("common.sentiment.scorer") is not None
-        and importlib.util.find_spec("common.sentiment.signal") is not None
-    )
-except Exception:
-    HAS_SENTIMENT = False
+
+def _fetch_sentiment_signal(asset_class: str = "crypto") -> float:
+    """Fetch aggregate sentiment signal from the backend API.
+
+    Returns sentiment score [-1, 1] or 0.0 on failure.
+    Caches results for 5 minutes to avoid hammering the API.
+    """
+    now = time.time()
+    cached = _SENTIMENT_CACHE.get(asset_class)
+    if cached and (now - cached[1]) < _CACHE_TTL:
+        return cached[0]
+
+    try:
+        import requests
+
+        resp = requests.get(
+            f"{BACKEND_URL}/api/market/news/signal/",
+            params={"asset_class": asset_class},
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            score = float(data.get("signal", 0.0))
+            _SENTIMENT_CACHE[asset_class] = (score, now)
+            logger.info("Sentiment signal for %s: %.4f (%s)", asset_class, score, data.get("signal_label", "?"))
+            return score
+        # Auth required — try without auth (internal network)
+        if resp.status_code in (401, 403):
+            logger.debug("Sentiment API requires auth, using unauthenticated endpoint")
+    except Exception as e:
+        logger.warning("Sentiment API fetch failed: %s", e)
+
+    _SENTIMENT_CACHE[asset_class] = (0.0, now)
+    return 0.0
 
 
 class SentimentEventTrader(IStrategy):
-    """Trades extreme sentiment events from NLP pipeline."""
+    """Trades sentiment signals with technical confirmation."""
 
     INTERFACE_VERSION = 3
     timeframe = "1h"
-    can_short = False  # Kraken spot only — short signals ignored until futures exchange added
+    can_short = False  # Kraken spot only
     startup_candle_count = 50
 
     stoploss = -0.12
@@ -47,95 +77,83 @@ class SentimentEventTrader(IStrategy):
         "480": 0.005,
     }
 
-    # Hyperopt parameters
-    buy_sentiment_threshold = DecimalParameter(0.5, 0.9, default=0.7, space="buy")
-    sell_sentiment_threshold = DecimalParameter(-0.9, -0.5, default=-0.7, space="sell")
-    buy_rsi_max = IntParameter(55, 75, default=65, space="buy")
+    # Sentiment thresholds — lowered for learning phase
+    # Backend signal ranges [-1, 1], bullish threshold in signal.py is 0.15
+    buy_sentiment_threshold = DecimalParameter(0.05, 0.5, default=0.10, space="buy")
+    sell_sentiment_threshold = DecimalParameter(-0.5, -0.05, default=-0.10, space="sell")
+    buy_rsi_max = IntParameter(55, 75, default=70, space="buy")
     sell_rsi_min = IntParameter(25, 45, default=35, space="sell")
     atr_multiplier = DecimalParameter(1.0, 3.0, default=2.0, space="buy")
 
-    # Cached sentiment scores per pair
-    _sentiment_scores: dict[str, float] = {}
+    # Cached aggregate sentiment score (refreshed in bot_loop_start)
+    _current_sentiment: float = 0.0
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         dataframe["adx"] = ta.ADX(dataframe, timeperiod=14)
         dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
         dataframe["ema_20"] = ta.EMA(dataframe, timeperiod=20)
+        dataframe["ema_50"] = ta.EMA(dataframe, timeperiod=50)
         dataframe["volume_sma"] = ta.SMA(dataframe["volume"], timeperiod=20)
         dataframe["volume_ratio"] = dataframe["volume"] / dataframe["volume_sma"]
 
-        # Add sentiment score column from cached values
-        pair = metadata.get("pair", "")
-        sentiment = self._sentiment_scores.get(pair, 0.0)
-        dataframe["sentiment_score"] = sentiment
+        # Use the aggregate sentiment score from the backend API
+        dataframe["sentiment_score"] = self._current_sentiment
 
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # LEARNING PHASE: Sentiment pipeline not yet connected to Freqtrade.
-        # Use technical proxy: RSI mean-reversion + volume surge as sentiment
-        # stand-in. Real sentiment scoring will be wired in Week 2 when
-        # conviction pipeline is re-enabled in logging mode.
-        has_sentiment = dataframe["sentiment_score"] > self.buy_sentiment_threshold.value
+        sentiment = self._current_sentiment
+        threshold = self.buy_sentiment_threshold.value
 
-        # Technical fallback: RSI oversold bounce + volume surge (proxy for
-        # capitulation → recovery pattern that sentiment would normally catch)
-        technical_proxy = (
-            (dataframe["rsi"] < 35)
-            & (dataframe["rsi"].shift(1) < dataframe["rsi"])  # RSI turning up
-            & (dataframe["volume_ratio"] > 1.3)
+        # Path 1: Sentiment-driven entry — bullish sentiment + basic technical filter
+        sentiment_entry = (
+            (sentiment > threshold)
+            & (dataframe["rsi"] < self.buy_rsi_max.value)
+            & (dataframe["rsi"] > 25)
+            & (dataframe["volume"] > 0)
         )
 
-        # Long: sentiment signal OR technical proxy, plus basic filters
+        # Path 2: Technical proxy — RSI oversold bounce + volume confirmation
+        # Relaxed from original (RSI<35 + vol>1.3) to actually trigger in normal markets
+        technical_entry = (
+            (dataframe["rsi"] < 40)
+            & (dataframe["rsi"].shift(1) < dataframe["rsi"])  # RSI turning up
+            & (dataframe["volume_ratio"] > 1.1)  # Mild volume confirmation
+            & (dataframe["close"] > dataframe["ema_50"])  # Above trend
+        )
+
+        # Path 3: Momentum entry — strong trend with sentiment not negative
+        momentum_entry = (
+            (sentiment >= 0)  # At least neutral sentiment
+            & (dataframe["adx"] > 25)  # Trending market
+            & (dataframe["ema_20"] > dataframe["ema_50"])  # Uptrend
+            & (dataframe["close"] > dataframe["ema_20"])  # Price above fast EMA
+            & (dataframe["rsi"] > 50) & (dataframe["rsi"] < 70)  # Not overbought
+            & (dataframe["volume_ratio"] > 1.0)  # Normal+ volume
+        )
+
         dataframe.loc[
-            (
-                (has_sentiment | technical_proxy)
-                & (dataframe["rsi"] < self.buy_rsi_max.value)
-                & (dataframe["rsi"] > 20)
-                & (dataframe["volume"] > 0)
-            ),
+            (sentiment_entry | technical_entry | momentum_entry),
             "enter_long",
         ] = 1
 
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        # Exit long: sentiment reverses or RSI overbought
         dataframe.loc[
             (
-                (dataframe["sentiment_score"] < 0)
+                (self._current_sentiment < self.sell_sentiment_threshold.value)
                 | (dataframe["rsi"] > 75)
             ),
             "exit_long",
         ] = 1
 
-        # Exit short: sentiment reverses or RSI oversold
-        dataframe.loc[
-            (
-                (dataframe["sentiment_score"] > 0)
-                | (dataframe["rsi"] < 25)
-            ),
-            "exit_short",
-        ] = 1
-
         return dataframe
 
     def bot_loop_start(self, **kwargs) -> None:
-        # Refresh sentiment scores for active pairs
-        if HAS_SENTIMENT and hasattr(self, "dp") and self.dp is not None:
-            try:
-                pairs = self.dp.current_whitelist()
-                for pair in pairs[:10]:
-                    signal = self._get_cached_signal(pair)
-                    if signal is not None:
-                        self._sentiment_scores[pair] = signal.get("sentiment_score", 0.0)
-            except Exception as e:
-                logger.warning("Sentiment refresh failed: %s", e)
-
-    def _get_cached_signal(self, pair: str) -> dict | None:
-        """Get cached conviction signal with sentiment data."""
-        return None
+        """Refresh aggregate sentiment score from backend API each tick."""
+        self._current_sentiment = _fetch_sentiment_signal("crypto")
 
     def custom_leverage(self, pair: str, current_time, current_rate, proposed_leverage,
                         max_leverage, entry_tag, side, **kwargs) -> float:
@@ -143,7 +161,10 @@ class SentimentEventTrader(IStrategy):
 
     def confirm_trade_entry(self, pair, order_type, amount, rate, time_in_force,
                             current_time, entry_tag, side, **kwargs) -> bool:
-        logger.info("ENTRY SIGNAL %s: %s @ %.6f (sentiment, no gates)", pair, side, rate)
+        logger.info(
+            "ENTRY SIGNAL %s: %s @ %.6f (sentiment=%.4f, no gates)",
+            pair, side, rate, self._current_sentiment,
+        )
         return True
 
     def custom_stake_amount(self, current_time, current_rate, proposed_stake,
@@ -154,9 +175,7 @@ class SentimentEventTrader(IStrategy):
     def custom_stoploss(self, pair, trade, current_time, current_rate,
                         current_profit, after_fill, **kwargs) -> float:
         atr = self.dp.get_pair_dataframe(pair, self.timeframe)["atr"].iloc[-1]
-        regime_mult = 1.0
-
-        atr_stop = (atr / current_rate) * self.atr_multiplier.value * regime_mult
+        atr_stop = (atr / current_rate) * self.atr_multiplier.value
         stop = -atr_stop
 
         if current_profit > 0.02:
