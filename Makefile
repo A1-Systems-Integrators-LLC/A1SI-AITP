@@ -185,12 +185,12 @@ docker-prod-build:
 	@echo "✓ Prod images built"
 
 docker-prod-up:
-	@echo "→ Starting prod containers (aitp-prod group, ports 4100-4199)..."
-	doppler run -- $(COMPOSE_PROD) up -d
+	@echo "→ Starting prod containers (aitp-prod group, ports 4100-4199, --profile trading)..."
+	doppler run -- $(COMPOSE_PROD) --profile trading up -d
 	@echo "→ Waiting for backend health..."
 	@for i in $$(seq 1 40); do s=$$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' aitp-prod-backend 2>/dev/null); [ "$$s" = "healthy" ] && break; sleep 3; done
 	@doppler run -- $(COMPOSE_PROD) start frontend 2>/dev/null || true
-	@echo "✓ Prod core containers running"
+	@echo "✓ Prod containers running (backend, worker, frontend, postgres, freqtrade-scalp/-sentiment/-reversal)"
 	@echo "  Backend:  http://localhost:4100"
 	@echo "  Frontend: http://localhost:4101"
 
@@ -368,12 +368,12 @@ doppler-secrets:
 trading-up:
 	@echo "→ Starting dev trading containers..."
 	$(COMPOSE_DEV) --profile trading up -d
-	@echo "✓ Trading containers started (CIV1 :4080, BMR :4083, VB :4084)"
+	@echo "✓ Dev trading containers started (see docker-compose.yml for current set)"
 
 trading-down:
 	@echo "→ Stopping dev trading containers..."
-	$(COMPOSE_DEV) --profile trading stop freqtrade-civ1 freqtrade-bmr freqtrade-vb
-	@echo "✓ Trading containers stopped"
+	$(COMPOSE_DEV) --profile trading stop
+	@echo "✓ Dev trading containers stopped"
 
 frameworks-status:
 	@echo "── Dev Trading ──"
@@ -384,26 +384,28 @@ frameworks-status:
 
 # ── Prod Service Management ──────────────────────────────────
 #
-# Prod containers are split into tiers:
-#   Core (always-on): postgres, backend, frontend
-#   Trading (on-demand): freqtrade-civ1, freqtrade-bmr, freqtrade-vb
+# Prod containers (post 2026-05-22 consolidation):
+#   Default services (always on): backend, worker, frontend, postgres
+#   Trading profile (on-demand):  freqtrade-scalp, freqtrade-sentiment,
+#                                 freqtrade-reversal
 #
-# Use these targets to start/stop trading containers as needed.
+# Use these targets to start/stop trading containers selectively.
+# The standard `docker-prod-up` target now includes --profile trading by default.
 
 prod-trading-up:
 	@echo "→ Starting prod trading containers..."
 	doppler run -- $(COMPOSE_PROD) --profile trading up -d
-	@echo "✓ Prod trading started (CIV1 :4180, BMR :4183, VB :4184)"
+	@echo "✓ Prod trading started (scalp :4187, sentiment :4188, reversal :4189)"
 
 prod-trading-down:
 	@echo "→ Stopping prod trading containers..."
-	docker stop aitp-prod-ft-civ1 aitp-prod-ft-bmr aitp-prod-ft-vb 2>/dev/null || true
+	doppler run -- $(COMPOSE_PROD) --profile trading stop
 	@echo "✓ Prod trading stopped"
 
 prod-core-only:
 	@echo "→ Stopping all non-core prod containers..."
-	docker stop aitp-prod-ft-civ1 aitp-prod-ft-bmr aitp-prod-ft-vb 2>/dev/null || true
-	@echo "✓ Prod running core-only (postgres, backend, frontend)"
+	doppler run -- $(COMPOSE_PROD) --profile trading stop
+	@echo "✓ Prod running core-only (postgres, backend, worker, frontend)"
 
 prod-all-up:
 	@echo "→ Starting all prod containers..."
