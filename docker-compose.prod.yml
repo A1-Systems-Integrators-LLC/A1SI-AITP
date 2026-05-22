@@ -55,9 +55,14 @@ x-backend-base: &backend-base
       reservations:
         memory: 1g
   healthcheck:
-    test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -qE '\"status\":\"(ok|degraded)\"'"]
+    # Liveness probe — basic /api/health/ is pure in-memory and always fast.
+    # Detailed (?detailed=true) check ran 8 sub-checks but got starved by
+    # slow dashboard endpoints under load (Daphne worker exhaustion), causing
+    # false-unhealthy. Detailed endpoint is still available for the watchdog
+    # and dashboard to call out-of-band when richer signal is needed.
+    test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health/"]
     interval: 15s
-    timeout: 10s
+    timeout: 5s
     retries: 5
     start_period: 120s
 

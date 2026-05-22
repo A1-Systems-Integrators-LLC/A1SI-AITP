@@ -55,9 +55,11 @@ x-backend-base: &backend-base
       reservations:
         memory: 1g
   healthcheck:
-    test: ["CMD", "sh", "-c", "curl -sf http://localhost:8000/api/health/?detailed=true | grep -qE '\"status\":\"(ok|degraded)\"'"]
+    # Liveness only — basic /api/health/ stays fast under load. Detailed
+    # check is still available out-of-band for watchdog/dashboard.
+    test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health/"]
     interval: 15s
-    timeout: 10s
+    timeout: 5s
     retries: 5
     start_period: 120s
 

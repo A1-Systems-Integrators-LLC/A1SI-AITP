@@ -20,6 +20,12 @@ logger = logging.getLogger("regime_service")
 
 DEFAULT_SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
 
+# Cache regime detection results to avoid recomputing on every dashboard hit.
+# Regimes are computed from 1h OHLCV; their state changes on the order of
+# hours, not seconds. 5-min TTL eliminates 90%+ of repeat work without
+# violating freshness.
+_REGIME_CACHE_TTL_S = 300
+
 
 class RegimeService:
     def __init__(
@@ -46,8 +52,16 @@ class RegimeService:
         return self._asset_class_detectors[asset_class]
 
     def get_current_regime(self, symbol: str) -> dict | None:
+        # Primary cache: serve recent results without recomputing.
+        now = datetime.now(timezone.utc)
+        if symbol in self._cache:
+            state, ts = self._cache[symbol]
+            if (now - ts).total_seconds() < _REGIME_CACHE_TTL_S:
+                return self._state_to_dict(symbol, state, ts)
+
         df = self._load_data(symbol)
         if df is None or df.empty:
+            # Fallback to stale cache entry if data load failed.
             if symbol in self._cache:
                 state, ts = self._cache[symbol]
                 return self._state_to_dict(symbol, state, ts)
@@ -55,7 +69,6 @@ class RegimeService:
 
         asset_class = self._guess_asset_class(symbol)
         state = self._get_detector(asset_class).detect(df)
-        now = datetime.now(timezone.utc)
         self._cache[symbol] = (state, now)
 
         if symbol not in self._history:

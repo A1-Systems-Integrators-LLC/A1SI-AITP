@@ -10,6 +10,7 @@ import fcntl
 import logging
 import os
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -423,6 +424,21 @@ def save_ohlcv(
     return path
 
 
+# ── In-process TTL caches (2026-05-22) ───────────────────────────────────
+# Backend endpoints (dashboard, daily-report, regime/current) call these
+# functions 10-20 times per HTTP request. With 428 parquet files on a
+# WSL bind mount, each call costs 50-100ms. A short TTL eliminates the
+# repeat-read penalty without violating freshness (the scheduler refreshes
+# OHLCV hourly; cache TTL is 5 min so stale-read window is bounded).
+_OHLCV_CACHE_TTL_S = 300  # 5 minutes
+_OHLCV_CACHE: dict[tuple, tuple[pd.DataFrame, float]] = {}
+_OHLCV_CACHE_LOCK = threading.Lock()
+
+_LIST_AVAILABLE_TTL_S = 600  # 10 minutes
+_LIST_AVAILABLE_CACHE: dict[Path, tuple[pd.DataFrame, float]] = {}
+_LIST_AVAILABLE_LOCK = threading.Lock()
+
+
 def load_ohlcv(
     symbol: str,
     timeframe: str,
@@ -431,9 +447,23 @@ def load_ohlcv(
     start: str | None = None,
     end: str | None = None,
 ) -> pd.DataFrame:
-    """Load OHLCV data from Parquet with optional date filtering."""
+    """Load OHLCV data from Parquet with optional date filtering.
+
+    Result is cached in-process for 5 minutes (keyed by all args) so that
+    dashboard/report endpoints calling this 10+ times per request hit
+    disk only once. Returned DataFrames are copies — safe to mutate.
+    """
     directory = directory or PROCESSED_DIR
     path = _parquet_path(symbol, timeframe, exchange_id, directory)
+
+    cache_key = (str(path), start or "", end or "")
+    with _OHLCV_CACHE_LOCK:
+        cached = _OHLCV_CACHE.get(cache_key)
+        if cached is not None:
+            df_cached, ts = cached
+            if time.time() - ts < _OHLCV_CACHE_TTL_S:
+                return df_cached.copy()
+            del _OHLCV_CACHE[cache_key]
 
     if not path.exists():
         logger.warning(f"No data file at {path}")
@@ -451,12 +481,31 @@ def load_ohlcv(
         df = df[df.index <= pd.Timestamp(end, tz="UTC")]
 
     logger.info(f"Loaded {len(df)} rows from {path}")
-    return df
+
+    with _OHLCV_CACHE_LOCK:
+        _OHLCV_CACHE[cache_key] = (df, time.time())
+
+    return df.copy()
 
 
 def list_available_data(directory: Path | None = None) -> pd.DataFrame:
-    """List all available Parquet data files with metadata."""
+    """List all available Parquet data files with metadata.
+
+    Reads every Parquet in `directory` to extract row count and time range,
+    so it's O(N_files × disk-read) — ~20s with 428 files on WSL. Result is
+    cached for 10 minutes since the file list rarely changes between
+    scheduler ticks.
+    """
     directory = directory or PROCESSED_DIR
+
+    with _LIST_AVAILABLE_LOCK:
+        cached = _LIST_AVAILABLE_CACHE.get(directory)
+        if cached is not None:
+            df_cached, ts = cached
+            if time.time() - ts < _LIST_AVAILABLE_TTL_S:
+                return df_cached.copy()
+            del _LIST_AVAILABLE_CACHE[directory]
+
     records = []
     valid_timeframes = {"1m", "5m", "15m", "1h", "4h", "1d"}
     for f in directory.glob("*.parquet"):
@@ -484,7 +533,12 @@ def list_available_data(directory: Path | None = None) -> pd.DataFrame:
                     "file": str(f),
                 }
             )
-    return pd.DataFrame(records)
+    result = pd.DataFrame(records)
+
+    with _LIST_AVAILABLE_LOCK:
+        _LIST_AVAILABLE_CACHE[directory] = (result, time.time())
+
+    return result.copy()
 
 
 # ──────────────────────────────────────────────
