@@ -285,32 +285,35 @@ MAX_JOB_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "4"))
 
 ORDER_SYNC_TIMEOUT_HOURS = int(os.environ.get("ORDER_SYNC_TIMEOUT_HOURS", "24"))
 
-# ── Freqtrade Instances (learning-phase staged deployment) ──
-# Day 1: BMR only (1h mean-reversion) — observe raw signal quality
-# Day 2: + CIV1 (1h dip-buyer) — compare with BMR
-# Day 3: + VB (4h breakout) — timeframe diversity
-# Enable via env: FREQTRADE_CIV1_ENABLED=true, FREQTRADE_VB_ENABLED=true
+# ── Freqtrade Instances ─────────────────────────────────────
+# 2026-05-22 consolidation: cut 4 strategies after 6 weeks of paper trading.
+# Kept: MomentumScalper15m (3-0 wins), TrendReversal (first close +$0.14),
+# SentimentEventTrader (3-entry-path fix on 2026-04-15, never trialed).
+# Disabled: BMR (0-1), CryptoInvestorV1 (0-3), VolatilityBreakout (1-3 losing),
+# GridDCA (0-7). Entries kept (not deleted) so existing tests still resolve.
+# Reactivate by flipping "enabled" to True AND re-adding the service in
+# docker-compose.prod.yml.
 FREQTRADE_INSTANCES = [
     {
         "name": "BollingerMeanReversion",
         "config": "config_bmr.json",
         "port": 4183,
-        "url": os.environ.get("FREQTRADE_BMR_API_URL", "http://freqtrade-bmr:4183"),
-        "enabled": True,
+        "url": os.environ.get("FREQTRADE_BMR_API_URL", ""),
+        "enabled": False,
     },
     {
         "name": "CryptoInvestorV1",
         "config": "config.json",
         "port": 4180,
-        "url": os.environ.get("FREQTRADE_CIV1_API_URL", "http://freqtrade-civ1:4180"),
-        "enabled": True,
+        "url": os.environ.get("FREQTRADE_CIV1_API_URL", ""),
+        "enabled": False,
     },
     {
         "name": "VolatilityBreakout",
         "config": "config_vb.json",
         "port": 4184,
-        "url": os.environ.get("FREQTRADE_VB_API_URL", "http://freqtrade-vb:4184"),
-        "enabled": True,
+        "url": os.environ.get("FREQTRADE_VB_API_URL", ""),
+        "enabled": False,
     },
     {
         "name": "MomentumScalper15m",
@@ -323,8 +326,8 @@ FREQTRADE_INSTANCES = [
         "name": "GridDCA",
         "config": "config_grid.json",
         "port": 4186,
-        "url": os.environ.get("FREQTRADE_GRID_API_URL", "http://freqtrade-grid:4186"),
-        "enabled": True,
+        "url": os.environ.get("FREQTRADE_GRID_API_URL", ""),
+        "enabled": False,
     },
     {
         "name": "SentimentEventTrader",
@@ -357,110 +360,153 @@ INTERNAL_API_ALLOWED_IPS = os.environ.get(
     "INTERNAL_API_ALLOWED_IPS", "127.0.0.1,::1,172.17.0.1",
 ).split(",")
 
+# ── Scheduled tasks ─────────────────────────────────────────
+# 2026-05-22 consolidation: cut from 38 tasks (~58/hour, thundering-herd
+# every :00 and :30) to 22 tasks (~10/hour, all cron-scheduled with staggered
+# minute offsets so no two tasks share a minute boundary).
+#
+# Cut categories:
+#   - Asset classes we don't trade (equity, forex): 9 tasks removed
+#   - Unused frameworks (VectorBT screens, NautilusTrader/HFT backtests): 3 removed
+#   - Redundant / questionable (order_sync, daily_report dupe, autonomous_check,
+#     adaptive_weighting): 4 removed
+#
+# Removed task IDs (executors remain in task_registry for manual triggering):
+#   data_refresh_equity, data_refresh_forex, data_refresh_forex_4h,
+#   vbt_screen_crypto, vbt_screen_forex, vbt_screen_equity,
+#   market_scan_forex, forex_paper_trading,
+#   nautilus_backtest_crypto, nautilus_backtest_equity, nautilus_backtest_forex,
+#   hft_backtest, order_sync, daily_report, autonomous_check, adaptive_weighting
 SCHEDULED_TASKS = {
+    # ── Core crypto data & analysis (hourly, staggered) ──────────────────────
     "data_refresh_crypto": {
         "name": "Crypto Data Refresh",
         "description": "Refresh OHLCV for crypto watchlist",
         "task_type": "data_refresh",
-        "interval_seconds": 1800,
+        "cron_schedule": "13 * * * *",
         "params": {"asset_class": "crypto"},
-    },
-    "data_refresh_equity": {
-        "name": "Equity Data Refresh",
-        "description": "Refresh OHLCV for equity watchlist",
-        "task_type": "data_refresh",
-        "interval_seconds": 86400,
-        "params": {"asset_class": "equity"},
-    },
-    "data_refresh_forex": {
-        "name": "Forex Data Refresh",
-        "description": "Refresh OHLCV for forex watchlist",
-        "task_type": "data_refresh",
-        "interval_seconds": 3600,
-        "params": {"asset_class": "forex"},
     },
     "data_refresh_crypto_4h": {
         "name": "Crypto 4h Data Refresh",
         "description": "Refresh 4h OHLCV for crypto watchlist",
         "task_type": "data_refresh",
-        "interval_seconds": 14400,
+        "cron_schedule": "8 */4 * * *",
         "params": {"asset_class": "crypto", "timeframe": "4h"},
-    },
-    "data_refresh_forex_4h": {
-        "name": "Forex 4h Data Refresh",
-        "description": "Refresh 4h OHLCV for forex watchlist",
-        "task_type": "data_refresh",
-        "interval_seconds": 14400,
-        "params": {"asset_class": "forex", "timeframe": "4h"},
     },
     "regime_detection": {
         "name": "Regime Detection",
         "description": "Crypto regime detection",
         "task_type": "regime_detection",
-        "interval_seconds": 1800,
-        "params": {},
-    },
-    "order_sync": {
-        "name": "Order Sync",
-        "description": "Sync open live orders",
-        "task_type": "order_sync",
-        "interval_seconds": 300,
+        "cron_schedule": "23 * * * *",
         "params": {},
     },
     "data_quality_check": {
         "name": "Data Quality Check",
         "description": "Check for stale data",
         "task_type": "data_quality",
-        "interval_seconds": 3600,
+        "cron_schedule": "43 * * * *",
         "params": {},
     },
     "news_fetch": {
         "name": "News Fetch",
         "description": "Fetch latest news",
         "task_type": "news_fetch",
-        "interval_seconds": 1800,
+        "cron_schedule": "33 * * * *",
         "params": {},
     },
+    # ── Risk & trading (high cadence) ────────────────────────────────────────
     "risk_monitoring": {
         "name": "Risk Monitoring",
         "description": "Periodic risk check across portfolios",
         "task_type": "risk_monitoring",
-        "interval_seconds": 300,
+        "cron_schedule": "*/5 * * * *",
         "params": {},
     },
-    "db_maintenance": {
-        "name": "Database Maintenance",
-        "description": "PostgreSQL health check and maintenance",
-        "task_type": "db_maintenance",
-        "interval_seconds": 86400,
-        "params": {},
-    },
-    "vbt_screen_crypto": {
-        "name": "VBT Crypto Screen",
-        "description": "VectorBT strategy screen on crypto watchlist (every 4h)",
-        "task_type": "vbt_screen",
-        "interval_seconds": 14400,
+    "market_scan_crypto": {
+        "name": "Crypto Market Scanner",
+        "description": "Scan crypto pairs for trading opportunities",
+        "task_type": "market_scan",
+        "cron_schedule": "2,17,32,47 * * * *",
         "params": {"asset_class": "crypto", "timeframe": "1h"},
     },
-    "vbt_screen_forex": {
-        "name": "VBT Forex Screen",
-        "description": "Daily VectorBT strategy screen on forex pairs",
-        "task_type": "vbt_screen",
-        "interval_seconds": 86400,
-        "params": {"asset_class": "forex", "timeframe": "1h"},
+    "strategy_orchestration": {
+        "name": "Strategy Orchestration",
+        "description": "Evaluate regime-strategy alignment, pause/resume strategies",
+        "task_type": "strategy_orchestration",
+        "cron_schedule": "7,22,37,52 * * * *",
+        "params": {},
     },
-    "vbt_screen_equity": {
-        "name": "VBT Equity Screen",
-        "description": "Daily VectorBT strategy screen on equities",
-        "task_type": "vbt_screen",
-        "interval_seconds": 86400,
-        "params": {"asset_class": "equity", "timeframe": "1d"},
+    "signal_feedback": {
+        "name": "Signal Feedback",
+        "description": "Backfill signal attribution outcomes and compute source accuracy",
+        "task_type": "signal_feedback",
+        "cron_schedule": "53 * * * *",
+        "params": {},
+    },
+    # ── Sentiment & external data (4h, staggered) ────────────────────────────
+    "economic_calendar": {
+        "name": "Economic Calendar Check",
+        "description": "Check for upcoming high-impact economic events",
+        "task_type": "economic_calendar",
+        "cron_schedule": "18 */4 * * *",
+        "params": {},
+    },
+    "macro_data_refresh": {
+        "name": "FRED Macro Data Refresh",
+        "description": "Fetch Fed Funds, yield curve, VIX, DXY from FRED",
+        "task_type": "macro_data_refresh",
+        "cron_schedule": "28 */4 * * *",
+        "params": {},
+    },
+    "reddit_sentiment_refresh": {
+        "name": "Reddit Sentiment Refresh",
+        "description": "Scrape crypto subreddits for sentiment scoring",
+        "task_type": "reddit_sentiment_refresh",
+        "cron_schedule": "38 */4 * * *",
+        "params": {},
+    },
+    "coingecko_trending_refresh": {
+        "name": "CoinGecko Trending Refresh",
+        "description": "Fetch trending coins and DeFi market data",
+        "task_type": "coingecko_trending_refresh",
+        "cron_schedule": "48 */4 * * *",
+        "params": {},
+    },
+    "fear_greed_refresh": {
+        "name": "Fear & Greed Index Refresh",
+        "description": "Fetch Fear & Greed Index for contrarian crypto signals",
+        "task_type": "fear_greed_refresh",
+        "cron_schedule": "58 */4 * * *",
+        "params": {},
+    },
+    "ml_predict": {
+        "name": "ML Predictions",
+        "description": "Generate ML predictions for watchlist symbols",
+        "task_type": "ml_predict",
+        "cron_schedule": "5 */4 * * *",
+        "params": {"asset_class": "crypto"},
+    },
+    # ── Lower cadence ────────────────────────────────────────────────────────
+    "funding_rate_refresh": {
+        "name": "Funding Rate Refresh",
+        "description": "Fetch latest funding rates for crypto pairs",
+        "task_type": "funding_rate_refresh",
+        "cron_schedule": "15 */8 * * *",
+        "params": {"asset_class": "crypto"},
+    },
+    # ── Daily housekeeping ───────────────────────────────────────────────────
+    "daily_risk_reset": {
+        "name": "Daily Risk Reset",
+        "description": "Reset daily P&L counters at midnight UTC for all portfolios",
+        "task_type": "daily_risk_reset",
+        "cron_schedule": "0 0 * * *",
+        "params": {},
     },
     "ml_training": {
         "name": "ML Model Training",
         "description": "Daily LightGBM model training on top crypto symbols",
         "task_type": "ml_training",
-        "interval_seconds": 86400,
+        "cron_schedule": "0 6 * * *",
         "params": {
             "symbols": [
                 "BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT",
@@ -469,158 +515,24 @@ SCHEDULED_TASKS = {
             "timeframe": "1h",
         },
     },
-    "market_scan_crypto": {
-        "name": "Crypto Market Scanner",
-        "description": "Scan crypto pairs for trading opportunities (every 15min)",
-        "task_type": "market_scan",
-        "interval_seconds": 900,
-        "params": {"asset_class": "crypto", "timeframe": "1h"},
-    },
-    "market_scan_forex": {
-        "name": "Forex Market Scanner",
-        "description": "Scan forex pairs for trading opportunities (every 15min)",
-        "task_type": "market_scan",
-        "interval_seconds": 900,
-        "params": {"asset_class": "forex", "timeframe": "1h"},
-    },
-    "daily_report": {
-        "name": "Daily Intelligence Report",
-        "description": "Generate daily market intelligence summary",
-        "task_type": "daily_report",
-        "interval_seconds": 86400,
-        "params": {},
-    },
-    "forex_paper_trading": {
-        "name": "Forex Paper Trading",
-        "description": "Convert forex scanner signals into simulated paper trades (every 15min)",
-        "task_type": "forex_paper_trading",
-        "interval_seconds": 900,
-        "params": {},
-    },
-    "nautilus_backtest_crypto": {
-        "name": "Nautilus Crypto Backtest",
-        "description": "Run NautilusTrader backtests on top crypto symbols (daily)",
-        "task_type": "nautilus_backtest",
-        "interval_seconds": 86400,
-        "params": {"asset_class": "crypto", "timeframe": "1h"},
-    },
-    "nautilus_backtest_equity": {
-        "name": "Nautilus Equity Backtest",
-        "description": "Run NautilusTrader backtests on equity symbols (weekly)",
-        "task_type": "nautilus_backtest",
-        "interval_seconds": 604800,
-        "params": {"asset_class": "equity", "timeframe": "1d"},
-    },
-    "nautilus_backtest_forex": {
-        "name": "Nautilus Forex Backtest",
-        "description": "Run NautilusTrader backtests on forex pairs (weekly)",
-        "task_type": "nautilus_backtest",
-        "interval_seconds": 604800,
-        "params": {"asset_class": "forex", "timeframe": "1h"},
-    },
-    "hft_backtest": {
-        "name": "HFT Backtest",
-        "description": "Run HFT strategy backtests on top crypto symbols (daily)",
-        "task_type": "hft_backtest",
-        "interval_seconds": 86400,
-        "params": {"timeframe": "1h"},
-    },
-    "ml_predict": {
-        "name": "ML Predictions",
-        "description": "Generate ML predictions for watchlist symbols (hourly)",
-        "task_type": "ml_predict",
-        "interval_seconds": 3600,
-        "params": {"asset_class": "crypto"},
-    },
     "ml_feedback": {
         "name": "ML Feedback",
-        "description": "Backfill prediction outcomes and update model performance (hourly)",
+        "description": "Backfill prediction outcomes and update model performance",
         "task_type": "ml_feedback",
-        "interval_seconds": 3600,
+        "cron_schedule": "15 7 * * *",
         "params": {},
     },
-    "strategy_orchestration": {
-        "name": "Strategy Orchestration",
-        "description": "Evaluate regime-strategy alignment, pause/resume strategies (every 15min)",
-        "task_type": "strategy_orchestration",
-        "interval_seconds": 900,
+    "db_maintenance": {
+        "name": "Database Maintenance",
+        "description": "PostgreSQL health check and maintenance",
+        "task_type": "db_maintenance",
+        "cron_schedule": "30 3 * * *",
         "params": {},
-    },
-    "signal_feedback": {
-        "name": "Signal Feedback",
-        "description": "Backfill signal attribution outcomes and compute source accuracy",
-        "task_type": "signal_feedback",
-        "interval_seconds": 3600,
-        "params": {},
-    },
-    "adaptive_weighting": {
-        "name": "Adaptive Weighting",
-        "description": "Compute adaptive weight recommendations based on trade outcomes (daily)",
-        "task_type": "adaptive_weighting",
-        "interval_seconds": 86400,
-        "params": {},
-    },
-    "economic_calendar": {
-        "name": "Economic Calendar Check",
-        "description": "Check for upcoming high-impact economic events",
-        "task_type": "economic_calendar",
-        "interval_seconds": 14400,
-        "params": {},
-    },
-    "funding_rate_refresh": {
-        "name": "Funding Rate Refresh",
-        "description": "Fetch latest funding rates for crypto pairs",
-        "task_type": "funding_rate_refresh",
-        "interval_seconds": 28800,
-        "params": {"asset_class": "crypto"},
-    },
-    "fear_greed_refresh": {
-        "name": "Fear & Greed Index Refresh",
-        "description": "Fetch Fear & Greed Index for contrarian crypto signals",
-        "task_type": "fear_greed_refresh",
-        "interval_seconds": 3600,
-        "params": {},
-    },
-    "reddit_sentiment_refresh": {
-        "name": "Reddit Sentiment Refresh",
-        "description": "Scrape crypto subreddits for sentiment scoring",
-        "task_type": "reddit_sentiment_refresh",
-        "interval_seconds": 1800,
-        "params": {},
-    },
-    "coingecko_trending_refresh": {
-        "name": "CoinGecko Trending Refresh",
-        "description": "Fetch trending coins and DeFi market data",
-        "task_type": "coingecko_trending_refresh",
-        "interval_seconds": 1800,
-        "params": {},
-    },
-    "macro_data_refresh": {
-        "name": "FRED Macro Data Refresh",
-        "description": "Fetch Fed Funds, yield curve, VIX, DXY from FRED",
-        "task_type": "macro_data_refresh",
-        "interval_seconds": 14400,
-        "params": {},
-    },
-    "daily_risk_reset": {
-        "name": "Daily Risk Reset",
-        "description": "Reset daily P&L counters at midnight UTC for all portfolios",
-        "task_type": "daily_risk_reset",
-        "interval_seconds": 86400,
-        "params": {},
-    },
-    "autonomous_check": {
-        "name": "Autonomous System Check",
-        "description": "Hourly subsystem health verification and auto-remediation",
-        "task_type": "autonomous_check",
-        "interval_seconds": 3600,
-        "params": {"fix": True},
     },
     "pdf_report_daily": {
         "name": "Daily PDF Report",
         "description": "Generate daily PDF intelligence report at 5 PM Eastern",
         "task_type": "pdf_report",
-        "interval_seconds": None,
         "cron_schedule": "0 17 * * *|US/Eastern",
         "params": {},
     },
@@ -628,7 +540,6 @@ SCHEDULED_TASKS = {
         "name": "Daily Database Backup",
         "description": "PostgreSQL backup with compression at 2 AM Eastern",
         "task_type": "db_backup",
-        "interval_seconds": None,
         "cron_schedule": "0 2 * * *|US/Eastern",
         "params": {},
     },

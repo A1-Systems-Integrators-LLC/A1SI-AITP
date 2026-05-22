@@ -139,10 +139,28 @@ class TaskScheduler:
             logger.info("TaskScheduler shut down")
 
     def _sync_tasks_to_db(self) -> None:
-        """Ensure SCHEDULED_TASKS from settings are reflected in DB."""
+        """Ensure SCHEDULED_TASKS from settings are reflected in DB.
+
+        Tasks removed from settings (e.g. by a consolidation) are paused —
+        not deleted — so run history is preserved and they can be revived
+        via admin if needed.
+        """
         from core.models import ScheduledTask
 
         configured_tasks: dict[str, dict[str, Any]] = getattr(settings, "SCHEDULED_TASKS", {})
+        configured_ids = set(configured_tasks.keys())
+
+        orphans = ScheduledTask.objects.exclude(id__in=configured_ids).filter(
+            status=ScheduledTask.ACTIVE,
+        )
+        orphan_ids = list(orphans.values_list("id", flat=True))
+        if orphan_ids:
+            orphans.update(status=ScheduledTask.PAUSED, next_run_at=None)
+            logger.info(
+                "Paused %d orphan scheduled tasks no longer in settings: %s",
+                len(orphan_ids), orphan_ids,
+            )
+
         for task_id, cfg in configured_tasks.items():
             ScheduledTask.objects.update_or_create(
                 id=task_id,
