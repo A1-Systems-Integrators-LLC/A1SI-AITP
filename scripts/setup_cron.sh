@@ -35,8 +35,8 @@ fi
     # Add container-based entries
     cat <<EOF
 @reboot cd $ROOT_DIR && bash scripts/start.sh >> $LOG_DIR/startup.log 2>&1 $MARKER
-*/5 * * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose exec -T backend python manage.py watchdog --fix --json >> $LOG_DIR/watchdog-cron.log 2>&1 $MARKER
-0 0 * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose exec -T backend python manage.py watchdog --reset-daily --json >> $LOG_DIR/daily-reset.log 2>&1 $MARKER
+*/5 * * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose -f docker-compose.prod.yml exec -T backend python manage.py watchdog --fix --json >> $LOG_DIR/watchdog-cron.log 2>&1 $MARKER
+0 0 * * * cd $ROOT_DIR && $DOPPLER_CMD docker compose -f docker-compose.prod.yml exec -T backend python manage.py watchdog --reset-daily --json >> $LOG_DIR/daily-reset.log 2>&1 $MARKER
 EOF
 ) | crontab -
 

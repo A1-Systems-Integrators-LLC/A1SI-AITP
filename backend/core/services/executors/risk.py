@@ -60,7 +60,10 @@ def _sync_freqtrade_equity() -> dict[str, Any]:
             starting = bal_data.get("starting_capital", wallet) or wallet
             pnl = balance - starting
             total_crypto_pnl += pnl
-            declared_capital += wallet
+            # Declared capital = the bot's own starting_capital (auditable from
+            # Freqtrade), not the static settings wallet (which may be unset/0).
+            # This keeps current_equity == sum(balances): declared + pnl.
+            declared_capital += starting
             result.update({
                 "status": "ok",
                 "source": "balance_api",

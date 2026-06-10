@@ -320,6 +320,7 @@ FREQTRADE_INSTANCES = [
         "config": "config_scalp.json",
         "port": 4187,
         "url": os.environ.get("FREQTRADE_SCALP_API_URL", "http://freqtrade-scalp:4187"),
+        "dry_run_wallet": 200,
         "enabled": True,
     },
     {
@@ -334,6 +335,7 @@ FREQTRADE_INSTANCES = [
         "config": "config_sentiment.json",
         "port": 4188,
         "url": os.environ.get("FREQTRADE_SENTIMENT_API_URL", "http://freqtrade-sentiment:4188"),
+        "dry_run_wallet": 200,
         "enabled": True,
     },
     {
@@ -341,6 +343,7 @@ FREQTRADE_INSTANCES = [
         "config": "config_reversal.json",
         "port": 4189,
         "url": os.environ.get("FREQTRADE_REVERSAL_API_URL", "http://freqtrade-reversal:4189"),
+        "dry_run_wallet": 200,
         "enabled": True,
     },
 ]
