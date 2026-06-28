@@ -133,6 +133,10 @@
       "Read(//mnt/wsl/**)",
       "Bash(awk '/^services:/{f=1; next} /^[a-z]/{f=0} f && /^  [a-z][a-z_-]*:$/{print}' docker-compose.prod.yml)",
       "Bash(DJANGO_SECRET_KEY=test DJANGO_ENCRYPTION_KEY=test FREQTRADE_USERNAME=test FREQTRADE_PASSWORD=test FREQTRADE__API_SERVER__JWT_SECRET_KEY=test POSTGRES_PASSWORD=test docker compose -f docker-compose.prod.yml --profile trading config --services)"
+    ],
+    "additionalDirectories": [
+      "/Users/ronaldredmer/.claude/agents",
+      "/Users/ronaldredmer/.claude/agent-memory"
     ]
   }
 }
