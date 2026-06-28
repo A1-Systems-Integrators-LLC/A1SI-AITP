@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="navyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#1010C0"/>
+      <stop offset="55%" stop-color="#00007B"/>
+      <stop offset="100%" stop-color="#00004E"/>
+    </linearGradient>
+    <linearGradient id="navyGradDiag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#1414D2"/>
+      <stop offset="60%" stop-color="#00007B"/>
+      <stop offset="100%" stop-color="#00004E"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7AEEFF"/>
+      <stop offset="100%" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="steelGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E7E7FF"/>
+    </linearGradient>
+    <radialGradient id="innerLight" cx="0.32" cy="0.24" r="0.9">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="cyanGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="13" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="9"/>
+      <feOffset dx="0" dy="7" result="o"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.34"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#navyGrad)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#innerLight)"/>
+  <g filter="url(#cyanGlow)"><rect x="170" y="730" width="684" height="36" rx="18" fill="url(#cyanGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="304" cy="690" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="304" cy="638" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="512" cy="690" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="512" cy="638" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="512" cy="586" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="720" cy="690" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="720" cy="638" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="720" cy="586" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#softShadow)"><ellipse cx="720" cy="534" rx="80" ry="26" fill="url(#steelGrad)"/></g>
+  <g filter="url(#cyanGlow)"><ellipse cx="720" cy="482" rx="80" ry="26" fill="url(#cyanGrad)"/></g>
+  <g filter="url(#cyanGlow)">
+    <line x1="720" y1="470" x2="720" y2="396" stroke="url(#cyanGrad)" stroke-width="38" stroke-linecap="round"/>
+    <polygon points="720,318 767,396 673,396" fill="url(#cyanGrad)"/>
+  </g>
+</svg>
