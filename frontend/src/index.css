@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
+/* Theme palette matched to A1SI-EMDT (web src/theme/index.ts + mobile
+   src/theme/colors.ts). Dark = EMDT dark mode; light = EMDT light mode,
+   whose signature is the steel-navy primary #1C3856 with a blue accent. */
 :root {
   --color-primary: #3b82f6;
+  --color-accent: #38bdf8;
   --color-success: #22c55e;
-  --color-danger: #ef4444;
+  --color-danger: #f87171;
   --color-warning: #f59e0b;
+  --color-info: #38bdf8;
   --color-bg: #0f172a;
   --color-surface: #1e293b;
   --color-border: #334155;
@@ -13,13 +18,15 @@
 }
 
 [data-theme="light"] {
-  --color-primary: #2563eb;
+  --color-primary: #1c3856;
+  --color-accent: #067abf;
   --color-success: #16a34a;
   --color-danger: #dc2626;
   --color-warning: #d97706;
-  --color-bg: #f1f5f9;
+  --color-info: #0284c7;
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-border: #cbd5e1;
+  --color-border: #e2e8f0;
   --color-text: #0f172a;
   --color-text-muted: #64748b;
 }
