@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="navyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#1010C0"/>
+      <stop offset="55%" stop-color="#00007B"/>
+      <stop offset="100%" stop-color="#00004E"/>
+    </linearGradient>
+    <linearGradient id="navyGradDiag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#1414D2"/>
+      <stop offset="60%" stop-color="#00007B"/>
+      <stop offset="100%" stop-color="#00004E"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7AEEFF"/>
+      <stop offset="100%" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="steelGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E7E7FF"/>
+    </linearGradient>
+    <radialGradient id="innerLight" cx="0.32" cy="0.24" r="0.9">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="cyanGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="13" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="9"/>
+      <feOffset dx="0" dy="7" result="o"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.34"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#navyGradDiag)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#innerLight)"/>
+  <g filter="url(#softShadow)" fill="none" stroke="#FFFFFF" stroke-width="68" stroke-linecap="round">
+    <path d="M 404 506 C 312 446 286 366 300 288"/>
+    <path d="M 620 506 C 712 446 738 366 724 288"/>
+  </g>
+  <g filter="url(#softShadow)"><path d="M 512 744 Q 360 720 352 568 L 352 512 Q 352 474 392 474 L 632 474 Q 672 474 672 512 L 672 568 Q 664 720 512 744 Z" fill="url(#steelGrad)"/></g>
+  <g filter="url(#cyanGlow)">
+    <circle cx="452" cy="600" r="30" fill="url(#cyanGrad)"/>
+    <circle cx="572" cy="600" r="30" fill="url(#cyanGrad)"/>
+  </g>
+</svg>

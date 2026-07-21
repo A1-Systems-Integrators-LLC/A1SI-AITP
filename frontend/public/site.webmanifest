@@ -1,0 +1,14 @@
+{
+  "name": "A1SI-AITP Investment Platform",
+  "short_name": "AITP",
+  "description": "AI-powered multi-asset investment platform",
+  "icons": [
+    { "src": "/favicon-32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "theme_color": "#00007B",
+  "background_color": "#00004E",
+  "display": "standalone",
+  "start_url": "/"
+}

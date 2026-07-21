@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A1SI AITP · Icon Concept Sample Sheet</title>
+<style>
+  :root{
+    --navy:#00007B; --navy-lift:#1010C0; --navy-deep:#00004E;
+    --accent:#00008E; --accent-light:#6C6CC3; --cyan:#00D4FF;
+    --ink:#13202f; --muted:#5f6e82; --card:#ffffff; --line:#e5ebf2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       color:var(--ink);background:#f2f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header{display:flex;align-items:center;gap:18px;padding:28px 40px;
+         background:linear-gradient(135deg,var(--navy-lift),var(--navy) 55%,var(--navy-deep));color:#fff}
+  header .badge{width:54px;height:54px;border-radius:14px;background:#fff2;display:grid;place-items:center;
+                font-weight:800;font-size:20px;border:1px solid #ffffff33}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:2px 0 0;opacity:.8;font-size:13px}
+  header .swatches{margin-left:auto;display:flex;gap:8px}
+  header .swatches span{width:26px;height:26px;border-radius:7px;border:1px solid #ffffff44}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 40px 60px}
+  .famhead{margin:34px 0 12px;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--accent)}
+  .famhead small{display:block;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);font-size:12px;margin-top:2px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;
+        box-shadow:0 1px 3px #0000000d}
+  .card img.master{width:100%;border-radius:18px;display:block;background:var(--navy-deep)}
+  .meta{display:flex;align-items:baseline;justify-content:space-between;margin-top:12px;gap:8px}
+  .code{font:700 11px/1 ui-monospace,Menlo,monospace;color:#fff;background:var(--accent);
+        padding:4px 7px;border-radius:6px}
+  .name{font-weight:700;font-size:14px}
+  .desc{color:var(--muted);font-size:12.5px;margin:8px 0 12px;min-height:54px}
+  .small{display:flex;align-items:center;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .small img{width:24px;height:24px;border-radius:6px}
+  .small img.s2{width:40px;height:40px}
+  .small img.s3{width:56px;height:56px}
+  .small span{margin-left:auto;font-size:11px;color:var(--muted)}
+  .rec{margin-top:40px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--cyan);
+       border-radius:12px;padding:20px 24px}
+  .rec h2{margin:0 0 8px;font-size:15px}
+  .rec p{margin:6px 0;font-size:13.5px}
+  .rec b{color:var(--navy)}
+  @media print{body{background:#fff}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">A1</div>
+  <div>
+    <h1>A1SI AITP · Icon Concept Sample Sheet</h1>
+    <p>12 candidate app icons across 4 design families — AITP's first house-family icon set, replacing the loose favicon/apple-touch PNGs.</p>
+    <p style="opacity:.6">A1SI house navy #00007B (= CVWS/TERM/WIFI family) · house signal accent cyan #00D4FF · icon art uses the house palette, independent of the (changing) in-app theme</p>
+  </div>
+  <div class="swatches" title="palette">
+    <span style="background:#00007B"></span>
+    <span style="background:#1010C0"></span>
+    <span style="background:#6C6CC3"></span>
+    <span style="background:#E7E7FF"></span>
+    <span style="background:#00D4FF"></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="famhead">Family A — Markets <small>The price-action story: candlesticks, breakouts, the portfolio curve. Direct and universally legible.</small></div>
+  <div class="grid">
+    <div class="card">
+      <img class="master" src="png/A1_candlestick_rise_1024.png" alt="Candlestick Rise">
+      <div class="meta"><span class="name">Candlestick Rise</span><span class="code">A1</span></div>
+      <div class="desc">The canonical trading mark: four solid OHLC candles stepping up on a glowing axis, the closing candle in house cyan. Instantly says "markets / trading" at any size; lowest recognition risk. The safe primary.</div>
+      <div class="small"><img src="png/A1_candlestick_rise_1024.png"><img class="s2" src="png/A1_candlestick_rise_1024.png"><img class="s3" src="png/A1_candlestick_rise_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/A2_trend_breakout_1024.png" alt="Trend Breakout">
+      <div class="meta"><span class="name">Trend Breakout</span><span class="code">A2</span></div>
+      <div class="desc">A glowing cyan arrow punching up through a white resistance bar, candles below. Adds action — "a move is happening," not just "a chart exists." The most energetic mark in the literal family.</div>
+      <div class="small"><img src="png/A2_trend_breakout_1024.png"><img class="s2" src="png/A2_trend_breakout_1024.png"><img class="s3" src="png/A2_trend_breakout_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/A3_area_surge_1024.png" alt="Area Surge">
+      <div class="meta"><span class="name">Area Surge</span><span class="code">A3</span></div>
+      <div class="desc">A filled area / mountain chart climbing to a glowing cyan peak — the equity-curve story. Reads as one bold silhouette, so it survives the smallest sizes better than thin candles.</div>
+      <div class="small"><img src="png/A3_area_surge_1024.png"><img class="s2" src="png/A3_area_surge_1024.png"><img class="s3" src="png/A3_area_surge_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card" style="background:#f7f9fc">
+      <img class="master" src="png/_small_size_verification.png" alt="Small-size verification strip" style="object-fit:cover;height:100%;min-height:120px">
+      <div class="meta"><span class="name">48 px legibility</span><span class="code">QA</span></div>
+      <div class="desc">All 12 concepts rasterized to 48 px (Android launcher / iOS Spotlight scale). Reject anything that muddies here — the inner glyphs of C8/C9 are the ones to watch.</div>
+    </div>
+  </div>
+
+  <div class="famhead">Family B — Portfolio <small>The holdings story: allocation, accumulation, protected growth. AITP is wealth, not just charts.</small></div>
+  <div class="grid">
+    <div class="card">
+      <img class="master" src="png/B4_allocation_ring_1024.png" alt="Allocation Ring">
+      <div class="meta"><span class="name">Allocation Ring</span><span class="code">B4</span></div>
+      <div class="desc">A heavy white donut with one glowing cyan segment and a cyan up-tick at its heart — diversification plus growth. A clean badge that reads at any size without depending on a chart silhouette.</div>
+      <div class="small"><img src="png/B4_allocation_ring_1024.png"><img class="s2" src="png/B4_allocation_ring_1024.png"><img class="s3" src="png/B4_allocation_ring_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/B5_coin_stack_1024.png" alt="Coin Stack">
+      <div class="meta"><span class="name">Coin Stack</span><span class="code">B5</span></div>
+      <div class="desc">Three stacks of asset coins growing left-to-right, the tallest crowned by a glowing cyan coin and up-arrow. The accumulation / multi-asset story — the most literally "money" mark in the set.</div>
+      <div class="small"><img src="png/B5_coin_stack_1024.png"><img class="s2" src="png/B5_coin_stack_1024.png"><img class="s3" src="png/B5_coin_stack_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/B6_secure_growth_1024.png" alt="Secure Growth">
+      <div class="meta"><span class="name">Secure Growth</span><span class="code">B6</span></div>
+      <div class="desc">A custody shield with a glowing cyan trend climbing inside — protected capital that compounds. The trust / safekeeping angle, important for a platform that holds and trades real money.</div>
+      <div class="small"><img src="png/B6_secure_growth_1024.png"><img class="s2" src="png/B6_secure_growth_1024.png"><img class="s3" src="png/B6_secure_growth_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card" style="background:#f7f9fc;display:flex;align-items:center;justify-content:center">
+      <div style="text-align:center;color:var(--muted);font-size:12.5px;padding:20px">
+        <div style="font-size:34px">💼</div>
+        Family B sells<br><b style="color:var(--navy)">wealth</b> — a portfolio you<br>own and grow, not just a<br>chart you watch.
+      </div>
+    </div>
+  </div>
+
+  <div class="famhead">Family C — AI Signal <small>What makes AITP software: ML signals, multi-tier automation, live telemetry. The clearest house-motif tie.</small></div>
+  <div class="grid">
+    <div class="card">
+      <img class="master" src="png/C7_ai_pulse_1024.png" alt="AI Pulse">
+      <div class="meta"><span class="name">AI Pulse</span><span class="code">C7</span></div>
+      <div class="desc">The shared A1SI signal fan rising off the candles — AI-driven signals streamed live to dashboard and bots. The strongest single-glyph tie to the TERM / WIFI / CVWS house motif.</div>
+      <div class="small"><img src="png/C7_ai_pulse_1024.png"><img class="s2" src="png/C7_ai_pulse_1024.png"><img class="s3" src="png/C7_ai_pulse_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/C8_hex_trade_node_1024.png" alt="Hex Trade Node">
+      <div class="meta"><span class="name">Hex Trade Node</span><span class="code" style="background:#00a368">C8 ✓ SELECTED</span></div>
+      <div class="desc">Candles framed in the hexagon badge — the deliberate sibling of TERM / CVWS / WIFI "Hex Node." Pick this for one recognizable A1SI shelf identity, only the inner glyph changing per app.</div>
+      <div class="small"><img src="png/C8_hex_trade_node_1024.png"><img class="s2" src="png/C8_hex_trade_node_1024.png"><img class="s3" src="png/C8_hex_trade_node_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/C9_neural_trend_1024.png" alt="Neural Trend">
+      <div class="meta"><span class="name">Neural Trend</span><span class="code">C9</span></div>
+      <div class="desc">An ML node network resolving into a glowing up-trend — the FreqAI / VectorBT→Freqtrade→Nautilus→HFT automation story nobody else in the family can tell. Most "AI" of all; watch its legibility at 24 px.</div>
+      <div class="small"><img src="png/C9_neural_trend_1024.png"><img class="s2" src="png/C9_neural_trend_1024.png"><img class="s3" src="png/C9_neural_trend_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card" style="background:#f7f9fc;display:flex;align-items:center;justify-content:center">
+      <div style="text-align:center;color:var(--muted);font-size:12.5px;padding:20px">
+        <div style="font-size:34px">🤖</div>
+        Family C foregrounds<br><b style="color:var(--navy)">AI + automation</b> — the<br>differentiator vs. a manual<br>charting app.
+      </div>
+    </div>
+  </div>
+
+  <div class="famhead">Family D — Mark <small>Monogram and abstract pictograms: most ownable, least literal.</small></div>
+  <div class="grid">
+    <div class="card">
+      <img class="master" src="png/D10_a_monogram_1024.png" alt="A Monogram">
+      <div class="meta"><span class="name">A Monogram</span><span class="code">D10</span></div>
+      <div class="desc">A heavyweight "A" (A1SI / AITP) standing on the glowing axis, its apex the peak of the climb. Trademark-friendly and unmistakable at any size; says nothing about trading until you know the brand.</div>
+      <div class="small"><img src="png/D10_a_monogram_1024.png"><img class="s2" src="png/D10_a_monogram_1024.png"><img class="s3" src="png/D10_a_monogram_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/D11_up_arrow_glyph_1024.png" alt="Up Arrow Glyph">
+      <div class="meta"><span class="name">Up Arrow Glyph</span><span class="code">D11</span></div>
+      <div class="desc">An abstract upward arrow built from candle segments — a glowing cyan head over a white candlestick shaft. The cleanest 24 px read in the set; a strong favicon / monochrome glyph even if not chosen as the app icon.</div>
+      <div class="small"><img src="png/D11_up_arrow_glyph_1024.png"><img class="s2" src="png/D11_up_arrow_glyph_1024.png"><img class="s3" src="png/D11_up_arrow_glyph_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card">
+      <img class="master" src="png/D12_bull_mark_1024.png" alt="Bull Mark">
+      <div class="meta"><span class="name">Bull Mark</span><span class="code">D12</span></div>
+      <div class="desc">An abstract bull — two horns sweeping up off a bold head, glowing cyan eyes. The bull-market mark: ownable and memorable, though it leans optimistic and is the least literal about "platform."</div>
+      <div class="small"><img src="png/D12_bull_mark_1024.png"><img class="s2" src="png/D12_bull_mark_1024.png"><img class="s3" src="png/D12_bull_mark_1024.png"><span>24 · 40 · 56 px</span></div>
+    </div>
+    <div class="card" style="background:#f7f9fc;display:flex;align-items:center;justify-content:center">
+      <div style="text-align:center;color:var(--muted);font-size:12.5px;padding:20px">
+        <div style="font-size:34px">🔷</div>
+        Family D is the<br><b style="color:var(--navy)">ownable</b> route — distinct<br>marks that survive any<br>size or colorway.
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:18px">
+    <div class="card" style="grid-column:span 4;background:#fafcff">
+      <img class="master" src="png/_contact_sheet.png" alt="All concepts contact sheet" style="border-radius:10px">
+      <div class="meta"><span class="name">All 12 concepts</span><span class="code">SHEET</span></div>
+      <div class="desc">Full contact sheet at review scale.</div>
+    </div>
+  </div>
+
+  <div class="rec" style="border-left-color:#00a368">
+    <h2>Decision — June 2026</h2>
+    <p><b>C8 "Hex Trade Node" was selected and shipped.</b> AITP adopts the A1SI hexagon badge so it reads as a visible sibling of CVWS / TERM / WIFI on a home screen, with the rising-candlestick glyph carrying the trading story inside. The full family (web favicons, iOS AppIcon set, Android mipmaps + Play-Store art, and the live PWA set + <code>site.webmanifest</code>) is generated by <code>export_icons.py</code>; reference copies and the QA sheet live in <code>../icons/</code>. The remaining 11 concepts stay here as the design record.</p>
+  </div>
+
+  <div class="rec">
+    <h2>Design &amp; Marketing recommendation (pre-decision)</h2>
+    <p>AITP currently ships only a loose <code>favicon.png</code> / <code>apple-touch-icon.png</code> and is not part of the house family. Every concept above uses the A1SI house construction — gradient navy squircle + bold solid white glyph + a single glowing cyan accent — shared with A1SI-CVWS, A1SI-TERM and A1SI-WIFI, so AITP joins them as a visible sibling. No green/red: the rising-trend story rides on candle height and the cyan glow.</p>
+    <p><b>Primary recommendation: A1 "Candlestick Rise."</b> The universal "this is a markets / trading app" mark — zero re-learning, maximum legibility, and it drops straight into the light/dark/tinted export pipeline. The safe default.</p>
+    <p><b>Differentiation pick: C7 "AI Pulse."</b> If the icon should say what makes AITP different — AI-driven, automated, live — the signal fan rising off the candles carries that, and it is the tightest tie to the A1SI house motif.</p>
+    <p><b>Family pick: C8 "Hex Trade Node."</b> CVWS shipped a Hex Node and TERM explored one; adopting the hexagon badge here makes the apps visible siblings on a home screen, with only the central glyph changing per product.</p>
+    <p><b>Ownable pick: D10 "A Monogram" / D11 "Up Arrow Glyph."</b> The most trademark-friendly routes, and D11 doubles as the cleanest small-size favicon regardless of which app icon wins.</p>
+    <p style="color:var(--muted)">Next step: select 1–2 directions. We then run <code>export_icons.py</code> on the chosen SVG to produce the full export set (dashboard favicons, iOS/Android app icons incl. dark + tinted variants, store art), with reference copies landing in <code>../icons/</code> before it replaces the shipped favicon.</p>
+  </div>
+
+</div>
+</body>
+</html>
